@@ -1,0 +1,163 @@
+Metadata-Version: 1.1
+Name: cumulusci
+Version: 2.0.0a7
+Summary: Build and release tools for Salesforce developers
+Home-page: https://github.com/SalesforceFoundation/CumulusCI/tree/feature/2.0
+Author: Jason Lantz
+Author-email: jlantz@salesforce.com
+License: BSD license
+Description: ===============================
+        CumulusCI
+        ===============================
+        
+        .. image:: https://img.shields.io/pypi/v/cumulusci.svg
+                   :target: https://pypi.python.org/pypi/cumulusci
+        .. image:: https://readthedocs.org/projects/cumulusci/badge/?version=latest
+                   :target: https://cumulusci.readthedocs.io/en/latest/?badge=latest
+                   :alt: Documentation Status
+        .. image:: https://pyup.io/repos/github/SalesforceFoundation/CumulusCI/shield.svg
+                   :target: https://pyup.io/repos/github/SalesforceFoundation/CumulusCI/
+                   :alt: Updates
+        
+        CumulusCI is a command line tool belt and set of reusable Python classes useful in the development and release process of building a Salesforce Managed Package application.
+        
+        Key Features
+        ------------
+        
+        * Out of the box, CumulusCI provides a complete best practice development and release process based on the processes used by Salesforce.org to build and release managed packages to thousands of users
+        * Flexible and pluggable system for running tasks (single actions) and flows (sequences of tasks)
+        * OAuth based org keychain allowing easy connection to Salesforce orgs and stored in local files using AES encryption
+        
+        Requirements
+        ------------
+        
+        * Python 2.7.x
+        * stdbuf - for passing through stdout from Ant
+        * Ant - for using some task commands
+        
+        Installation
+        ------------
+        
+        * pip install cumulusci
+        
+        Quick Start
+        -----------
+        
+        This section provide a brief example of the commands you'd use to start a new project once you have CumulusCI installed
+        
+            $ cd <Your_Local_Repo>
+            $ cumulusci2 project init
+                project_name: MyProject
+            $ cat cumulusci.yml
+                project:
+                    name: MyProject
+            $ cumulusci2 org config_connected_app
+                client_id: 12345890
+                client_secret:
+            $ cumulusci2 org connect dev
+                *** Opens a browser at the Salesforce login prompt to complete OAuth grant
+            $ cumulusci2 org list
+                dev
+            $ cumulusci2 org info dev
+                *** Displays the OAuth configuration info for the org named "dev"
+            $ cumulusci2 org browser dev
+                *** Opens a browser tab to the org using OAuth to bypass login
+            $ cumulusci2 org connect --sandbox test
+                *** Opens a browser at the Salesforce login prompt to complete OAuth grant
+            $ cumulusci2 org list
+                dev
+                test
+            $ cumulusci2 task list
+                *** List all available tasks
+                deploy: Deploys the src directory to the target Salesforce org
+            $ cumulusci2 task run --org dev deploy
+                *** Runs the "deploy" task against the "dev" org
+            $ cumulusci2 flow list
+                *** List all available flows
+                deploy_dev_org: Runs a complete deployment against a dev org including dependencies but not running tests
+            $ cumulusci2 flow run --org test deploy_dev_org
+                *** Runs the "dev_org" flow against the "test" org
+        
+        
+        =======
+        History
+        =======
+        
+        2.0.0-alpha7 (2016-10-24)
+        ------------------
+        
+        * New commands for connecting to other services
+        ** cumulusci2 project connect_apextestsdb: Stores ApexTestDB auth configuration in the keychain for use by tasks that require ApexTestsDB access
+        ** cumulusci2 project connect_github: Stores Github auth configuration in the keychain for use by tasks that require Github access
+        ** cumulusci2 project connect_mrbelvedere: Stores mrbelvedere auth configuration in the keychain for use by tasks that require access to mrbelvedere
+        ** cumulusci2 project show_apextestsdb: Shows the configured ApexTestsDB auth info
+        ** cumulusci2 project show_github: Shows the configured Github auth info
+        ** cumulusci2 project show_mrbelvedere: Shows the configured mrbelvedere auth info
+        * Github Tasks
+        ** The new BaseGithubTask wraps the github3.py API library to allow writing tasks targetting Github
+        ** The following new Github tasks are implemented on top of BaseGithubTask:
+        *** github_clone_tag: Clones one git tag to another via the Github API    
+        *** github_master_to_feature: Merges the HEAD commit on master to all open feature branches via the Github API
+        *** github_release: Creates a Release via the Github API
+        *** github_release_notes: Generates release notes by parsing merged Github pull request bodies between two tags
+        * BaseTask now enforces required task_options raising TaskOptionError if required options are missing
+        * Restructured the project: heading in cumulusci.yml
+        
+        2.0.0-alpha6 (2016-10-24)
+        ------------------
+        
+        * Moved the build and ci directories back to the root so 2.0 is backwards compatible with 1.0
+        * Allow override of keychain class via CUMULUSCI_KEYCHAIN_CLASS env var
+        * New keychain class cumulusci.core.keychain.EnvironmentProjectKeychain for storing org credentials as json in environment variables
+        * Tasks now support the salesforce_task option for requiring a Salesforce org
+        * The new BaseSalesforceToolingApi task wraps simple-salesforce for building tasks that interact with the Tooling API
+        * cumulusci org default <name>
+        ** Set a default org for tasks and flows
+        ** No longer require passing org name in task run and flow run
+        ** --unset option flag unsets current default
+        ** cumulusci org list shows a * next to the default org
+        * BaseAntTask split out into AntTask and SalesforceAntTask
+        * cumulusci.tasks.metadata.package.UpdatePackageXml:
+        ** Pure python based package.xml generation controlled by metadata_map.yml for mapping in new types
+        ** Wired into the update_package_xml task instead of the old ant target
+        * 130 unit tests and counting, and our test suite now exceeds 1 second!
+        
+        2.0.0-alpha5 (2016-10-21)
+        ------------------
+        
+        * Update README
+        
+        2.0.0-alpha4 (2016-10-21)
+        ------------------
+        
+        * Fix imports in tasks/ant.py 
+        
+        2.0.0-alpha3 (2016-10-21)
+        ------------------
+        
+        * Added yaml files to the MANIFEST.in for inclusion in the egg
+        * Fixed keychain import in cumulusci.yml
+        
+        2.0.0-alpha2 (2016-10-21)
+        ------------------
+        
+        * Added additional python package requirements to setup.py for automatic installation of dependencies
+        
+        2.0.0-alpha1 (2016-10-21)
+        ------------------
+        
+        * First release on PyPI.
+        
+Keywords: cumulusci
+Platform: UNKNOWN
+Classifier: Development Status :: 2 - Pre-Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 2.6
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.3
+Classifier: Programming Language :: Python :: 3.4
+Classifier: Programming Language :: Python :: 3.5

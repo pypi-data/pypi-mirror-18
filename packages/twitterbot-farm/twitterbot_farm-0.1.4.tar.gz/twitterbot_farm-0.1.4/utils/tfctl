@@ -1,0 +1,57 @@
+#!/bin/bash
+
+MAINDIR=/opt/twitterbot_farm/
+BOTS=${MAINDIR%/}_bots/
+PYTHON="${PYTHON:-python2.7}"
+
+set -eu
+
+usage() {
+	echo "Usage"
+	echo "	init				- make farm possible to run"
+	echo "  help				- show this help"
+	echo "	create <bot>			- create new bot"
+	echo "	start <bot>			- start bot"
+	echo "	stop <bot>			- stop bot"
+	echo "	list				- show list of bots"
+	echo "	auth <bot> <token> <secret>	- running webbrowser to auth your bot"
+	echo "	start-all			- start every bot"
+	echo "	oneshot <bot>			- one tweet from bot"
+	exit 1
+}
+
+init() {
+	service redis restart
+}
+
+oneshot() {
+	local bot="$1"
+	local log="${2:-0}"
+	cd "$BOTS/$bot"
+	. env.sh
+	if [ "$log" = '0' ]; then
+		$PYTHON bot.py &>>"/var/log/$bot.log"
+	else
+		$PYTHON bot.py
+	fi
+}
+
+list() {
+	ls $BOTS/ | xargs -L 1 echo
+}
+
+start() {
+	local bot="$1"
+	echo "starting: $bot"
+	( cd $BOTS/$bot; ./run.sh )
+}
+
+auth() {
+	tfctl.py ${FUNCNAME[0]} "$@"
+}
+
+start_all() {
+	find $BOTS -maxdepth 1 -mindepth 1 -type d | xargs -L 1 start
+}
+
+"${@:-usage}"

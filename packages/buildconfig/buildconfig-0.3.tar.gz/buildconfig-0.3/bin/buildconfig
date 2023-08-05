@@ -1,0 +1,57 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+
+import sys
+import os
+import subprocess
+import buildconfig
+
+def perform_command(command):
+    print(">", command)
+    cmd = [command.get_shell()] if command.is_shell() else command.get_cmd()
+    cwd = command.get_cwd()
+    env = os.environ.copy()
+    env.update(command.get_env())
+    if command.persistent:
+        if command.restart:
+            runpersistent.kill(command.get_persistent_id())
+        buildconfig.runpersistent.open(
+            command.get_persistent_id(),
+            [command.shell] if command.is_shell() else cmd,
+            shell=command.is_shell(),
+            cwd=cwd,
+            env=env
+        )
+    else:
+        proc = subprocess.Popen(
+            cmd,
+            bufsize=0,
+            shell=command.is_shell(),
+            cwd=cwd,
+            env=env
+        )
+        ret = proc.wait()
+        assert ret == 0
+
+if len(sys.argv) < 2:
+    sys.stderr.write("usage: %s [path-to-file-or-dir]\n" % sys.argv[0])
+    sys.stderr.write("shows a list of available build targets\n")
+    sys.stderr.write("usage: %s [path-to-file-or-dir] [name-of-target]\n" % sys.argv[0])
+    sys.stderr.write("starts the build\n")
+    sys.exit(1)
+
+config = buildconfig.BuildConfig.load_at_path(sys.argv[1])
+
+targets = config.get_targets_for_file(sys.argv[1]) + config.get_global_targets()
+
+if len(sys.argv) < 3:
+    for target in targets:
+        print(target.name)
+    sys.exit(0)
+
+target = config.get_target_by_name(sys.argv[2])
+config.params['file'] = os.path.abspath(sys.argv[1])
+for command in target.get_commands():
+    perform_command(command)
+

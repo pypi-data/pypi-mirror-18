@@ -1,0 +1,4 @@
+synopsis
+========
+
+pychroot [-h] [--version] [--no-mounts] [--hostname HOSTNAME] [--skip-chdir] [-B SRC[:DEST]] [-R SRC[:DEST]] [--ro SRC[:DEST]] path ...

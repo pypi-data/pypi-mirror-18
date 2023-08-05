@@ -1,0 +1,58 @@
+.. :doctest:
+
+Initial imports:
+
+    >>> from __future__ import print_function
+    >>> from __future__ import unicode_literals
+    >>> from checkoutmanager import utils
+
+Very basic testing of utils.py: basically just a command line runner:
+
+    >>> output = utils.system('echo "hello"')
+    >>> 'hello' in str(output)
+    True
+
+    >>> try:
+    ...     utils.system('non_existing_command')
+    ...     print("Exception not raised")
+    ... except utils.CommandError:
+    ...     print("Exception properly raised")
+    Exception properly raised
+
+    >>> try:
+    ...     utils.system('non_existing_command')
+    ... except utils.CommandError as e:
+    ...     print(e.format_msg())
+    Something went wrong when executing:
+        non_existing_command
+    while in directory:
+        /...checkoutmanager/parts/test...
+    Returncode:
+        127
+    Output:
+    ... not found
+
+CommandError needs to be pickleable:
+
+    >>> import pickle
+
+    >>> e1 = utils.CommandError(1, "cmd", "out")
+    >>> e2 = pickle.loads(pickle.dumps(e1))
+    >>> for attr in ("returncode", "command", "output", "working_dir"):
+    ...     print(getattr(e1, attr) == getattr(e2, attr))
+    True
+    True
+    True
+    True
+
+More verbose output:
+
+    >>> utils.VERBOSE = True
+    >>> output = utils.system('echo "hello"')
+    [...] echo "hello"
+    >>> 'hello' in str(output)
+    True
+
+Teardown:
+
+    >>> utils.VERBOSE = False

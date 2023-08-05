@@ -1,0 +1,236 @@
+#!/usr/bin/env python
+from __future__ import print_function
+import argparse
+import json
+import logging
+import os
+import redis
+import sys
+from sys import platform
+import hostlists
+import redislite
+from cloudmanager.configure_device import active_connection_nmcli, active_connection_password_nmcli, \
+    active_connection_field_nmcli, action_configure_device, scan_for_micropython_boards
+from cloudmanager.server import run_server, quit, status
+
+
+logger_name = __name__
+if logger_name == '__main__':
+    logger_name = os.path.basename(sys.argv[0])
+logger = logging.getLogger(logger_name)
+
+
+class ConnectionError(Exception):
+    pass
+
+
+def read_rc_config():
+    rc_config = {}
+    rc_config_file = os.path.expanduser('~/.micropython_bootconfig.json')
+    if os.path.exists(rc_config_file):
+        with open(rc_config_file) as read_fh:
+            rc_config = json.load(read_fh)
+    return rc_config
+
+
+def list_registered_boards(args):
+    format = "%-10.10s %-50.50s %-10.10s"
+    redis_db = connect_to_redis()
+    # redis_db = redis.Redis(host='127.0.0.1', port=18266)
+    boards = []
+    for board in redis_db.keys('board:*'):
+        state = redis_db.get(board)
+        if state in [b'idle']:
+            boards.append(board)
+    if boards:
+        boards.sort()
+        print(format % ('Platform', 'Name', 'State'))
+        for board in boards:
+            state = redis_db.get(board).decode()
+            board = board.decode()[6:]
+            info_key = 'boardinfo:' + board
+            board_info = redis_db.get(info_key).decode()
+            print(format % (board_info, board, state))
+
+
+def header(message):
+    print('*'*78)
+    print(message)
+    print('*'*78)
+
+
+def connect_to_redis():
+    return redislite.Redis(dbfilename='cloudmanager.rdb')
+    host = read_rc_config()["settings"].get('redis_server', '127.0.0.1')
+    port = read_rc_config()["settings"].get('redis_port', '18266')
+    port = int(port)
+    return redis.Redis(host=host, port=port)
+
+
+def execute_command_on_board(board, command, args):
+    status_key = 'board:' + board
+    base_key = 'repl:' + board
+    command_key = base_key + '.command'
+    console_key = base_key + '.console'
+    stdout_key = console_key + '.stdout'
+    complete_key = base_key + '.complete'
+    logging_key = base_key + '.logging'
+
+    redis_db = connect_to_redis()
+    if args.debug:
+        redis_db.set(logging_key, logging.DEBUG)
+
+    # redis_db.delete(stdout_key)
+    # print('sending: %s'% command)
+    redis_db.delete(stdout_key)
+    redis_db.rpush(command_key, command)
+    redis_db.expire(command_key, 10)
+    position = 0
+    rc = 0
+    header('Executing on %r' % board)
+    while True:
+        endpos = redis_db.strlen(stdout_key)
+        if endpos > position:
+            result = redis_db.getrange(stdout_key, position, endpos)
+            position = endpos
+            # print(result.decode(), end='')
+            sys.stdout.write(result)
+            sys.stdout.flush()
+        rc = redis_db.blpop(complete_key, timeout=1)
+        if rc is not None:
+            rc = rc[1]
+            break
+        if not redis_db.exists(command_key) or not redis_db.exists(stdout_key):
+            print('Board %r is not responding\n' % board, file=sys.stderr)
+            return -1
+
+    endpos = redis_db.strlen(stdout_key)
+    if endpos > position:
+        result = redis_db.getrange(stdout_key, position, endpos)
+        print(result.decode(), end='')
+        sys.stdout.flush()
+
+    # redis_db.delete(stdout_key)
+    if rc is None:
+        rc = -1
+    print()
+    return int(rc)
+
+
+def print_on_board(board, message):
+    redis_db = connect_to_redis()
+    base_key = 'repl:' + board
+    key = base_key + '.print'
+    redis_db.rpush(key, message)
+    redis_db.expire(key, 30)
+
+
+def rename_board(board, name):
+    redis_db = connect_to_redis()
+    base_key = 'repl:' + board
+    key = base_key + '.rename'
+    redis_db.rpush(key, name)
+    redis_db.expire(key, 30)
+
+
+def copy_file_to_board(board, filename, dest=None):
+    redis_db = connect_to_redis()
+    base_key = 'repl:' + board
+    file_key = 'file:' + board + ':' + filename
+    dest_key = 'filedest:' + board + ':' + filename
+    if dest:
+        redis_db.set(dest_key, dest)
+    key = base_key + '.copy'
+    redis_db.rpush(key, filename)
+    with open(filename) as file_handle:
+        data = file_handle.read()
+    redis_db.set(file_key, data)
+
+
+if __name__ == "__main__":
+    # logging.basicConfig(level=logging.DEBUG)
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    subparsers = parser.add_subparsers(
+        dest='operation', help='Operations',
+    )
+
+    board_scan_parser = subparsers.add_parser('board-scan', help='Board scan')
+    board_scan_parser = subparsers.add_parser('board-list', help='Board list')
+    board_execute_parser = subparsers.add_parser('board-execute', help='Board execute')
+    board_print_parser = subparsers.add_parser('board-print', help='Board print')
+    board_rename_parser = subparsers.add_parser('board-rename', help='Board rename')
+    board_upload_parser = subparsers.add_parser('board-upload', help='Board upload')
+
+    if platform == 'linux':
+        board_configuration_parser = subparsers.add_parser('board-config', help='Board configuration')
+        board_configuration_parser.add_argument('board', default=None, help='Micropython boards to configure')
+        board_configuration_parser.add_argument('--name', default=None, help="Name of the board (default to the board name)")
+        board_configuration_parser.add_argument(
+            '--keyval', action='append', default=[], help='Add arbitrary key/values to the configuration'
+        )
+
+        board_configuration_parser.add_argument('--ssid', default=None, help="The wifi network to connect to")
+        board_configuration_parser.add_argument('--wifi_passphrase', default=None, help='The passphrase/password for the wifi network')
+
+        board_configuration_parser.add_argument('--redis_server', default=None, help='Redis server address')
+        board_configuration_parser.add_argument('--redis_port', default='18266', help='Redis server port')
+
+    board_execute_parser.add_argument('board', default=None, help='Board(s) to execute the code on')
+    board_execute_parser.add_argument('--debug', default=False, action='store_true', help='Enable debug logging')
+
+    board_print_parser.add_argument('board', default=None, help='Message to print on the console')
+    board_print_parser.add_argument('message', help='Message to print on the console')
+
+    board_rename_parser.add_argument('board', default=None, help='Board to rename')
+    board_rename_parser.add_argument('name', help='New board name')
+
+    board_upload_parser.add_argument('board', default=None, help='Message to print on the console')
+    board_upload_parser.add_argument('filename', help='File to upload')
+    board_upload_parser.add_argument('dest', default=None, help='Destination directory')
+
+    server_start_parser = subparsers.add_parser('server-start', help='Server start')
+    server_start_parser.add_argument('--port', default='18266', type=int, help='Redis server port')
+    server_start_parser.add_argument('--rdbfile', default='cloudmanager.rdb', help='Redis server rdb backing file')
+
+    server_stop_parser = subparsers.add_parser('server-stop', help='Stop server')
+    server_stop_parser.add_argument('--rdbfile', default='cloudmanager.rdb', help='Redis server rdb backing file')
+
+    server_status_parser = subparsers.add_parser('server-status', help='Server status')
+    server_status_parser.add_argument('--rdbfile', default='cloudmanager.rdb', help='Redis server rdb backing file')
+
+    args = parser.parse_args()
+
+    if args.operation == 'board-configure':
+        if not args.ssid:
+            ssid=active_connection_nmcli()
+            if ssid:
+                wifi_passphrase = active_connection_password_nmcli(ssid)
+        if not args.redis_server:
+            args.redis_server = active_connection_field_nmcli(ssid, 'IP4.ADDRESS[1]').split('/')[0]
+        action_configure_device(args)
+    elif args.operation == 'board-scan':
+        print('\n'.join(scan_for_micropython_boards()))
+    elif args.operation == 'board-execute':
+        command = sys.stdin.read()
+        for board in hostlists.expand(args.board):
+            execute_command_on_board(board, command, args)
+    elif args.operation == 'board-print':
+        print_on_board(args.board, args.message)
+    elif args.operation == 'board-rename':
+        rename_board(args.board, args.name)
+    elif args.operation == 'board-list':
+        list_registered_boards(args)
+    elif args.operation == 'board-upload':
+        copy_file_to_board(args.board, args.filename, args.dest)
+    elif args.operation in ['server-shutdown', 'server-stop']:
+        quit(args.rdbfile)
+        sys.exit(0)
+    elif args.operation == 'server-status':
+        status(args.rdbfile)
+        sys.exit(0)
+    elif args.operation in ['server-start']:
+        run_server(args.port, args.rdbfile)
+    else:
+        parser.print_usage()

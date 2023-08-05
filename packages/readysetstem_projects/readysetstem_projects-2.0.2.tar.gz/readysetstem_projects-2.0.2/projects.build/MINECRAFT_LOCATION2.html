@@ -1,0 +1,141 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+ <meta name="robots" content="noindex" />
+ <meta name="generator" content=
+ "HTML Tidy for HTML5 for Mac OS X version 5.1.25">
+ <meta http-equiv="CONTENT-TYPE" content="text/html; charset=utf-8">
+ <title></title>
+ <link rel="stylesheet" type="text/css" href="default.css">
+ <link rel="stylesheet" type="text/css" href="project.css">
+ <link type="text/css" rel="stylesheet" href="/assets/cmirror/codemirror.css">
+ <link type="text/css" id="theme" rel="stylesheet" href=
+ "/assets/themes/solarized-dark.css">
+ <script type="text/javascript" src="/assets/cmirror/codemirror.js">
+ </script>
+ <script type="text/javascript" src="/assets/cmirror/python.js">
+ </script>
+ <script type="text/javascript" src="onload.js">
+ </script>
+ <script type="text/javascript" src="flows.js">
+ </script>
+ <script type="text/javascript" src="flow_cookie.js">
+ </script>
+ <script type="text/javascript" src="project.js">
+ </script>
+ <script type="text/javascript" src="stickydiv.js">
+ </script>
+ <script type="text/javascript" src="codeblocks.js">
+ </script>
+</head>
+<body>
+ <div class="hw" data-count="1" data-name="led_matrix"></div>
+ <div class="hw" data-count="1" data-name="led_matrix_cable"></div>
+ <div id="intro" class="section">
+
+  <p>In this project, we'll expand on our previous project where we integrated
+  the LED Matrix to indicate our position in the Minecraft world. In the
+  previous project, we scaled our position in the Minecraft world to a position
+  on the LED Matrix, but when our scaled position was outside the LED Matrix
+  boundary of 0 to 7, we forced it to either 0 or 7 and displayed it at that
+  location.</p>
+
+  <p>In this project, when we determine that our character is outside the
+  bounds of the LED Matrix, instead of just displaying the location as the edge
+  of the LED Matrix, we'll display the location at the edge and flash the LED.
+  This will indicate that we're outside of the scaled world.</p>
+ </div>
+ <div id="hw" class="section"><img class="bb" src="img/LED_Matrix_bb.jpg" alt=
+ ""></div>
+ <div id="sw" class="section">
+
+  <p>The main difference between the code in the last project and the code in
+  this project is that, for this project, we'll add an extra test to determine
+  if the location of our character is outside the boundaries of the LED Matrix,
+  and if so, we'll flash the LED for as long as that condition continues to be
+  true.</p>
+
+  <p>Here is what the full code for this project should look like. We'll dig
+  further into the highlighted pieces of code below:</p>
+  <div class="code" data-firstline="1">
+   <textarea>
+from rstem.led_matrix import FrameBuffer
+from rstem.mcpi import minecraft, control
+import time
+
+control.show()
+
+mc = minecraft.Minecraft.create()
+
+SCALE = 25
+fb = FrameBuffer()
+
+*count = 0
+*FLASH_COUNT = 3
+*flash_lit = True
+while True:
+    pos = mc.player.getTilePos()
+
+    x = round(pos.x/SCALE + (fb.width-1)/2)
+*    x_out_of_bounds = not 0 <= x < fb.width
+    x = min(fb.width-1, max(0, x))
+
+    z = round(pos.z/SCALE + (fb.height-1)/2)
+*    z_out_of_bounds = not 0 <= z < fb.height
+    z = min(fb.height-1, max(0, z))
+
+    fb.erase()
+*    count += 1
+*    if count > FLASH_COUNT:
+*        flash_lit = not flash_lit
+*        count = 0
+*    if not x_out_of_bounds and not z_out_of_bounds or flash_lit:
+*        fb.point(z, x)
+    fb.show()
+
+    time.sleep(0.01)
+</textarea>
+  </div>
+  <p>The above highlighted changes are:</p>
+  <ul>
+   <li>
+
+    <p>
+    On Lines 11 through 13, we initialize the variables we'll use in the game loop.
+    We'll discuss their use below.
+    </p> </li> <li> <p>
+    On Lines 19 and 23, we determine if Steve has moved out-of-bounds.  He's
+    out-of-bounds if his scaled position would be off of the LED Matrix (i.e., less
+	than 0 or greater than the width of the LED Matrix).
+    </p> </li> <li> <p>
+    On Lines 27 through 30, we keep a count that keeps track of how long
+    we flash on and off.  Every time through the loop, we increment a
+    <code>count</code>.  If the <code>count</code> exceeds
+    <code>FLASH_COUNT</code>, then we toggle the <code>flash_lit</code>
+    variable, which keeps track of whether the flashing LED is on or off.
+    </p> </li> <li> <p>
+    On Lines 31 and 32, we light the Steve's location on LED Matrix.  
+	We light it in two cases: when its not out-of-bounds, or if it's 
+	<code>flash_lit</code>.
+    </p> </li> 
+  </ul>
+  <p>Give it a try...take Steve to the edge of the Minecraft world and you should
+  see the LED Matrix flash his location when he moves off the edge.
+ </div>
+ <div id="challenge" class="section">
+  <ol>
+   <li>
+
+    <p>Can you make the out-of-bounds flashing occur at a slower rate?
+    </p> </li> <li> <p>
+    Can you make  the flashing occur <i>only</i> when Steve goes out-of-bounds
+    in the north/south direction (the X axis)?
+    </p> </li> <li> <p>
+    Can you make  the flashing occur <i>only</i> when Steve goes out-of-bounds
+    in the <i>south</i> direction (the X axis)?
+    </p>
+   </li>
+  </ol>
+ </div>
+</body>
+</html>

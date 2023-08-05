@@ -1,0 +1,246 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+ <meta name="robots" content="noindex" />
+ <meta name="generator" content=
+ "HTML Tidy for HTML5 for Mac OS X version 5.1.25">
+ <meta http-equiv="CONTENT-TYPE" content="text/html; charset=utf-8">
+ <title></title>
+ <link rel="stylesheet" type="text/css" href="default.css">
+ <link rel="stylesheet" type="text/css" href="project.css">
+ <link type="text/css" rel="stylesheet" href="/assets/cmirror/codemirror.css">
+ <link type="text/css" id="theme" rel="stylesheet" href=
+ "/assets/themes/solarized-dark.css">
+ <script type="text/javascript" src="/assets/cmirror/codemirror.js">
+ </script>
+ <script type="text/javascript" src="/assets/cmirror/python.js">
+ </script>
+ <script type="text/javascript" src="onload.js">
+ </script>
+ <script type="text/javascript" src="flows.js">
+ </script>
+ <script type="text/javascript" src="flow_cookie.js">
+ </script>
+ <script type="text/javascript" src="project.js">
+ </script>
+ <script type="text/javascript" src="stickydiv.js">
+ </script>
+ <script type="text/javascript" src="codeblocks.js">
+ </script>
+</head>
+<body>
+ <div class="hw" data-count="1" data-name="led"></div>
+ <div class="hw" data-count="1" data-name="resistor"></div>
+ <div class="hw" data-count="1" data-name="button"></div>
+ <div class="section" id="intro">
+
+  <p>In this project, we'll expand on the code in the previous <a data-uid=
+  "flashlight"></a> project to create a flashing flash light with multiple
+  functions. Our new flashlight will have several modes that it rotates through
+  on each press of the button. This is common in lots of flashlights you can
+  buy today, and it is generally software that makes it possible.</p>
+ </div>
+ <div class="section" id="hw">
+
+  <p>The hardware for this flashlight will be the same as the last flashlight
+  project — two independent circuits, one for the LED and one for the
+  button:</p><img class="bb" src="img/Flashlight_bb.jpg" alt="">
+
+  <p>Refer back to <a data-uid="flashlight"></a> if you have any questions
+  about how to wire these circuits.</p>
+ </div>
+ <div class="section" id="sw">
+  <h2 class="step">Write the code.</h2>
+
+  <p>For this implementation of the flashlight, we're going to create three
+  modes — each will do something different. Mode 0 will turn the flashlight
+  off, Mode 1 will turn the flashlight on and Mode 2 will flash the light.</p>
+
+  <p>In order to do that, we'll have to track which mode we're in at any given
+  time, and we'll have to write the code for each of the modes. We'll start by
+  writing some initialization code and implementing Mode 0. The program will be
+  similar to the previous project, except we'll add some code highlighted with
+  arrows below:</p>
+  <div class="code" data-firstline="1">
+   <textarea>
+from rstem.button import Button
+from rstem.gpio import Output
+import time
+
+my_button = Button(18)
+my_led = Output(14)
+
+*NUM_MODES = 3
+*mode = 0
+*was_pressed = False
+while True:
+*    is_pressed = my_button.is_pressed()
+*    if is_pressed and not was_pressed:
+*        mode = mode + 1
+*        if mode &gt; NUM_MODES:
+*            mode = 0
+
+*    if mode == 0:
+        my_led.off()
+    else:
+        my_led.on()
+
+*    was_pressed = is_pressed
+    time.sleep(.01)
+</textarea>
+  </div>
+
+  <p>Let's take a look at the code we added:</p>
+  <ul>
+   <li>
+
+    <p>On Lines 8 through 10, we initialize the variables we'll need later to
+    track and manage the modes, including <code>NUM_MODES</code>, which defines
+    the total number of modes.</p>
+   </li>
+   <li>
+
+    <p>On Lines 12 and 13, we determine the exact instant the button is
+    pressed. This occurs when the button <code>is_pressed</code>, but wasn't
+    pressed (<code>not was_pressed</code>) the previous time through the
+    loop.</p>
+   </li>
+   <li>
+
+    <p>On Lines 14 through 16, which occur right when the button is pressed, we
+    increment the <code>mode</code>. If we increment past the total number of
+    modes (<code>NUM_MODES</code>), we loop it back to the lowest mode. This
+    way, the <code>mode</code> will run through the sequence (0, 1, 2, 0, 1,
+    2...) each time the button is pressed.</p>
+   </li>
+   <li>
+
+    <p>On Lines 18 through 21, we check to see if we're in Mode 0, which turns
+    the light off. We'll work on the other modes next, but for now, if we're in
+    one of the other modes (modes 1 or 2), we'll just turn the light on.</p>
+   </li>
+   <li>
+
+    <p>On Line 23, at the end of each run through the loop, we save the state
+    of the button as <code>was_pressed</code>, so we know the next time through
+    the loop if the button was pressed the previous time through.</p>
+   </li>
+  </ul>
+
+  <p>Give it a try. Currently, Mode 0 turns the light off, and Modes 1 and 2
+  turn the light on. So, as you click through the modes, what you'll see is the
+  light turning on, and then two presses later turning off.</p>
+
+  <p>So far, we've added a bunch of code, but we haven't added a lot of
+  functionality. But, we have laid the groundwork to add the two new modes in
+  the next step.</p>
+
+  <p>Note that the flashlight will continue to work until you manually stop the
+  program.</p>
+  <h2 class="step">Improve the code.</h2>
+
+  <p>Now, let's add some functionality to Modes 1 and 2. Mode 1 will work as
+  before (just turn the light on). Mode 2 will make the light flash. To do
+  this, we'll add a counter that keeps track of how many times we've gone
+  through the <code>while</code> loop, so we'll know whether the light should
+  be on or off each time through the loop.</p>
+
+  <p>Here's what our next version of the code looks like:</p>
+  <div class="code" data-firstline="1">
+   <textarea>
+from rstem.button import Button
+from rstem.gpio import Output
+import time
+
+my_button = Button(18)
+my_led = Output(14)
+
+*mode2_count = 0
+*MODE2_COUNT_TIME = 100
+
+NUM_MODES = 3
+mode = 0
+was_pressed = False
+while True:
+    is_pressed = my_button.is_pressed()
+    if is_pressed and not was_pressed:
+        mode = mode + 1
+        if mode &gt; NUM_MODES:
+            mode = 0
+
+    if mode == 0:
+        my_led.off()
+*    elif mode == 1:
+*        my_led.on()
+*    elif mode == 2:
+*        mode2_count = mode2_count + 1
+*        if mode2_count &gt; MODE2_COUNT_TIME:
+*            mode2_count = 0
+*        if mode2_count &lt; MODE2_COUNT_TIME/2:
+*            my_led.on()
+*        else:
+*            my_led.off()
+
+    was_pressed = is_pressed
+    time.sleep(.01)
+</textarea>
+  </div>
+
+  <p>Let's look at what was added here:</p>
+  <ul>
+   <li>
+
+    <p>On Lines 8 and 9, we initialize the variables we'll need later,
+    including <code>MODE2_COUNT_TIME</code>, which will determine how long the
+    flashes are in Mode 2.</p>
+   </li>
+   <li>
+
+    <p>On Lines 23 and 24, we simply turn the light on for Mode 1.</p>
+   </li>
+   <li>
+
+    <p>On Lines 25 though 28, we implement Mode 2. For mode 2, we use a
+    counter, <code>mode2_count</code> to keep track of where we are in the
+    flashing cycle. The counter will count from 0 up to
+    <code>MODE2_COUNT_TIME</code>, and then repeat.</p>
+   </li>
+   <li>
+
+    <p>On Lines 29 though 32, we turn the light on or off based on the count.
+    Each time through the loop, we check our counter, <code>mode2_count</code>
+    — if it is less than half way done, we turn the light on, otherwise we turn
+    it off. This will make our light flash 50% on and 50% off.</p>
+   </li>
+  </ul>
+
+  <p>Give this new "flashing" flashlight a try.</p>
+ </div>
+ <div class="section" id="challenge">
+  <ol>
+   <li>
+
+    <p>We used a counter to set the period of time for each flash when in the
+    flashing mode. Change the counter to slow down (or speed up) the flashing
+    rate.</p>
+   </li>
+   <li>
+
+    <p>Can you add a fourth mode that flashes at a faster rate?</p>
+   </li>
+   <li>
+
+    <p>The flash mode flashes 50% on and 50% off. Can you change this to a
+    quick blink, by making it flash 10% on and 90% off?</p>
+   </li>
+   <li>
+
+    <p>The flashing can be more complicated than just a simple on/off cycle.
+    Can you change the flash to 5 quick flashes followed by 2 slow flashes, and
+    then repeat?
+    </p>
+   </li>
+  </ol>
+ </div>
+</body>
+</html>

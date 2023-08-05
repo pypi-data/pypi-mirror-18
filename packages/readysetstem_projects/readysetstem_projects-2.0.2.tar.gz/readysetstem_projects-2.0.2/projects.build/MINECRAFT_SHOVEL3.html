@@ -1,0 +1,155 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+ <meta name="robots" content="noindex" />
+ <meta name="generator" content=
+ "HTML Tidy for HTML5 for Mac OS X version 5.1.25">
+ <meta http-equiv="CONTENT-TYPE" content="text/html; charset=utf-8">
+ <title></title>
+ <link rel="stylesheet" type="text/css" href="default.css">
+ <link rel="stylesheet" type="text/css" href="project.css">
+ <link type="text/css" rel="stylesheet" href="/assets/cmirror/codemirror.css">
+ <link type="text/css" id="theme" rel="stylesheet" href=
+ "/assets/themes/solarized-dark.css">
+ <script type="text/javascript" src="/assets/cmirror/codemirror.js">
+ </script>
+ <script type="text/javascript" src="/assets/cmirror/python.js">
+ </script>
+ <script type="text/javascript" src="onload.js">
+ </script>
+ <script type="text/javascript" src="flows.js">
+ </script>
+ <script type="text/javascript" src="flow_cookie.js">
+ </script>
+ <script type="text/javascript" src="project.js">
+ </script>
+ <script type="text/javascript" src="stickydiv.js">
+ </script>
+ <script type="text/javascript" src="codeblocks.js">
+ </script>
+</head>
+<body>
+ <div class="hw" data-count="1" data-name="button"></div>
+
+ <div id="intro" class="section">
+ <p>In this project, we're going to expand on our previous two shovel projects.
+ Instead of just smashing the single block that we hit, when we hit a block,
+ we'll smash that block plus all the other blocks within a defined
+ radius of that block. This will demonstrate how the Minecraft API can be used
+ to start doing more interesting types of modifications to the game world.</p>
+ </div><div id="hw" class="section">
+
+ <p>The hardware configuration for this project is exactly the same as the
+  previous project — a single button mapped to GPIO24:
+ <img class="bb" src="img/Minecraft_1button_bb.jpg" alt=""></p>
+ </div><div id="sw" class="section">
+
+ <p>In this project, we're going to create an external function that will control
+ what happens every time we attempt to smash a block (or dig). This function
+ will take three arguments:</p>
+ <ol>
+  <li>
+
+   <p>The first will be the Minecraft object (<code>mc</code>) that we use to
+   interact with the Minecraft server;</p>
+  </li>
+  <li>
+
+   <p>The second will be the position of the block that was hit; and</p>
+  </li>
+  <li>
+
+   <p>The radius we want to smash around the block we hit.</p>
+  </li>
+ </ol>
+
+ <p>Here is what that function will look like:</p>
+ <div class="code" data-firstline="1">
+  <textarea>
+def dig(mc, pos, radius):
+    r_vector = Vec3(radius,radius,radius)
+    mc.setBlocks(pos - r_vector, pos + r_vector, block.AIR)
+</textarea>
+ </div>
+
+ <p>Here's how the code works:</p>
+ <ul>
+  <li>
+
+   <p>On Line 1, we define our function, called "dig" with the three arguments
+   we discuss above.</p>
+  </li>
+  <li>
+
+   <p>On Line 2, we create a variable called "r_vector" (for "radius vector),
+   which defines a 3-dimensional space using our predefined radius value.</p>
+  </li>
+  <li>
+
+   <p>On Line 3, we use the <code>.setBlocks()</code> function to modify all
+   the blocks in the r_vector radius around the location of the hit block.</p>
+  </li>
+ </ul>
+ <h2>Full Code</h2>
+
+  <p>Here is what the code for this project should look like at this point
+  (with new changes highlighted with arrows):</p>
+ <div class="code" data-firstline="1">
+  <textarea>
+from rstem.button import Button
+from rstem.mcpi import minecraft, control, block
+from rstem.mcpi.vec3 import Vec3
+import time
+
+control.show()
+mc = minecraft.Minecraft.create()
+button = Button(24)
+
+*radius = 1
+
+*def dig(mc, pos, radius):
+*    r_vector = Vec3(radius,radius,radius)
+*    mc.setBlocks(pos - r_vector, pos + r_vector, block.AIR)
+
+while True:
+    if button.presses():
+        control.hit(duration=0.2)
+
+    hits = mc.events.pollBlockHits()
+    for hit in hits:
+*        dig(mc, hit.pos, radius)
+
+    time.sleep(0.01)
+
+</textarea>
+ </div>
+ </div><div id="challenge" class="section">
+  <ol>
+   <li>
+
+    <p>Assuming you still have your controller wired up, add this shovel code to 
+	the Minecraft controller code (<a data-uid="mccontr3"></a> project) to add 
+	shovel functionality to one of your controller buttons.
+     </p> </li> <li> <p>
+    Change the radius to create a larger shovel.
+     </p> </li> <li> <p>
+    Add (or reuse) 2 buttons: one button should increase the radius, the other
+    one should decrease it.  Now you'll have a shovel of varying size!
+     </p> </li> <li> <p>
+    Instead of turning the blocks that were hit into Air, turn them into something
+    else (say, Brick, perhaps).  Now your code works as if you are placing
+        blocks!
+     </p> </li> <li> <p>
+     Our <code>dig()</code> function dug a perfect cube, but that's not the
+     only shape you can dig.  Instead of using <code>setBlocks</code>, use
+     multiple <code>setBlock()</code> calls to dig a different shape.
+     </p> </li> <li> <p>
+     Add some randomness &mdash; when digging with <code>setBlock()</code> you
+     don't always have to turn the block into Air.  Use a random function to
+     change it into Air half the time, and a different block type the other
+     half of the time.
+   </p> </li>
+  </ol>
+ </div>
+</body>
+</html>

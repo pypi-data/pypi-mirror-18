@@ -1,0 +1,282 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+ <meta name="robots" content="noindex" />
+ <meta name="generator" content=
+ "HTML Tidy for HTML5 for Mac OS X version 5.1.25">
+ <meta http-equiv="CONTENT-TYPE" content="text/html; charset=utf-8">
+ <title></title>
+ <link rel="stylesheet" type="text/css" href="default.css">
+ <link rel="stylesheet" type="text/css" href="project.css">
+ <link type="text/css" rel="stylesheet" href="/assets/cmirror/codemirror.css">
+ <link type="text/css" id="theme" rel="stylesheet" href=
+ "/assets/themes/solarized-dark.css">
+ <script type="text/javascript" src="/assets/cmirror/codemirror.js">
+ </script>
+ <script type="text/javascript" src="/assets/cmirror/python.js">
+ </script>
+ <script type="text/javascript" src="onload.js">
+ </script>
+ <script type="text/javascript" src="flows.js">
+ </script>
+ <script type="text/javascript" src="flow_cookie.js">
+ </script>
+ <script type="text/javascript" src="project.js">
+ </script>
+ <script type="text/javascript" src="stickydiv.js">
+ </script>
+ <script type="text/javascript" src="codeblocks.js">
+ </script>
+</head>
+<body>
+ <div class="hw" data-count="1" data-name="accelerometer"></div>
+ <div class="hw" data-count="6" data-name="button"></div>
+ <div id="intro" class="section">
+
+  <p>In our last project, we created a basic Minecraft game controller and
+  wrote the code to allow us to map the buttons and accelerometer to specific
+  functionality related to Steve, our Minecraft character.</p>
+
+  <p>In this project, we will implement the same functionality as we did
+  previously, but we will revise the code to use a Dictionary to map the button
+  inputs to functionality, making the program much more simple and
+  straightforward. This will be the foundation of our future Minecraft
+  programs.</p>
+ </div>
+ <div id="hw" class="section"><img class="bb" src=
+ "img/Minecraft_Accel_4way_2buttons_bb.jpg" alt=""></div>
+ <div id="sw" class="section">
+
+  <p>Our goal with this project is to greatly simplify the button controls we
+  implemented in our Minecraft Controller 1 project. This will make future controller
+  projects easier to write and will also make the code easier to read and
+  debug.</p>
+
+  <p>As a reminder, here is the code from the previous project that we're going
+  to focus on changing:</p>
+  <div class="code" data-firstline="0">
+   <textarea>
+left = Button(18)
+right = Button(14)
+up = Button(15)
+down = Button(23)
+smash = Button(24)
+jump = Button(12)
+
+accel = Accel()
+
+control.show()
+
+while True:
+    if left.is_pressed():
+        control.left()
+    else:
+        control.left(release=True)
+    if right.is_pressed():
+        control.right()
+    else:
+        control.right(release=True)
+    if up.is_pressed():
+        control.forward()
+    else:
+        control.forward(release=True)
+    if down.is_pressed():
+        control.backward()
+    else:
+        control.backward(release=True)
+    if smash.is_pressed():
+        control.smash()
+    else:
+        control.smash(release=True)
+    if jump.is_pressed():
+        control.jump()
+    else:
+        control.jump(release=True)
+</textarea>
+  </div>
+
+  <p>Specifically, in this project, we're going to make two major changes to
+  the code above:</p>
+  <ol>
+   <li>
+
+    <p>We will use a Dictionary to define the button controls and use a
+    <code>for</code> loop to reduce the large number of <code>if/else</code>
+    loops</p>
+   </li>
+   <li>
+
+    <p>We will greatly simplify the remaining <code>if/else</code> statement in
+    our code</p>
+   </li>
+  </ol>
+  <h2 class=step>Implement a Dictionary and a <code>for</code> loop</h2>
+
+  <p>The first thing we're going to do to simplify our code is to use a Python
+  Dictionary to enumerate (create a list of) our button controls.</p>
+
+  <p>If you recall, a Dictionary maps a set of keys to their values. In this
+  case, the set of keys will be the buttons and their respective GPIOs, and the
+  values will be the specific <code>control</code> commands for each:</p>
+  <div class="code" data-firstline="0">
+   <textarea>
+keymap = {
+    Button(18) : control.left,
+    Button(14) : control.right,
+    Button(15) : control.forward,
+    Button(23) : control.backward,
+    Button(24)  : control.smash,
+    Button(12) : control.jump,
+    }
+</textarea>
+  </div>
+
+  <p>Now that we have our button control definitions in a Dictionary, we can
+  replace the large number of <code>if/else</code> statements (one set for each
+  button) with a <code>for</code> loop and single set of <code>if/else</code>
+  statements:</p>
+  <div class="code" data-firstline="0">
+   <textarea>
+for button, action in keymap.items():
+    if button.is_pressed():
+        action()
+    else:
+        action(release=True)
+</textarea>
+  </div>
+  <h2 class=step>Simplify the <code>if/else</code> statement</h2>
+
+  <p>In our code above, we use a four-line if-else statement to check each
+  controller button (to see if it was being pressed) each time through the game
+  loop:</p>
+  <div class="code" data-firstline="0">
+   <textarea>
+if button.is_pressed():
+    action(release=False)
+else:
+    action(release=True)
+</textarea>
+  </div>
+
+  <p>While this works just fine, using four lines of code to complete this
+  task is more cumbersome than necessary.</p>
+
+  <p><b>NOTE:</b>You may notice that in the Minecraft Controller 1 project and in the 
+  above step, we did not include <code>release=False</code> in the first
+  <code>action</code> statement. That's because this is the default assumption
+  of the function, and therefore it's not needed. We include it above, as it
+  will make the next part of this discussion more understandable.</p>
+
+  <p>As you can see, the first line of the code above tests whether the button
+  is being pressed. If so, the second line of code takes specific action; if
+  not, the third and fourth lines of code stop the specific action.</p>
+
+  <p>Those four lines of code can actually be condensed into the following
+  single line of code, which does the exact same thing:</p>
+  <div class="code" data-firstline="0">
+   <textarea>
+action(release=(not button.is_pressed()))
+</textarea>
+  </div>
+  <div class="info">
+   <div>
+    WHY DOES IT WORK?
+   </div>
+   <div>
+   <p>If it's not clear why the single line of code above is equivalent to the
+   original four lines of code, let's break it down in a little more detail.</p>
+
+   <p>You'll notice that the original four lines of code essentially accomplish
+   the following two things:</p>
+   <ul>
+    <li>
+
+     <p>If <code>button.is_pressed()=True</code>, then
+     <code>action(release=False)</code></p>
+    </li>
+    <li>
+
+     <p>If <code>button.is_pressed()=False</code>, then
+     <code>action(release=True)</code></p>
+    </li>
+   </ul>
+
+   <p>In other words, the result of <code>button.is_pressed()</code> is changed
+   to the opposite and inserted into the <code>action(release=...)</code>
+   statement.</p>
+
+   <p>The <code>not</code> keyword is referred to as a "boolean operator," and
+   it is used to flip False to True (0 to 1) and True to False (1 to 0). The
+   statement:</p>
+
+   <p><code>action(release=(not button.is_pressed()))</code></p>
+
+   <p>simply takes the result of <code>button.is_pressed()</code>, flips it and
+   inserts the result into the <code>release=...</code> statement.</p>
+   </div>
+
+  </div>
+
+  <p>We can now replace the <code>if/else</code> statement in our
+  <code>for</code> with the single statement:</p>
+  <div class="code" data-firstline="0">
+   <textarea>
+for button, action in keymap.items():
+    action(release=(not button.is_pressed()))
+</textarea>
+  </div>
+  <h2>Full Code</h2>
+
+  <p>Here is what the full code for this project should look like. The
+  functionality is equivalent to the functionality in the Minecraft Controller 1 project,
+  but the code is much more compact and readable:</p>
+  <div class="code" data-firstline="1">
+   <textarea>
+from rstem.accel import Accel
+from rstem.button import Button
+from rstem.mcpi import minecraft, control
+import time
+
+control.show()
+
+keymap = {
+    Button(18) : control.left,
+    Button(14) : control.right,
+    Button(15) : control.forward,
+    Button(23) : control.backward,
+    Button(24)  : control.smash,
+    Button(12) : control.jump,
+    }
+
+accel = Accel()
+
+while True:
+    for button, action in keymap.items():
+        action(release=(not button.is_pressed()))
+
+    x, y, z = accel.forces()
+    control.look(up=50*y, left=50*x)
+    
+    time.sleep(0.01)
+
+</textarea>
+  </div>
+ </div>
+ <div id="challenge" class="section">
+  <ol>
+   <li>
+
+    <p>Add another button (or remap an existing button) to allow Steve to
+    crouch at the press of the button.  Notice how easy this is to add now compared to in
+    
+  the <a data-uid="mccontr1"></a> project.
+   </li>
+   <li>
+
+    <p>Invert your controller &mdash; make it look down when you tilt up and up when you tilt
+    down.</p>
+   </li>
+  </ol>
+ </div>
+</body>
+</html>

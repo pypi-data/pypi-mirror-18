@@ -1,0 +1,158 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+ <meta name="robots" content="noindex" />
+ <meta name="generator" content=
+ "HTML Tidy for HTML5 for Mac OS X version 5.1.25">
+ <meta http-equiv="CONTENT-TYPE" content="text/html; charset=utf-8">
+ <title></title>
+ <link rel="stylesheet" type="text/css" href="default.css">
+ <link rel="stylesheet" type="text/css" href="project.css">
+ <link type="text/css" rel="stylesheet" href="/assets/cmirror/codemirror.css">
+ <link type="text/css" id="theme" rel="stylesheet" href=
+ "/assets/themes/solarized-dark.css">
+ <script type="text/javascript" src="/assets/cmirror/codemirror.js">
+ </script>
+ <script type="text/javascript" src="/assets/cmirror/python.js">
+ </script>
+ <script type="text/javascript" src="onload.js">
+ </script>
+ <script type="text/javascript" src="flows.js">
+ </script>
+ <script type="text/javascript" src="flow_cookie.js">
+ </script>
+ <script type="text/javascript" src="project.js">
+ </script>
+ <script type="text/javascript" src="stickydiv.js">
+ </script>
+ <script type="text/javascript" src="codeblocks.js">
+ </script>
+</head>
+<body>
+ <div class="hw" data-count="1" data-name="accelerometer"></div>
+ <div class="hw" data-count="6" data-name="button"></div>
+ <div id="intro" class="section">
+
+  <p>In our last project, we improved our Minecraft controller code to make it
+  simpler and more readable (and also more extensible). But, with the current
+  code, our controller is awkward because it requires us to rotate it away from
+  us (which is difficult to do) in order for our character to look down.</p>
+
+  <p>In this project, we're going to improve that — we're going to modify the
+  tilt functionality so that our character is looking down while the controller is
+  in the default position (horizontal or "flat on a table") and then we
+  only need to rotate the controller towards us (which is easy) to have him
+  look upwards.</p>
+ </div>
+ <div id="hw" class="section"><img class="bb" src=
+  "img/Minecraft_Accel_4way_2buttons_bb.jpg" alt=""></div>
+ <div id="sw" class="section">
+
+  <p>For this project, the changes to the code will be in the
+  <code>while</code> loop, specifically around the <code>control.look()</code>
+  function, which defines where the character is looking.</p>
+
+  <p>In the previous 
+  <a data-uid="mccontr2"></a> project, we used the X and Y values of the accelerometer to control
+  which direction we looked:
+  <div class="code" data-firstline="0">
+   <textarea>
+    control.look(up=50*y, left=50*x)
+</textarea>
+  </div>
+  <p>And that works...  But there are two things we can improve on:
+  <ol>
+  <li><p>
+  <strong>Too hard to look down:</strong>  To look down, you have to point the controller
+  down, and it can be difficult to twist your wrists enough to tilt it fully
+  down.  We can adjust this.
+  </p></li> <li><p>
+  <strong>Controller is not sensitive enough:</strong>  Currently, when you tilt the controller a
+  little, Steve moves a little and when you tilt a lot, Steve moves a lot.
+  That works reasonably well, but the current
+  code doesn't take that far enough.
+  </p></li>
+  </ol>
+
+  <p>Here is what the code for this project should look like at this point
+  (with new changes highlighted with arrows):</p>
+  <div class="code" data-firstline="1">
+   <textarea>
+from rstem.accel import Accel
+from rstem.button import Button
+from rstem.mcpi import minecraft, control
+import time
+
+control.show()
+
+keymap = {
+    Button(18) : control.left,
+    Button(14) : control.right,
+    Button(15) : control.forward,
+    Button(23) : control.backward,
+    Button(24)  : control.smash,
+    Button(12) : control.jump,
+    }
+
+accel = Accel()
+
+while True:
+    for button, action in keymap.items():
+        action(release=(not button.is_pressed()))
+
+    x, y, z = accel.forces()
+*    y -= 0.3
+*    control.look(up=150*y*abs(y), left=150*x*abs(x))
+    
+    time.sleep(0.01)
+</textarea>
+  </div>
+  <p>The above highlighted changes are:</p>
+  <ul>
+   <li>
+
+    <p>On Line 24, we decrease the Y value by a small amount (0.3).  Now, when we hold the kit
+    at a more comfortable angle (with Y pointing a little bit up) Steve won't move at all.</p>
+   </li>
+   <li>
+
+    <p>On Line 25, we modify the accelerometer input we receive.  Previously, we converted the 
+	accelerometer force to a reasonable value using the equation <code>50*x</code> that could
+	be inserted into the <code>look()</code> (and likewise for <code>y</code>).  That made a small
+    value of <code>x</code> move Steve a little, and a large value move him a lot.  We can
+    increase this effect by using x-squared &mdash; a small value will still move him a little, and
+    a large value will move him even more.   To use x-squared, you would expect the the code
+    to be <code>x*x</code>, but instead we use <code>x*abs(x)</code>.  The reason is that 
+    <code>x*x</code> changes negative numbers to positive, which we don't want.  Our code that uses
+    <code>abs()</code> keeps negative <code>x</code> values negative.
+   </li>
+   <li>
+    <p>Also on Line 25, we've adjusted the multiplier from 50 to 150.  There is nothing scientific
+	about this change &mdash; this just seemed to work better based on our experimentation!</p>
+   </li>
+  </ul>
+  
+  <p>Go ahead and give your modified controller a try...
+ </div>
+ <div id="challenge" class="section">
+  <ol>
+   <li>
+
+    <p>
+    We increased the sensitivity of the controller by using x-squared instead of x.  Can you
+    increase this more by using x-cubed?
+    </p>
+   </li>
+   <li>
+
+    <p>
+    The controller is now more comfortable to handle, because the default position is to keep 
+	it slightly tilted up.  One issue, however, is that when you set the kit on a table, Steve 
+	will look down at the ground.  Can you detect when the CREATOR Kit is placed flat on a 
+	table, and have Steve look straight ahead?
+    </p>
+   </li>
+  </ol>
+ </div>
+</body>
+</html>

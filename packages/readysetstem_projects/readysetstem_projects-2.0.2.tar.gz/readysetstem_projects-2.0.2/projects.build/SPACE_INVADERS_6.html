@@ -1,0 +1,292 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+ <meta name="robots" content="noindex" />
+ <meta name="generator" content=
+ "HTML Tidy for HTML5 for Mac OS X version 5.1.25">
+ <meta http-equiv="CONTENT-TYPE" content="text/html; charset=utf-8">
+ <title></title>
+ <link rel="stylesheet" type="text/css" href="default.css">
+ <link rel="stylesheet" type="text/css" href="project.css">
+ <link type="text/css" rel="stylesheet" href="/assets/cmirror/codemirror.css">
+ <link type="text/css" id="theme" rel="stylesheet" href=
+ "/assets/themes/solarized-dark.css">
+ <script type="text/javascript" src="/assets/cmirror/codemirror.js">
+ </script>
+ <script type="text/javascript" src="/assets/cmirror/python.js">
+ </script>
+ <script type="text/javascript" src="onload.js">
+ </script>
+ <script type="text/javascript" src="flows.js">
+ </script>
+ <script type="text/javascript" src="flow_cookie.js">
+ </script>
+ <script type="text/javascript" src="project.js">
+ </script>
+ <script type="text/javascript" src="stickydiv.js">
+ </script>
+ <script type="text/javascript" src="codeblocks.js">
+ </script>
+</head>
+<body>
+ <div class="hw" data-count="1" data-name="button"></div>
+ <div class="hw" data-count="1" data-name="accelerometer"></div>
+ <div class="hw" data-count="1" data-name="led_matrix"></div>
+ <div class="hw" data-count="1" data-name="led_matrix_cable"></div>
+ <div class="section" id="intro">
+
+  <p>In this project, we're going to continue building our Alien Intruders game
+  by starting to animate the aliens and add some collision detection for the
+  missiles we're firing at them.</p>
+ </div>
+ <div class="section" id="hw">
+
+  <p>The hardware setup for this project should be the same setup that was
+  completed for the <a data-uid="ai1"></a> project. Here's a reminder:
+  <img class="bb" src="img/LED_Matrix_Accel_Buttons_bb.jpg" alt=""></p>
+ </div>
+ <div class="section" id="sw">
+
+  <p>In this project, we're going to move the aliens to the right. Moving the
+  aliens is going to look very similar to how we moved the missile in the
+  previous project — we'll track time to determine when to move the aliens,
+  we'll define how quickly to move them, we'll move them when the time is
+  right.</p>
+
+  <p>Here is our initialization code:</p>
+  <div class="code" data-firstline="">
+   <textarea>
+alien_start_time = time.time()
+
+ALIENS_STEP_TIME = 0.8
+</textarea>
+  </div>
+
+  <p>We'll move the aliens to the right, and for now, we'll never move them
+  left. So, of course, that means that once they move off of the screen, they
+  aren't coming back!</p>
+
+  <p>Here is our code to move the aliens when the time is right:</p>
+  <div class="code" data-firstline="">
+   <textarea>
+# Move alien
+if now - alien_start_time &gt; ALIENS_STEP_TIME:
+    alien_columns = [column + 1 for column in alien_columns]
+    alien_start_time = now
+</textarea>
+  </div>
+  <div class="info">
+   <div>
+    List Comprehensions
+   </div>
+   <div>
+
+    <p>In the above code, we snuck in a completely new concept in the line:</p>
+    <pre>
+alien_columns = [column + 1 for column in alien_columns]
+</pre>
+
+    <p>It's called a list comprehension, and it's a handy tool in Python that
+    combines the features of lists and for loops into one. They are useful in
+    cases where you want to create a list using a loop. For example, perhaps
+    you want to create a list of the first five perfect squares (the product of
+    a number multiplied by itself):</p>
+    <pre>
+[1, 4, 9, 16, 25]
+</pre>
+
+    <p>You could easily do this in a loop, by creating a list and appending to
+    it:</p>
+    <pre>
+squares = []
+for i in range(1, 6):
+    squares.append(i * i)
+</pre>
+
+    <p>List comprehensions provide a way to do the same thing, in a much more
+    concise (and faster!) format:</p>
+    <pre>
+squares = [i * i for i in range(1, 6)]
+</pre>
+
+    <p>In English, the above list comprehension would read something like:</p>
+    <pre>
+a list where each item equals (i * i) for i in the range 1 to 5
+</pre>
+   </div>
+  </div>
+
+  <p>Another thing we're going to want to do in this project is to detect
+  whether the aliens have collided with an existing missile, and if one of them
+  has, remove it from the screen (and from the array). And if we remove an
+  alien, we need to check if that's the last alien (if the array is empty), in
+  which case we <code>break</code> out of the game loop and end the game:</p>
+  <div class="code" data-firstline="">
+   <textarea class="do_not_compile"># Check for collision
+if missile_y == alien_row and missile_x in alien_columns:
+    alien_columns.remove(missile_x)
+    missile_x, missile_y = -1, -1
+    if not alien_columns:
+        break
+</textarea>
+  </div>
+
+  <p>Lastly, once we <code>break</code> out of the game to end the game, we'll
+  want to test if the alien array is empty (in which case the player wins) or
+  if the array is still populated with one or more aliens (in which case the
+  player loses):</p>
+  <div class="code" data-firstline="">
+   <textarea>
+if alien_columns:
+    print("Ouch!")
+else:
+    print("You win!")
+</textarea>
+  </div>
+
+  <p>Here is the full project code to this point — when you run it, you should
+  be able to fire missiles and destroy the aliens:</p>
+  <div class="code" data-firstline="1">
+   <textarea>
+# ################################
+# Initialize the game environment
+# ################################
+
+# Import required functions/modules
+from rstem.accel import Accel
+from rstem.button import Button
+from rstem.led_matrix import FrameBuffer
+import time
+
+# Initialize framebuffer
+fb = FrameBuffer()
+
+# Initialize accelerometer
+accel = Accel()
+
+# Initialize spaceship
+spaceship_position = fb.width / 2
+TILT_FORCE = 0.1
+SPACESHIP_STEP = 0.1
+
+# Initialize aliens
+alien_columns = [0, 1, 2, 3]
+alien_row = fb.height - 1
+*alien_start_time = time.time()
+*ALIENS_STEP_TIME = .8
+
+# Initialize missiles
+fire_button = Button(12)
+missile_x, missile_y = -1, -1
+MISSILE_COLOR = 10
+MISSILE_STEP_TIME = 0.1
+
+while True:
+    # ################################
+    # Check for user input
+    # ################################
+
+    # Get button input
+    presses = fire_button.presses()
+
+    # Get accelerometer input
+    x_force, y_force, z_force = accel.forces()
+
+    now = time.time()
+
+    # ################################
+    # Update the game world
+    # ################################
+
+    # Update the location of any missiles
+    if missile_x &gt;= 0 and now - missile_start_time &gt; MISSILE_STEP_TIME:
+        # Missile already launched - move it up
+        missile_y += 1
+        if missile_y &gt;= fb.height:
+            missile_x, missile_y = -1, -1
+        missile_start_time = now
+    elif presses:
+        # Button was pressed - launch missile
+        missile_x, missile_y = (round(spaceship_position), 1)
+        missile_start_time = now
+
+    # Update the location of the spaceship
+    if x_force &gt; TILT_FORCE:
+        spaceship_position -= SPACESHIP_STEP
+    elif x_force &lt; -TILT_FORCE:
+        spaceship_position += SPACESHIP_STEP
+    spaceship_position = max(0, min(fb.width - 1, spaceship_position))
+
+    # Update the location of the aliens
+*    if now - alien_start_time &gt; ALIENS_STEP_TIME:
+*        alien_columns = [column + 1 for column in alien_columns]
+*        alien_start_time = now
+
+    # Check for any missile collisions
+*    if missile_y == alien_row and missile_x in alien_columns:
+*        alien_columns.remove(missile_x)
+*        missile_x, missile_y = -1, -1
+*        if not alien_columns:
+*            break
+
+    # ################################
+    # Draw graphics on the screen
+    # ################################
+
+    fb.erase()
+
+    # Draw any missiles
+    if missile_x &gt;= 0:
+        fb.point(missile_x, missile_y, MISSILE_COLOR)
+
+    # Draw the spaceship
+    fb.point(round(spaceship_position), 0)
+
+    # Draw the aliens
+    for column in alien_columns:
+        fb.point(column, alien_row)
+
+    fb.show()
+
+    # Wait briefly
+    time.sleep(0.001)
+
+# ################################
+# Finish and cleanup
+# ################################
+
+*if alien_columns:
+*    # Print "You lost..." if the player loses
+*    print("Ouch!")
+*else:
+*    # Print "You lost..." if the player loses
+*    print("You win!")
+</textarea>
+  </div>
+ </div>
+ <div class="section" id="challenge">
+  <ol>
+   <li> <p>
+   Can you increase the aliens' speed so they move twice as fast across the screen?
+    </p> </li> <li> <p>
+    As we mentioned, the aliens move across the screen without stopping until
+    they disappear off the edge of the screen.  Can you stop them before they
+    hit the edge?
+    </p> </li> <li> <p>
+    Currently, in this version of the game, you can never lose because the
+    aliens never get closer to the spaceship to destroy it.  Can you add a
+    timeout so that if the user takes too long to destroy all the aliens, the user
+    loses?
+    </p> </li> <li> <p>
+    Currently, a win/loss simply prints out some text to the Program Output
+    window in the RDE.  Can you change this to make a win or loss display
+    different <code>Sprite</code>s on the LED Matrix?
+    </p> </li> <li> <p>
+    Even better than displaying a <code>Sprite</code> for a win/loss, can you
+    add scrolling text that says "YOU WIN!" or "YOU LOSE!" similar to the <a
+    data-uid="scroll"></a> project?
+    </p> </li>
+  </ol>
+ </div>
+</body>
+</html>

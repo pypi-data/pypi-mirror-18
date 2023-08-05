@@ -1,0 +1,261 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+ <meta name="robots" content="noindex" />
+ <meta name="generator" content=
+ "HTML Tidy for HTML5 for Mac OS X version 5.1.25">
+ <meta http-equiv="CONTENT-TYPE" content="text/html; charset=utf-8">
+ <title></title>
+ <link rel="stylesheet" type="text/css" href="default.css">
+ <link rel="stylesheet" type="text/css" href="project.css">
+ <link type="text/css" rel="stylesheet" href="/assets/cmirror/codemirror.css">
+ <link type="text/css" id="theme" rel="stylesheet" href=
+ "/assets/themes/solarized-dark.css">
+ <script type="text/javascript" src="/assets/cmirror/codemirror.js">
+ </script>
+ <script type="text/javascript" src="/assets/cmirror/python.js">
+ </script>
+ <script type="text/javascript" src="onload.js">
+ </script>
+ <script type="text/javascript" src="flows.js">
+ </script>
+ <script type="text/javascript" src="flow_cookie.js">
+ </script>
+ <script type="text/javascript" src="project.js">
+ </script>
+ <script type="text/javascript" src="stickydiv.js">
+ </script>
+ <script type="text/javascript" src="codeblocks.js">
+ </script>
+</head>
+<body>
+ <div class="hw" data-count="1" data-name="button"></div>
+ <div class="hw" data-count="1" data-name="accelerometer"></div>
+ <div class="hw" data-count="1" data-name="led_matrix"></div>
+ <div class="hw" data-count="1" data-name="led_matrix_cable"></div>
+ <div class="section" id="intro">
+
+  <p>In this project, we add missile firing using our button.</p>
+ </div>
+ <div class="section" id="hw">
+
+  <p>The hardware setup for this project should be the same setup that was
+  completed for the <a data-uid="ai1"></a> project. Here's a reminder:
+  <img class="bb" src="img/LED_Matrix_Accel_Buttons_bb.jpg" alt=""></p>
+ </div>
+ <div class="section" id="sw">
+
+  <p>In this project, we're going to add the ability to fire missiles.</p>
+
+  <p>The first step is to initialize the button that we'll use to fire the
+  missiles in our initialization section. We do this by importing the function
+  that we will use, creating a Button object associated with our firing button
+  and then initializing the position of our missile (we'll only allow one
+  missile to be on the screen at a given time so we only need one set of
+  rectangular coordinates for the missile). Our left/right coordinate will be
+  <code>missile_x</code> and our up/down coordinate will be <code>missile_y</code>.</p>
+
+  <p>We also will want to create two other variables — one that will define the
+  color of the missile (we can make it less bright than the other objects on
+  the LED Matrix screen to give it a unique look) and one that will define how
+  quickly the missile will move (in terms of number of seconds between drawing
+  updates).</p>
+
+  <p>Here is what this piece of code will look like:</p>
+  <div class="code" data-firstline="0">
+   <textarea>
+from rstem.button import Button
+fire_button = Button(12)
+missile_x, missile_y = -1, -1
+MISSILE_COLOR = 10
+MISSILE_STEP_TIME = 0.1
+</textarea>
+  </div>
+
+  <p>Next, we need to make changes to our game loop to support the missiles.
+  This involves three parts of the loop:</p>
+  <h2 class=step>Getting inputs</h2>
+
+  <p>In terms of getting inputs, we'll first want to check the button to
+  determine when it's pressed. And we'll then want to get the current time to
+  determine if enough time has elapsed that we need to move any existing
+  missiles on the screen:</p>
+  <div class="code" data-firstline="0">
+   <textarea>
+presses = fire_button.presses()
+now = time.time()
+</textarea>
+  </div>
+  <h2 class=step>Changing the world:</h2>
+
+  <p>To change the world, we'll first need to check if either:</p>
+  <ol>
+   <li>
+
+    <p><strong>A missile was already launched and it's time to move
+    it</strong>: We'll know this if <code>missile_x &gt;= 0</code>, and
+    <code>MISSILE_STEP_TIME</code> time has passed since the missile last
+    moved. If so, we'll move the missile up, but if it goes past the top of the
+    LED Matrix display, we'll remove it.</p>
+   </li>
+   <li>
+
+    <p><strong>The fire button was pressed</strong>: If so, we'll create a new
+    missile, just above the ship.</p>
+   </li>
+  </ol>
+  <div class="code" data-firstline="0">
+   <textarea>
+if missile_x &gt;= 0 and now - missile_start_time &gt; MISSILE_STEP_TIME:
+    # Missile already launched - move it up
+    missile_y += 1
+  
+    if missile_y &gt;= fb.height:
+        missile_x, missile_y = -1, -1
+
+    missile_start_time = now
+
+elif presses:
+    # Button was pressed - launch missile    
+    missile_x, missile_y = (round(spaceship_position), 1)
+    missile_start_time = now
+</textarea>
+  </div>
+  <h2 class=step>Show the world:</h2>
+
+  <p>To show the world, we'll check to see if there is an existing missile on
+  the screen, and if there is, we'll draw its current location.</p>
+  <div class="code" data-firstline="0">
+   <textarea>
+# Draw missile
+if missile_x &gt;= 0:
+    fb.point(missile_x, missile_y, MISSILE_COLOR)
+</textarea>
+  </div>
+
+  <p>If we integrate those snippets of code into our current code for the
+  project, our full project will look like this — when you run it, try pressing
+  the button and watching the missile fire:</p>
+  <div class="code" data-firstline="1">
+   <textarea>
+# ################################
+# Initialize the game environment
+# ################################
+
+# Import required functions/modules
+from rstem.accel import Accel
+*from rstem.button import Button
+from rstem.led_matrix import FrameBuffer
+import time
+
+# Initialize framebuffer
+fb = FrameBuffer()
+
+# Initialize accelerometer
+accel = Accel()
+
+# Initialize spaceship
+spaceship_position = fb.width / 2
+TILT_FORCE = 0.1
+SPACESHIP_STEP = 0.1
+
+# Initialize aliens
+alien_columns = [0, 1, 2, 3]
+alien_row = fb.height - 1
+
+# Initialize missiles
+*fire_button = Button(12)
+*missile_x, missile_y = -1, -1
+*MISSILE_COLOR = 10
+*MISSILE_STEP_TIME = 0.1
+
+while True:
+    # ################################
+    # Check for user input
+    # ################################
+
+    # Get button input
+*    presses = fire_button.presses()
+
+    # Get accelerometer input
+    x_force, y_force, z_force = accel.forces()
+
+*    now = time.time()
+
+    # ################################
+    # Update the game world
+    # ################################
+
+    # Update the location of any missiles
+*    if missile_x &gt;= 0 and now - missile_start_time &gt; MISSILE_STEP_TIME:
+*        # Missile already launched - move it up
+*        missile_y += 1
+*        if missile_y &gt;= fb.height:
+*            missile_x, missile_y = -1, -1
+*        missile_start_time = now
+*    elif presses:
+*        # Button was pressed - launch missile
+*        missile_x, missile_y = (round(spaceship_position), 1)
+*        missile_start_time = now
+
+    # Update the location of the spaceship
+    if x_force &gt; TILT_FORCE:
+        spaceship_position -= SPACESHIP_STEP
+    elif x_force &lt; -TILT_FORCE:
+        spaceship_position += SPACESHIP_STEP
+    spaceship_position = max(0, min(fb.width - 1, spaceship_position))
+
+    # Update the location of the aliens
+
+    # Check for any missile collisions
+
+    # ################################
+    # Draw graphics on the screen
+    # ################################
+
+    fb.erase()
+
+    # Draw any missiles
+*    if missile_x &gt;= 0:
+*        fb.point(missile_x, missile_y, MISSILE_COLOR)
+
+    # Draw the spaceship
+    fb.point(round(spaceship_position), 0)
+
+    # Draw the aliens
+    for column in alien_columns:
+        fb.point(column, alien_row)
+
+    fb.show()
+
+    # Wait briefly
+    time.sleep(0.001)
+
+# ################################
+# Finish and cleanup
+# ################################
+
+# Print "You won!" if the player wins
+# Print "You lost..." if the player loses
+</textarea>
+  </div>
+ </div>
+ <div class="section" id="challenge">
+  <ol>
+   <li> <p>
+   Change the missile speed to as fast as possible, but so you can still see it.
+    </p> </li> <li> <p>
+   Change the missile color to as light as possible, without being invisible.
+    </p> </li> <li> <p>
+   Can you make missile quickly flash on and off as it moves up the screen?
+    </p> </li> <li> <p>
+    Our missile restarts shooting from the spaceship every time the button is
+    pressed.  Can you ignore button presses while the missile is shooting so
+    that a missile always makes it to the top of the display?
+    </p> </li> <li> <p>
+    Can you add a second missile, so that you can shoot up to two missiles at a time?
+    </p> </li>
+  </ol>
+ </div>
+</body>
+</html>

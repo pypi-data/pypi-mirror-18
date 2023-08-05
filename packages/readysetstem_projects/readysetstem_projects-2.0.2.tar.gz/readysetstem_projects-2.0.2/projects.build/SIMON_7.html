@@ -1,0 +1,237 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+ <meta name="robots" content="noindex" />
+ <meta name="generator" content=
+ "HTML Tidy for HTML5 for Mac OS X version 5.1.25">
+ <meta http-equiv="CONTENT-TYPE" content="text/html; charset=utf-8">
+ <title></title>
+ <link rel="stylesheet" type="text/css" href="default.css">
+ <link rel="stylesheet" type="text/css" href="project.css">
+ <link type="text/css" rel="stylesheet" href="/assets/cmirror/codemirror.css">
+ <link type="text/css" id="theme" rel="stylesheet" href=
+ "/assets/themes/solarized-dark.css">
+ <script type="text/javascript" src="/assets/cmirror/codemirror.js">
+ </script>
+ <script type="text/javascript" src="/assets/cmirror/python.js">
+ </script>
+ <script type="text/javascript" src="onload.js">
+ </script>
+ <script type="text/javascript" src="flows.js">
+ </script>
+ <script type="text/javascript" src="flow_cookie.js">
+ </script>
+ <script type="text/javascript" src="project.js">
+ </script>
+ <script type="text/javascript" src="stickydiv.js">
+ </script>
+ <script type="text/javascript" src="codeblocks.js">
+ </script>
+</head>
+<body>
+ <div class="hw" data-count="4" data-name="resistor"></div>
+ <div class="hw" data-count="4" data-name="led"></div>
+ <div class="hw" data-count="4" data-name="button"></div>
+ <div class="section" id="intro">
+
+  <p>In this project, we'll finish the development of our Simon Says 
+  pattern-matching game by adding a final sequence when the player loses.</p>
+ </div>
+ <div class="section" id="hw">
+
+  <p>The hardware setup for this project should be the same setup that was
+  completed for the <a data-uid="simon2"></a> project. Here's a reminder:
+  <img class="bb" src="img/simon-4but-4led_bb.jpg" alt=""></p>
+ </div>
+ <div class="section" id="sw">
+
+  <p>The last piece of our game is to add in a final sequence for when the user
+  makes a mistake and we drop through the <code>while</code> loop.</p>
+
+  <p>When this happens, we want to do the following:</p>
+  <ol>
+   <li>
+
+    <p>If the user has lost due to a time-out (he didn't hit a button in time),
+    we light up all the LEDs</p>
+   </li>
+   <li>
+
+    <p>If the user has lost due to hitting a wrong button in the sequence, we
+    light up the LED that was incorrectly pressed</p>
+   </li>
+   <li>
+
+    <p>We then play an error tone</p>
+   </li>
+   <li>
+
+    <p>Finally, we play the correct sequence one last time (quickly)</p>
+   </li>
+  </ol>
+
+  <p>Here is what that code will look like:</p>
+  <div class="code" data-firstline="0">
+   <textarea>
+# Game Over — Play error sequence
+if button_pressed == None:
+    for light in lights:
+        light.on()
+else:
+    lights[button_pressed].on()
+
+you_failed_note.play(1.5).wait()
+
+for light in lights:
+    light.off()
+
+time.sleep(0.5)
+
+# Play correct sequence fast
+for i in play_order:
+    lights[i].on()
+    notes[i].play(0.1).wait()
+    lights[i].off()
+    time.sleep(0.05)
+</textarea>
+  </div>
+
+  <p>Here is what the final code for this project looks like (with new changes
+  highlighted with arrows) — go have some fun playing and don't forget to try
+  the challenges!</p>
+  <div class="code" data-firstline="1">
+   <textarea>
+# ##################################
+# Import Modules and Initialize Game
+# ##################################
+
+from rstem.button import Button
+from rstem.gpio import Output
+from rstem.sound import Note
+from random import randrange
+import time
+
+buttons = [Button(14), Button(15), Button(23), Button(17)]
+lights = [Output(4), Output(18), Output(24), Output(27)]
+notes = [Note('C'), Note('D'), Note('E'), Note('F')]
+
+*you_failed_note = Note('E2')
+
+for light in lights:
+    light.off()
+
+play_order = []
+
+failed = False
+
+# ##################################
+# Main while: loop for game
+# ##################################
+
+while not failed:
+
+    # Add another random LED to sequence
+    play_order.append(randrange(4))
+
+    # Play LED sequence
+    for i in play_order:
+        lights[i].on()
+        notes[i].play(0.4).wait()
+        lights[i].off()
+        time.sleep(0.2)
+
+    # #############################
+    # for: loop to get player input
+    # #############################
+
+    for i in play_order:
+
+        # Get the user's button press
+        button_pressed = Button.wait_many(buttons, timeout=3)
+
+        # If user enters incorrect button, end game
+        if button_pressed != i:
+            failed = True
+            break
+
+        # If user enters correct button, flash LED and play tone
+        lights[button_pressed].on()
+        notes[button_pressed].play(duration=None)
+        buttons[button_pressed].wait(press=False)
+        time.sleep(0.2)
+        lights[button_pressed].off()
+        notes[button_pressed].stop()
+
+    if not failed:
+        time.sleep(1.0)
+
+*# Game Over — Play error sequence
+*if button_pressed == None:
+*    for light in lights:
+*        light.on()
+*else:
+*    lights[button_pressed].on()
+*
+*you_failed_note.play(1.5).wait()
+*
+*for light in lights:
+*    light.off()
+*
+*time.sleep(0.5)
+*
+*# Play correct sequence fast
+*for i in play_order:
+*    lights[i].on()
+*    notes[i].play(0.2).wait()
+*    lights[i].off()
+*    time.sleep(0.2)
+</textarea>
+  </div>
+ </div>
+ <div class="section" id="challenge">
+
+  <p>You now have a basic Simon Says game you can play, but there are many
+  variations you can try. How complex you go with any variation is up to your
+  own imagination:</p>
+  <ol>
+   <li>
+
+    <p>Reverse: Have the user repeat the sequence of button presses in
+    reverse.</p>
+   </li>
+   <li>
+
+    <p>Inverted Lights: For each button in the play sequence, light up all 3 of
+    the LEDs NOT next to the button. The gameplay is the same, but it is much
+    more confusing to remember which button to press.</p>
+   </li>
+   <li>
+
+    <p>Mixed Inverted Lights: Sometimes invert the LEDs (as suggested above),
+    and sometimes don't — but do this randomly.</p>
+   </li>
+   <li>
+
+    <p>Two at a Time: Do a random sequence that displays two LEDs on at the
+    same time.</p>
+   </li>
+   <li>
+
+    <p>Onesie Twosie: Sometimes display two LEDs at the same time (as suggested
+    above), and sometimes don't — but do this randomly.</p>
+   </li>
+   <li>
+
+    <p>Fast Match: Display a sequence of 5 (or so) LEDs really fast — perhaps
+    with just a tenth of a second between each LED flash. Then have the user
+    repeat the whole sequence correctly.</p>
+   </li>
+   <li>
+
+    <p>Make Your Own: The real fun is in making your own game by mashing-up the
+    suggested projects or challenges together, or creating something completely new!</p>
+   </li>
+  </ol>
+ </div>
+</body>
+</html>

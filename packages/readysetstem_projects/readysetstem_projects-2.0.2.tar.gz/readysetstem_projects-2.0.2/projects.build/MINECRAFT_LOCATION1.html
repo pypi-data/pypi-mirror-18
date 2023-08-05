@@ -1,0 +1,162 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+ <meta name="robots" content="noindex" />
+ <meta name="generator" content=
+ "HTML Tidy for HTML5 for Mac OS X version 5.1.25">
+ <meta http-equiv="CONTENT-TYPE" content="text/html; charset=utf-8">
+ <title></title>
+ <link rel="stylesheet" type="text/css" href="default.css">
+ <link rel="stylesheet" type="text/css" href="project.css">
+ <link type="text/css" rel="stylesheet" href="/assets/cmirror/codemirror.css">
+ <link type="text/css" id="theme" rel="stylesheet" href=
+ "/assets/themes/solarized-dark.css">
+ <script type="text/javascript" src="/assets/cmirror/codemirror.js">
+ </script>
+ <script type="text/javascript" src="/assets/cmirror/python.js">
+ </script>
+ <script type="text/javascript" src="onload.js">
+ </script>
+ <script type="text/javascript" src="flows.js">
+ </script>
+ <script type="text/javascript" src="flow_cookie.js">
+ </script>
+ <script type="text/javascript" src="project.js">
+ </script>
+ <script type="text/javascript" src="stickydiv.js">
+ </script>
+ <script type="text/javascript" src="codeblocks.js">
+ </script>
+</head>
+<body>
+ <div class="hw" data-count="1" data-name="led_matrix"></div>
+ <div class="hw" data-count="1" data-name="led_matrix_cable"></div>
+ <div id="intro" class="section">
+
+  <p>Now we're going to integrate the LED Matrix into our Minecraft projects. 
+  In this project, the LED Matrix will be used as a map of the Minecraft world, 
+  and we'll light up one of the LEDs to denote our position in the world. As 
+  we move through the Minecraft world, the LED Matrix will track our movement 
+  and plot our position.</p>
+ </div>
+ <div id="hw" class="section"><img class="bb" src="img/LED_Matrix_bb.jpg" alt=
+ ""></div>
+ <div id="sw" class="section">
+
+  <p>Our code for this project will contain all the standard pieces necessary
+  to get Minecraft running — importing modules/functions we'll need, attaching
+  to the Minecraft server and starting Minecraft — while our project-specific
+  code will completely lie within our game loop.</p>
+
+  <p>Our game loop will do three things:</p>
+  <ol>
+   <li>
+
+    <p>First, we'll get the location of our character within the Minecraft
+    world.</p>
+   </li>
+   <li>
+
+    <p>Next, we'll determine the relative position of our character on the 8x8
+    layout of the LED Matrix.</p>
+   </li>
+   <li>
+
+    <p>Finally, we'll plot that relative location on the LED Matrix.</p>
+   </li>
+  </ol>
+  <h2>Full Code</h2>
+
+  <p>Here is what the full code for this project should look like. We'll dig
+  further into the highlighted pieces of code below:</p>
+  <div class="code" data-firstline="1">
+   <textarea>
+from rstem.led_matrix import FrameBuffer
+from rstem.mcpi import minecraft, control
+import time
+
+control.show()
+
+mc = minecraft.Minecraft.create()
+
+SCALE = 25
+fb = FrameBuffer()
+
+while True:
+    pos = mc.player.getTilePos()
+
+    x = round(pos.x/SCALE + (fb.width-1)/2)
+    x = min(fb.width-1, max(0, x))
+
+    z = round(pos.z/SCALE + (fb.height-1)/2)
+    z = min(fb.height-1, max(0, z))
+
+    fb.erase()
+    fb.point(z, x)
+    fb.show()
+
+    time.sleep(0.01)
+</textarea>
+  </div>
+
+  <p>Much of the code for this project should be self-explanatory at this
+  point, but there is one section that could probably use some additional
+  explanation:</p>
+  <h2>Determining the relative position of our character</h2>
+
+  <p>Once we retrieve our position in the Minecraft world using the
+  <code>getTilePos()</code> function, we need to map that vector position to a
+  point on the LED Matrix. We do this on lines 15 and 16 for the X
+  direction, and on lines 18 and 19 for the Z direction.
+
+  <p>The <code>SCALE</code> value is the amount by which we want to shrink the Minecraft
+  world to fit on the LED Matrix. While the size of the Minecraft world will
+  change from game to game — it's generated randomly when the game starts — it
+  will typically be around 200 units in length and width. Since we are going to
+  want to scale from a total length/width of 200 units down to a total
+  length/width of 8 units (the length/width of the LED Matrix), our scale
+  factor should be about 25 (200 / 25 = 8).</p>
+
+  <p>Here is a visual representation of what we will need to do:</p>
+  <img style="width: 500px" alt="" src=
+  "img/minecraft_scale.jpg">
+
+  <p>To convert the actual position in the Minecraft world (width of about 200)
+  to a scale that matches the size of the LED Matrix (width of 8), we need to
+  divide our actual position by our scale value. Next, because that scaling
+  will result in a value between about -4 and 4 (instead of the 0 to 7 that we
+  need), we need to shift the value by the distance from the edge of the LED
+  Matrix to the center point (<code>fb_width - 1</code>).</p>
+
+  <p>Next, we convert our scale value to a whole number between 0 and 7, so
+  that we can plot it on the LED Matrix. We do this by taking the result of the
+  computation above and using the <code>round()</code> function.</p>
+
+  <p>Finally, because we can't be sure of the actual size of the Minecraft
+  world (it could be larger than we anticipate), we need to ensure that this
+  whole number doesn't fall outside the 0 to 7 range.</p>
+
+  <p>This is accomplished using the code:</p>
+
+  <pre><code>min(fb.width-1, max(0, led_pos))</code></pre>
+
+  <p>The resulting value is between 0 and 7 (assuming the width of the LED Matrix is 8 points).</p>
+ </div>
+ <div id="challenge" class="section">
+  <ol>
+   <li>
+
+    <p>We scaled down the Minecraft world so that a width of 200 Minecraft
+   blocks (from -100 to 100) is represented on the LED Matrix.  Modify this so
+   that only -10 to 10 Minecraft blocks are represented.</p>
+   </li> <li> <p>
+   Instead of using a point to represent the position, can you use a plus sign made up of two crossing lines (one horizontal and one vertical) that are each 3 points long?
+   </p>
+   </li> <li> <p>
+   Can you do the draw the same plus sign as the previous question, but with a <code>Sprite()</code>?
+   </p>
+   </li>
+  </ol>
+ </div>
+</body>
+</html>

@@ -1,0 +1,198 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+ <meta name="robots" content="noindex" />
+ <meta name="generator" content=
+ "HTML Tidy for HTML5 for Mac OS X version 5.1.25">
+ <meta http-equiv="CONTENT-TYPE" content="text/html; charset=utf-8">
+ <title></title>
+ <link rel="stylesheet" type="text/css" href="default.css">
+ <link rel="stylesheet" type="text/css" href="project.css">
+ <link type="text/css" rel="stylesheet" href="/assets/cmirror/codemirror.css">
+ <link type="text/css" id="theme" rel="stylesheet" href=
+ "/assets/themes/solarized-dark.css">
+ <script type="text/javascript" src="/assets/cmirror/codemirror.js">
+ </script>
+ <script type="text/javascript" src="/assets/cmirror/python.js">
+ </script>
+ <script type="text/javascript" src="onload.js">
+ </script>
+ <script type="text/javascript" src="flows.js">
+ </script>
+ <script type="text/javascript" src="flow_cookie.js">
+ </script>
+ <script type="text/javascript" src="project.js">
+ </script>
+ <script type="text/javascript" src="stickydiv.js">
+ </script>
+ <script type="text/javascript" src="codeblocks.js">
+ </script>
+</head>
+<body>
+ <div class="hw" data-count="1" data-name="led_matrix"></div>
+ <div class="hw" data-count="1" data-name="led_matrix_cable"></div>
+ <div id="intro" class="section">
+
+  <p>In this project, we're going to hook up our LED Matrix, and write
+  some code to light up individual LEDs.</p>
+ </div>
+ <div id="hw" class="section">
+
+ <p>To get started, make sure you read <a data-uid="ledc"></a> concept, which
+ introduces the LED Matrix and discusses how to mount it to the breadboard, 
+ power it up and test it.</p>
+ <h3 class="step">Attach the 3.3V Pin to Power and GND to Ground.</h3>
+
+ <p>With the cable attached to the LED Matrix, connect the 3.3V wire and the
+ GND wire, as follows:</p><img class="bb" src=
+ "img/LED_Matrix_power_only_bb.jpg" alt="">
+
+ <p>Once power and ground are correctly attached, you should see vertical and
+ horizontal bars sweep across the display a single time. This is indication
+ that the LED Matrix is powered up and working correctly.</p>
+ <h3 class="step">Attach SCLK, MOSI, CE &amp; MISO Pins to Lid Connector
+ Board.</h3>
+
+ <p>Now that we've verified that the LED Matrix can be powered up and is
+ working properly, we can finish wiring it so that we can start controlling it
+ with our software. To finish wiring the LED Matrix we need to make the
+ following connections:</p>
+ <ol>
+  <li>
+
+   <p>Connect SCLK on the LED Matrix to SCLK on the Lid Connector Board.</p>
+  </li>
+  <li>
+
+   <p>Connect MOSI on the LED Matrix to MOSI on the Lid Connector Board.</p>
+  </li>
+  <li>
+
+   <p>Connect CE on the LED Matrix to CE0 on the Lid Connector Board.</p>
+  </li>
+  <li>
+
+   <p>Connect MISO on the LED Matrix to MISO on the Lid Connector Board.</p>
+  </li>
+ </ol>
+
+ <p><strong>Note:</strong> Both CE0 and CE1 are on the Lid Connector Board —
+ ensure that you're connected to CE0.</p>
+
+ <p><strong>Note:</strong> Use a separate jumper wire (this is not included in
+ the LED Matrix bag, but you can use any of the provided colored wires) to
+ connect MISO from the right side of the LED Matrix to the MISO pin on the Lid
+ Connector Board (see the blue wire in the picture below).</p>
+
+ <p><strong>Note:</strong> When using the LED Matrix, you won't be able to use
+ GPIO7 (which is on the same pin as CE1).</p>
+
+ <p>Here is what the breadboard should look like with the LED Matrix fully
+ wired:</p><img class="bb" src="img/LED_Matrix_bb.jpg" alt=""></div>
+ <div id="sw" class="section">
+
+  <p>To display graphics on our LED Matrix, we use a set of functions that
+  allows us to create, draw, display and erase a <i>framebuffer</i>. We'll talk
+  a bunch about framebuffers in an upcoming concept (<a data-uid="fb"></a>),
+  but for now, the important thing to understand is that framebuffers are the
+  tool we use to manage the LED Matrix display.</p>
+  <div class="info">
+   <div>
+    Rectangular Coordinates
+   </div>
+   <div>
+
+    <p>To draw on our LED Matrix, we will rely on something called
+    <i>rectangular coordinates</i>, which is a system for defining a location.
+    Each of the 64 LEDs on our LED Matrix will be referred to by two numbers —
+    the first number will be the distance from the left side of the LED Matrix
+    and the second number will be the distance from the bottom of the LED
+    Matrix.</p>
+
+    <p>Here is the basis for those two numbers:</p><img style="width: 276px"
+    src="img/ledcoordinates.jpg" alt="">
+
+    <p>The first number in our rectangular coordinates refers to the bottom row
+    of numbers. The second number in our rectangular coordinates refers to the
+    side row of numbers.</p>
+
+    <p>So, if we wanted to refer to the LED in the lower left hand corner of
+    the LED Matrix, we would use the coordinates (0,0) — that's the LED that is
+    0 from the left and 0 from the bottom. And, if we wanted to refer to the
+    LED in the upper right hand corner of the LED Matrix, we would use the
+    coordinates (7,7).</p>
+
+    <p>Here is the LED at coordinates (3,6):</p><img style="width: 276px" src=
+    "img/ledcoordinates2.jpg" alt="">
+
+    <p>You'll be able to play with these coordinates in the project below.</p>
+   </div>
+  </div>
+
+  <p>Here is the basic code we'll use to initialize our LED Matrix and draw a
+  single dot to it:</p>
+  <div class="code" data-firstline="1">
+   <textarea>
+from rstem.led_matrix import FrameBuffer
+fb = FrameBuffer()
+fb.erase()
+fb.point(3,6)
+fb.show()
+</textarea>
+  </div>
+
+  <p>Let's take a look at what our code is doing:</p>
+  <ul>
+   <li>
+
+    <p>On Line 1, we import the module we will need to initialize and use a
+    framebuffer (the <code>Framebuffer()</code> function)</p>
+   </li>
+   <li>
+
+    <p>On Line 2, we initialize our framebuffer. We call the
+    <code>Framebuffer()</code> function, which returns a "framebuffer" object
+    to our <code>fb</code> variable. We can now use the <code>fb</code>
+    variable to call other framebuffer functions</p>
+   </li>
+   <li>
+
+    <p>On Line 3, we call the framebuffer function <code>erase()</code>, which
+    erases the framebuffer</p>
+   </li>
+   <li>
+
+    <p>On Line 4, we call the framebuffer function <code>point()</code>, which
+    draws a point on the framebuffer, where <code>(3,6)</code> is the
+    coordinates of the point</p>
+   </li>
+   <li>
+
+    <p>On Line 5, we call the framebuffer function <code>show()</code>, which
+    displays the framebuffer on the LED Matrix</p>
+   </li>
+  </ul>
+
+  <p>When you run this code, you should see a dot appear on the LED Matrix at
+  coordinates (3,6) — which is the point we used in our example in the Info Box
+  above.</p>
+ </div>
+ <div id="challenge" class="section">
+  <ol>
+   <li>
+
+    <p>Place a point at another location on the display. What coordinates do
+    you need to use to put a point at the lower left corner?</p>
+   </li>
+   <li>
+
+    <p>Write a loop to move a dot horizontally across the screen.</p>
+   </li>
+   <li>
+
+    <p>Write a loop to move a dot diagonally across the screen.</p>
+   </li>
+  </ol>
+ </div>
+</body>
+</html>

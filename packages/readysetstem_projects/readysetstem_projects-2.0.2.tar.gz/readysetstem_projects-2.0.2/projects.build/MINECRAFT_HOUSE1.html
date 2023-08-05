@@ -1,0 +1,169 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+ <meta name="robots" content="noindex" />
+ <meta name="generator" content=
+ "HTML Tidy for HTML5 for Mac OS X version 5.1.25">
+ <meta http-equiv="CONTENT-TYPE" content="text/html; charset=utf-8">
+ <title></title>
+ <link rel="stylesheet" type="text/css" href="default.css">
+ <link rel="stylesheet" type="text/css" href="project.css">
+ <link type="text/css" rel="stylesheet" href="/assets/cmirror/codemirror.css">
+ <link type="text/css" id="theme" rel="stylesheet" href=
+ "/assets/themes/solarized-dark.css">
+ <script type="text/javascript" src="/assets/cmirror/codemirror.js">
+ </script>
+ <script type="text/javascript" src="/assets/cmirror/python.js">
+ </script>
+ <script type="text/javascript" src="onload.js">
+ </script>
+ <script type="text/javascript" src="flows.js">
+ </script>
+ <script type="text/javascript" src="flow_cookie.js">
+ </script>
+ <script type="text/javascript" src="project.js">
+ </script>
+ <script type="text/javascript" src="stickydiv.js">
+ </script>
+ <script type="text/javascript" src="codeblocks.js">
+ </script>
+</head>
+<body>
+ <div class="hw" data-count="1" data-name="button"></div>
+ <div id="intro" class="section">
+
+  <p>In this project, we'll build a simple house in the Minecraft world at the
+  touch of a button.</p>
+ </div>
+ <div id="hw" class="section">
+ <p>For this project, we just need a single button, wired to GPIO24:
+ <img class="bb" src=
+ "img/Minecraft_1button_bb.jpg" alt="">
+ </div>
+ <div id="sw" class="section">
+
+
+  <p>The code for this project should look very familiar. It is very similar to
+  the Minecraft <a data-uid="mcanimation"></a> project, where we drew an animation 
+  of our character using blocks. In that project, we were also drawing the sprite 
+  on our LED Matrix, so we used 0 to denote LED off and 1-8 and A-F to denote 
+  intensity of the LED display.</p>
+
+  <p>Because we're not using the LED Matrix in this project, we don't need to
+  include the LED intensity in our sprite design. Instead, we will simply use 0 and 1
+  to denote our block types &mdash; 0 will indicate no block (block type AIR) and
+  1 will indicate a stone block. We implement this using a list, and the 0 and
+  1 are simply indexes in that list.</p>
+
+  <p>The magic happens in a function we've created called <code>create_house()</code>.  
+  Similar to the <code>sprite_in_minecraft()</code> function in the 
+  <a data-uid="mcanimation"></a> project, we go through a set of nested loops to
+  draw blocks in the Minecraft world.  In that project, we drew the animation in
+  2 dimensions (X and Y), and therefore we used two nested loops.  In this project,
+  we'll draw the house in 3 dimensions, which means we'll need three nested loops.
+
+  <p>The corner of the house is drawn relative to Steve's position, plus an
+  <i>offset</i>.  An offset is just a small change in position.  We chose a
+  small offset so that the house is close to Steve, but not right on top of
+  him.
+
+  <h2>Full Code</h2>
+
+  <p>Here is what the full code for this project should look like:</p>
+  <div class="code" data-firstline="1">
+   <textarea>
+from rstem.button import Button
+from rstem.mcpi import minecraft, control, block
+from rstem.mcpi.vec3 import Vec3
+import time
+
+house = [
+    [
+        '111111',
+        '111111',
+        '111111',
+        '111111',
+        '111111',
+        '111111',
+    ],
+    [
+        '111111',
+        '100001',
+        '100001',
+        '100001',
+        '100001',
+        '111111',
+    ],
+    [
+        '111111',
+        '100001',
+        '100001',
+        '100001',
+        '100001',
+        '111111',
+    ],
+    [
+        '111111',
+        '100001',
+        '100001',
+        '100001',
+        '100001',
+        '111111',
+    ],
+    [
+        '111111',
+        '100001',
+        '100001',
+        '100001',
+        '100001',
+        '111111',
+    ],
+]
+
+block_types = [
+    block.AIR, 
+    block.STONE,
+    ]
+
+def create_house(mc, house_slices, offset, base=block.STONE):
+    corner = mc.player.getTilePos() - offset
+    for delta_y, house_slice in enumerate(house_slices):
+        for delta_x, row in enumerate(house_slice):
+            for delta_z, block_index in enumerate(row):
+                block_type = block_types[int(block_index)]
+                mc.setBlock(corner + Vec3(delta_x, delta_y, delta_z), block_type)
+
+control.show()
+mc = minecraft.Minecraft.create()
+button = Button(24)
+
+while True:
+    if button.presses():
+        create_house(mc, house, Vec3(3,1,3))
+
+    time.sleep(0.01)
+
+</textarea>
+  </div>
+  <p>Give it a try.  You'll need to fly up and into the house to see the inside.
+ </div>
+ <div id="challenge" class="section">
+  <ol>
+   <li> <p>
+   Assuming you still have your controller wired up, add this house making code to 
+	the Minecraft controller code (<a data-uid="mccontr3"></a> project) so that you
+	can build a house while using the CREATOR Kit as a controller.
+   </p> </li> <li> <p>
+   The house is made of AIR and STONE.  Try swapping those materials to get a strange inverted house.
+   </p> </li> <li> <p>
+   Adjust the <code>offset</code> passed into <code>create_house()</code> so
+   that when the house is built, Steve is just outside of it.
+   </p> </li> <li> <p>
+   Let's be honest &mdash; it's not much of a house.  Make it a little better
+   by adding a hole for a door and a flat roof.
+   </p>
+   </li>
+  </ol>
+ </div>
+</body>
+</html>

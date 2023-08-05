@@ -1,0 +1,203 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+ <meta name="robots" content="noindex" />
+ <meta name="generator" content=
+ "HTML Tidy for HTML5 for Mac OS X version 5.1.25">
+ <meta http-equiv="CONTENT-TYPE" content="text/html; charset=utf-8">
+ <title></title>
+ <link rel="stylesheet" type="text/css" href="default.css">
+ <link rel="stylesheet" type="text/css" href="project.css">
+ <link type="text/css" rel="stylesheet" href="/assets/cmirror/codemirror.css">
+ <link type="text/css" id="theme" rel="stylesheet" href=
+ "/assets/themes/solarized-dark.css">
+ <script type="text/javascript" src="/assets/cmirror/codemirror.js">
+ </script>
+ <script type="text/javascript" src="/assets/cmirror/python.js">
+ </script>
+ <script type="text/javascript" src="onload.js">
+ </script>
+ <script type="text/javascript" src="flows.js">
+ </script>
+ <script type="text/javascript" src="flow_cookie.js">
+ </script>
+ <script type="text/javascript" src="project.js">
+ </script>
+ <script type="text/javascript" src="stickydiv.js">
+ </script>
+ <script type="text/javascript" src="codeblocks.js">
+ </script>
+</head>
+<body>
+ <div id="intro" class="section">
+
+  <p>In this project, we will write code to place a block of gold in a random
+  location around the Minecraft world. We will then allow our character to move
+  about the world and when he smashes the gold block, we'll end the game and let the
+  user know that the gold has been found.</p>
+  
+  <p>We'll add additional functionality in our next project as well.
+ </div>
+ <div id="hw" class="section">
+
+  <p>There is no specific hardware setup for this project. You will need to be
+  able to move throughout the Minecraft world to use the code you'll be
+  writing, and to do that, you are welcome to either use a keyboard/mouse or to
+  use the Minecraft controller you built earlier with your CREATOR
+  Kit.</p>
+ </div>
+ <div id="sw" class="section">
+
+  <p>Our code for this project will be pretty simple; in our next project,
+  we'll expand on it and make it more robust. For this project, 
+  besides the normal initialization we need to do for all Minecraft projects, 
+  we will:
+  </p>
+  <ol>
+   <li>
+
+    <p>Place a gold block in a random location</p>
+   </li>
+   <li>
+
+    <p>Test whether the player has smashed the gold block we placed</p>
+   </li>
+   <li>
+
+    <p>When the gold is found/smashed, indicate the status to the user</p>
+   </li>
+  </ol>
+
+  <h2 class=step>Place gold in a random location</h2>
+
+  <p>Next, we will pick a random block within the game world — and within the
+  distance from our character that we defined above — and change it to
+  gold:</p>
+  <div class="code" data-firstline="0">
+   <textarea>
+GOLD_DEPTH = 0
+gold_pos = mc.player.getTilePos()
+gold_pos.x += randint(-ARENA_WIDTH, ARENA_WIDTH)
+gold_pos.z += randint(-ARENA_WIDTH, ARENA_WIDTH)
+gold_pos.y = mc.getHeight(gold_pos.x, gold_pos.z) - GOLD_DEPTH
+mc.setBlock(gold_pos, block.GOLD_BLOCK)
+gold_exists = True
+</textarea>
+  </div>
+
+  <p>This code first sets the position of the gold to be at the player's
+  current position, and then modifies the location by a random amount for
+  each coordinate (x, y, z). For the X and Y coordinates, the new position 
+  is a random distance between -3 and 3 (our <code>ARENA_WIDTH</code>) from 
+  the current player position.
+  
+  <code>ARENA_WIDTH</code> sets the maximum distance the
+  gold will be hidden from our character. In this project, we don't have any
+  way of indicating where the gold is, so we don't want to place it too far
+  from us; we'll fix that issue in the next project.</p>
+
+  <p>For the Z position (the height of the gold), we place the gold at ground
+  level — our code must determine the elevation of the particular block, since
+  the elevation of the gold may be different than the elevation of the block
+  where our character currently is. We use the <code>getHeight()</code>
+  function for this. Note that we can change increase the depth of the buried
+  gold by increasing our <code>GOLD_DEPTH</code> variable.</p>
+
+  <p>Once we've chosen a location for the gold block, we use the
+  <code>setBlock()</code> function to change the block at that location from
+  whatever material it currently is to gold.</p>
+
+  <p>Finally, we create a variable called <code>gold_exists</code> that will be
+  used to track when the gold is found/smashed or not found. We set it to
+  <code>True</code> to indicate that the gold has not yet been found. This
+  variable will be needed later for our loop to determine when the gold has
+  been found/smashed.</p>
+
+  <h2 class=step>Test if the gold block was smashed</h2>
+
+  <p>Next, we need to write the code in our game loop to continually test 
+  whether the gold block has been smashed (we'll do this by actually testing
+  whether it still exists).  When it has been smashed (when it ceases to exist), 
+  we will exit the loop.</p>
+
+  <div class="code" data-firstline="0">
+   <textarea>
+while gold_exists:
+    player_pos = mc.player.getTilePos()
+    gold_exists = block.Block(mc.getBlock(gold_pos)) == block.GOLD_BLOCK
+    time.sleep(0.01)
+</textarea>
+  </div>
+
+  <p>The first line of the loop gets the player's position; the second line
+  of the loop tests to see if the location where we originally placed the gold
+  block is still a gold block. If it is still a gold block,
+  <code>gold_exists</code> continues to be <code>True</code>; when the gold block
+  is gone, <code>gold_exists</code> switches to <code>False</code></p>
+
+  <p>Note that we've changed the loop from continuing forever (<code>while
+  True</code>) to continuing only until the gold has been found
+  (which we do by setting <code>gold_exists</code> to False).</p>
+
+  <h2 class=step>When gold is found, let the user know</h2>
+
+  <p>Once the gold has been found and we've exited the loop, we need to let the
+  user know that he found the gold:</p>
+  <div class="code" data-firstline="0">
+   <textarea>
+mc.postToChat("You found the gold!")
+time.sleep(3)
+</textarea>
+  </div>
+  <h2>Full Code</h2>
+
+  <p>Here is what the full code for this project should look like:</p>
+  <div class="code" data-firstline="1">
+   <textarea>
+from rstem.mcpi import minecraft, control, block
+import time
+from random import randint
+
+control.show()
+mc = minecraft.Minecraft.create()
+
+ARENA_WIDTH = 3
+GOLD_DEPTH = 0
+gold_pos = mc.player.getTilePos()
+gold_pos.x += randint(-ARENA_WIDTH, ARENA_WIDTH)
+gold_pos.z += randint(-ARENA_WIDTH, ARENA_WIDTH)
+gold_pos.y = mc.getHeight(gold_pos.x, gold_pos.z) - GOLD_DEPTH
+mc.setBlock(gold_pos, block.GOLD_BLOCK)
+
+while block.Block(mc.getBlock(gold_pos)) == block.GOLD_BLOCK:
+    player_pos = mc.player.getTilePos()
+    time.sleep(0.01)
+
+mc.postToChat("You found the gold!")
+time.sleep(3)
+</textarea>
+  </div>
+  </div>
+ <div id="challenge" class="section">
+  <ol>
+   <li> <p>
+   Assuming you still have your controller wired up, add this metal detector code to 
+	the Minecraft controller code (<a data-uid="mccontr3"></a> project) so that you
+	can play the metal detector game using the CREATOR Kit as a controller.
+    </p> </li> <li> <p>
+    We've hidden the gold at the very surface &mdash; which isn't really hiding it at all!  Increase the gold depth to hide the gold below the surface.
+    </p> </li> <li> <p>
+    If you play the game more than once in the same spot, you may find that there is old gold there from a previous game.  
+	To prevent this, modify your code so that when the game starts, any old gold is converted to dirt.
+    </p> </li> <li> <p>
+    Create an easier version of the game &mdash; instead of one hidden block of gold, hide
+    two (or three or more), and end the game when <i>any</i> of them are found.
+    </p> </li> <li> <p>
+    Create a harder version of the game &mdash; instead of one hidden block of gold, hide
+    two (or three or more), and end the game when <i>all</i> of them are found.
+    </p>
+   </li>
+  </ol>
+ </div>
+</body>
+</html>

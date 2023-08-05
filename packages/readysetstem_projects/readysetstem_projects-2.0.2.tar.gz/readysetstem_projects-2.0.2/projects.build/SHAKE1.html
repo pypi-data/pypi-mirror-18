@@ -1,0 +1,157 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+ <meta name="robots" content="noindex" />
+ <meta name="generator" content=
+ "HTML Tidy for HTML5 for Mac OS X version 5.1.25">
+ <meta http-equiv="CONTENT-TYPE" content="text/html; charset=utf-8">
+ <title></title>
+ <link rel="stylesheet" type="text/css" href="default.css">
+ <link rel="stylesheet" type="text/css" href="project.css">
+ <link type="text/css" rel="stylesheet" href="/assets/cmirror/codemirror.css">
+ <link type="text/css" id="theme" rel="stylesheet" href=
+ "/assets/themes/solarized-dark.css">
+ <script type="text/javascript" src="/assets/cmirror/codemirror.js">
+ </script>
+ <script type="text/javascript" src="/assets/cmirror/python.js">
+ </script>
+ <script type="text/javascript" src="onload.js">
+ </script>
+ <script type="text/javascript" src="flows.js">
+ </script>
+ <script type="text/javascript" src="flow_cookie.js">
+ </script>
+ <script type="text/javascript" src="project.js">
+ </script>
+ <script type="text/javascript" src="stickydiv.js">
+ </script>
+ <script type="text/javascript" src="codeblocks.js">
+ </script>
+</head>
+<body>
+ <div class="hw" data-count="1" data-name="accelerometer"></div>
+ <div id="intro" class="section">
+
+  <p>In this project, we begin creating an accelerometer game that commands the
+  user to shake and tilt the CREATOR Kit in a random order. The challenge is to
+  correctly shake/tilt the kit even as the game gets progressively faster.</p>
+
+  <p>For this project, we'll start simple...  There will only be one action the 
+  user can take: tilt the kit left. In subsequent projects we'll add more 
+  functionality to complete the game.</p>
+ </div>
+ <div id="hw" class="section">
+
+  <p>This project will only require the accelerometer.  Here is what your breadboard 
+  should look like once the accelerometer is properly wired:
+  
+  <img class="bb" src="img/Accel_bb.jpg" alt=
+  "">
+ </div>
+ <div id="sw" class="section">
+
+  <p>For this first implementation of the game, we'll always request that the user 
+  tilts the kit left. Then, we'll print out if the user correctly tilted left, or 
+  made a mistake (didn't tilt left).</p>
+
+  <p>Here's what the code will look like:
+  
+  <div class="code" data-firstline="1">
+   <textarea>
+from rstem.accel import Accel
+import time
+
+accel = Accel()
+
+NOACTION = 0
+LEFT = 1
+RIGHT = 2
+UP = 3
+SHAKE = 4
+
+# Ready to play?
+SCORE_NEEDED = 10
+period = 300
+while True:
+    request = LEFT
+    action = NOACTION
+    print(request)
+
+    tilt_left_score = 0
+    for i in range(period):
+        x, y, z = accel.forces()
+        if x &gt; 0.75:
+            tilt_left_score += 1
+
+        if tilt_left_score &gt; SCORE_NEEDED:
+            action = LEFT
+            break
+
+        time.sleep(0.01)
+
+    if request == action:
+        print("CORRECT!")
+    else:
+        print("OOPS!")
+        break
+
+    time.sleep(0.5)
+</textarea>
+  </div>
+
+  <p>Now, let's take a look at what our code is doing:</p>
+  <ul>
+   <li>
+
+    <p>On Lines 6 though 14, we initialize some variables we'll need later. The
+    variables <code>NOACTION</code>, <code>LEFT</code>, <code>RIGHT</code>,
+    <code>UP</code>, and <code>SHAKE</code> are used to keep track of which
+    action is requested. And, for now, this game will only use
+    <code>NOACTION</code> and <code>LEFT</code>.</p>
+   </li>
+   <li>
+
+    <p>On Lines 16 through 18, at the start of the game loop, we define two
+    variables: <code>request</code> and <code>action</code>. The
+    <code>request</code> is what we want the user to do, and the
+    <code>action</code> is what the user has actually done. For this first cut
+    at the game, we will only request that they tilt left. And, we assume at
+    first that they have taken <code>NOACTION</code></p>
+   </li>
+   <li>
+
+    <p>On Lines 20 through 30, we record what action the user has taken. To
+    determine the action they've taken, we test the forces on the
+    accelerometer. We'll keep score of every time they are tilting the
+    accelerometer to the left, and increase the score. Once they've gotten over
+    some threshold (SCORE_NEEDED), then we know they've taken that action. The
+    reason we need to keep score (instead of just assuming that the user is
+    tilting the kit the first time we read the accelerometer) is that sometimes
+    a jiggle of the kit will read as a tilt. We want to make sure that the user
+    <i>really</i> meant to tilt the kit by checking a number of times.</p>
+   </li>
+   <li>
+
+    <p>On Lines 32 through 36, we check if the our <code>request</code> matches
+    the user's <code>action</code>. If not, the game is over and we exit the
+    while loop.</p>
+   </li>
+  </ul>
+  
+  <p>Try running the program and play around with tilting the kit to the left
+  to get an idea of how sensitive it is to picking up and registering tilts.
+ </div>
+ 
+ <div id="challenge" class="section">
+  <ol>
+   <li>
+
+    <p>The <code>SCORE_NEEDED</code> value affects how sensitive our code is at
+    detecting tilts, and also affects how long it takes to detect the tilt. Try
+    changing <code>SCORE_NEEDED</code> to a high or low value, and see how it
+    affects the tilt detection.</p>
+   </li>
+  </ol>
+ </div>
+</body>
+</html>

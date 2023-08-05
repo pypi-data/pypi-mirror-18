@@ -1,0 +1,244 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+ <meta name="robots" content="noindex" />
+ <meta name="generator" content=
+ "HTML Tidy for HTML5 for Mac OS X version 5.1.25">
+ <meta http-equiv="CONTENT-TYPE" content="text/html; charset=utf-8">
+ <title></title>
+ <link rel="stylesheet" type="text/css" href="default.css">
+ <link rel="stylesheet" type="text/css" href="project.css">
+ <link type="text/css" rel="stylesheet" href="/assets/cmirror/codemirror.css">
+ <link type="text/css" id="theme" rel="stylesheet" href=
+ "/assets/themes/solarized-dark.css">
+ <script type="text/javascript" src="/assets/cmirror/codemirror.js">
+ </script>
+ <script type="text/javascript" src="/assets/cmirror/python.js">
+ </script>
+ <script type="text/javascript" src="onload.js">
+ </script>
+ <script type="text/javascript" src="flows.js">
+ </script>
+ <script type="text/javascript" src="flow_cookie.js">
+ </script>
+ <script type="text/javascript" src="project.js">
+ </script>
+ <script type="text/javascript" src="stickydiv.js">
+ </script>
+ <script type="text/javascript" src="codeblocks.js">
+ </script>
+</head>
+<body>
+ <div class="hw" data-count="1" data-name="led_matrix"></div>
+ <div class="hw" data-count="1" data-name="led_matrix_cable"></div>
+ <div id="intro" class="section">
+
+  <p>In this project, we'll build on the sprite animations we did in the
+  LED Matrix 
+  <a data-uid="running"></a>
+   project by not only animating a running man on the LED Matrix, but also
+  creating a synchronized animation of the running man in the Minecraft world. What we
+  draw on the LED Matrix will be replicated in blocks in the Minecraft
+  world.</p>
+ </div>
+
+ <div id="hw" class="section">
+ <p>This project will only require the LED Matrix display.  Here is what your 
+ breadboard should look like:
+ 
+ <img class="bb" src="img/LED_Matrix_bb.jpg" alt=
+ "">
+ </div>
+ <div id="sw" class="section">
+
+  <p>Our code for this project will be identical to our code in the   
+  <a data-uid="running"></a> project, with one addition &mdash; we'll create 
+  a function that will replicate the animation we're doing on the LED Matrix 
+  in the Minecraft world as well.</p>
+
+  <p>When you give this code a try, don't forget to look around to find the running man!
+
+  <p>Here is what the full code for this project should look like. We'll dig
+  further into the highlighted pieces of code below:</p>
+  <div class="code" data-firstline="1">
+   <textarea>
+from rstem.mcpi import minecraft, control, block
+from rstem.mcpi.vec3 import Vec3
+from itertools import cycle
+from rstem.led_matrix import FrameBuffer, Sprite
+import time
+
+control.show()
+mc = minecraft.Minecraft.create()
+
+fb = FrameBuffer()
+
+sprites = [
+    Sprite("""
+        00000000
+        0000FF00
+        000FF000
+        000FFF00
+        00FFFF00
+        000FFF00
+        0FF00F00
+        0F0000FF
+        """),
+    Sprite("""
+        00000000
+        0000FF00
+        0000F000
+        00FFFF00
+        0F0FF0F0
+        000FFF00
+        0FF00F00
+        00000FF0
+        """),
+    Sprite("""
+        00000000
+        0000FF00
+        000FF000
+        000FF000
+        000FF000
+        000FF000
+        00FFF000
+        000FF000
+        """),
+    Sprite("""
+        0000FF00
+        000FF000
+        000FFF00
+        00FFFF00
+        000FFF00
+        00F00F00
+        00F0F000
+        00F00000
+        """),
+    ]
+
+
+*def sprite_in_minecraft(mc, sprite, pos):
+*    char_sprite = reversed(str(sprite).splitlines())
+*    for height, row in enumerate(char_sprite):
+*        for width, char in enumerate(row):
+*            if char == '0':
+*                blk = block.AIR
+*            else:
+*                blk = block.WOOD
+*            mc.setBlock(player_pos + Vec3(width, height, 0), blk)
+    
+*player_pos = mc.player.getTilePos()
+which_sprite = 0
+while True:
+    which_sprite = which_sprite + 1
+    if which_sprite &gt; 3:
+        which_sprite = 0
+
+    fb.erase()
+    fb.draw(sprites[which_sprite])
+    fb.show()
+
+*    sprite_in_minecraft(mc, sprites[which_sprite], player_pos)
+
+    time.sleep(0.1)
+</textarea>
+  </div>
+
+  <h2><code>sprite_in_minecraft()</code> Function</h2>
+
+  <p>We've created a function that will animate our character in
+  the Minecraft world. Unlike the LED Matrix, where we can use a simple API to
+  pass in an 8x8 design (a sprite) with a single function call, to create a design in the
+  Minecraft world, we need to draw it block-by-block. For that reason, the bulk
+  of our function is used to turn our 8x8 list of 0's and non-0's into
+  blocks (for the non-0's) and air (for the 0's).</p>
+
+  <p>Let's discuss what our function does, line-by-line:</p>
+  <ul>
+   <li>
+
+    <p>On Line 56, we define our function, which takes three arguments as inputs:
+    our Minecraft object, the current 8x8 design that we want to draw and the
+    location of our character (where we want to draw it).</p>
+   </li>
+   <li>
+
+    <p>On Line 57, we take our 8x8 design that we drew on our LED
+    Matrix and we rearrange it in an order that will allow us to draw it in the
+    Minecraft world. Specifically, we break up the design into the eight separate
+	lines (using the <code>splitlines()</code> function) and then we
+    reverse the order of the lines from bottom to top (using the 
+	<code>reversed()</code> function), as we will draw starting from the ground 
+	and moving up.</p>
+   </li>
+   <li>
+
+    <p>On Lines 58 and 59, we <i>nest</i> (put one inside the other) two
+    <code>for</code> loops. This will allow us to run through each of the eight
+    horizontal characters and each of the eight rows and execute the code that
+    follows the nested loops.</p>
+   </li>
+   <li>
+
+    <p>On Lines 60 through 64, we have implemented the code that will be used to
+	create blocks at each of 64 (8x8) character positions. The code checks the character, 
+	and if it's a 0 (which is equivalent to the LED being <i>off</i> in that position), 
+	it sets the block type to AIR, which is the same as not drawing a block. If the 
+	character is a non-0 (which is equivalent to the LED being <i>on</i> in that position), 
+	it sets the block type to wood, so we'll see the block at that location. The final 
+	line of that code block uses the <code>setBlock()</code> function to draw the 
+	appropriate block.</p>
+   </li>
+  </ul>
+  <div class="info">
+   <div>
+    <code>enumerate()</code> Function
+   </div>
+   <div>
+
+    <p>In the two <code>for</code> loops above, we use the
+    built-in <code>enumerate</code> function. This function allows us to track the count
+    of how many times we've gone through the <code>for</code> loop &mdash; we call
+    this the "index", it starts at 0 and it is stored in the first variable of
+    the loop.</p>
+
+    <p>Here's an example:</p>
+
+    <pre>
+<code>animals = ['dog', 'cat', 'bird']</code>
+<code>for index, animal in (enumerate(animals)):</code>
+    <code>print(index, animal)</code>
+</pre>
+
+    <p>This code would output:</p>
+
+<pre>
+0 dog
+1 cat
+2 bird
+</pre>
+
+   </div>
+  </div>
+ </div>
+ <div id="challenge" class="section">
+  <ol>
+   <li>
+
+    <p>We made the running man out of wood.  Can you change the type of block
+   that the running man is made of?
+   </p> </li> <li> <p>
+   Can you make the running man out of stripes?  That is, can you use
+   different materials for the odd and even rows?
+   </p> </li> <li> <p>
+   Can you make the running man out of randomly generated materials for each
+   block?
+   </p> </li> <li> <p>
+   We made the running man stand straight up in the Minecraft world (on the X
+   and Y axes).  Can you lay the running man down flat (on the X and Z axes)?
+   </p>
+   </li>
+  </ol>
+ </div>
+</body>
+</html>

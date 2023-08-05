@@ -1,0 +1,142 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+ <meta name="robots" content="noindex" />
+ <meta name="generator" content=
+ "HTML Tidy for HTML5 for Mac OS X version 5.1.25">
+ <meta http-equiv="CONTENT-TYPE" content="text/html; charset=utf-8">
+ <title></title>
+ <link rel="stylesheet" type="text/css" href="default.css">
+ <link rel="stylesheet" type="text/css" href="project.css">
+ <link type="text/css" rel="stylesheet" href="/assets/cmirror/codemirror.css">
+ <link type="text/css" id="theme" rel="stylesheet" href=
+ "/assets/themes/solarized-dark.css">
+ <script type="text/javascript" src="/assets/cmirror/codemirror.js">
+ </script>
+ <script type="text/javascript" src="/assets/cmirror/python.js">
+ </script>
+ <script type="text/javascript" src="onload.js">
+ </script>
+ <script type="text/javascript" src="flows.js">
+ </script>
+ <script type="text/javascript" src="flow_cookie.js">
+ </script>
+ <script type="text/javascript" src="project.js">
+ </script>
+ <script type="text/javascript" src="stickydiv.js">
+ </script>
+ <script type="text/javascript" src="codeblocks.js">
+ </script>
+</head>
+<body>
+ <div class="hw" data-count="3" data-name="button"></div>
+ <div class="hw" data-count="1" data-name="led_matrix"></div>
+ <div class="hw" data-count="1" data-name="led_matrix_cable"></div>
+ <div id="intro" class="section">
+
+  <p>In this project, we'll build on the previous bomb detonating project by
+  making our explosion radius configurable from the controller and also display
+  that radius on the LED Matrix.</p>
+ </div>
+ <div id="hw" class="section">
+ <p>For this project, we'll need the LED Matrix and three buttons
+ wired on the breadboard.  For our code below, we assume the buttons are wired
+ to GPIO12, GPIO14 and GPIO15.  Here's what your breadboard should look like:
+ 
+ <img class="bb" src=
+ "img/Minecraft_Matrix_updown_1button_bb.jpg" alt="">
+ </div>
+
+ <div id="sw" class="section">
+
+  <p>This code is similar to the code from the previous project, except that we've
+  added a few things:</p>
+  <ul>
+   <li>
+
+    <p>A variable called <code>radius</code> that is increased or decreased
+    using two new up and down buttons that we've added to the hardware.</p>
+   </li>
+   <li>
+
+    <p>The LED Matrix displays the current explosion radius.</p>
+   </li>
+  </ul>
+
+
+  <h2>Full Code</h2>
+  <p>Here is what the code for this project should look like at this point
+  (with new changes highlighted with arrows):</p>
+  <div class="code" data-firstline="1">
+   <textarea>
+from rstem.button import Button
+from rstem.mcpi import minecraft, control, block
+from rstem.mcpi.vec3 import Vec3
+*from rstem.led_matrix import FrameBuffer, Text
+import time
+
+fb = FrameBuffer()
+
+control.show()
+mc = minecraft.Minecraft.create()
+*bomb = Button(12)
+*up = Button(14)
+*down = Button(15)
+
+def detonate(mc, pos, radius=1):
+    r_vector = Vec3(radius,radius,radius)
+    mc.setBlocks(pos - r_vector, pos + r_vector, block.AIR)
+
+place_mode = True
+*radius = 1
+while True:
+    if place_mode:
+        if bomb.presses():
+            control.hit(duration=.2)
+        hits = mc.events.pollBlockHits()
+        if hits:
+            tnt_pos = hits[0].pos
+            mc.setBlock(tnt_pos, block.TNT)
+            place_mode = False
+
+    else:
+        if bomb.presses():
+*            detonate(mc, tnt_pos, radius)
+            place_mode = True
+
+*    radius += up.presses()
+*    radius -= down.presses()
+*    radius = max(min(9, radius), 0)
+
+*    fb.erase()
+*    fb.draw(Text(str(radius)))
+*    fb.show()
+
+    time.sleep(0.01)
+
+</textarea>
+  </div>
+
+  <p>This code should be pretty self-explanatory at this point, but should
+  also give you some ideas on how you can continue to create new and 
+  interesting games and events in the Minecraft world.
+  
+ </div>
+ <div id="challenge" class="section">
+  <ol>
+   <li> <p>
+   Assuming you still have your controller wired up, add this bomb code to 
+	the Minecraft controller code (<a data-uid="mccontr3"></a> project) so that you
+	can place a bomb while using the CREATOR Kit as a controller.
+   </p> </li> <li> <p>
+   Can you add a bomb explosion sound when the detonation occurs?  Note:
+   <span class=nospell>"hit.wav"</span> is a reasonable sound to use.
+   </p> </li> <li> <p>
+   Can you make the explosion occur near, but not exactly at, the TNT position?
+   Hint: You might want to use a random function.
+   </p>
+   </li>
+  </ol>
+ </div>
+</body>
+</html>

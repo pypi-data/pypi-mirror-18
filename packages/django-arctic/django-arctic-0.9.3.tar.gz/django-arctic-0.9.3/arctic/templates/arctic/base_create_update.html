@@ -1,0 +1,73 @@
+{% extends request.is_ajax|yesno:"arctic/base_dialog.html,arctic/base.html" %}
+
+
+{% load i18n arctic_tags staticfiles %}
+
+
+{% block body_class %}
+    {{ block.super }}
+    template-detail
+{% endblock %}
+
+
+{% block content %}
+    <form action="" method="POST" enctype="multipart/form-data" class="dirty-check" data-abide>
+
+        {% csrf_token %}
+        {% block form %}
+            {% block form_validation %}
+                {% include "arctic/partials/form_validation.html" with form=form style="horizontal" %}
+            {% endblock %}
+            {% block form_fields %}
+                {% include "arctic/partials/form_fields.html" with form=form style="horizontal" %}
+            {% endblock %}
+        {% endblock %}
+
+        {% block inlines %}
+        {% if inlines %}
+            {% for formset in inlines %}
+                {{ formset.management_form }}
+                {{ formset.non_form_errors }}
+
+                {% for form in formset %}
+                    {% include "arctic/partials/form_fields.html" with form=form style="horizontal" %}
+
+                    {% if not forloop.last %}
+                        <div class="row">
+                            <div class="column">
+                                <hr />
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+        {% endif %}
+        {% endblock inlines %}
+
+        {% block extra_forms %} {% endblock %}
+
+        {% block form_actions %}
+        <div class="row align-center">
+            <div class="small-6 medium-4 columns">
+                {% if links %}
+                    {% for link in links %}
+                        {% if object.pk %}
+                            <a class="button secondary" href="{% arctic_url link.1 object.pk %}">
+                        {% else %}
+                            <a class="button secondary" href="{% arctic_url link.1 %}">
+                        {% endif %}
+                            {{ link.0 }}
+                        </a>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <div class="small-6 medium-4 columns text-right">
+                <input type="submit" name="save" value="Submit" class="button" id="submit-id-save" />
+            </div>
+        </div>
+        {% endblock form_actions %}
+    </form>
+
+    {% block extra_content %}{% endblock %}
+{% endblock %}

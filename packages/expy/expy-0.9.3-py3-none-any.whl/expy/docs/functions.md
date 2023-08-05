@@ -1,0 +1,28 @@
+# Functions
+---
+
+- Initiation (Environment Setting)
+- Stimulus
+    - Text
+    - Shape
+    - Picture
+    - Sound
+    - Video
+- Response
+    - Keyboard & Mouse & Joystick
+    - Sound Recorder
+- IO (Read & Record)
+    - Read
+        - Setting file
+        - Stimuli file
+        - Directory
+    - Save
+        - Experiment Result
+- Other Scaffolds
+    - textSlide
+    - getInput
+    - introdution
+    - restTime
+    - tip
+    - alertAndGo
+    - alertAndQuit

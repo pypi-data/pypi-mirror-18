@@ -1,0 +1,27 @@
+---
+docker:
+  base_image: "python:2.7-slim"
+  entrypoint: [ "/entrypoint.py" ]
+  tags:
+    - myapp
+
+# Temporarily install Python, which is required by Ansible
+preparation_commands:
+  - apt-get update
+  - apt-get install -y --no-install-recommends python
+cleanup_commands:
+  - apt-get purge -y python
+  - apt-get autoremove --purge -y
+
+---
+- name: Provision the container
+  hosts: all
+  tasks:
+    - name: Install the thing
+      copy:
+        dest: /entrypoint.py
+        content: |
+          #!/usr/bin/env python
+          print("I'm a Python script")
+          print("Wheeeeee!!!!")
+        mode: 0755

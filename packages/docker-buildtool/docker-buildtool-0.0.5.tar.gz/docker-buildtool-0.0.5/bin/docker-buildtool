@@ -1,0 +1,57 @@
+#!/usr/bin/env python
+import argparse
+import docker_buildtool
+import logging
+import os
+import sys
+
+from docker_buildtool import error, utils
+
+logger = logging.getLogger()
+formatter = logging.Formatter('[%(asctime)s] %(message)s')
+handler = logging.StreamHandler(sys.stderr)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+def build(args):
+    builder = docker_buildtool.Builder(
+        dockerfile=args.dockerfile,
+        image=args.tag,
+    )
+    builder.run(dryrun=args.dryrun)
+
+def pull(args):
+    puller = docker_buildtool.Puller(dockerfile=args.dockerfile)
+    puller.run(dryrun=args.dryrun)
+
+def main():
+    parser = argparse.ArgumentParser(description=None)
+    parser.add_argument('-v', '--verbose', action='count', dest='verbosity', default=0, help='Set verbosity.')
+    parser.add_argument('-f', '--dockerfile', default='Dockerfile', help='Which Dockerfile to use.')
+
+    subparsers = parser.add_subparsers()
+    sub = subparsers.add_parser('build')
+    sub.add_argument('-t', '--tag', help='The tag to use.')
+    sub.add_argument('-n', '--dryrun', action='store_true', help='Do not actually run')
+    sub.set_defaults(func=build)
+
+    sub = subparsers.add_parser('pull')
+    sub.add_argument('-n', '--dryrun', action='store_true', help='Do not actually run')
+    sub.set_defaults(func=pull)
+
+    args = parser.parse_args()
+
+    if args.verbosity == 0:
+        logger.setLevel(logging.INFO)
+    elif args.verbosity >= 1:
+        logger.setLevel(logging.DEBUG)
+
+    if hasattr(args, 'func'):
+        args.func(args)
+    else:
+        parser.print_help()
+
+    return 0
+
+if __name__ == '__main__':
+    sys.exit(main())

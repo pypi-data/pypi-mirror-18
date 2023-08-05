@@ -1,0 +1,313 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>django_pdfkit.views &mdash; django-pdfkit 0.1.0 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="django-pdfkit 0.1.0 documentation" href="../../index.html"/>
+        <link rel="up" title="django_pdfkit" href="../django_pdfkit.html"/> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> django-pdfkit
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer.html">Developer Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../internals/reference/index.html">Internal Module Reference</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../index.html">django-pdfkit</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      
+          <li><a href="../django_pdfkit.html">django_pdfkit</a> &raquo;</li>
+      
+    <li>django_pdfkit.views</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for django_pdfkit.views</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    django_pdfkit.views</span>
+<span class="sd">    ~~~~~~~~~~~~~~~~~~~</span>
+
+<span class="sd">    Django view that converts HTML to PDF using webkit - via pdfkit and wkhtmltopdf.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">absolute_import</span><span class="p">,</span> <span class="n">print_function</span><span class="p">,</span> <span class="n">unicode_literals</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">os.path</span> <span class="k">import</span> <span class="n">basename</span><span class="p">,</span> <span class="n">splitext</span>
+
+<span class="kn">from</span> <span class="nn">django.conf</span> <span class="k">import</span> <span class="n">settings</span>
+<span class="kn">from</span> <span class="nn">django.http</span> <span class="k">import</span> <span class="n">HttpResponse</span>
+<span class="kn">from</span> <span class="nn">django.template</span> <span class="k">import</span> <span class="n">RequestContext</span>
+<span class="kn">from</span> <span class="nn">django.template</span> <span class="k">import</span> <span class="n">loader</span>
+<span class="kn">from</span> <span class="nn">django.test</span> <span class="k">import</span> <span class="n">override_settings</span>
+<span class="kn">from</span> <span class="nn">django.views.generic</span> <span class="k">import</span> <span class="n">TemplateView</span>
+<span class="kn">import</span> <span class="nn">pdfkit</span>
+
+
+<div class="viewcode-block" id="PDFView"><a class="viewcode-back" href="../../internals/reference/django_pdfkit.html#django_pdfkit.views.PDFView">[docs]</a><span class="k">class</span> <span class="nc">PDFView</span><span class="p">(</span><span class="n">TemplateView</span><span class="p">):</span>
+    <span class="c1">#: Set to change the filename of the PDF.</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1">#: Set to default the PDF display to inline.</span>
+    <span class="n">inline</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="c1">#: Set pdfkit options dict.</span>
+    <span class="n">pdfkit_options</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="PDFView.get"><a class="viewcode-back" href="../../internals/reference/django_pdfkit.html#django_pdfkit.views.PDFView.get">[docs]</a>    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a HTTPResponse either of a PDF file or HTML.</span>
+
+<span class="sd">        :rtype: HttpResponse</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="s1">&#39;html&#39;</span> <span class="ow">in</span> <span class="n">request</span><span class="o">.</span><span class="n">GET</span><span class="p">:</span>
+            <span class="c1"># Output HTML</span>
+            <span class="n">content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_html</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">HttpResponse</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Output PDF</span>
+            <span class="n">content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_pdf</span><span class="p">()</span>
+
+            <span class="n">response</span> <span class="o">=</span> <span class="n">HttpResponse</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">content_type</span><span class="o">=</span><span class="s1">&#39;application/pdf&#39;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">inline</span> <span class="ow">or</span> <span class="s1">&#39;download&#39;</span> <span class="ow">in</span> <span class="n">request</span><span class="o">.</span><span class="n">GET</span><span class="p">)</span> <span class="ow">and</span> <span class="s1">&#39;inline&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">request</span><span class="o">.</span><span class="n">GET</span><span class="p">:</span>
+                <span class="n">response</span><span class="p">[</span><span class="s1">&#39;Content-Disposition&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;attachment; filename=</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span>
+
+            <span class="n">response</span><span class="p">[</span><span class="s1">&#39;Content-Length&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">response</span></div>
+
+<div class="viewcode-block" id="PDFView.render_pdf"><a class="viewcode-back" href="../../internals/reference/django_pdfkit.html#django_pdfkit.views.PDFView.render_pdf">[docs]</a>    <span class="k">def</span> <span class="nf">render_pdf</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Render the PDF and returns as bytes.</span>
+
+<span class="sd">        :rtype: bytes</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">html</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_html</span><span class="p">()</span>
+
+        <span class="n">options</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_pdfkit_options</span><span class="p">()</span>
+        <span class="k">if</span> <span class="s1">&#39;debug&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">GET</span> <span class="ow">and</span> <span class="n">settings</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">:</span>
+            <span class="n">options</span><span class="p">[</span><span class="s1">&#39;debug-javascript&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">wkhtmltopdf_bin</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;WKHTMLTOPDF_BIN&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">wkhtmltopdf_bin</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;configuration&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pdfkit</span><span class="o">.</span><span class="n">configuration</span><span class="p">(</span><span class="n">wkhtmltopdf</span><span class="o">=</span><span class="n">wkhtmltopdf_bin</span><span class="p">)</span>
+
+        <span class="n">pdf</span> <span class="o">=</span> <span class="n">pdfkit</span><span class="o">.</span><span class="n">from_string</span><span class="p">(</span><span class="n">html</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">options</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">pdf</span></div>
+
+<div class="viewcode-block" id="PDFView.get_pdfkit_options"><a class="viewcode-back" href="../../internals/reference/django_pdfkit.html#django_pdfkit.views.PDFView.get_pdfkit_options">[docs]</a>    <span class="k">def</span> <span class="nf">get_pdfkit_options</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns ``self.pdfkit_options`` if set otherwise a default dict of options to supply to pdfkit.</span>
+
+<span class="sd">        :rtype: dict</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdfkit_options</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdfkit_options</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s1">&#39;page-size&#39;</span><span class="p">:</span> <span class="s1">&#39;A4&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;encoding&#39;</span><span class="p">:</span> <span class="s1">&#39;UTF-8&#39;</span><span class="p">,</span>
+            <span class="p">}</span></div>
+
+<div class="viewcode-block" id="PDFView.get_filename"><a class="viewcode-back" href="../../internals/reference/django_pdfkit.html#django_pdfkit.views.PDFView.get_filename">[docs]</a>    <span class="k">def</span> <span class="nf">get_filename</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return ``self.filename`` if set otherwise return the template basename with a ``.pdf`` extension.</span>
+
+<span class="sd">        :rtype: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">splitext</span><span class="p">(</span><span class="n">basename</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">template_name</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">return</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">.pdf&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span></div>
+
+<div class="viewcode-block" id="PDFView.render_html"><a class="viewcode-back" href="../../internals/reference/django_pdfkit.html#django_pdfkit.views.PDFView.render_html">[docs]</a>    <span class="k">def</span> <span class="nf">render_html</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Renders the template.</span>
+
+<span class="sd">        :rtype: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">static_url</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">://</span><span class="si">%s%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">scheme</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">get_host</span><span class="p">(),</span> <span class="n">settings</span><span class="o">.</span><span class="n">STATIC_URL</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">override_settings</span><span class="p">(</span><span class="n">STATIC_URL</span><span class="o">=</span><span class="n">static_url</span><span class="p">):</span>
+            <span class="n">template</span> <span class="o">=</span> <span class="n">loader</span><span class="o">.</span><span class="n">get_template</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">template_name</span><span class="p">)</span>
+            <span class="n">context</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_context_data</span><span class="p">(</span><span class="o">**</span><span class="p">{})</span>
+            <span class="n">request_context</span> <span class="o">=</span> <span class="n">RequestContext</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
+            <span class="n">html</span> <span class="o">=</span> <span class="n">template</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">request_context</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">html</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, Alex Hayes.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.1.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

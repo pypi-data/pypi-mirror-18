@@ -1,0 +1,1 @@
+{"": "", "Bookmark this": "", "Notepad": "", "Save As...": "Spremi kao...", "Tab": "Kartica", "New": "", "Bookmarks": "", "Save": "Spremi", "Open": ""}

@@ -1,0 +1,1 @@
+{"": "", "Bookmark this": "S\u0131k\u00e7a kullan\u0131lanlara ekle", "Notepad": "Notepad", "Save As...": "Farkl\u0131 kaydet...", "Tab": "Sekme", "New": "Yeni", "Bookmarks": "S\u0131k\u00e7a kullan\u0131lanlar", "Save": "Kaydet", "Open": "A\u00e7"}

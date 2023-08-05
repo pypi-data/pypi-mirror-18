@@ -1,0 +1,1 @@
+{"": "", "Bookmark this": "Aldoni legosignon", "Notepad": "", "Save As...": "Konservi kiel...", "Tab": "Langeto", "New": "Nova", "Bookmarks": "Legosignoj", "Save": "Konservi", "Open": "Malfermi"}

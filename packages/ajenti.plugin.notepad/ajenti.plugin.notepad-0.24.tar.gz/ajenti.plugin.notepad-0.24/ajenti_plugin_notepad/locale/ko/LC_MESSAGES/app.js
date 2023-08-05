@@ -1,0 +1,1 @@
+{"": "", "Bookmark this": "\ubd81\ub9c8\ud06c\uc5d0 \ucd94\uac00", "Notepad": "\uba54\ubaa8\uc7a5", "Save As...": "\ub2e4\ub978 \uc774\ub984\uc73c\ub85c \uc800\uc7a5...", "Tab": "\ud0ed", "New": "\uc0c8 \ud30c\uc77c", "Bookmarks": "\ubd81\ub9c8\ud06c", "Save": "\uc800\uc7a5", "Open": "\uc5f4\uae30"}

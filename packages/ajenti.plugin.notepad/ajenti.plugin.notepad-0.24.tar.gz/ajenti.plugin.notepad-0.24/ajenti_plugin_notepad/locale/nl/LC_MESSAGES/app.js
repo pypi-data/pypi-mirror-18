@@ -1,0 +1,1 @@
+{"": "", "Bookmark this": "Voeg toe aan favorieten", "Notepad": "Kladblok", "Save As...": "Opslaan als...", "Tab": "Tabblad", "New": "Nieuw", "Bookmarks": "Bladwijzers", "Save": "Opslaan", "Open": "Open"}

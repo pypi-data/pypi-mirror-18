@@ -1,0 +1,1 @@
+{"": "", "Bookmark this": "Lesezeichen hinzuf\u00fcgen", "Notepad": "Texteditor", "Save As...": "Speichern unter...", "Tab": "Tab", "New": "Neu", "Bookmarks": "Favoriten", "Save": "Speichern", "Open": "\u00d6ffnen"}

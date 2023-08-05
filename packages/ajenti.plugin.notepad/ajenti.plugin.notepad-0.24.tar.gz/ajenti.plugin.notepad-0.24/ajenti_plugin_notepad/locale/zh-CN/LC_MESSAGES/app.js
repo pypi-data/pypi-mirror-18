@@ -1,0 +1,1 @@
+{"": "", "Bookmark this": "\u672c\u4e66\u7b7e", "Notepad": "\u8bb0\u4e8b\u672c", "Save As...": "\u53e6\u5b58\u4e3a...", "Tab": "\u6807\u7b7e", "New": "\u65b0\u5efa", "Bookmarks": "\u4e66\u7b7e", "Save": "\u4fdd\u5b58", "Open": "\u6253\u5f00"}

@@ -1,0 +1,1 @@
+{"": "", "Bookmark this": "Vytvo\u0159it z\u00e1lo\u017eku", "Notepad": "Pozn\u00e1mkov\u00fd blok", "Save As...": "Ulo\u017eit jako...", "Tab": "Karta", "New": "Nov\u00fd", "Bookmarks": "Z\u00e1lo\u017eky", "Save": "Ulo\u017eit", "Open": "Otev\u0159\u00edt"}

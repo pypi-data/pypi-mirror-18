@@ -1,0 +1,1 @@
+{"": "", "Bookmark this": "Dodaj med zaznamke", "Notepad": "Bele\u017enica", "Save As...": "Shrani kot...", "Tab": "Tab", "New": "Novo", "Bookmarks": "Zaznamki", "Save": "Shrani", "Open": "Odpri"}

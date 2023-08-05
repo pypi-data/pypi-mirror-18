@@ -1,0 +1,1 @@
+{"": "", "Bookmark this": "Afegir aix\u00f2 a favorits", "Notepad": "", "Save As...": "", "Tab": "", "New": "", "Bookmarks": "Adreces d'inter\u00e8s", "Save": "Desar", "Open": ""}

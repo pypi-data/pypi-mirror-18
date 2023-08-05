@@ -1,0 +1,113 @@
+#! /usr/bin/env python
+#
+# Usage: rsbac-symlink-redirect
+#
+# Copyright (C) 2014 Jens Kasten <jens@kasten-edv.de>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>
+#
+
+import argparse
+
+from rsbactools import rsbac
+
+
+def set_symlink_redirect(directory, symlink, status, verbose):
+    cmd = ["SYMLINK", directory, symlink, status]
+    return rsbac.Rsbac(verbose).attr_set_file_dir(cmd)
+
+def get_symlink_redirect(directory, symlink, verbose):
+    cmd = ["FD", symlink, directory]
+    return rsbac.Rsbac(verbose).attr_get_fd(cmd)
+
+def get_modules():
+    modules = {
+        "ip": "symlink_add_remote_ip",
+        "uid": "symlink_add_uid",
+    }
+   
+    for module in rsbac.Rsbac(True).get_modules("on")["Module"].keys():
+        if module == "RC":
+            modules["rc-role"] = "symlink_add_rc_role"
+        if module == "MAC":
+            module["mac"] = "symlink_add_mac_level"
+    return modules
+
+def main():
+
+    choices = ["on", "off", "show"]
+
+    modules = get_modules()
+    status_sub = {"on": "1", "off": "0"}
+    ip_range = ["1", "2", "3", "4"]
+
+    parser = argparse.ArgumentParser(
+    	description="Set symlink redirect for /tmp.")
+  
+    parser.add_argument("-v", "--verbose", default=False, action="store_true",
+        help="show the command thats executed")
+    parser.add_argument("-m", "--module", choices=modules, default=False,
+        help="set module")
+    parser.add_argument("--ip-range", choices=ip_range, default=False, 
+        help="must set when -m ip and status is on")
+    parser.add_argument("-d", "--directory", default="/tmp", type=str,
+        metavar="tmp directory",
+        help="tmp directory to use.")
+    parser.add_argument("status", choices=choices, default=False,
+        nargs="?",            
+        help="set a status for symlink redirection or show")
+
+    args = parser.parse_args()
+    if args.module == "ip" and (args.status == "on" or args.status == "off"):
+        if not args.ip_range:
+            parser.error("Option -m ip need a valid bytes range from: %s" % ip_range)
+
+    if args.status is False:
+        parser.print_help()
+        return 
+
+    if args.status and args.status != "show":
+        if not args.module:
+            parser.error("need a module")
+        symlink = modules[args.module]
+        action = status_sub[args.status]
+        if args.module == "ip" and action == "1":
+            action = str(args.ip_range)
+
+    if args.status == "show":
+        if args.module:
+            symlink = modules[args.module]
+            value, error = get_symlink_redirect(args.directory, symlink, args.verbose)
+            if error:
+                print(error)
+                return
+
+            value = value.split()[2]
+            print("Redirect on '%s' for %s: %s" % (args.directory, symlink, value))
+            return
+        for symlink in sorted(modules.values()):
+             value, error = get_symlink_redirect(args.directory, symlink, args.verbose)
+             if error:
+                 print(value.decode())
+                 continue
+             value = value.split()[2]
+             print("Redirect on '%s' for %s: %s" % (args.directory, symlink, value))
+    else:
+        value, error = set_symlink_redirect(args.directory, symlink, action, args.verbose)
+        if error:
+            print(value)
+
+
+if __name__ == "__main__":
+    main()

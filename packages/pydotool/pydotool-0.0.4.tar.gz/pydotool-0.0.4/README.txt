@@ -1,0 +1,4 @@
+This is a Python based digital ocean tool for mainly for SSHing into DO droplets managing the IP addresses by hand.
+It requires the droplet list from DO to be served as JSON as service URL.
+
+Future version will accept DigitalOcean API access key to sync the droplet info locally.

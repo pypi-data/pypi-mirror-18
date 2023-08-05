@@ -1,0 +1,1 @@
+{"": "", "Interface": "Interfejs", "/s": "/s", "Traffic": "Ruch"}

@@ -1,0 +1,58 @@
+language: node_js
+
+sudo: required
+dist: trusty
+
+node_js:
+    - 5.1
+
+addons:
+  firefox: "30.0"
+
+env:
+  - BROWSER='Chrome'  USE_ES6=false
+  - BROWSER='Chrome'  USE_ES6=true
+  - BROWSER='Firefox' USE_ES6=false
+  - BROWSER='Firefox' USE_ES6=true
+  - BROWSER='Opera'   USE_ES6=false
+  - BROWSER='Opera'   USE_ES6=true
+
+before_install:
+  - >
+    if [[ "$USE_ES6" == true ]]; then
+        wget -P /tmp/ https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+        wget -P /tmp/ http://download1.operacdn.com/pub/opera/desktop/39.0.2256.48/linux/opera-stable_39.0.2256.48_amd64.deb
+        wget -P /tmp/ https://ftp.mozilla.org/pub/firefox/releases/45.0.2/linux-x86_64/fr/firefox-45.0.2.tar.bz2
+    fi
+  - >
+    if [[ "$USE_ES6" == false ]]; then
+        wget -P /tmp/ http://download1.operacdn.com/pub/opera/desktop/27.0.1689.54/linux/opera-stable_27.0.1689.54_amd64.deb
+    fi
+
+install:
+  - sudo apt-get update
+  # Download and install version of Chrome/Opera/Firefox which supports ES6 Class.
+  - >
+    if [[ "$USE_ES6" == true ]]; then
+        sudo apt-get install -y libappindicator1 fonts-liberation
+        sudo dpkg -i /tmp/google-chrome*.deb /tmp/opera-stable_39*.deb
+        mkdir /tmp/firefox-45.0.2
+        tar -xjf /tmp/firefox-45.0.2.tar.bz2 --directory /tmp/firefox-45.0.2
+        export PATH="/tmp/firefox-45.0.2/firefox:$PATH"
+    fi
+  # Just download Opera, Chromium and Firefox are already installed
+  - >
+      if [[ "$USE_ES6" == false ]]; then
+          sudo dpkg -i /tmp/opera-stable_27*.deb
+      fi
+  - npm install
+
+before_script:
+  - export DISPLAY=:99.0
+  - sh -e /etc/init.d/xvfb start
+  - echo "Firefox version => $(firefox -v)"
+  - echo "Chromium version => $(chromium-browser --version)"
+  - echo "Opera version => $(opera --version)"
+  - echo "Using ES6? => " $USE_ES6
+
+script: npm test

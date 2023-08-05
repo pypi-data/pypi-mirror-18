@@ -1,0 +1,41 @@
+language: python
+sudo: false
+env:
+  global:
+    - LD_PRELOAD=/lib/x86_64-linux-gnu/libSegFault.so
+    - SEGFAULT_SIGNALS=all
+matrix:
+  include:
+    - python: '3.5'
+      env: TOXENV=check
+    - python: '3.5'
+      env: TOXENV=docs
+{% for env in tox_environments %}{{ '' }}
+    - python: '{% if env.startswith('pypy-') %}pypy{% else %}{{ env[2] }}.{{ env[3] }}{% endif %}'
+      env: TOXENV={{ env }}{% if 'cover' in env %},coveralls,codecov{% endif -%}
+{% endfor %}
+
+before_install:
+  - python --version
+  - uname -a
+  - lsb_release -a
+install:
+  - pip install -U tox setuptools wheel $(python -V |& grep -q 'Python 3.2' && echo 'pip<8.0 virtualenv<14.0')
+  - virtualenv --version
+  - easy_install --version
+  - pip --version
+  - tox --version
+script:
+  - tox -v
+after_failure:
+  - more .tox/log/* | cat
+  - more .tox/*/log/* | cat
+before_cache:
+  - rm -rf $HOME/.cache/pip/log
+cache:
+  directories:
+    - $HOME/.cache/pip
+notifications:
+  email:
+    on_success: never
+    on_failure: always

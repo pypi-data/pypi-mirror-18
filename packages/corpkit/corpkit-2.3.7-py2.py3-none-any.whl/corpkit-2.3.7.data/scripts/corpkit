@@ -1,0 +1,35 @@
+#!python
+
+"""
+A script to start the corpkit interpeter with options
+"""
+
+import sys
+import os
+
+# determine if we're running a script
+if len(sys.argv) > 1 and os.path.isfile(sys.argv[-1]):
+    fromscript = sys.argv[-1]
+else:
+    fromscript = False
+
+# run a command a la python -c
+command = sys.argv[sys.argv.index('-c') + 1] if '-c' in sys.argv else False
+
+debug = any(i in sys.argv for i in ['--debug', '-d', 'debug'])
+quiet = any(i in sys.argv for i in ['--q', '--quiet'])
+load = any(i in sys.argv for i in ['--load', '-l'])
+profile = any(i in sys.argv for i in ['--profile', '-p'])
+version = any(i in sys.argv for i in ['--version', '-v'])
+if version:
+    import corpkit
+    print(corpkit.__version__)
+elif any(i in sys.argv for i in ['--help', '-h']):
+    from corpkit.env import help_text
+    import pydoc
+    pydoc.pipepager(help_text, cmd='less -X -R -S') 
+else:
+    from corpkit.env import interpreter
+    interpreter(debug=debug, fromscript=fromscript,
+                quiet=quiet, python_c_mode=command,
+                profile=profile, loadcurrent=load)

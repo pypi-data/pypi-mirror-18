@@ -1,0 +1,54 @@
+#!/usr/bin/python
+
+import argparse, json
+import song_generator
+from generator import write_mid, generate
+
+def main():
+    parser = argparse.ArgumentParser(description = 'Parser for ninopianino')
+    sub_parsers = parser.add_subparsers()
+
+    song_gen = sub_parsers.add_parser('generate_song', description = 'Generates a completely random song without using a template. ')
+    song_gen.set_defaults(sub = 'song_gen')
+
+    template_gen = sub_parsers.add_parser('use_template', description = 'Loads a json file and generates a song with it. How the json template looks is documented in the readme. ')
+    template_gen.set_defaults(sub = 'template_gen')
+
+    song_gen.add_argument('--soundfont', help = "Path to the soundfont used to render the mid. If soundfont isn't supplied, then you must use the --use_config argument and supply a 'soundfont' kwarg, otherwise the command won't work. ", default = None)
+    song_gen.add_argument('--output', help = "Path where the song should be saved to. Defaults to /tmp. ", default = '/tmp/')
+    song_gen.add_argument('--use_config', help = "Path to the configuration. If you need help writing a config, refer to the readme. You must either use the --soundfont argument or supply the 'soundfont' kwarg in the config. ")
+
+    template_gen.add_argument('--input', help = 'Path to the json template. ', required = True)
+    template_gen.add_argument('--soundfont', help = 'Path to the soundfont. Will not work without a soundfont. ', required = True)
+    template_gen.add_argument('--output', help = 'Path to the output. Defaults to /tmp/template_gen.wav.', default = '/tmp/template_gen')
+    template_gen.add_argument('--no_tracks', help = 'Number of tracks. Default is 100. ', default = 100)
+
+
+    args = parser.parse_args()
+
+    if args.sub == 'song_gen':
+        kwargs = {}
+        if args.use_config:
+            with open(args.use_config, 'r') as f:
+                kwargs = json.loads(f.read())
+        if not args.soundfont and not kwargs.get('soundfont'): 
+            print "No soundfont specified. Please either use the --soundfont argument or supply a 'soundfont' argument in your config. "
+            exit()
+        if args.soundfont:
+            kwargs['soundfont'] = args.soundfont
+            print 'Setting soundfont to : ', args.soundfont
+        if args.output != '/tmp/': 
+            kwargs['generate_dir'] = args.output
+        song_generator.generate_song(**kwargs)
+
+    elif args.sub == 'template_gen':
+        output = args.output
+        blocks = json.loads(open(args.input, 'r').read())
+        no_tracks = args.no_tracks
+  
+        mid = generate(blocks, no_tracks)
+        write_mid(mid, args.output, args.soundfont)
+
+
+
+main()

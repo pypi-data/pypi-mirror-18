@@ -1,0 +1,219 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+
+from collections import OrderedDict
+import argparse
+import os
+import atexit
+from subprocess import call
+
+import pandas as pd
+
+from epic.version import __version__
+
+parser = argparse.ArgumentParser(
+    description="""Diffuse domain ChIP-Seq caller based on SICER.
+
+(Visit github.com/endrebak/epic for examples and help.)
+
+    """,
+    prog=os.path.basename(__file__))
+
+parser.add_argument(
+    '--treatment',
+    '-t',
+    required=True,
+    type=str,
+    nargs='+',
+    help='''Treatment (pull-down) file(s) in (b/gzipped) bed/bedpe format.
+                   ''')
+
+parser.add_argument(
+    '--control',
+    '-c',
+    required=True,
+    type=str,
+    nargs='+',
+    help='''Control (input) file(s) in (b/gzipped) bed/bedpe format.''')
+
+parser.add_argument(
+    '--number-cores',
+    '-cpu',
+    required=False,
+    default=1,
+    type=int,
+    help=
+    '''Number of cpus to use. Can use at most one per chromosome. Default: 1.''')
+
+parser.add_argument('--genome',
+                    '-gn',
+                    required=False,
+                    default="hg19",
+                    type=str,
+                    help='''Which genome to analyze. Default: hg19.''')
+
+parser.add_argument(
+    '--keep-duplicates',
+    '-k',
+    required=False,
+    default=False,
+    type=bool,
+    help=
+    '''Keep reads mapping to the same position on the same strand within a library. Default is to remove all but the first duplicate.
+                   ''')
+
+parser.add_argument(
+    '--window-size',
+    '-w',
+    required=False,
+    default=200,
+    type=int,
+    help=
+    '''Size of the windows to scan the genome. WINDOW_SIZE is the smallest possible island. Default 200.
+                   ''')
+
+parser.add_argument(
+    '--gaps-allowed',
+    '-g',
+    required=False,
+    default=3,
+    type=int,
+    help=
+    '''Multiple of window size used to determine the gap size. Must be an integer. Default: 3.
+                   ''')
+
+parser.add_argument(
+    '--fragment-size',
+    '-fs',
+    required=False,
+    default=150,
+    type=int,
+    help=
+    '''Size of the sequenced fragment. The center of the the fragment will be taken as half the fragment size. Default 150.
+                   ''')
+
+parser.add_argument(
+    '--false-discovery-rate-cutoff',
+    '-fdr',
+    required=False,
+    default=1.0,
+    type=float,
+    help=
+    '''Remove all islands with an FDR below cutoff. Default 1.0 (i.e. all found islands included no matter how bad the adjusted p-value.).
+                   ''')
+
+parser.add_argument(
+    '--effective_genome_size',
+    '-egs',
+    required=False,
+    type=float,
+    help=
+    '''Use a different effective genome fraction than the one included in epic. The default value depends on the genome and readlength, but is a number between 0 and 1.''')
+
+
+parser.add_argument(
+    '--chromsizes',
+    '-cs',
+    required=False,
+    type=str,
+    help=
+    '''Set the chromosome lengths yourself in a file with two columns: chromosome names and sizes. Useful to analyze custom genomes, assemblies or simulated data. Only chromosomes included in the file will be analyzed.''')
+
+parser.add_argument(
+    '--store-matrix',
+    '-sm',
+    required=False,
+    type=str,
+    help=
+    '''Store the matrix of counts per bin for ChIP and input to gzipped file <STORE_MATRIX>.''')
+
+parser.add_argument(
+    '--bigwig',
+    '-bw',
+    required=False,
+    type=str,
+    help=
+    '''For each file, store a bigwig of both enriched and non-enriched regions to folder <BIGWIG>. Requires different basenames for each file.''')
+
+parser.add_argument(
+    '--sum-bigwig',
+    '-sbw',
+    required=False,
+    type=str,
+    help=
+    '''Store two bigwigs - one of ChIP, one of input - to folder <SUM-BIGWIG>.''')
+
+parser.add_argument(
+    '--bed',
+    '-b',
+    required=False,
+    type=str,
+    help=
+    '''A summary bed file of all regions for display in the UCSC genome browser or downstream analyses with e.g. bedtools. The score field is log2(#ChIP/#Input) * 100 capped at a 1000.''')
+
+parser.add_argument('--paired-end',
+                    '-pe',
+                    action="store_true",
+                    help='''Use paired end data (bedpe).''')
+
+parser.add_argument('--version',
+                    '-v',
+                    action='version',
+                    version='%(prog)s {}'.format(__version__))
+"""
+Note:
+    The suggested settings for the different types of modifications are as following:
+        H3K27me3: --window-size=200 --gaps=3
+        H3K4me3:  --window-size=200 --gaps=1
+"""
+
+# from docopt import docopt
+
+import logging
+from sys import argv
+
+from epic.utils.find_readlength import (find_readlength,
+                                        get_closest_readlength)
+from epic.config.genomes import (get_effective_genome_length,
+                                 create_genome_size_dict, create_genome_size_dict_custom_genome)
+
+
+import warnings
+warnings.filterwarnings("ignore",
+                        category=UserWarning,
+                        module="rpy2")  # rpy2 is noisy
+
+if __name__ == '__main__':
+
+
+    args = parser.parse_args()
+    print("# epic " + " ".join(argv[1:]))
+    logging.info("# epic " + " ".join(argv[
+        1:]) + " # epic_version: {}, pandas_version: {}".format(
+            __version__, pd.__version__))
+
+    from sys import argv
+
+    from epic.run.run_epic import run_epic
+    from epic.config import logging_settings
+
+    # in case the user entered no effective genome size
+    if not args.effective_genome_size and not args.paired_end:
+        estimated_readlength = find_readlength(args)
+        closest_readlength = get_closest_readlength(estimated_readlength)
+        args.effective_genome_size = get_effective_genome_length(
+            args.genome, closest_readlength)
+    # for paired end the effective genome size is max
+    elif not args.effective_genome_size and args.paired_end:
+        logging.info("Using paired end so setting readlength to 100.")
+        args.effective_genome_size = get_effective_genome_length(args.genome,
+                                                                 100)
+
+    if not args.chromsizes:
+        args.chromosome_sizes = create_genome_size_dict(args.genome)
+    else:
+        args.chromosome_sizes = create_genome_size_dict_custom_genome(args.chromsizes)
+        args.effective_genome_size *= sum(args.chromosome_sizes.values())
+
+    run_epic(args)

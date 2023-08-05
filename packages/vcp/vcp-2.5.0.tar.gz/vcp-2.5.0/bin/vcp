@@ -1,0 +1,123 @@
+#!/usr/bin/python
+# PYTHON_ARGCOMPLETE_OK
+
+import argparse
+import argcomplete
+import os
+import json
+import inspect
+import sys
+import logging
+import logging.handlers
+from datetime import datetime, timedelta
+
+from voidpp_tools.json_encoder import JsonEncoder
+from voidpp_tools.json_config import JSONConfigLoader
+from voidpp_tools.config_loader import ConfigFileNotFoundException
+
+script_start = datetime.now()
+
+import vcp
+from vcp import VCP, CONFIG_FILE_NAME
+from vcp.exceptions import ProjectException, RepositoryException
+from vcp.cli_arguments_tree_parser import CLIArgumentsTreeParser
+from vcp.project_handler_base import ProjectHandlerFactory
+import vcp.project_handlers # NOQA (the project handlers must be registered the factory)
+from vcp.tools import ColoredFormatter
+
+# the generic argument parser is not ready at this time, but logging info must be set here
+debug_mode = '--debug' in sys.argv
+
+# initialize logger
+logger = logging.getLogger('vcp')
+logger.setLevel(logging.DEBUG)
+
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setFormatter(ColoredFormatter(debug_mode))
+console_handler.setLevel(logging.DEBUG if debug_mode else logging.INFO)
+logger.addHandler(console_handler)
+
+config_loader = JSONConfigLoader(vcp.__file__)
+
+try:
+    config_loader.load(CONFIG_FILE_NAME)
+except ConfigFileNotFoundException:
+    try:
+        raw_input("Config file not found. Would you like to create an empty one? (yes: enter, no: ctrl+c)")
+        with open(os.path.expanduser('~/.vcp'), 'w') as f:
+            f.write('{}')
+        config_loader.load(CONFIG_FILE_NAME)
+    except KeyboardInterrupt:
+        print("")
+        exit()
+
+config_dir = os.path.dirname(config_loader.filename)
+
+log_file = os.path.join(config_dir, '.vcp.log')
+file_handler = logging.handlers.RotatingFileHandler(log_file, maxBytes = 1024*1024, backupCount = 5)
+file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(name)s: %(message)s"))
+logger.addHandler(file_handler)
+
+logger.debug("Logger successfully initialized, start the application.")
+
+# create VCP instance
+vcp = VCP(config_loader)
+
+logger.debug("VCP config processed: {} ms".format((datetime.now() - script_start).total_seconds() * 1000))
+
+# refactor this "if-else" to a cycle if there is a 3rd source
+if 'VCP_DEFAULT_PROJECT' in os.environ:
+    default_project = os.environ.get('VCP_DEFAULT_PROJECT', None)
+    logger.debug("Default project set to '%s' by environment" % default_project)
+else:
+    default_project = vcp.default_project
+    logger.debug("Default project set to '%s' by config" % default_project)
+
+if default_project and default_project not in vcp.projects.keys():
+    if vcp.warnings['unknown_default_project']:
+        logger.warning("Default project '%s' is unknown! Ignored." % default_project)
+    default_project = None
+
+commands = vcp.get_cli_config(default_project)
+
+if vcp.project_handler:
+    vcp.project_handler.post_process_cli_config(commands)
+
+parser = CLIArgumentsTreeParser(commands, 'vcp', argparse.ArgumentParser())
+parser.build()
+argcomplete.autocomplete(parser.parser, exclude = ['-h', '--help'])
+parser.parser.add_argument('--debug', action = 'store_true')
+logger.debug("Initialization time: {} ms".format((datetime.now() - script_start).total_seconds() * 1000))
+data = parser.parse()
+
+logger.debug("Parsed command line data: %s" %  data)
+
+def search_and_remove_debug_flag(data):
+    if 'sub' in data:
+        search_and_remove_debug_flag(data['sub'])
+    if 'args' in data and 'debug' in data['args']:
+        del data['args']['debug']
+
+search_and_remove_debug_flag(data)
+
+def fetch(arg_data, handler):
+    name = arg_data.name.replace('-', '_')
+    if not hasattr(handler, name):
+        raise Exception("Programming error: unknown subhandler '{}' in handler: '{}'".format(name, handler))
+
+    attr = getattr(handler, name)
+
+    if 'sub' in arg_data:
+        fetch(arg_data['sub'], attr())
+    elif 'args' in arg_data:
+        attr(**arg_data['args'])
+    else:
+        attr()
+
+try:
+    fetch(data['sub'], vcp)
+except Exception as e:
+    raise
+finally:
+    time = ((datetime.now() - script_start).total_seconds() * 1000)
+    logger.debug("Full execution time: {} ms ({})".format(time, timedelta(milliseconds = time)))

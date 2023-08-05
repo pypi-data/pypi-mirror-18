@@ -1,0 +1,265 @@
+Metadata-Version: 1.1
+Name: mssqlcli
+Version: 1.0.2
+Summary: Python CLI for Microsoft SQL.
+Home-page: https://github.com/rtrox/mssqlcli
+Author: Russell Troxel
+Author-email: russelltroxel@gmail.com
+License: GPLv3
+Description: MS-SQL Command Line Interface (mssqlcli)
+        ========================================
+        
+        |PyPI| |Build Status| |Coverage Status|
+        
+        MS-SQL CLI is a unix command line tool for accessing and running
+        arbitrary queries against an Microsoft SQL database.
+        
+        Binary Dependencies
+        -------------------
+        
+        -  `FreeTDS <http://www.freetds.org/>`__ - Binary Library providing
+           access to MSSQL and Sybase DBs.
+        
+        Installation
+        ------------
+        
+        1. Install the FreeTDS Library
+        
+           -  Debian/Ubuntu: ``sudo apt-get install freetds-dev``
+           -  Mac OSX: ``brew install freetds``
+        
+        2. Install pymssql
+        
+           -  pip install -e
+              git+https://github.com/pymssql/pymssql.git#egg=pymssql-2.1.2
+           -  This is currently necessary due to `a bug in
+              pymssql <https://github.com/pymssql/pymssql/issues/432>`__.
+        
+        3. Clone this repo locally
+        4. Install client ``python setup.py install``
+        
+        Configuration
+        -------------
+        
+        Configuration is handled with a single YAML configuration file, located
+        by default at ``~/.config/mssqlcli.yml``.
+        
+        Example Config:
+        
+        .. code:: yaml
+        
+            keyring_app_name: another_app # Optional, defaults to mssqlcli
+            username: USE_KEYRING("global:LDAPUser")
+            password: USE_KEYRING("global:LDAP")
+            # OR
+            # username: my_plaintext_username
+            # password: my_plaintext_password
+            server: MY_MSSQL.example.com
+        
+            # The below is optional, and should be used if
+            # Windows Auth will be used instead of MSSQL Auth.
+            windows_authentication: true
+            domain: MY_DOMAIN
+        
+        Usage
+        -----
+        
+        .. code:: bash
+        
+            ~ [ mssqlcli --help Usage: mssqlcli [OPTIONS] COMMAND [ARGS]...
+        
+            Options:
+              --version  Show the version and exit.
+              -c, --config-file PATH   Override default config file location
+                                       (default: ~/.config/pymssql.yml).
+              -o, --output [json|csv|pretty]
+              --help  Show this message and exit.
+        
+            Commands:
+              query           Run a query against an MS-SQL Database.
+              template_query
+        
+            ~ [ mssqlcli query --help
+            Usage: mssqlcli query [OPTIONS] QUERY
+        
+            Options:
+              --help                   Show this message and exit.
+        
+            ~ [ mssqlcli template_query --help
+            Usage: mssqlcli template_query [OPTIONS] QUERY
+        
+            Options:
+              -v, --variable TEXT   Variable for substitution in template. ex:"-v
+                                    first_name:russell" to replace {{ first_name }}
+              --help                Show this message and exit.
+        
+        Examples
+        --------
+        
+        The general usage model is to store your SQL queries in flat files, and
+        access them with the CLI client. Personally, I store my queries in
+        ~/sql\_queries.
+        
+        Run Query and return results as a json blob
+        
+        .. code:: bash
+        
+            mssqlcli query {path to query}.sql
+        
+        Run query and return results in CSV format
+        
+        .. code:: bash
+        
+            mssqlcli query -o csv {path to query}.sql
+        
+        Redirect csv to File
+        
+        .. code:: bash
+        
+            mssqlcli query -o csv {path to query}.sql > results.csv
+        
+        Run query and return results as a nicely formatted table
+        
+        .. code:: bash
+        
+            mssqlcli query -o pretty {path to query}.sql
+        
+        Send a template query to the server in file {path to query}.sql.
+        
+        .. code:: bash
+        
+            mssqlcli template_query -v 'last_name: Ugur' {path to query}.sql
+        
+        Template Queries
+        ~~~~~~~~~~~~~~~~
+        
+        An example of a templated SQL query is also given below. These are the
+        kind of queries that can be used alongside template\_query command.
+        
+        .. code:: bash
+        
+            SELECT * FROM bogus_db.users WHERE last_name = "{{ last_name }}";
+        
+        .. |PyPI| image:: https://img.shields.io/pypi/v/mssqlcli.svg
+           :target: https://pypi.python.org/pypi/mssqlcli
+        .. |Build Status| image:: https://img.shields.io/travis/rtrox/mssqlcli/master.svg
+           :target: https://travis-ci.org/rtrox/mssqlcli
+        .. |Coverage Status| image:: https://img.shields.io/coveralls/rtrox/mssqlcli/master.svg
+           :target: https://coveralls.io/github/rtrox/mssqlcli?branch=master
+        
+        Contributing
+        ============
+        
+        MS-SQL CLI is an open-source project, hosted `on
+        GitHub <https://github.com/rtrox/mssqlcli>`__. All Contributors are
+        welcome, a current list of open issues is available
+        `here <https://github.com/rtrox/mssqlcli/issues>`__.
+        
+        Development Environment
+        -----------------------
+        
+        No additional dependencies are required for development, simpy follow
+        the installation instructions. We recommend that you use
+        ``python setup.py develop``, rather than ``install`` to allow quick code
+        changes.
+        
+        Testing
+        -------
+        
+        To test your code prior to submission, simply:
+        
+        .. code:: bash
+        
+            python setup.py test
+        
+        This will ensure that tox and virtualenv are installed, and then run the
+        test suite against the interpreters available locally.
+        
+        Acceptance Criteria
+        -------------------
+        
+        -  Pull requests should follow full pep8 guidelines (the above testing
+           will verify this).
+        -  Pull requests should not reduce test coverage.
+        -  Pull requests should have thought-out test cases for any new code.
+        
+        The above requirements are verified via Travis-CI and Coveralls for
+        Python versions 2.7, 3.4, and 3.5.
+        
+        1.0.2 (2016-10-25)
+        ------------------
+        
+        New
+        ~~~
+        
+        - Add gitchangelog configuration, CONTRIBUTING.md. (#54) [Russell
+          Troxel]
+        
+          - Adds a ``CONTRIBUTING.md`` File to provide guildelines around development and pull requests.
+          - Adds a .gitchangelog.rc file to start programmatically generating ``CHANGELOG.rst`` files for PyPI releases.
+        
+        Other
+        ~~~~~
+        
+        - Stage Release v1.0.2. [Russell Troxel]
+        
+        - Resolve mssql.drivers issue (#50) with setup.py. (#51) [Russell
+          Troxel]
+        
+          * Resolve mssql.drivers issue (#50) with setup.py.
+        
+          * Resolve mssql.drivers issue (#50) with setup.py.
+        
+          * Resolve mssql.drivers issue (#50) with setup.py.
+        
+        - Automate PanDoc conversion during registration. (#49) [Russell Troxel]
+        
+        - Update README files: usage and examples (#48) [İlim Uğur]
+        
+          * Update readme files for the new usage.
+        
+          * Add template_query command and fix minor prior issues from manual editing.
+        
+          * Add example usage of template_query and templated SQL query.
+        
+        - Set default option to `pretty`, updated options & renamed both tests
+          (#46) [the-zebulan]
+        
+          * Set default option to 'pretty'
+        
+          * Updated options and renamed both tests, #34
+        
+        - Implement template_query subcommand. (#45) [Russell Troxel]
+        
+        - Add --version flag (#33) (#38) [Dmitriy]
+        
+          Closes #33
+          * Add --version flag (#33)
+        
+          * PEP8 fix
+        
+        - Version bump to 1.0.1b (#37) [Russell Troxel]
+        
+        - Version bump to 1.0.1a (#35) [Russell Troxel]
+        
+        - Add shield.io badges (#31) [Thomas Nys]
+        
+        - Stage Release 1.0.1 (#29) [Russell Troxel]
+        
+        - Closes #12: Allow testing via setup.py test - Calls Tox. (#28)
+          [Russell Troxel]
+        
+        
+        
+Keywords: microsoft,sql,mssql
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: System Administrators
+Classifier: Topic :: Database :: Front-Ends
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: Unix
+Classifier: Operating System :: POSIX
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3.5

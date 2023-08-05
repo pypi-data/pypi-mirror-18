@@ -1,0 +1,70 @@
+Ez Spotity DL
+=============
+
+Don't you think would be cool if you could donwload your playlists from your Spotify account, don't you?
+So, the **Ez Spotify DL** can do that for you. Plus, in an easy way.
+
+
+
+## Install
+
+Assuming that you have *pip* installed, open the console/terminal execute:
+
+```bash
+$ pip install ez-spotify-dl
+```
+
+use --user flag if you don't want to install on system-wide mode
+
+```bash
+$ pip install --user ez-spotify-dl
+```
+or download/clone the package, go to project folder and
+
+```bash
+$ python setup.py install
+```
+
+as the same as using pip you can insert the --user flag
+
+```bash
+$ python setup.py install --user
+```
+
+## Usage
+
+1 - Getting Spotify's api authorization.
+
+```bash
+$ spotify_dl --authorize
+```
+**HINT:** At this moment you will be guided by **Ez Spotify DL**, just follow the interactive instructions that will appear to you. So, you don't need to follow this usage guide if you don't wanna. I really think that **Ez Spotify DL** interactive instructions are enough.
+Well, it's up to you.
+
+2 - Insert your Spotify username.
+
+3 - Open your web browser and go to http://localhost:5000.
+
+4 - Authenticate.
+
+5 - Go back to terminal where you started the **Ez Spotify DL** and press CTRL+C.
+
+6 - Execute:
+```bash
+$ spotify_dl -d <path_where_you_want_download_your_playlists>
+```
+
+7 - Wait your playlists get downloaded.
+
+
+For more information execute:
+```bash
+$ spotify_dl -h
+```
+
+That's all.
+
+
+
+
+

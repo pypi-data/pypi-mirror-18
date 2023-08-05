@@ -1,0 +1,37 @@
+{% load i18n %}
+<div class="moocher moocher--stripe">
+<button type="button" id="stripeButton">{{ moocher.title }}</button>
+
+<script src="https://checkout.stripe.com/checkout.js"></script>
+
+<script>
+  var handler = StripeCheckout.configure({
+    key: '{{ publishable_key }}',
+    // image: '/img/documentation/checkout/marketplace.png',
+    currency: 'CHF',
+    name: document.title,
+    description: '{% trans "Payment" %}',  // TODO something better
+    locale: '{{ LANGUAGE_CODE|default:'auto' }}',
+    token: function(token) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '{% url "mooch:stripe_charge" %}', true);
+      xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+      xhr.onload = function() {
+        window.location.href = '{{ moocher.success_url }}';  // TODO
+      };
+      xhr.send(
+          'id=' + encodeURIComponent('{{ payment.id.hex }}') +
+          '&token=' + encodeURIComponent(token.id));
+    }
+  });
+
+document.querySelector('.moocher--stripe button').addEventListener('click', function(e) {
+  e.preventDefault();
+
+  handler.open({amount: {{ payment.amount_cents }} });
+});
+
+window.addEventListener('popstate', function() { handler.close(); });
+</script>
+
+</div>

@@ -1,0 +1,52 @@
+---
+resources:
+    {% for sg in security_groups %}
+    {{sg.name}}:
+      Type: "AWS::EC2::SecurityGroup"
+      Properties:
+        GroupDescription: "{{sg.description}}"
+        VpcId: {{vpc}}
+        {% if sg.egress_rules %}
+        SecurityGroupEgress:
+            {% for rule in sg.egress_rules %}
+            - IpProtocol: {{rule.ip_protocol}}
+              {% if rule.cidr_ip %}
+              CidrIp: {{rule.cidr_ip}}
+              {% endif %}
+              {% if rule.from_port %}
+              FromPort: {{rule.from_port}}
+              {% endif %}
+              {% if rule.to_port %}
+              ToPort: {{rule.to_port}}
+              {% endif %}
+              {% if sg.source_security_group %}
+              SourceSecurityGroupId: {{sg.source_security_group}}
+              {% endif %}
+            {% endfor %}
+        {% endif %}
+        {% if sg.ingress_rules %}
+        SecurityGroupIngress:
+            {% for rule in sg.ingress_rules %}
+            - IpProtocol: {{rule.ip_protocol}}
+              {% if rule.cidr_ip %}
+              CidrIp: {{rule.cidr_ip}}
+              {% endif %}
+              {% if rule.from_port %}
+              FromPort: {{rule.from_port}}
+              {% endif %}
+              {% if rule.to_port %}
+              ToPort: {{rule.to_port}}
+              {% endif %}
+              {% if sg.source_security_group %}
+              SourceSecurityGroupId: {{sg.source_security_group}}
+              {% endif %}
+            {% endfor %}
+        {% endif %}
+        Tags:
+            - Key: Name
+              Value: {{sg.name}}
+            {% if sg.description %}
+            - Key: Description
+              Value: {{sg.description}}
+            {% endif %}
+    {% endfor %}

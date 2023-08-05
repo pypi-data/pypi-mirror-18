@@ -1,0 +1,46 @@
+{% from 'job.j2' import base, baseparameters, baseproperties, builders, publishers, scm %}
+<?xml version='1.0' encoding='UTF-8'?>
+<matrix-project plugin="matrix-project@1.7">
+  <assignedNode>master</assignedNode>
+  {{ base(build_name, description, disabled, periodic) }}
+  <properties>
+    {{ baseproperties(blocking_jobs)|indent(4) }}
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        {{ baseparameters(default_revision, parameters)|indent(8) }}
+        <hudson.plugins.matrix__configuration__parameter.MatrixCombinationsParameterDefinition plugin="matrix-combinations-parameter@1.0.9">
+          <name>COMBINATIONS</name>
+          <description></description>
+        </hudson.plugins.matrix__configuration__parameter.MatrixCombinationsParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  {{ scm(github_repository, scm_credentials)|indent(2) }}
+  {{ builders(set_commit_status)|indent(2) }}
+  {{ publishers() }}
+  <axes>
+    {% for name, values in axis|dictsort %}
+    <hudson.matrix.TextAxis>
+      <name>{{ name }}</name>
+      <values>
+        {% for value in values %}
+        <string>{{ value }}</string>
+        {% endfor %}
+      </values>
+    </hudson.matrix.TextAxis>
+    {% endfor %}
+    {% if merged_nodes is defined and merged_nodes %}
+    <hudson.matrix.LabelAxis>
+      <name>NODE</name>
+      <values>
+        {% for node in merged_nodes %}
+        <string>{{ node }}</string>
+        {% endfor %}
+      </values>
+    </hudson.matrix.LabelAxis>
+    {% endif %}
+  </axes>
+  <executionStrategy class="hudson.matrix.DefaultMatrixExecutionStrategyImpl">
+    <runSequentially>false</runSequentially>
+  </executionStrategy>
+</matrix-project>

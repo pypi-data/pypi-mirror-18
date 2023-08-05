@@ -1,0 +1,55 @@
+<html xmlns:tal="http://xml.zope.org/namespaces/tal"
+      xmlns:i18n="http://xml.zope.org/namespaces/i18n"
+      tal:omit-tag="python: 1"
+      i18n:domain="ftw.sliderblock">
+
+    <h2 tal:content="here/Title"
+        tal:condition="here/show_title | python: True" />
+
+    <tal:slider define="panes view/panes;
+                        portal context/@@plone_portal_state/portal;">
+
+        <div tal:condition="python: view.can_add() and not panes"
+             tal:define="folder_contents_url string:${context/absolute_url}/folder_contents;"
+             i18n:translate="empty_sliderblock_label">This SliderBlock is empty. Please add some SliderPanes through <tal:href i18n:name="folder_contents_url" tal:content="folder_contents_url"></tal:href>.</div>
+        <div tal:condition="panes"
+             tal:attributes="class string:sliderWrapper; id string:uid_${context/UID}; data-settings view/get_slick_config">
+            <div class="sliderPanes">
+                <div tal:repeat="pane panes" class="sliderPane">
+                    <tal:pane tal:define="internal_link string:${portal/absolute_url}/${pane/link};
+                                          link python: pane.link and internal_link or pane.external_url;">
+
+                        <a href="./sl-ajax-inner-edit-view"
+                           tal:condition="view/can_add"
+                           class="inneredit"
+                           tal:attributes="data-uid pane/UID"
+                           title="Edit image directly"
+                           i18n:attributes="title"></a>
+
+                        <a tal:omit-tag="not:link"
+                           tal:attributes="href link;">
+                            <div class="sliderImage"
+                                 tal:define="images pane/@@images">
+
+                                 <img tal:define="scales pane/@@images;
+                                                  thumbnail python: scales.scale('image', scale='sliderblock', direction='down');"
+                                       tal:attributes="src thumbnail/url;
+                                                       width thumbnail/width;
+                                                       height thumbnail/height;
+                                                       alt pane/Description"/>
+                            </div>
+                            <div class="sliderText"
+                                 tal:condition="pane/text">
+                                <p tal:condition="pane/title"
+                                   tal:content="pane/title"
+                                   tal:attributes="class python: 'documentFirstHeading title external-link' if pane.external_url else 'documentFirstHeading title'"/>
+                                <span tal:replace="structure pane/text/output"/>
+                            </div>
+                        </a>
+                      </tal:pane>
+                </div>
+            </div>
+        </div>
+    </tal:slider>
+
+</html>

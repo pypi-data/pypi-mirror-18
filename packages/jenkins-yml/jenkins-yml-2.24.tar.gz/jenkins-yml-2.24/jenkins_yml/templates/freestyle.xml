@@ -1,0 +1,27 @@
+{% from 'job.j2' import base, baseparameters, baseproperties, builders, publishers, scm %}
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <assignedNode/>
+  {{ base(build_name, description, disabled, periodic) }}
+  <properties>
+    {{ baseproperties(blocking_jobs)|indent(4) }}
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        {{ baseparameters(default_revision, parameters)|indent(8) }}
+        {% if merged_nodes %}
+        <org.jvnet.jenkins.plugins.nodelabelparameter.LabelParameterDefinition plugin="nodelabelparameter@1.7.2">
+          <name>NODE</name>
+          <description></description>
+          <defaultValue>{{ node|default('') or '' }}</defaultValue>
+          <allNodesMatchingLabel>false</allNodesMatchingLabel>
+          <triggerIfResult>allCases</triggerIfResult>
+          <nodeEligibility class="org.jvnet.jenkins.plugins.nodelabelparameter.node.AllNodeEligibility"/>
+        </org.jvnet.jenkins.plugins.nodelabelparameter.LabelParameterDefinition>
+        {% endif %}
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  {{ scm(github_repository, scm_credentials)|indent(2) }}
+  {{ builders(set_commit_status)|indent(2) }}
+  {{ publishers() }}
+</project>

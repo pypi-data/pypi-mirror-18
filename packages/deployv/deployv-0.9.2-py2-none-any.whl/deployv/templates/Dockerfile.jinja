@@ -1,0 +1,47 @@
+FROM {{ base_image_name }}
+MAINTAINER Tulio Ruiz <truiz@vauxoo.com>
+
+ENV PSQL_VERSION 9.5
+
+RUN apt-get update \
+    && apt-get install -y python-software-properties \
+        software-properties-common postgresql-common python-psycopg2 postgresql-$PSQL_VERSION \
+        postgresql-client-$PSQL_VERSION postgresql-contrib-$PSQL_VERSION nginx openssh-server lua50 liblua50-dev liblualib50-dev \
+        ghostscript graphviz \
+    && pip install gitpython \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY files/dev_services.conf /etc/supervisor/conf.d/dev_services.conf
+COPY files/site-odoo.confg /etc/nginx/sites-enabled/site-odoo.conf
+COPY files/supervisord_service.conf /etc/supervisor/supervisord.conf
+
+RUN /etc/init.d/postgresql start \
+    && su postgres -c "psql -c \"create user {{ db_user|default('odoo') }} with createdb password '{{ db_password|default('odoo') }}';\"" \
+    && sed -i "s/^#listen_addresses = .*/listen_addresses = '\*'/g" /etc/postgresql/$PSQL_VERSION/main/postgresql.conf \
+    && sed -i "s/^#temp_buffers = .*/temp_buffers = 16MB/g" /etc/postgresql/$PSQL_VERSION/main/postgresql.conf \
+    && sed -i "s/^#work_mem = .*/work_mem = 16MB/g" /etc/postgresql/$PSQL_VERSION/main/postgresql.conf \
+    && sed -i "s/^#max_stack_depth = .*/max_stack_depth = 7680kB/g" /etc/postgresql/$PSQL_VERSION/main/postgresql.conf \
+    && sed -i "s/^#bgwriter_delay = .*/bgwriter_delay = 500ms/g" /etc/postgresql/$PSQL_VERSION/main/postgresql.conf \
+    && echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/$PSQL_VERSION/main/pg_hba.conf
+
+RUN [ $(getent group supervisor) ] || groupadd supervisor \
+    && usermod -a -G supervisor odoo \
+    && sed -ri "s%(chmod).*$%\1 = 0770\nchown=root:supervisor%g" /etc/supervisor/supervisord.conf \
+    && echo "\ndaemon off;" >> /etc/nginx/nginx.conf \
+    && mkdir -p /var/log/supervisor
+
+RUN mkdir -p /root/.ssh \
+    && touch /root/.ssh/authorized_keys \
+    && mkdir -p /var/run/sshd
+RUN chown odoo:odoo -R /home/odoo
+USER odoo
+
+RUN curl http://j.mp/spf13-vim3 -L -o - | sh \
+    && sed -i 's/ set mouse\=a/\"set mouse\=a/g' ${HOME}/.vimrc \
+    && echo 'let &colorcolumn=join(range(80,999),",")' >> ${HOME}/.vimrc
+
+USER root
+EXPOSE 22
+EXPOSE 8080
+EXPOSE 5432
+CMD ["/entry_point.py"]

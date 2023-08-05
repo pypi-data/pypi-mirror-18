@@ -1,0 +1,56 @@
+# Travis CI configuration
+# Note: there are currently issues with limiting coverity to a single compiler
+#       see https://github.com/travis-ci/travis-ci/issues/1975
+#       Instead we use a script to decide if we should do anything
+
+language: c
+compiler:
+- clang
+- gcc
+os:
+- linux
+- osx
+
+sudo: false
+
+# Multi language support on TravisCI would be nice
+# language: perl
+# perl: "5.20"
+
+before_install:
+  - git submodule update --init --recursive
+
+install:
+  - ./travis/install.sh
+  - eval "$(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib)"
+
+script: ./travis/script.sh
+
+env:
+  global:
+    # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+    #   via the "travis encrypt" command using the project repo's public key
+    - secure: "T08ccfH7+agMchVPhAP/MTdVeFonkjlLvbY8nv/jQ5aZeeWP2i1Oop59MVtuaA4Vw1Ickjr1czLsHGob2OyMHwo2otEasMqacvOw38exblvjOptqN7dx2yu0qzBZdHxLd/uOad7HMfgtkVSwgpodeNR6+K+4LcCM7J6+iAWtLME="
+
+addons:
+  coverity_scan:
+    project:
+      name: "mcveanlab/mccortex"
+      description: Build submitted via Travis CI
+    notification_email: turner.isaac@gmail.com
+    build_command_prepend: git submodule update --init --recursive
+    build_command: make
+    branch_pattern: coverity_scan
+
+notifications:
+  # HipChat
+  hipchat:
+    rooms:
+      secure: PC+3Y1rm3ddG04qdu0eMYB4KCpr9IpDyx2Uph25jdfM9CFVIZiJ2kbortMWqPvex0RChwDKNhuwh0ogO6crhTESWJ62JnFEjSrRxh+RPb+BQy1A222DexbEo4bBeiNpmQoafiNxRgot24deKAq799lbgdNUe2SpQh0yHsxd8FTE=
+  # Gitter
+  webhooks:
+    urls:
+      - https://webhooks.gitter.im/e/8f969771c3a52b40ec94
+    on_success: change  # options: [always|never|change] default: always
+    on_failure: always  # options: [always|never|change] default: always
+    on_start: false     # default: false

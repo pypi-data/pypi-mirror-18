@@ -1,0 +1,41 @@
+#!/bin/bash
+
+set -eou pipefail
+
+#
+# Print lexically lower DNA sequence
+#
+
+currdir="$(dirname "$0")"
+
+function kmerkey {
+  seq=$1
+  rev=`echo $seq | $currdir/dna-revcmp`
+
+  if [[ "$seq" < "$rev" ]]
+  then
+    echo "$seq"
+  else
+    echo "$rev"
+  fi
+}
+
+function read_stdin {
+  while read line
+  do
+    kmerkey "$line"
+  done
+}
+
+if [[ $# -eq 0 ]]; then
+  read_stdin
+else
+  for seq in "$@"
+  do
+    if [[ "$seq" == "-" ]]; then
+      read_stdin
+    else
+      kmerkey "$seq"
+    fi
+  done
+fi

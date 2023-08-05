@@ -1,0 +1,1 @@
+This package is spilited from sdk-python-2016-06-07.zip, which is Alidayu's python SDK, origin version V1.1.

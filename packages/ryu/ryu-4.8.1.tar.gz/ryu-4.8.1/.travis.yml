@@ -1,0 +1,26 @@
+language: python
+python:
+  - "3.5"  # Python 3.5 still needs to be installed on Travis-CI
+
+env:
+  - TOX_ENV=py27
+  - TOX_ENV=py34
+  - TOX_ENV=py35
+  - TOX_ENV=pypy26
+  - TOX_ENV=pep8
+
+services:
+  - docker
+
+sudo: required  # Required to enable Docker service
+
+install:
+  - docker build -t ut_mininet ryu/tests/docker/mininet/
+  - CID=`docker run --privileged -t -d ut_mininet`; docker rm -f $CID  # Test container
+  - pip install tox coveralls
+
+script:
+  - NOSE_VERBOSE=0 tox -e $TOX_ENV
+
+after_success:
+  - coveralls

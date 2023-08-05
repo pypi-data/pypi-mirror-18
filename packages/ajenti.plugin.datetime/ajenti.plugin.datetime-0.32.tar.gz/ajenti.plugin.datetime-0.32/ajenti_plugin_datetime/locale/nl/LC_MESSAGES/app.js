@@ -1,0 +1,1 @@
+{"": "", "Time zone": "Tijdzone", "Sync time from the Internet": "Sync tijd vanaf het Internet", "Change date and time": "Datum en tijd wijzigen", "ntpdate utility is not installed": "ntpdate hulpprogramma is niet ge\u00efnstalleerd", "Date & time": "Datum & tijd", "Set time": "Tijd instellen", "Set timezone": "Tijdzone instellen"}

@@ -1,0 +1,1 @@
+{"": "", "Time zone": "Horzono", "Sync time from the Internet": "", "Change date and time": "", "ntpdate utility is not installed": "", "Date & time": "", "Set time": "", "Set timezone": "Agordi horzonon"}

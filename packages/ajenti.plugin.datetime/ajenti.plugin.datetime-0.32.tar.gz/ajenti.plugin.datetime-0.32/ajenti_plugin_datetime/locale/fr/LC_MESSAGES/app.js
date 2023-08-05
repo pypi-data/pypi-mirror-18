@@ -1,0 +1,1 @@
+{"": "", "Time zone": "Fuseau horaire", "Sync time from the Internet": "Synchroniser avec l'heure provenant d'Internet", "Change date and time": "Changer la date et l'heure", "ntpdate utility is not installed": "L'utilitaire ntpdate n'est pas install\u00e9", "Date & time": "Date & Heure", "Set time": "D\u00e9finir l'heure", "Set timezone": "Changer le fuseau horaire"}

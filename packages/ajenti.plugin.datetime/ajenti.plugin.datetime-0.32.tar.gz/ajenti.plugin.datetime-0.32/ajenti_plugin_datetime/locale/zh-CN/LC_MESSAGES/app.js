@@ -1,0 +1,1 @@
+{"": "", "Time zone": "\u65f6\u533a", "Sync time from the Internet": "\u4e0e\u4e92\u8054\u7f51\u540c\u6b65\u65f6\u95f4", "Change date and time": "\u66f4\u6539\u65e5\u671f\u548c\u65f6\u95f4", "ntpdate utility is not installed": "\u672a\u5b89\u88c5 ntpdate \u5b9e\u7528", "Date & time": "\u65e5\u671f\u53ca\u65f6\u95f4", "Set time": "\u8bbe\u5b9a\u65f6\u95f4", "Set timezone": ""}

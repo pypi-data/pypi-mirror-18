@@ -1,0 +1,1 @@
+{"": "", "Time zone": "\u010casovni pas", "Sync time from the Internet": "Sinhronizacija \u010dasa iz interneta", "Change date and time": "Spremeni datum in \u010das", "ntpdate utility is not installed": "ntpdate pripomo\u010dek ni name\u0161\u010den", "Date & time": "Datum in \u010das", "Set time": "Nastavi \u010das", "Set timezone": ""}

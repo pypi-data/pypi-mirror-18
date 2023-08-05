@@ -1,0 +1,104 @@
+#
+# Config file for Variant Calling
+#
+##############################################################################
+
+# =========================================== Sections for the users
+
+# You can use a directory with all your sample inside or just put your fastq
+# files in samples.
+input_directory: "%(input_directory)s"
+
+samples:
+    file1: "%(file1)s" # R1
+    file2: "%(file2)s" # R2
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ GenomeAnalysisTK
+
+# GATK is absent in conda because it is not a free software
+# You must set the GATK bin path.
+# gatk_bin: "java -jar /path/to/GenomeAnalysisTK.jar"
+
+gatk_bin: GenomeAnalysisTK
+
+# =========================================== Sections related to variant calling
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Bwa
+
+bwa_mem_ref:
+    reference: "%(reference)s"  # Genome of reference
+    index:      # Options for bwa index
+        options: '-a is'
+    mem:        # Options for bwa mem
+        options: '-T 30'
+        # -R option for GATK
+        read_groups: '@RG\\tID:1\\tSM:1\\tPL:illumina'
+        # -t option (number thread)
+        threads: 2 
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ SnpEff
+
+#Results filter options:
+#	-no-downstream: Do not show DOWNSTREAM changes
+#	-no-intergenic: Do not show INTERGENIC changes
+#	-no-intron: Do not show INTRON changes
+#	-no-upstream: Do not show UPSTREAM changes
+#	-no-utr: Do not show 5_PRIME_UTR or 3_PRIME_UTR changes
+snpeff:
+    do: no
+    reference:
+    format: "" # format of your annotation file (only genbank for the moment)
+    options: "-no-downstream -no-upstream"
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Bedtools genomecov
+
+bedtools_genomecov: 
+    options: '-d'
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Freebayes
+
+freebayes:
+    ploidy: 1  # Set the ploidy of your sample (default:2)
+    # . This can comfortably be set
+    # to half the read length. (default: 3)
+    max-complex-gap: 3 
+    # Additional options
+    options: ''
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Indel realigner (GATK)
+
+indel_realigner:
+    do: yes
+    options: ''
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Mark duplicates (picard-tools)
+
+mark_duplicates:
+    do: yes
+    options: ''
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Bam quality filter
+
+bam_quality_filter:
+    do: yes
+    threshold: 30  # between 0 and 60
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Report Mapping
+
+report_mapping:
+    do: yes
+    k: 2                      # Number of gaussian predicted
+    circular: no              # If your genome is circular
+    window_size: 30001        # Window size for compute the running median
+    high_threshold: 4.0         # Threshold to detect high coverage regions 
+    low_threshold: -4.0         # Threshold to detect low coverage regions
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ VCF filter (dedicated to freebayes)
+
+vcf_filter:
+    freebayes_score: 200         # Minimal freebayes score
+    frequency: 0.8               # Minimal alternative allele frequency
+    min_depth: 10                    # Minimal coverage depth
+    forward_depth: 3             # Minimal coverage depth of forward strand
+    reverse_depth: 3             # Minimal coverage depth of reverse strand
+    strand_ratio: 0.2            # Minimal strand ratio between 0 and 0.5 

@@ -1,0 +1,66 @@
+{% load i18n common_tags %}
+{% if nav %}
+<li class="navigation">
+  <select id="js-select-navigation" data-initial-code="{{ page }}"
+    style="visibility: hidden;">
+    {% include nav %}
+  </select>
+</li>
+{% endif %}
+<li>
+  <select id="js-select-language" data-initial-code="{{ language.code }}"
+    style="visibility: hidden;">
+    {% if has_admin_access or page != "translate" %}
+    <option value=""></option>
+    {% endif %}
+    {% for lang_code, lang_name in ALL_LANGUAGES.items %}
+    <option
+       value="{{ lang_code }}"
+       {% if lang_code == language.code %}selected="selected"{% endif %}>{{ lang_name }}</option>
+    {% endfor %}
+  </select>
+</li>
+<li>
+  <select id="js-select-project" data-initial-code="{{ project.code }}"
+    style="visibility: hidden;">
+    <option value=""></option>
+    {% for proj_code, proj in ALL_PROJECTS.items %}
+    <option
+       value="{{ proj_code }}"
+       data-state="{{ proj.disabled|yesno:'disabled,enabled' }}"
+       {% if proj_code == project.code %}selected="selected"{% endif %}>
+      {{ proj.fullname }}
+    </option>
+    {% endfor %}
+  </select>
+</li>
+{% if project %}
+{% if page == 'browse' or page == 'translate' %}
+<li id="js-breadcrumb-resource">
+  <select id="js-select-resource"
+    data-initial-code="{% if resource_path_parts %}ctx-{% endif %}{{ resource_path }}"
+    style="visibility: hidden;">
+    <option value=""></option>
+    {% if resource_path_parts %}
+    {% for res in resource_path_parts %}
+    <option value="ctx-{{ res }}"
+      {% if resource_path == res %}selected="selected"{% endif %}
+      {% if res|count:'/' == 0 %}class="select2-resource-root"{% endif %}
+      data-icon="{% if not res or res|endswith:'/' %}folder{% else %}file{% endif %}">
+      {{ res }}
+    </option>
+    {% endfor %}
+    <option disabled></option>{# Hack that works as a separator #}
+    {% endif %}
+    {% for res in project.resources %}
+    <option value="{{ res }}"
+      {% if resource_path == res %}selected="selected"{% endif %}	    
+      {% if res|count:'/' == 0 %}class="select2-resource-root"{% endif %}
+      data-icon="{% if not res or res|endswith:'/' %}folder{% else %}file{% endif %}">
+      {{ res }}
+    </option>
+    {% endfor %}
+  </select>
+</li>
+{% endif %}
+{% endif %}

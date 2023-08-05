@@ -1,0 +1,195 @@
+////////////////////////////////////////////////////////////////////////
+//Helper functions
+////////////////////////////////////////////////////////////////////////
+
+function clone(x) {
+    return JSON.parse(JSON.stringify(x));
+}
+
+function print(x) {
+    console.log(clone(x));
+}
+
+function node_id_test(a, b) {
+    return a.id == b.id;
+}
+
+function link_id_fun(d) {
+    return d.source.id + "-" + d.target.id;
+}
+
+function link_id_test(a, b) {
+    return a.source.id == b.source.id &&
+           a.target.id == b.target.id;
+}
+
+function nodeCounter(links) {
+    //Count all the nodes in the links
+    var counter = {};
+    links.forEach(function(val) {
+        [val.source.id, val.target.id].forEach(function(st) {
+            counter[st] = 1 + (counter[st] ? counter[st] : 0); });});
+    return counter;
+}
+
+function sliceDown(graph, cutoff) {
+    // Return a sub-setted version of graph
+    var new_graph = {"nodes": [], "links": []};
+    graph.links.forEach(function(i) {
+        if(i.value > cutoff) {
+            new_graph.links.push(i); }});
+    var node_link_count = nodeCounter(new_graph.links);
+    graph.nodes.forEach(function(i) {
+        if((i.id in node_link_count) &&
+            node_link_count[i.id] > 0) {
+            new_graph.nodes.push(i); }});
+    return new_graph;
+}
+
+function updateNeighborsByID(graph) {
+    // Use the current graph to build an object of lists keyed on id
+    // Where each element is the id of a neighbor of its key
+    var neighbors_by_id = {};
+    graph.nodes.forEach(function(v) { neighbors_by_id[v.id] = []; });
+    graph.links.forEach(function(v) { neighbors_by_id[v.source.id].push(v.target.id);
+                                      neighbors_by_id[v.target.id].push(v.source.id);});
+    return neighbors_by_id
+}
+
+function action_on_missing(s1, s2, test, action) {
+    // Helper function
+    // For each item in s1, if there is not a corresponding item in s2, do some action
+    // Always loops over s1 in reverse order (in case that action is a deletion)
+    var i, j, v1, broke;
+    for(i=s1.length-1; i>=0; i--) {
+        v1 = s1[i];
+        broke = false;
+        for(j in s2.nodes) {
+            if(test(v1, s2[j])) {
+                broke = true;
+                break;
+            }
+        }
+        if(!broke) {
+            action(i, j);
+        }
+    }
+}
+
+function update_graph_data(graph, new_graph) {
+    neighbors_by_id = updateNeighborsByID(graph);
+    // Four loops to: remove nodes, remove links, add nodes, add links
+    // Remove nodes
+    action_on_missing(graph.nodes, new_graph.nodes, node_id_test, function(i, j) {
+        graph.nodes.splice(i, 1); });
+    // Remove links
+    action_on_missing(graph.links, new_graph.links, link_id_test, function(i, j) {
+        graph.links.splice(i, 1); });
+    // Add nodes -- now optionally adds them at the centroid of their neighbors
+    action_on_missing(new_graph.nodes, graph.nodes, node_id_test, function(i, j) {
+        var id = new_graph.nodes[i].id;
+        var node_to_add = nodes_by_id[id];
+        if(${move_new_nodes_to_centroid}) {
+            if(_.has(neighbors_by_id, id)) {
+                var connections = neighbors_by_id[id];
+                if(connections.length) {
+                    // adjust the node to be at the centroid of its neighbors
+                    var neighbor_nodes = _.map(connections, function (x) { return nodes_by_id[x]; });
+                    ['x','y','vx','vy'].forEach(function(k) {
+                        node_to_add[k] = _.mean(_.map(neighbor_nodes, k)); });
+                }
+            }
+        }
+        graph.nodes.push(node_to_add);
+    });
+    // Add links
+    action_on_missing(new_graph.links, graph.links, link_id_test, function(i, j) {
+        graph.links.push(links_by_id_pair[link_id_fun(new_graph.links[i])]); });
+}
+
+function getOptionsArray(graph) {
+    var optionsArray = [];
+    for (var i = 0; i < graph.nodes.length - 1; i++) {
+        optionsArray.push(graph.nodes[i].id);
+    }
+    optionsArray = optionsArray.sort();
+    return optionsArray;
+}
+
+function getConnected(graph, selectedVal) {
+    //Use the current graph.links to identify which nodes are connected to this one
+    connections = [];
+    for(i in graph.links) {
+        if(graph.links[i].source.id == selectedVal) {
+            connections.push(graph.links[i].target.id);
+        } else if(graph.links[i].target.id == selectedVal) {
+            connections.push(graph.links[i].source.id);
+        }
+    }
+    return connections;
+}
+
+function indented_list(selectedVal, connections) {
+    return "&nbsp;" + ([selectedVal].concat(connections)).join("<br/>&nbsp;&nbsp;&nbsp;&nbsp;");
+}
+
+function focusNode() {
+    //globals used: selectedVal, fdg_svg, graph
+    var nodeSel = fdg_svg.selectAll(".nodes").selectAll("circle");
+    var linkSel = fdg_svg.selectAll(".links").selectAll("line");
+    var trans = d3.transition().duration(500);
+    
+    if (selectedVal == "") {
+        nodeSel.transition(trans)
+               .attr("stroke", "#fff")
+               .attr("stroke-width", String(1.5*${scale})+"px")
+               .attr("r", ${scale}*${default_size})
+               .attr("opacity", 1);
+        linkSel.transition(trans).attr("opacity", 1)
+            .attr("stroke-width", function (d) { return ${scale}*Math.sqrt(d.value); });
+    } else {
+        var selected = nodeSel.filter(function (d, i) {
+            return d.id == selectedVal;
+        });
+        
+        var connections = getConnected(graph, selectedVal);
+        //var connections = neighbors_by_id[selectedVal];
+        function isNeighbor(test) {
+            for(i in connections) if(connections[i] == test) return true;
+            return false;
+        }
+        var neighbor = nodeSel.filter(function (d, i) {
+            return isNeighbor(d.id);
+        });
+        
+        var s = ${connections_html_function}(selectedVal, connections)
+        d3.selectAll('.connections').html(s);
+        
+        var not_selected = nodeSel.filter(function (d, i) {
+            return d.id != selectedVal &&
+                   !isNeighbor(d.id);
+        });
+        
+        var link_selected = linkSel.filter(function (d, i) {
+            return d.source.id == selectedVal ||
+                   d.target.id == selectedVal;
+        });
+        var link_not_selected = linkSel.filter(function (d, i) {
+            return d.source.id != selectedVal &&
+                   d.target.id != selectedVal;
+        });
+        
+        selected.transition(trans).attr("opacity", 1)
+            .attr("r", ${scale}*${expand_scale}*${default_size});
+        neighbor.transition(trans).attr("opacity", 1)
+            .attr("r", ${scale}*${neighbor_scale}*${default_size});
+        not_selected.transition(trans).attr("opacity", 0.5)
+            .attr("r", ${scale}*${shrink_scale}*${default_size});
+        link_selected.transition(trans).attr("opacity", 1)
+            .attr("stroke-width", function (d) { return 4*${scale}*Math.sqrt(d.value); });
+        link_not_selected.transition(trans).attr("opacity", 0.5)
+            .attr("stroke-width", function (d) { return ${scale}*Math.sqrt(d.value); });
+        //nodeSel.transition(trans).attr("opacity", 1);
+        simulation.restart();
+    }
+}

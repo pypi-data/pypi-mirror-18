@@ -1,0 +1,80 @@
+////////////////////////////////////////////////////////////////////////
+// Slider setup
+////////////////////////////////////////////////////////////////////////
+
+var slider_svg = d3.select("#slider_area svg"), // Slider Globals
+    slider, handle, slider_pos;
+
+
+
+function slider_action(h) {
+    //globals used: handle, fdg_svg, graph, graph_rec, simulation
+    handle.attr("cx", slider_pos(h));
+    update_graph_data(graph, sliceDown(graph_rec, h));
+    update_fdg(graph);
+    if(USE_SEARCH) { rebuildAutocompleteBox(); }
+    focusNode(); // just auto-call this too
+    simulation.alpha(1).alphaTarget(0).restart();
+}
+
+function build_slider() {
+    var sliderMargin = {right: 50, left: 50},
+        sliderWidth = +slider_svg.attr("width") - sliderMargin.left - sliderMargin.right,
+        sliderHeight = +slider_svg.attr("height");
+    
+    slider_pos = d3.scaleLinear()
+        .domain([0.0, 1.0])
+        .range([0, sliderWidth])
+        .clamp(true);
+    
+    slider = slider_svg.append("g")
+        .attr("class", "slider")
+        .attr("transform", "translate(" + sliderMargin.left + "," + sliderHeight / 2 + ")");
+
+    slider.append("line")
+        .attr("class", "track")
+        .attr("style", "stroke-linecap: round; stroke: #000; stroke-opacity: 0.3; stroke-width: 10px;")
+        .attr("x1", slider_pos.range()[0])
+        .attr("x2", slider_pos.range()[1])
+      .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+        .attr("class", "track-inset")
+        .attr("style", "stroke-linecap: round; stroke: #ddd; stroke-width: 8px;")
+      .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); });
+    
+    slider.append("rect")
+        .attr("class", "track-overlay")
+        .attr("style", "cursor: crosshair; opacity: 0;")
+        .attr("x", slider_pos.range()[0])
+        .attr("y", -10)
+        .attr("width", width)
+        .attr("height", 20)
+        .call(d3.drag()
+            .on("start.interrupt", function() { slider.interrupt(); })
+            .on("start drag", function() { slider_action(slider_pos.invert(d3.event.x)); }));
+
+    slider.insert("g", ".track-overlay")
+        .attr("class", "ticks")
+        .attr("style", "font: 10px sans-serif;")
+        .attr("transform", "translate(0," + 18 + ")")
+      .selectAll("text")
+      .data(slider_pos.ticks(10))
+      .enter().append("text")
+        .attr("x", slider_pos)
+        .attr("text-anchor", "middle")
+        .text(function(d) { return d.toFixed(1); });
+
+    handle = slider.insert("circle", ".track-overlay")
+        .attr("class", "handle")
+        .attr("style", "fill: #fff; stroke: #000; stroke-opacity: 0.5; stroke-width: 1.25px;")
+        .attr("r", 9);
+
+    slider.transition() // Gratuitous intro!
+        .duration(750)
+        .tween("slider_action", function() {
+          i = d3.interpolate(0, ${slider_init_x});
+          return function(t) { slider_action(i(t)); };
+    });
+    slider_svg.attr("width", "100%");
+}
+
+build_slider(slider_svg);

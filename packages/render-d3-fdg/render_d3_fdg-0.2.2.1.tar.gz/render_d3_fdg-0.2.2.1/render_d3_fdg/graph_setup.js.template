@@ -1,0 +1,175 @@
+////////////////////////////////////////////////////////////////////////
+// Graph Globals
+////////////////////////////////////////////////////////////////////////
+
+// Input data
+var graph = ${graph};
+
+var save_counter = 0;
+var fdg_svg = d3.select("#fdg_area svg"),
+    width = +fdg_svg.attr("width"),
+    height = +fdg_svg.attr("height");
+
+var color = d3.scaleOrdinal(d3.schemeCategory20);
+var simulation, graph_rec;
+var link, link_update, node, node_update;
+var nodes_by_id = {},
+    links_by_id_pair = {},
+    neighbors_by_id = {};
+
+var selectedVal = '';
+var USE_SEARCH = false;
+
+////////////////////////////////////////////////////////////////////////
+// Graph functions
+////////////////////////////////////////////////////////////////////////
+
+function ticked() {
+  //globals used: link, link_update, node, node_update
+  [link, link_update].forEach(function(l) {
+      l.attr("x1", function (d) { return d.source.x; })
+       .attr("y1", function (d) { return d.source.y; })
+       .attr("x2", function (d) { return d.target.x; })
+       .attr("y2", function (d) { return d.target.y; }); });
+  [node, node_update].forEach(function(n) {
+      n.attr("cx", function (d) { return d.x; })
+       .attr("cy", function (d) { return d.y; }); });
+
+  if(${save_freq} && save_counter % ${save_freq} == 0) {
+    save_svg();
+    console.log('SAVE ' + save_counter)
+  };
+  save_counter++;
+};
+
+function dragstarted(d) {
+  if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x;
+  d.fy = d.y;
+}
+
+function dragged(d) {
+  d.fx = d3.event.x;
+  d.fy = d3.event.y;
+}
+
+function dragended(d) {
+  if (!d3.event.active) simulation.alphaTarget(0);
+  d.fx = null;
+  d.fy = null;
+}
+
+function click_function_log(d) {
+  if (d3.event.defaultPrevented) return;
+  console.log('clicked');
+}
+
+function click_function_focus_node(d) {
+    // globals used: selectedVal
+    if (d3.event.defaultPrevented) return;
+    selectedVal = d.id;
+    if(USE_SEARCH) { document.getElementById('search').value = selectedVal; }
+    focusNode();
+}
+
+function zoomed() {
+  fdg_svg.selectAll("g").attr("transform", d3.event.transform);
+}
+
+function enable_zoom() {
+    fdg_svg.append("rect")
+           .attr("width", '100%')
+           .attr("height", '100%')
+           .style("fill", "none")
+           //.style("stroke", "black")
+           .style("pointer-events", "all")
+           .call(d3.zoom()
+               .scaleExtent([${zoom_in}, ${zoom_out}])
+               .on("zoom", zoomed));
+}
+
+function save_svg() {
+  var html = d3.select("svg")
+               .attr("title", "test2")
+               .attr("version", 1.1)
+               .attr("xmlns", "http://www.w3.org/2000/svg")
+               .node().outerHTML;
+  var svgData = html.split(">").join(">\\n"); //hack
+  var svgBlob = new Blob([svgData], {type:"image/svg+xml;charset=utf-8"});
+  var svgUrl = URL.createObjectURL(svgBlob);
+  var downloadLink = document.createElement("a");
+  downloadLink.href = svgUrl;
+  downloadLink.download = "newesttree.svg";
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  document.body.removeChild(downloadLink);
+}
+
+function update_fdg(graph) {
+    //globals used: link, link_update, node, node_update
+    link_update = fdg_svg.selectAll(".links")
+        .selectAll("line")
+        .data(graph.links,
+              link_id_fun);
+    link = link_update
+        .enter().append("line")
+        .attr("stroke-width", function (d) { return ${scale}*Math.sqrt(d.value); })
+        .attr("stroke", "#999")
+        .attr("stroke-opacity", "0.6");
+    
+    node_update = fdg_svg.selectAll(".nodes")
+        .selectAll("circle")
+        .data(graph.nodes,
+              function (d) {return d.id;});
+    node = node_update
+        .enter().append("circle")
+        .attr("r", ${scale}*${default_size})
+        .attr("fill", function (d) { return color(d.group); })
+        .attr("stroke", "#fff")
+        .attr("stroke-width", String(1.5*${scale})+"px")
+        .call(d3.drag().on("start", dragstarted)
+                       .on("drag", dragged)
+                       .on("end", dragended))
+        .on('click', ${click_function});
+    
+    link_update.exit().remove();
+    node_update.exit().remove();
+    
+    node.append("title")
+        .text(function (d) { return d.id; });
+}
+
+function build_fdg() {
+    fdg_svg.append("g").attr("class", "links");
+    fdg_svg.append("g").attr("class", "nodes");
+
+    simulation = d3.forceSimulation()
+        .force("link", d3.forceLink().id(function (d) { return d.id; })
+                         .distance(20*${force_scale}))
+        .force("charge", d3.forceManyBody().strength(-30*${force_scale}))
+        .force("center", d3.forceCenter(width / 2, height / 2));
+
+    simulation.nodes(graph.nodes)
+              .on("tick", ticked);
+
+    simulation.force("link")
+              .links(graph.links);
+
+    graph_rec = clone(graph); // A copy of the simulation-modified graph
+
+    graph.nodes.forEach(function(v) { nodes_by_id[v.id] = v; });
+    graph.links.forEach(function(v) { links_by_id_pair[link_id_fun(v)] = v; });
+
+    update_fdg(graph); // Build the first graph, start the sim, etc...
+    neighbors_by_id = updateNeighborsByID(graph); // Make dictionaries to look up original nodes and links by id (or id pair)
+    //fdg_svg.attr("width", "100%")
+    //       .attr("height", "100%"); // set this after building to make it responsive to window resize
+}
+
+////////////////////////////////////////////////////////////////////////
+//Graph setup
+////////////////////////////////////////////////////////////////////////
+
+${zooming_code}
+
+build_fdg();

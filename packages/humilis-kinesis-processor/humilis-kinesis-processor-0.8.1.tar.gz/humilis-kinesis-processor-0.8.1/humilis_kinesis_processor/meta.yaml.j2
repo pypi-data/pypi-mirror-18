@@ -1,0 +1,165 @@
+---
+# Hyperparameters to this layer:
+#
+# input, output, error
+# input_delivery, output_delivery, error_delivery
+# lambda_dependencies
+meta:
+    description:
+        Processes events in a Kinesis stream
+    {% if dependencies %}
+    dependencies:
+        # Needed if the Lambda delivers to S3
+        {% for d in dependencies %}
+        - {{d}}
+        {% endfor %}
+    {% endif %}
+    parameters:
+        dynamodb_capacity:
+            description:
+                The read and write capacity for the Lambda state table(s)
+            value:
+                read: 5
+                write: 5
+
+        memory_size:
+            description:
+                The amount of memory in MB allocated to the Lambda function
+            value:
+                128
+
+        timeout:
+            description:
+                The timeout execution time, in seconds
+            value:
+                100
+
+        starting_position:
+            description:
+                The starting position in the Kinesis stream
+            value:
+                TRIM_HORIZON
+
+        batch_size:
+            description:
+                The number of events to batch in one lambda execution
+            value: 1
+
+        lambda_dependencies:
+            description:
+                A list of Python dependencies for the Lambda function
+            value: []
+
+        iam_actions:
+            description:
+                Additional IAM actions that the Lambda will be allowed to perform
+            value: []   # A list of dicts like {action: x, resource: y}
+
+        # There can be 0 or 1 input/error streams
+        {% set stream = {"input": input, "error": error} %}
+        {% for stype in ["input", "error"] %}
+        {% set s = stream[stype] %}
+        {% if s %}
+        meta_{{stype}}:
+            description:
+                Settings for the {{stype}} event stream
+            value:
+                {% if s.kinesis_stream %}
+                kinesis_stream:
+                    {% if s.kinesis_stream is mapping %}
+                    {# if user is passing a reference to a layer output #}
+                    ref:
+                        parser: output
+                        parameters:
+                            layer_name: {{s.kinesis_stream.layer}}
+                            output_name: {{s.kinesis_stream.name}}
+                    {% else %}
+                    {# else assume user is passing the name of the stream #}
+                    {{s.kinesis_stream}}
+                    {% endif %}
+                {% endif %}
+                {% if s.firehose_delivery_stream %}
+                firehose_delivery_stream:
+                    {% if s.firehose_delivery_stream is mapping %}
+                    - ref:
+                        parser: output
+                        parameters:
+                            layer_name: {{s.firehose_delivery_stream.layer}}
+                            output_name: {{s.firehose_delivery_stream.name}}
+                    {% elif s.firehose_delivery_stream|is_list %}
+                    {% for ds in s.firehose_delivery_stream %}
+                    - ref:
+                        parser: output
+                        parameters:
+                            layer_name: {{ds.layer}}
+                            output_name: {{ds.name}}
+                    {% endfor %}
+                    {% else %}
+                    # user is passing directly the name of the delivery stream
+                    {{s.firehose_delivery_stream}}
+                    {% endif %}
+                {% endif %}
+                mapper: "{{s.mapper}}"
+                filter: "{{s.filter}}"
+        {% endif %}
+        {% endfor %}
+
+        # There can be 0 or more output streams
+        {% if output %}
+        meta_output:
+            description:
+                Settings for the output event stream(s)
+            value:
+                {% for s in output %}
+                - mapper: "{{s.mapper}}"
+                  filter: "{{s.filter}}"
+                  partition_key: {{s.partition_key}}
+                  {% if s.kinesis_stream %}
+                  kinesis_stream:
+                      {% if s.kinesis_stream is mapping %}
+                      {# user is passing a reference to another layer output #}
+                      ref:
+                          parser: output
+                          parameters:
+                              layer_name: {{s.kinesis_stream.layer}}
+                              output_name: {{s.kinesis_stream.name}}
+                      {% else %}
+                      {# user is passing directly the name of the stream #}
+                      {{s.kinesis_stream}}
+                      {% endif %}
+                  {% endif %}
+                  {% if s.firehose_delivery_stream %}
+                  firehose_delivery_stream:
+                      {% if s.firehose_delivery_stream is mapping %}
+                      - ref:
+                          parser: output
+                          parameters:
+                              layer_name: {{s.firehose_delivery_stream.layer}}
+                              output_name: {{s.firehose_delivery_stream.name}}
+                      {% elif s.firehose_delivery_stream|is_list %}
+                      {% for ds in s.firehose_delivery_stream %}
+                      - ref:
+                          parser: output
+                          parameters:
+                              layer_name: {{ds.layer}}
+                              output_name: {{ds.name}}
+                      {% endfor %}
+                      {% else %}
+                      # user is passing directly the name of the delivery stream
+                      {{s.firehose_delivery_stream}}
+                      {% endif %}
+                  {% endif %}
+                {% endfor %}
+        {% endif %}
+
+        lambda_function:
+            # We use a low priority so that the references above that retrieve
+            # the names of the relevant streams are resolved before this
+            # reference.
+            priority: 100
+            value:
+                ref:
+                    parser: lambda
+                    parameters:
+                        path: lambda_function
+                        dependencies: {{lambda_dependencies or []}}

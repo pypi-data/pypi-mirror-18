@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+import argparse
+import sys
+
+from slackit.utils import Slack
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Received piped output from other commands and sends it to Slack")
+    parser.add_argument('--init', action='store_true')
+    _args = parser.parse_args()
+
+    slack = Slack()
+
+    if _args.init:
+        slack.create_settings_file()
+        sys.exit(0)
+
+    slack.load_config()
+    channel_id = slack.get_user_channel_id()
+    stdin = ''.join([line for line in sys.stdin])
+    slack.write_to_channel(channel_id, stdin)
+    sys.stdout.write(stdin)

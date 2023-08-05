@@ -1,0 +1,95 @@
+
+{% import "Mambo/macros/html.html" as html with context %}
+{% import "Mambo/macros/nav.html" as nav with context %}
+{% import "Mambo/macros/forms.html" as forms with context %}
+{% import "Mambo/macros/widget.html" as widget with context %}
+
+{% set wide_view = false %}
+{% set show_menus = true %}
+{% set require_auth = false %}
+
+{% if __.__AUTH_ENABLED__ and current_user and not current_user.is_authenticated %}
+    {% set wide_view = true %}
+    {% set show_menus = false %}
+    {% set require_auth = true %}
+{% endif %}
+
+
+
+<!DOCTYPE html>
+<html>
+
+<head>
+        {{ html.header("%title% | " + __.APPLICATION_NAME) }}
+        {{ html.favicon("favicon.ico") }}
+        {{ html.global_assets() }}
+        {{ html.fontawesome() }}
+        {{ html.bootswatch_theme(__.MAMBO_ADMIN_THEME) }}
+        {{ html.css_asset("mambo-admin.css") }}
+        {{ html.js_asset("mambo-admin.js") }}
+</head>
+
+<body>
+
+    {{ nav.top_nav(brand=__.MAMBO_ADMIN_BRAND, url="/") }}
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                {{ widget.flashed_messages() }}
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid" id="{% block admin_page_id %}{% endblock %}">
+
+
+        {% if require_auth and "AuthLogin:" in request.endpoint  %}
+            <div class="col-md-6 col-md-offset-3 col-sm-12 col-xs-12 main">
+                {% include __template__ %}
+            </div>
+
+        {% else %}
+
+            <div class="row row-offcanvas row-offcanvas-left">
+
+                {% if wide_view %}
+                    <div class="col-md-12 col-sm-12 col-xs-12 main">
+                        {% include __template__ %}
+                    </div>
+
+                {% else %}
+                    <div class="col-md-2 col-sm-3 sidebar  sidebar-offcanvas">
+                        {{ nav.panel(use_active=True) }}
+                    </div>
+
+                    <div class="col-md-10 col-sm-9 col-xs-12 main">
+
+                        <h2 class="mambo-admin-page-title">
+
+                        <span class="visible-xs btn-offcanvas pull-left" style="padding-right: 10px; " data-toggle="offcanvas"><small><i class="fa fa-bars"></i></small></span>
+                        <span class="pull-left">
+                            <small><strong>{{ nav.current_title() }}</strong></small>
+                            {{ nav.current_sub_title("/") }}
+                        </span>
+                        <div class="clearfix"></div>
+                        </h2>
+
+                        {% include __template__ %}
+                    </div>
+                {% endif %}
+
+            {% endif %}
+
+        </div>
+    </div>
+
+
+
+</body>
+</html>
+
+
+
+
+

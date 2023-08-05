@@ -1,0 +1,214 @@
+
+{% if user.is_deleted %}
+    {{ widget.alert("This account is DELETED", "danger", false) }}
+{% elif not user.active %}
+    {{ widget.alert("This account is SUSPENDED", "warning", false) }}
+{% endif %}
+
+
+{% call widget.panel("User Info") %}
+    <table class="table table-bordered">
+        <tbody>
+
+            <tr>
+                <td>ID</td>
+                <td>{{ user.id }}</td>
+            </tr>
+            <tr>
+                <td>Name</td>
+                <td>{{ user.name or ""}}</td>
+            </tr>
+            <tr>
+                <td>First Name</td>
+                <td>{{ user.first_name or ""}}</td>
+            </tr>
+            <tr>
+                <td>Last Name</td>
+                <td>{{ user.last_name  or "" }}</td>
+            </tr>
+            <tr>
+                <td>Email</td>
+                <td>{{ user.email }}</td>
+            </tr>
+            <tr>
+                <td>Signup Method</td>
+                <td>{{ user.signup_method or "" }}</td>
+            </tr>
+            <tr>
+                <td>Last Login</td>
+                <td>{{ user.last_login or "" }}</td>
+            </tr>
+            <tr>
+                <td>DOB</td>
+                <td>{{ user.dob or ""}}</td>
+            </tr>
+            <tr>
+                <td>Signup Date</td>
+                <td>{{ user.created_at }}</td>
+            </tr>
+            <tr>
+                <td>Roles</td>
+                <td>{{ user.role.name | capitalize}}</td>
+            </tr>
+            <tr>
+                <td>Is Active</td>
+                <td>{{ user.active | bool_to_yes }}</td>
+            </tr>
+            <tr>
+                <td>Is Deleted</td>
+                <td>{{ user.is_deleted | bool_to_yes }}</td>
+            </tr>
+            <tr>
+                <td>Address</td>
+                <td>{{ user.address or "" }}</td>
+            </tr>
+            <tr>
+                <td>State</td>
+                <td>{{ user.address_state or "" }}</td>
+            </tr>
+            <tr>
+                <td>City</td>
+                <td>{{ user.address_city or "" }}</td>
+            </tr>
+            <tr>
+                <td>Zip Code</td>
+                <td>{{ user.address_zip_code or "" }}</td>
+            </tr>
+            <tr>
+                <td>Country</td>
+                <td>{{ user.address_country or "" }}</td>
+            </tr>
+            <tr>
+                <td>Telephhone</td>
+                <td>{{ user.telephone or "" }}</td>
+            </tr>
+        </tbody>
+
+    </table>
+
+    <div>
+        <button class="btn btn-info "
+                data-toggle="modal"
+                data-target="#modal-edit-user"
+                ><i class="fa fa-user"></i> Edit Account Info</button>
+
+        <button class="btn btn-warning "
+                data-toggle="modal"
+                data-target="#modal-change-email"
+                ><i class="fa fa-envelope"></i> Change Email Login</button>
+
+        <button id="btn-reset-password" class="btn btn-danger"><i class="fa fa-key"></i> Send Password Reset</button>
+        <div class="clearfix"></div>
+    </div>
+{% endcall %}
+
+
+{% call widget.modal('Change Email Login', id='modal-change-email') %}
+    <footer>
+        <button type="submit" class="btn btn-success pull-left"><i class="fa fa-check"></i> SAVE</button>
+        <button type="button" class="btn btn-default pull-left" data-dismiss="modal">Close</button>
+
+    </footer>
+
+    {% call forms.post('AuthAdmin:save') %}
+        {{ forms.hidden(name="id", value=user.id) }}
+        {{ forms.hidden(name="action", value="email") }}
+
+            {{ forms.input(label="Email", name="email", value=user.email or "", data={"validation": "email"}) }}
+
+    {% endcall %}
+
+{% endcall %}
+
+{% call widget.modal('Edit User Info', id='modal-edit-user') %}
+    <footer>
+        {% if not user.is_deleted %}
+        <button type="submit" class="btn btn-success pull-left"><i class="fa fa-check"></i> SAVE</button>
+        {% endif %}
+
+        <button type="button" class="btn btn-default pull-left" data-dismiss="modal">Close</button>
+
+        {% if current_user.id != user.id %}
+
+
+            {% if not user.is_deleted %}
+                {% if not user.active %}
+                    <button type="button" class="btn btn-info pull activate-btn" data-dismiss="modal"> RE-ACTIVATE Account</button>
+                {% else %}
+                    <button type="button" class="btn btn-warning pull deactivate-btn" data-dismiss="modal"> SUSPEND Account</button>
+                {% endif %}
+
+                <button type="button" class="btn btn-danger pull delete-btn" data-dismiss="modal"><i class="fa fa-trash"></i> Delete Account</button>
+            {% else %}
+                <button type="button" class="btn btn-success pull undelete-btn" data-dismiss="modal"><i class="fa fa-check"></i> RESTORE ACCOUNT </button>
+            {% endif %}
+        {% endif %}
+    </footer>
+
+    {% call forms.post('AuthAdmin:save') %}
+        {{ forms.hidden(name="id", value=user.id) }}
+        {{ forms.hidden(name="action", value="info") }}
+
+            {{ forms.input(label="Name", name="name", value=user.name or "", data={"validation": "required"}) }}
+            {{ forms.input(label="First Name", name="first_name", value=user.first_name or "") }}
+            {{ forms.input(label="Last Name", name="last_name", value=user.last_name or "") }}
+            {{ forms.date_picker(label='Date of Birth', name='dob', value=user.dob or "") }}
+            {{ forms.input(label="Address", name="address", value=user.address or "") }}
+            {{ forms.input(label="City", name="address_city", value=user.address_city or "") }}
+            {{ forms.input(label="State", name="address_state", value=user.address_state or "") }}
+            {{ forms.input(label="Zip Code", name="address_zip_code", value=user.address_zip_code or "") }}
+            {{ forms.input(label="Country", name="address_country", value=user.address_country or "") }}
+            {{ forms.input(label="Telephone", name="telephone", value=user.telephone or "") }}
+
+            {% if current_user.id != user.id %}
+                {{ forms.radio(label="User Role", name='user_role', options=user_roles_options, checked=[user.role.id]) }}
+            {% endif %}
+    {% endcall %}
+
+{% endcall %}
+
+<!-- Reset password -->
+{% call forms.post('AuthAdmin:reset_password', id="form-reset-password") %}
+    {{ forms.hidden(name="id", value=user.id) }}
+{% endcall %}
+
+<script>
+    $(function(){
+
+        // Will automatically fill the form
+        var modalEU = $("#modal-edit-user")
+
+        modalEU.find("button.delete-btn").click(function(){
+            if(confirm("Do you want to DELETE this user's account ?")) {
+                modalEU.find("input[name='action']").val("delete")
+                modalEU.find("form").submit()
+            }
+        })
+        modalEU.find("button.undelete-btn").click(function(){
+            if(confirm("Do you want to UNDELETE this user's account ?")) {
+                modalEU.find("input[name='action']").val("undelete")
+                modalEU.find("form").submit()
+            }
+        })
+        modalEU.find("button.deactivate-btn").click(function(){
+            if(confirm("Do you want to DEACTIVATE this user's account ?")) {
+                modalEU.find("input[name='action']").val("deactivate")
+                modalEU.find("form").submit()
+            }
+        })
+        modalEU.find("button.activate-btn").click(function(){
+            if(confirm("Do you want to ACTIVATE this user's account ?")) {
+                modalEU.find("input[name='action']").val("activate")
+                modalEU.find("form").submit()
+            }
+        })
+
+        $("#btn-reset-password").click(function(){
+            if (confirm("Do you want to reset the user's password ?")) {
+                $("#form-reset-password").submit()
+            }
+        })
+    })
+
+</script>
+

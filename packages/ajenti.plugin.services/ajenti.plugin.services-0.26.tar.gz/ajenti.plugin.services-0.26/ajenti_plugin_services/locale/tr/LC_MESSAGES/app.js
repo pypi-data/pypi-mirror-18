@@ -1,0 +1,1 @@
+{"": "", "Manage system services": "Sistem hizmetlerini y\u00f6net", "Service": "Hizmet", "Filter services": "Filtre hizmetleri", "Manager": "Y\u00f6netici", "Services": "Hizmetler"}

@@ -1,0 +1,1 @@
+{"": "", "Manage system services": "Urejanje sistemskih servisov", "Service": "Servis", "Filter services": "Filtriraj servise", "Manager": "", "Services": "Servisi"}

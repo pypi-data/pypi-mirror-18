@@ -1,0 +1,119 @@
+language: generic
+
+matrix:
+  include:
+    # Linux / Python 2
+    - os: linux
+      env:
+        - PYTHON=python2
+        - CACHE_NAME=linux_py2
+      dist: trusty
+      sudo: required
+      cache:
+        directories:
+          - $HOME/.cache/pip
+          - $HOME/.cache/wheels
+      before_cache:
+        - rm -rf $HOME/.cache/pip/log
+    # Linux / Python 3
+    - os: linux
+      env:
+        - PYTHON=python3
+        - CACHE_NAME=linux_py3
+      dist: trusty
+      sudo: required
+      cache:
+        directories:
+          - $HOME/.cache/pip
+          - $HOME/.cache/wheels
+      before_cache:
+        - rm -rf $HOME/.cache/pip/log
+    # OSX / Python 2
+    - os: osx
+      osx_image: xcode8
+      env:
+        - PYTHON=python2
+        - CACHE_NAME=osx_py2
+      cache:
+        directories:
+          - $HOME/Library/Caches/pip
+          - $HOME/Library/Caches/wheels
+      before_cache:
+        - rm -rf $HOME/Library/Caches/pip/log
+    # OSX / Python 3
+    - os: osx
+      osx_image: xcode8
+      env:
+        - PYTHON=python3
+        - CACHE_NAME=osx_py3
+      cache:
+        directories:
+          - $HOME/Library/Caches/pip
+          - $HOME/Library/Caches/wheels
+      before_cache:
+        - rm -rf $HOME/Library/Caches/pip/log
+
+before_install:
+  - |
+    (
+    set -ex
+    # Bootstrap dev environment.
+    bootstrap_cmd=(./bootstrap.sh)
+    if ! [ "$PYTHON" = 'python2' -a -n "$TRAVIS_TAG" ]
+    then
+      bootstrap_cmd+=('--tests-only')
+    fi
+    bootstrap_cmd+=("$PYTHON")
+    "${bootstrap_cmd[@]}"
+    # List installed packages versions.
+    $PYTHON -m pip list
+    )
+
+install: true
+
+script:
+  - git fetch --unshallow
+  - $PYTHON setup.py patch_version
+  - $PYTHON setup.py test
+
+before_deploy:
+  - |
+    (
+    set -ex
+    case "$TRAVIS_OS_NAME" in
+    osx)
+      if [ $PYTHON = python2 ]
+      then
+        # Downgrade setuptools so py2app works correctly...
+        $PYTHON -m pip install --upgrade --user 'setuptools==19.2'
+        $PYTHON setup.py bdist_dmg
+      fi
+      ;;
+    linux)
+      $PYTHON setup.py bdist_egg
+      if [ $PYTHON = python2 ]
+      then
+        $PYTHON setup.py bdist_wheel sdist
+        ./linux/debuild.sh -us -uc
+      fi
+      ;;
+    esac
+    # Not all builds will produce artifacts.
+    du -hs dist/* || true
+    )
+
+deploy:
+  provider: releases
+  skip_cleanup: true
+  api_key:
+    secure: vBKvc1uV688/Jn2bYvlFYrhVb+1X9t8iCC4LN87cZvEFNe7DEhSU2DZhaYceTYVZGKNjSzT1ScGrAGc0IHVN9azor3syDJlZ5LvSjiN/sj83MDe0TfPURgYdd5UaLDKsfknd0fMOgJyUiDadNS7il0Yk3Tmu+bw0cLZr24QzHUFfI3xIeP6EfByPrO4yGctykTmhNPpMKqpBJv4Y4qfYkMQmujgR09nn+B6pkgVekl44+zScS/ivHy4Rgdyp1pakyiPGJf4zI5VG+BcW6SR3cJ8JF2h5oEM3S6gk0yDpw2WgfaA2c0qWsIHhy5fIYd7HivJjGpPsEEOOCm671QoLK66JZbFI2l6nP62nf01vxuQLX8sQIlOh6YSC17ML3UWJkrV3VSMvo31vznKsr8oiTDYFyaheOKc1wMj28StDI5oXfyyLEBA0RH6gYjRwTGblEVc2CWg9T3CgJb9RY1s8CyFEHChoj7RlJ6oeJpeiAPpsnUNPT6RIYrjaqVt/jnWAjBxmEOlWR3xPSZXVla5E3NwcB8CjXqxe7ZNU2AzQ/vcbSDtRCOvnbqV7CvUwh4ET02h4jr34SSYUyM8Zcnkw9RvHSy5vJj/xq2r3stB+xdxsPkLjybeTMaGeCNVJ9FKImgFgW5E8mzx9Hm3x1ECjDhtYI1g8g1kE9qmww7JaiOU=
+  draft: true
+  file_glob: true
+  file:
+    - "dist/*.deb"
+    - "dist/*.dmg"
+    - "dist/*.egg"
+    - "dist/*.tar.gz"
+    - "dist/*.whl"
+  on:
+    tags: true

@@ -1,0 +1,1 @@
+{"": "", "Power off": "", "Hibernate": "", "Shutdown and reboot the system": "", "Power": "", "Plugged in": "", "System uptime": "", "{{battery.voltage}} V": "", "Reboot": "", "Suspend": "", "Power state": "", "Batteries": "", "Not available": "", "No batteries detected": "", "Discharging at {{battery.rate}} W": "", "Adapters": "", "Charging": "", "No adapters detected": ""}

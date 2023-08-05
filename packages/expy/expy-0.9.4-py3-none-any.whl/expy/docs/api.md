@@ -1,0 +1,43 @@
+# API
+---
+- Initiation (Environment Setting)
+    - start
+- Stimulus
+    - Text
+        - drawText
+    - Shape
+        - drawLine
+        - drawRect
+        - drawCircle
+    - Picture
+        - drawPic
+    - Sound
+        - loadSound
+        - loadManySound
+        - makeSound
+        - playSound
+    - Video
+    - Display controller
+        - show
+        - clear
+        - getScreen
+- Response
+    - Keyboard & Mouse & Joystick
+        - waitForResponse: 等待被试按键并返回
+    - Sound Recorder
+- IO
+    - Read
+        - readSetting: Setting file, 读取配置文件
+        - readStimuli: Stimuli file, 读取csv数据文件，得到实验刺激
+        - readDir: Scan directory, 读取一个文件夹下的文件列表
+    - Save
+        - saveResult: Save experiment result, 生成csv
+    - sendTrigger
+- Other Scaffolds
+    - textSlide: 在一个新页面上显示text的内容
+    - getInput: 获取输入
+    - instruction: 显示实验介绍
+    - restTime: 显示实验暂停提示
+    - tip: 显示一个实验提示tip，然后等待被试按键确认
+    - alertAndGo: 显示一个实验提示，一段时间后自动消失并继续程序
+    - alertAndQuit: 显示一个实验提示（出错警告或实验结束提示），x秒后自动退出程序

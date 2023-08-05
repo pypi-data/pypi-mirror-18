@@ -1,0 +1,329 @@
+Metadata-Version: 1.1
+Name: collective.logbook
+Version: 0.8b2
+Summary: Advanced Persistent Error Log
+Home-page: https://svn.plone.org/svn/collective/collective.logbook
+Author: Ramon Bartl
+Author-email: ramon.bartl@nexiles.de
+License: GPL
+Description: Introduction
+        ------------
+        
+        
+        ``collective.logbook`` add-on provides
+        advanced persistent error logging for `open source Plone CMS <http://plone.org>`_.
+        
+        .. contents :: :local:
+        
+        Installation
+        ------------
+        
+        These instructions assume that you already have a Plone 3 buildout that's built
+        and ready to run.
+        
+        Edit your buildout.cfg file and look for the eggs key in the instance section.
+        Add collective.logbook to that list. Your list will look something like this::
+        
+            eggs =
+                collective.logbook
+        
+        Enable via Site Setup > Add ons.
+        
+        Usage
+        -----
+        
+        Settings
+        ~~~~~~~~
+        
+        See Site Setup for log book settings.
+        
+        Inspecting errors
+        ~~~~~~~~~~~~~~~~~~
+        
+        After install, go to http://your-plone-site/@@logbook
+        
+        The errors are logged there. You can tune some parameters.
+        
+        Testing
+        ~~~~~~~
+        
+        ``collective.logbook`` provides a view ``error-test`` which Site managers can access to
+        generate a test traceback.
+        
+        First visit ``@@error-test`` and make sure the error appears in ``@@logbook`` view.
+        
+        .. note ::
+        
+            You might need to turn on both Logbook enabled and Large site in Logbook Site Setup.
+            This may be a bug regarding new Plone versions and production mode.
+        
+        Web hooks
+        ---------
+        
+        ``collective.logbook`` provides ability to HTTP POST
+        error message to any web service when an error happens in Plone.
+        This behavior is called a web hook.
+        
+        Use cases
+        
+        * `Showing Plone errors real-time in Skype chat <https://github.com/opensourcehacker/sevabot>`_
+        
+        * `Routing errors to different websites and services via Zapier <https://zapier.com/>`_
+        
+        In Site Setup > Logbook you can enter URLs where HTTP POST will be asynchronously
+        performed on a traceback. HTTP POST payload is an message from Logbook,
+        containing a link for further information.
+        
+        .. note ::
+        
+            Currently repeated errros (same traceback signature) are not POST'ed again.
+            You will receive message only once unless until you clear logbook contents in
+            @@logbook management view.
+        
+        
+        Motivation
+        ----------
+        
+        For anonymous users Plone generates an Error Page which contains an error
+        number. But what to do with this error number?
+        
+        You have to log into your plone site, go to the ZMI, check the error_log
+        object and probably construct the url by hand to get the proper error with
+        this error number, like::
+        
+            http://your-plone-site/error_log/showEntry?id=1237283091.10.529903983894
+        
+        If you are lucky, you will find the error. If not, and the number of occured
+        errors exceeded the number of exceptions to keep, or maybe a cronjob restarted
+        your zope instance, then....
+        
+        Hmm, not really smooth this behaviour.
+        
+        Wouldn't it be better to have a nice frontend where you can paste the error
+        number to a field and search for it? Keep all log persistent, also when zope
+        restarts? Keep only unique errors and not thousand times the same Error? Get
+        an email when a new, unique error occured, so you know already what's going on
+        before your customer mails this error number to you?
+        
+        If you think that this would be cool, collective.logbook is what you want:)
+        
+        
+        Under the Hood
+        --------------
+        
+        No, you won't get DOOOOMED when you install collective.logbook :)
+        
+        
+        SiteErrorLog Patch
+        ~~~~~~~~~~~~~~~~~~
+        
+        collective.logbook patches the raising method of
+        Products.SiteErrorLog.SiteErrorLog::
+        
+            from Products.SiteErrorLog.SiteErrorLog import SiteErrorLog
+        
+            _raising = SiteErrorLog.raising
+        
+            def raising(self, info):
+                enty_url = _raising(self, info)
+                notify(ErrorRaisedEvent(self, enty_url))
+                return enty_url
+        
+        The patch fires an 'ErrorRaisedEvent' event before it returns the enty_url.
+        The entry url is the link to the standard SiteErrorLog like::
+        
+            http://your-plone-site/error_log/showEntry?id=1237283091.10.529903983894
+        
+        The patch gets _only_ then installed, when you install collective.logbook over
+        the portal_quickinstaller tool and removes the patch, when you uninstall it.
+        
+        You can also deactivate the patch over the logbook configlet of the plone
+        control panel.
+        
+        
+        Log Storage
+        ~~~~~~~~~~~
+        
+        The default storage is an annotation storage on the plone site root::
+        
+            <!-- default storage adapter -->
+            <adapter
+                for="*"
+                factory=".storage.LogBookStorage"
+              />
+        
+        The default storage adapter creates 2 PersistentDict objects in your portal.
+        One 'main' storage and one 'index' storage, which keeps track of referenced
+        errors.
+        
+        
+        The storage will be fetched via an adapter lookup. So the more specific
+        adapter will win. Maybe an SQL storage with SQLAlchemy would be nice here:)
+        
+        
+        Notify Event
+        ~~~~~~~~~~~~
+        
+        When a new unique error occurs, an INotifyTraceback event gets fired. An
+        email event handler is already registered with collective.logbook::
+        
+            <subscriber
+                for=".interfaces.INotifyTraceback"
+                handler=".events.mailHandler"
+              />
+        
+        This handler will email new tracebacks to the list of email adresses
+        specified in the logbook configlet of the plone control panel.
+        
+        
+        Configuration
+        ~~~~~~~~~~~~~
+        
+        collective.logbook now uses Plone 5's registry to store its configuration.
+        It has 3 configuration keys:
+        
+          - logbook.logbook_log_mails
+          - logbook.logbook_large_site
+          - logbook.logbook_webhook_urls    
+        
+        These properties take the values you enter in logbook configlet in the plone
+        control panel.
+        
+        The first one is used to email new tracebacks to these email addresses.
+        
+        The second one changes some behaviour for large sites.
+        
+        The third one does an HTTP POST to some URLs when an error occurs.
+        
+        Unit Tests
+        ~~~~~~~~~~
+        
+        The product contains some unit tests.
+        
+        more to come...
+        
+        ..
+         vim: set ft=rst ts=4 sw=4 expandtab tw=78 :
+        
+        Changelog
+        =========
+        
+        0.8b2 (2016-10-24)
+        ----------------
+        
+        - Cleanup/doc update for Plone 5 version
+          [glemignot]
+        
+        0.8b1 (2016-10-21)
+        ----------------
+        
+        - Initial port to Plone 5
+          [glemignot]
+        
+        0.7 (2014-06-12)
+        ----------------
+        
+        - Fixed tests
+          [ramonski]
+        
+        - Add Plone4.3-compatibility.
+          [WouterVH]
+        
+        - Added Web Hook support
+          [miohtama, sevanteri]
+        
+        
+        0.6 (2011-11-28)
+        ----------------
+        
+        - Log exceptions within exception handler
+          [jfroche]
+        
+        - Move delete all button, add show all button, show error message if error was not found.
+          [jfroche]
+        
+        - Add option that disable browsing stored errors. This option become useful if you have a site with many errors.
+          [jfroche]
+        
+        
+        0.5 (2011-08-16)
+        ----------------
+        
+        - Move storage to OOBTree to avoid that logging error transactions get
+          bigger and bigger.
+          Add upgradehandler accordingly.
+          [gotcha]
+        
+        - Fix saving configuration.
+          [gotcha]
+        
+        - Logging initialization at startup time was broken with Zope 2.13 at least.
+          [gotcha]
+        
+        - Added support for i18n
+          [macagua]
+        
+        - Added support for Spanisn translation
+          [macagua]
+        
+        - Move the mail notifier into a view to use a template for better
+          HTML email handling.
+          [rossp]
+        
+        - Include the REQUEST HTML for more useful debugging and
+          troubleshooting.
+          [rossp]
+        
+        0.4 (2010-08-02)
+        ----------------
+        
+        - Add "z3c.autoinclude.plugin" entry point, so in Plone 3.3+ you can avoid
+          loading the ZCML file. [WouterVH]
+        
+        - expose send mail exception to the log message
+          this fixes http://plone.org/products/collective.logbook/issues/3
+          [naro]
+        
+        - fixed email notification for plone4 since MailHost.send signature changed
+          (see `Upgrade Information`_)
+          [fRiSi]
+        
+          .. _`Upgrade Information`: http://plone.org/documentation/manual/upgrade-guide/version/upgrading-plone-3-x-to-4.0/updating-add-on-products-for-plone-4.0/mailhost.securesend-is-now-deprecated-use-send-instead/
+        
+        - store and show user and date for referenced errors too
+          this fixes http://plone.org/products/collective.logbook/issues/2
+          [fRiSi]
+        
+        0.3.1 (2009-03-18)
+        ------------------
+        
+        - the error handler now starts a new transaction before saving it into the
+          logbook [ramonski]
+        
+        0.3 (2009-03-17)
+        ----------------
+        
+        - 0.2 release was broken, sorry for this re-release [ramonski]
+        - fixed issues which caused some ugly Database Conflict errors [ramonski]
+        - removed all Zope2.app() stuff [ramonski]
+        - mail handler stops when no emails specified [ramonski]
+        - fixed uninstall method of properties [ramonski]
+        
+        0.2 (2009-03-17)
+        ----------------
+        
+        - added a configlet for plone control panel [ramonski]
+        - added a default notify traceback email handler [ramonski]
+        - added propert install/uninstall methods for the SiteErrorLog patch
+          [ramonski]
+        - added 2 properties in the application root [ramonski]
+        
+        0.1 - Unreleased
+        ----------------
+        
+        - Initial release [ramonski]
+        
+Platform: UNKNOWN
+Classifier: Framework :: Plone
+Classifier: Programming Language :: Python
+Classifier: Topic :: Software Development :: Libraries :: Python Modules

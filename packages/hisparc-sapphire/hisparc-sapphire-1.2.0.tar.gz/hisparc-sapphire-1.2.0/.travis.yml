@@ -1,0 +1,34 @@
+language: python
+python:
+  - "2.7"
+  - "3.5"
+
+sudo: false
+
+# Miniconda copied from
+# https://gist.github.com/dan-blanchard/7045057
+before_install:
+  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
+      MINICONDA=Miniconda2-latest-Linux-x86_64.sh;
+    else
+      MINICONDA=Miniconda3-latest-Linux-x86_64.sh;
+    fi
+  - wget http://repo.continuum.io/miniconda/${MINICONDA} -O miniconda.sh
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH=$HOME/miniconda/bin:$PATH
+  - conda update --yes conda
+
+install:
+  - conda install --yes pip python=$TRAVIS_PYTHON_VERSION numpy scipy pytables numba
+  - pip install coverage coveralls codecov
+  - pip install -e .[dev]
+
+script:
+  - coverage run --branch --source=sapphire setup.py test
+  - flake8 --ignore=E501 --exclude=sapphire/transformations/geographic.py sapphire
+  - flake8 --exit-zero --ignore=Z sapphire/transformations/geographic.py
+  - sphinx-build -anW doc doc/_build/html
+
+after_success:
+  - codecov
+  - coveralls

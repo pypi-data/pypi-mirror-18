@@ -1,0 +1,136 @@
+Metadata-Version: 1.1
+Name: kernel_tuner
+Version: 0.1.0b0
+Summary: A simple CUDA/OpenCL kernel tuner in Python
+Home-page: http://benvanwerkhoven.github.io/kernel_tuner/
+Author: Ben van Werkhoven
+Author-email: b.vanwerkhoven@esciencecenter.nl
+License: Apache 2.0
+Description:  
+        A simple CUDA/OpenCL kernel tuner in Python
+        ===========================================
+        
+        The goal of this project is to provide a - as simple as possible - tool
+        for tuning CUDA and OpenCL kernels. This implies that any CUDA or OpenCL
+        kernel can be tuned without requiring extensive changes to the original
+        kernel code.
+        
+        A very common problem in GPU programming is that some combination of
+        thread block dimensions and other kernel parameters, like tiling or
+        unrolling factors, results in dramatically better performance than other
+        kernel configurations. The goal of auto-tuning is to automate the
+        process of finding the best performing configuration for a given device.
+        
+        This kernel tuner aims that you can directly use the tuned kernel
+        without introducing any new dependencies. The tuned kernels can
+        afterwards be used independently of the programming environment, whether
+        that is using C/C++/Java/Fortran or Python doesn't matter.
+        
+        The kernel_tuner module currently only contains main one function which
+        is called tune_kernel to which you pass at least the kernel name, a string
+        containing the kernel code, the problem size, a list of kernel function
+        arguments, and a dictionary of tunable parameters. There are also a lot
+        of optional parameters, for a complete list see the full documentation of
+        tune_kernel.
+        
+        Installation
+        ------------
+        | clone the repository
+        |  ``git clone git@github.com:benvanwerkhoven/kernel_tuner.git``
+        | change into the top-level directory
+        |  ``cd kernel_tuner``
+        | install using
+        |  ``pip install -r requirements.txt``
+        |  ``pip install .``
+        
+        Dependencies
+        ------------
+         * Python 2.7 or Python 3.5
+         * PyCuda and/or PyOpenCL (https://mathema.tician.de/software/)
+        
+        Example usage
+        -------------
+        The following shows a simple example for tuning a CUDA kernel:
+        
+        ::
+        
+            kernel_string = """
+            __global__ void vector_add(float *c, float *a, float *b, int n) {
+                int i = blockIdx.x * block_size_x + threadIdx.x;
+                if (i<n) {
+                    c[i] = a[i] + b[i];
+                }
+            }
+            """
+        
+            size = 10000000
+            problem_size = (size, 1)
+        
+            a = numpy.random.randn(size).astype(numpy.float32)
+            b = numpy.random.randn(size).astype(numpy.float32)
+            c = numpy.zeros_like(b)
+            n = numpy.int32(size)
+            args = [c, a, b, n]
+        
+            tune_params = dict()
+            tune_params["block_size_x"] = [128+64*i for i in range(15)]
+        
+            tune_kernel("vector_add", kernel_string, problem_size, args, tune_params)
+        
+        The exact same Python code can be used to tune an OpenCL kernel:
+        
+        ::
+        
+            kernel_string = """
+            __kernel void vector_add(__global float *c, __global float *a, __global float *b, int n) {
+                int i = get_global_id(0);
+                if (i<n) {
+                    c[i] = a[i] + b[i];
+                }
+            }
+            """
+        
+        
+        Or even just a C function, see the example `here <https://github.com/benvanwerkhoven/kernel_tuner/blob/master/examples/c/vector_add.py>`_.
+        
+        You can find these and many - more extensive - example codes, in the
+        `examples <https://github.com/benvanwerkhoven/kernel_tuner/blob/master/examples/>`_
+        directory. See the `full documentation <http://benvanwerkhoven.github.io/kernel_tuner/sphinxdoc/html/index.html>`_
+        for several highly detailed tutorial-style explanations of example
+        kernels and the scripts to tune them.
+        
+        Author
+        ------
+        Ben van Werkhoven <b.vanwerkhoven@esciencenter.nl>
+        
+        Copyright and License
+        ---------------------
+        * Copyright 2016 Netherlands eScience Center
+        
+        Licensed under the Apache License, Version 2.0 (the "License");
+        you may not use this file except in compliance with the License.
+        You may obtain a copy of the License at
+        
+            http://www.apache.org/licenses/LICENSE-2.0
+        
+        Unless required by applicable law or agreed to in writing, software
+        distributed under the License is distributed on an "AS IS" BASIS,
+        WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+        See the License for the specific language governing permissions and
+        limitations under the License.
+        
+Keywords: auto-tuning gpu computing pycuda cuda pyopencl opencl
+Platform: UNKNOWN
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: Intended Audience :: Education
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Natural Language :: English
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Software Development
+Classifier: Topic :: System :: Distributed Computing
+Classifier: Development Status :: 4 - Beta

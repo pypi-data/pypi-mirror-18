@@ -1,0 +1,166 @@
+Net-Survey
+==========
+
+Net-Survey allows you to deploy agents throughout your infrastructure to
+gather network, interface, and ip configuration with the end goal of running
+a direct scan of basic reachability and ports.  Server and agents deployed
+will progress through a series of steps once started:
+
+* Gathering of interface and network information.
+* Updating the central server.
+* Processing of topology information.
+* Distribution of all topology data to clients.
+* Clients then proceed to scanning of known neighboring hosts.
+* Retrieval of test results.
+
+The benefit of Net-Survey is providing tests in situations where networks
+are isolated, i.e. a backend storage network.  It is also very fast as
+the targeted scan will only scan known neighboring IPs with the interest
+of learning where setup issues exist on a new or existing infrastructure.
+
+Installation
+============
+
+Simple install via pypi:
+
+Note: Please ensure python-dev is installed prior to installing net-survey.
+
+```
+pip install net-survey
+```
+
+Command Line Usage
+==================
+
+Server start:
+
+```
+net-survey --mode server --inventory_file /home/user/myinventory
+```
+
+API start:
+
+```
+net-survey --mode api --inventory_file /home/user/myinventory
+```
+
+Client start:
+
+```
+net-survey --server_ip <server_ip>
+```
+
+Usage
+=====
+
+Ensure config file is installed during setup.  You might need sudo privileges
+to install net-survey as it creates /etc/net-survey.  The configuration file
+can be manually stated via the --config-file param as well.
+
+Server start:
+
+```
+net-survey --config-file /etc/net-survey/netsurvey.config
+```
+
+Use the configuration file provided to set the mode to `server`. Optionally,
+adjust the API, Redis, and Server ports to best fit your needs.
+
+
+API start:
+
+```
+net-survey --config-file /etc/net-survey/netsurvey.config
+```
+
+Use the configuration file provided to set the mode to `api`. Optionally,
+adjust the API and Redis ports to best fit your needs.
+
+
+Client start:
+
+```
+net-survey --config-file /etc/net-survey/netsurvey.config
+```
+
+Use the configuration file provided to set the mode to `client`. Set the IP
+Address of the server via `server_ip`, and optionally, adjust the options
+to best suite your needs.
+
+
+API Usage
+=========
+
+The API server can be started on one node with the main Net-Survey server with
+the mode `mixed`.  Otherwise, the API node can be separated from the server
+node by setting the mode to `api`.
+
+Redis is required to be installed and reachable, where the API node is in
+control of the server and clients.  The Redis instance can be located on any
+of the server or api nodes.
+
+The API Server will respond to GET requests on / and return a JSON dump
+containing the results of a scan or the current status of a scan:
+
+```json
+
+{
+"_host_detail":
+    {
+    "compute02":
+        {"192.168.140.0/24":
+            {"ips": ["192.168.140.118"],
+            "results": {"192.168.140.117":
+                {"host": "compute01",
+                "result": "success",
+                "open_ports": [22]
+                }
+            }
+        }, "192.168.100.0/24":
+            {"ips": ["192.168.100.118"],
+            "results": {"192.168.100.117":
+                {"host": "compute01",
+                "result": "success",
+                "open_ports": [22]
+                }
+            }
+        }
+    },
+    "compute01":
+        {"192.168.140.0/24":
+            {"ips": ["192.168.140.117"],
+            "results": {"192.168.140.118":
+                {"host": "compute02",
+                "result": "success",
+                "open_ports": [22]
+                }
+            }
+        }, "192.168.100.0/24":
+            {"ips": ["192.168.100.117"],
+            "results":
+                {"192.168.100.118":
+                    {"host": "compute02",
+                    "result": "success",
+                    "open_ports": [22]
+                    }
+                }
+            }
+        }
+    },
+    "_state": "sleeping",
+    "_clients": {"compute02": "192.168.100.118", "compute01": "192.168.100.117"},
+    "_networks":
+        {
+            "192.168.140.0/24": ["compute02", "compute01"],
+            "192.168.100.0/24": ["compute02", "compute01"]
+        }
+}
+
+```
+
+The API Server can also control when a scan will take place, by issuing a
+POST to /start.  By default, the server service will not immediately start a
+scan, but this can be enabled by setting `scan_on_start` to `True`.
+
+By setting `scan_on_start` the server instance will bypass all API control,
+and disables the need for the API and Redis instances.

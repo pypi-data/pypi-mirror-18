@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>tecplot.macro &mdash; PyTecplot 0.3.3 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/pydoctheme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.3.3',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <link rel="top" title="PyTecplot 0.3.3 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <link rel="shortcut icon" type="image/gif" href="../../_static/favicon.gif" />
+    <meta name="viewport" content="width=device-width,initial-scale=0.8">
+    
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+
+  </head>
+  <body role="document">
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="responsive-menu"><a href="#sidebar-anchor" title="Navigation">&#9776;</a></li>
+        <li><a href="../../index.html">PyTecplot-0.3</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for tecplot.macro</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">from</span> <span class="nn">textwrap</span> <span class="kn">import</span> <span class="n">dedent</span>
+
+<span class="kn">from</span> <span class="nn">.tecutil</span> <span class="kn">import</span> <span class="n">_tecutil</span><span class="p">,</span> <span class="n">lock</span>
+<span class="kn">from</span> <span class="nn">.exception</span> <span class="kn">import</span> <span class="n">TecplotLogicError</span><span class="p">,</span> <span class="n">TecplotMacroError</span>
+
+<span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<span class="nd">@lock</span><span class="p">()</span>
+<div class="viewcode-block" id="execute_command"><a class="viewcode-back" href="../../api/tecplot.macros.html#tecplot.macro.execute_command">[docs]</a><span class="k">def</span> <span class="nf">execute_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Runs a series of tecplot macro commands.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        cmd (`string &lt;str&gt;`): The macro commands to be run.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        `TecplotMacroError`: Message will specify the command that failed.</span>
+
+<span class="sd">    This command splits the input into individual commands and runs them one</span>
+<span class="sd">    at a time. See the |Tecplot Macro Scripting Guide| for details about</span>
+<span class="sd">    |Tecplot 360 EX|&#39;s macro language.</span>
+
+<span class="sd">    .. warning::</span>
+
+<span class="sd">        Currently, only commands that do not require raw data, by use of the</span>
+<span class="sd">        ``RAWDATA`` macro directive, are accepted. See the |Tecplot Macro</span>
+<span class="sd">        Scripting Guide| for more information about raw data.</span>
+
+<span class="sd">    The following command will perform the same operations as the</span>
+<span class="sd">    `Hello, World! example &lt;hello_world&gt;`::</span>
+
+<span class="sd">        &gt;&gt;&gt; tecplot.macro.execute_command(r&#39;&#39;&#39;</span>
+<span class="sd">        ...   $!ATTACHTEXT</span>
+<span class="sd">        ...     ANCHORPOS { X = 35 Y = 50 }</span>
+<span class="sd">        ...     TEXTSHAPE { HEIGHT = 35 }</span>
+<span class="sd">        ...     TEXT = &#39;Hello, World!&#39;</span>
+<span class="sd">        ...   $!EXPORTSETUP EXPORTFNAME = &#39;hello_world.png&#39;</span>
+<span class="sd">        ...   $!EXPORT</span>
+<span class="sd">        ...     EXPORTREGION = CURRENTFRAME</span>
+<span class="sd">        ... &#39;&#39;&#39;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ptrn</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">r&#39;(\$!.*?)(?=\$!)|(\$!.*)&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">MULTILINE</span> <span class="o">|</span> <span class="n">re</span><span class="o">.</span><span class="n">DOTALL</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">match</span> <span class="ow">in</span> <span class="n">ptrn</span><span class="o">.</span><span class="n">finditer</span><span class="p">(</span><span class="n">cmd</span><span class="p">):</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="ow">or</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">__debug__</span><span class="p">:</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;executing command:</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">c</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">_tecutil</span><span class="o">.</span><span class="n">MacroExecuteCommand</span><span class="p">(</span><span class="n">c</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">TecplotMacroError</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">TecplotLogicError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">TecplotMacroError</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="execute_extended_command"><a class="viewcode-back" href="../../api/tecplot.macros.html#tecplot.macro.execute_extended_command">[docs]</a><span class="k">def</span> <span class="nf">execute_extended_command</span><span class="p">(</span><span class="n">procid</span><span class="p">,</span> <span class="n">cmd</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Runs a tecplot macro command defined in an addon.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        procid (`string &lt;str&gt;`): Registered name of the addon.</span>
+<span class="sd">        cmd (`string &lt;str&gt;`): The command to run.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        `TecplotMacroError`</span>
+
+<span class="sd">    In general, the command string is formatted prior to being fed into the</span>
+<span class="sd">    |Tecplot Engine| so liberal use of whitespace, including new-lines, are</span>
+<span class="sd">    acceptable.</span>
+
+<span class="sd">    Example::</span>
+
+<span class="sd">        &gt;&gt;&gt; tecplot.macro.execute_extended_command(</span>
+<span class="sd">        ...     &#39;Multi Frame Manager&#39;,</span>
+<span class="sd">        ...     &#39;TILEFRAMESSQUARE&#39;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="n">dedent</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">            $!EXTENDEDCOMMAND</span>
+<span class="s1">              COMMANDPROCESSORID = &#39;{procid}&#39;</span>
+<span class="s1">              COMMAND = &#39;{cmd}&#39;</span>
+<span class="s1">        &#39;&#39;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">procid</span><span class="o">=</span><span class="n">procid</span><span class="p">,</span>
+                   <span class="n">cmd</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span> <span class="n">split</span><span class="p">())</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">r&quot;&#39;&quot;</span><span class="p">,</span> <span class="s2">r&quot;\&#39;&quot;</span><span class="p">)))</span>
+    <span class="n">execute_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span></div>
+
+
+<span class="nd">@lock</span><span class="p">()</span>
+<div class="viewcode-block" id="execute_file"><a class="viewcode-back" href="../../api/tecplot.macros.html#tecplot.macro.execute_file">[docs]</a><span class="k">def</span> <span class="nf">execute_file</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Run a macro file.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        filename (`string &lt;str&gt;`): The file to be run.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        `TecplotMacroError`</span>
+
+<span class="sd">    Example::</span>
+
+<span class="sd">        &gt;&gt;&gt; tecplot.macro.execute_file(&#39;/path/to/macro_file.mcr&#39;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">_tecutil</span><span class="o">.</span><span class="n">MacroRunFile</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">TecplotMacroError</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">TecplotLogicError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">TecplotMacroError</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+    <a id="sidebar-anchor"></a>
+    
+            <p class="logo"><a href="../../index.html">
+              <img class="logo" src="../../_static/powered_by_tecplot.png" alt="Logo"/>
+            </a></p>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script><h3><a href="../../index.html">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../reference.html">Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, Tecplot, Inc..
+      Last updated on Oct 31, 2016.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.5.
+    </div>
+  </body>
+</html>

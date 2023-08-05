@@ -1,0 +1,65 @@
+Metadata-Version: 1.0
+Name: piqq
+Version: 0.0.5
+Summary: PIQQ - The OOP-based add-on for aioamqp library
+Home-page: https://git.hellotan.ru/jar3b/piqq
+Author: jar3b
+Author-email: hellotan@live.ru
+License: MIT
+Description: # piqq
+        PIQQ - The OOP-based add-on for aioamqp library
+        
+        ## Example usage
+        ```
+        class DemoReceiver(PiqqReceiver):
+            def get_qos_size(self):
+                return 1
+        
+            def get_routing_keys(self):
+                return "rk_1", "rk_2"
+        
+            def get_queue(self):
+                return {'queue_name': 'test_queue', 'durable': True}
+        
+            def get_exchange(self):
+                return {'exchange_name': 'test_exchange', 'type_name': 'topic', 'durable': True}
+        
+            def on_mq_message(self, channel, body, envelope, properties, callbacks):
+                print(body, self)
+                time.sleep(2)
+                print(envelope.delivery_tag)
+                callbacks['ack']()
+        
+        # As a Daemon
+        piqq_server = Piqq('127.0.0.1', 5672, 'guest', 'guest')
+        piqq_server.add_command(DemoReceiver())
+        piqq_server.run_silently(10)
+        piqq_server.pub({'exchange_name': 'test_exchange', 'type_name': 'topic', 'durable': True}, 'rk_2', {'a': 'sosta'}, delivery_mode=2, serialize_as='json')
+        while True:
+            time.sleep(2)
+        
+        # Exclusive
+        # piqq_server = Piqq('127.0.0.1', 5672, 'guest', 'guest')
+        # piqq_server.add_command(DemoReceiver())
+        # piqq_server.run_exclusive(10)
+        ```
+        
+        ## Changelog
+        - 0.0.5
+            - Threading logic rework, add daemonic start: `run_silently()`
+        - 0.0.4
+            - Added text and json serializers (can be set up like `.pub(serialize_as='json')`)
+        - 0.0.3
+            - Added `callbacks` parameter to `on_mq_message` with `ack`, `nack` and `pub` functions
+        - 0.0.2
+            - Add `piqq.exception` package
+        - 0.0.1
+            - Initial version
+            
+        
+        ## Publishing
+        ```
+        python setup.py register -r pypi
+        python setup.py sdist upload -r pypi
+        ```
+Platform: UNKNOWN

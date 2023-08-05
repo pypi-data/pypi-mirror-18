@@ -1,0 +1,69 @@
+---
+# TODO: Ensure that version 7 of CentOS / RHEL is being used
+- name: Test distribution
+  hosts:
+    - k8sdc
+  tasks:
+    - assert:
+        that: ansible_os_family == "RedHat"
+  tags: confirm_os
+
+
+# TODO: Add NTP so that services like Ceph work properly
+- name: Common components setup
+  hosts:
+    - k8sdc
+  become:  yes
+  roles:
+    - common
+  tags: common_setup
+
+
+- name: k8sdc-ca certificate authority setup
+  hosts:
+    - k8sdc-ca
+  become: yes
+  roles:
+    - k8sdc-ca
+  tags: 
+    - k8sdc_ca_setup
+    - k8sdc_security
+
+
+- name: Etcd setup
+  hosts: 
+    - etcd
+  become:  yes
+  roles:
+    - etcd
+  tags: etcd_setup
+
+
+- name: Flannel setup
+  hosts: 
+    - k8sdc-masters
+    - k8sdc-nodes
+  become:  yes
+  roles:
+    - flannel
+  tags: flannel_setup
+
+
+- name: Docker setup
+  hosts: 
+    - k8sdc-masters
+    - k8sdc-nodes
+  become:  yes
+  roles:
+    - docker
+  tags: docker_setup
+
+
+- name: Kubernetes setup
+  hosts: 
+    - k8sdc-masters
+    - k8sdc-nodes
+  become: yes
+  roles:  
+    - kubernetes
+  tags: k8s_setup

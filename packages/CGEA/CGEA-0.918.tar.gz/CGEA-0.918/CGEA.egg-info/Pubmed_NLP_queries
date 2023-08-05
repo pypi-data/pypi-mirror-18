@@ -1,0 +1,104 @@
+Selecting data:
+
+	Finding an id by term:
+		select id from id_to_term_map where term = 'XYZ';
+
+	Finding an id by dbid:
+		select id from id_to_dbid_map where dbid = 'XYZ';
+
+	Finding a dbid by term:
+		select itm.id, itm.term, idm.dbid, idm.type, idm.count, idm.rank 
+		from id_to_term_map as itm, id_to_dbid_map as idm
+		where itm.term = 'XYZ' and idm.id = itm.id;
+
+	Finding a term by dbid:
+		select itm.id, itm.term, itm.count, itm.rank, idm.dbid, idm.type
+		from id_to_term_map as itm, id_to_dbid_map as idm
+		where idm.dbid = 'D003876' and itm.id = idm.id;
+
+	In all cases, add "rank = 1" to select only the most common hit (this is usually preferable)
+
+Finding coocurences:
+
+	Get coocuring ids:
+		select * from pairs where id1 = '123' order by pvalue;
+
+	Limit to 'Gene' indications:
+		select * from pairs as p, id_map as im
+		where p.id1 = '123' and p.id2 = im.id and im.type = 'Gene' 
+		order by p.pvalue;
+
+	Limit to 'Chemical' indications:
+		select * from pairs as p, id_map as im
+		where p.id1 = '123' and p.id2 = im.id and im.type = 'Chemical' 
+		order by p.pvalue;
+
+	Get coocuring ids with full annotations:
+		select itm.term, im.type, idm.dbid, p.coocurrence_count, p.pvalue, p.adjpvalue, p.oddsratio 
+		from pairs as p, id_map as im, id_to_term_map as itm, id_to_dbid_map as idm
+		where p.id1 = '123' and
+			  im.id = p.id2 and 
+			  itm.id = p.id2 and 
+			  idm.id = p.id2 and 
+			  itm.rank = 1 and
+			  idm.rank = 1
+		order by p.pvalue;
+
+	Get coocuring ids with full annotations from dbid:
+		select itm.term, im.type, idm2.dbid, p.coocurrence_count, p.pvalue, p.adjpvalue, p.oddsratio
+		from pairs as p, id_to_dbid_map as idm1, id_map as im, id_to_term_map as itm, id_to_dbid_map as idm2
+		where idm1.dbid = '20287' and
+			  idm1.rank = 1 and
+			  p.id1 = idm1.id and
+			  im.id = p.id2 and 
+			  itm.id = p.id2 and 
+			  idm2.id = p.id2 and 
+			  itm.rank = 1 and
+			  idm2.rank = 1
+		order by p.pvalue;
+
+
+Getting pmids:
+	Get pmids by id:
+		select pmm1.pmid, pd1.title, pd1.journal, pd1.submission_date
+	    from
+	        pubmed_nlp.id_to_pmid_map as pmm left join
+	        pubmed_nlp.pmid_data as pd on pmm.pmid = pd.pmid
+	    where
+	        pmm.id = 2098257 and
+	        pmm.pmid = pd.pmid and
+	        pd.submission_date > 2000-01-01
+	    order by pmm1.tf_idf+pmm2.tf_idf desc;
+
+	Get pmids for coocurrence by ids:
+		select pmm1.pmid, pd1.title, pd1.journal, pd1.submission_date
+	    from
+	        pubmed_nlp.id_to_pmid_map as pmm1 left join
+	        pubmed_nlp.pmid_data as pd1 on pmm1.pmid = pd1.pmid,
+	        pubmed_nlp.id_to_pmid_map as pmm2 left join
+	        pubmed_nlp.pmid_data as pd2 on pmm2.pmid = pd2.pmid
+	    where
+	        pmm1.id = 20287 and
+	        pmm2.id = 2098257 and
+	        pmm1.pmid = pd1.pmid and
+	        pd1.submission_date > 2000-01-01 and
+	        pmm1.pmid = pmm2.pmid
+	    order by pmm1.tf_idf+pmm2.tf_idf desc;
+
+	Get pmids for coocurrence by dbid and id:
+		select pmm1.pmid, pd1.title, pd1.journal, pd1.submission_date
+	    from
+	        pubmed_nlp.id_to_dbid_map as dbm,
+	        pubmed_nlp.id_to_pmid_map as pmm1 left join
+	        pubmed_nlp.pmid_data as pd1 on pmm1.pmid = pd1.pmid,
+	        pubmed_nlp.id_to_pmid_map as pmm2 left join
+	        pubmed_nlp.pmid_data as pd2 on pmm2.pmid = pd2.pmid
+	    where
+	        dbm.dbid = 'D003876' and
+	        dbm.rank = 1 and
+	        pmm1.id = dbm.id and
+	        pmm2.id = 2098257 and
+	        pmm1.pmid = pd1.pmid and
+	        pd1.submission_date > 2000-01-01 and
+	        pmm1.pmid = pmm2.pmid
+	    order by pmm1.tf_idf+pmm2.tf_idf desc;

@@ -1,0 +1,59 @@
+language: python
+sudo: required
+dist: trusty
+
+python:
+  - "2.7"
+  - "3.4"
+
+virtualenv:
+  system_site_packages: true
+
+matrix:
+  exclude:
+    - env: PYTEST_QT_API=pyqt5
+      python: "2.7"
+
+env:
+ - PYTEST_QT_API=pyqt4
+ - PYTEST_QT_API=pyqt4v2
+ - PYTEST_QT_API=pyside
+ - PYTEST_QT_API=pyqt5
+
+install:
+ - sudo apt-get update
+
+ # Xvfb
+ - sudo apt-get install -y xvfb
+
+ # Qt
+ - python scripts/install-qt.py
+
+ # PyTest
+ - pip install -U pytest
+
+ # Tox
+ - pip install -U tox
+
+ # others
+ - pip install coveralls --use-wheel
+
+script:
+ - python setup.py develop
+ # change screen size and depth in attempt to fix waitActive test (#160)
+ - catchsegv xvfb-run --server-args="-screen 0 640x480x24" coverage run --source=pytestqt setup.py test
+ - tox -e lint
+
+after_success:
+ - coveralls
+
+deploy:
+  provider: pypi
+  user: nicoddemus
+  password:
+    secure: Uj4XhkIUGE8CkE9mbP4y2wrp1s+jODkEi+wXCL1ZDhcCxxs3gjEOtAlqIXS/4PMLZcxeV2rXNGzGJ6n+i6Ruj2T1wfar7hmy2faaur6tcUDhEpXLkAl6DAKlMiZbEyT4C7OpunBoYmw8Gh/3kaDeGgz4FxEiJakAqzEmmeyFvFY=
+  on:
+    tags: true
+    distributions: sdist bdist_wheel
+    repo: pytest-dev/pytest-qt
+

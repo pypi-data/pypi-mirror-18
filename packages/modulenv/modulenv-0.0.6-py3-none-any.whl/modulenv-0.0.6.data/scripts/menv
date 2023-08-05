@@ -1,0 +1,87 @@
+#!python
+#
+# part of modulenv
+#
+# Copyright (c) 2016 Sven E. Templer
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of this
+# software and associated documentation files (the "Software"), to deal in the Software
+# without restriction, including without limitation the rights to use, copy, modify, merge,
+# publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
+# to whom the Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all copies or
+# substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+# PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+# FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+# OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+
+import argparse as ap
+from modulenv import __version__
+import modulenv.commands as cmd
+
+__desc__ = "menv - A control program for modulenv (software modules environment)"
+__epi__ = "Copyright (c) 2016 Sven E. Templer - see https://github.com/setempler/modulenv"
+
+p = ap.ArgumentParser(description = __desc__, epilog = __epi__,
+        formatter_class = ap.ArgumentDefaultsHelpFormatter)
+p.set_defaults(func = cmd.none)
+p.add_argument('--version', action = 'version', version = '%(prog)s version ' + __version__,
+        help = 'show version and exit')
+s = p.add_subparsers(metavar = 'command')
+
+p_init = s.add_parser('init', formatter_class = ap.ArgumentDefaultsHelpFormatter,
+        help = 'initialize module environment')
+p_init.set_defaults(func = cmd.env_init)
+p_init.add_argument('-e', dest = 'prefix', metavar = 'DIR', default = '.',
+        help = 'directory of module environment')
+p_init.add_argument('-b', dest = 'bin', metavar = 'DIR', default = None,
+        help = 'link to directory for software binaries')
+p_init.add_argument('-u', dest = 'env', metavar = 'DIR', default = None,
+        help = 'link to directory for software user environment')
+p_init.add_argument('-m', dest = 'moduleshome', metavar = 'DIR', default = None,
+        help = 'overwrite $MODULESHOME directory')
+p_init.add_argument('-c', dest = 'modulecmd', metavar = 'DIR', default = None,
+        help = 'manually define modulecmd (else searches /bin, /usr/bin, /usr/local/bin)')
+p_init.add_argument('-p', dest = 'clearmodpath', action = 'store_true',
+        help = 'clear the modules path variable $MODULESHOME')
+
+p_status = s.add_parser('status', formatter_class = ap.ArgumentDefaultsHelpFormatter,
+        help='show status of current environment')
+p_status.set_defaults(func = cmd.env_status)
+p_status.add_argument('-e', dest = 'prefix', metavar = 'DIR', default = '.',
+        help = 'directory of module environment')
+
+p_add = s.add_parser('add', formatter_class = ap.ArgumentDefaultsHelpFormatter,
+        help='add module file to environment from config')
+p_add.set_defaults(func = cmd.env_add)
+p_add.add_argument('file', metavar = 'FILE', nargs = '+',
+        help = 'module config file paths')
+p_add.add_argument('-e', dest = 'prefix', metavar = 'DIR', default = '.',
+        help = 'directory of module environment')
+p_add.add_argument('-t', dest = 'template', action = 'store_true',
+        help = 'instead of a config FILE, provide a template NAME (see \'meconf template\')')
+p_add.add_argument('-f', dest = 'force', action = 'store_true',
+        help = 'force add, if already exists')
+p_add.add_argument('--verbose', action = 'store_true',
+        help = 'print module config')
+# print module files too?
+
+p_rm = s.add_parser('rm', formatter_class = ap.ArgumentDefaultsHelpFormatter,
+        help='remove module from environment')
+p_rm.set_defaults(func = cmd.env_rm)
+p_rm.add_argument('name', metavar = 'NAME',
+        help = 'module name to remove')
+p_rm.add_argument('-e', dest = 'prefix', metavar = 'DIR', default = '.',
+        help = 'directory of module environment')
+
+a = p.parse_args()
+
+if __name__ == "__main__":
+    a.func(a)
+

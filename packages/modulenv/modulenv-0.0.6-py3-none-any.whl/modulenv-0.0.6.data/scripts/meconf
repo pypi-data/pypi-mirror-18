@@ -1,0 +1,80 @@
+#!python
+#
+# part of modulenv
+#
+# Copyright (c) 2016 Sven E. Templer
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of this
+# software and associated documentation files (the "Software"), to deal in the Software
+# without restriction, including without limitation the rights to use, copy, modify, merge,
+# publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
+# to whom the Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all copies or
+# substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+# PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+# FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+# OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+
+import argparse as ap
+from modulenv import __version__
+import modulenv.commands as cmd
+
+__desc__ = "meconf - A configuration file parser for modulenv (software modules environment)"
+__epi__ = "Copyright (c) 2016 Sven E. Templer - see https://github.com/setempler/modulenv"
+
+p = ap.ArgumentParser(description = __desc__, epilog = __epi__,
+        formatter_class = ap.ArgumentDefaultsHelpFormatter)
+p.set_defaults(func = cmd.none)
+p.add_argument('--version', action = 'version', version = '%(prog)s version ' + __version__,
+        help = 'show version and exit')
+s = p.add_subparsers(metavar = 'command')
+
+p_check = s.add_parser('check', formatter_class = ap.ArgumentDefaultsHelpFormatter,
+        help='check module config files')
+p_check.set_defaults(func = cmd.conf_check)
+p_check.add_argument('files', metavar = 'FILE', nargs = '+',
+        help = 'config file path(s)')
+p_check.add_argument('-v', dest = 'verbose', action = 'store_true',
+        help = 'be verbose (print config content)')
+
+p_new = s.add_parser('new', formatter_class = ap.ArgumentDefaultsHelpFormatter,
+        help='generate a module config file')
+p_new.set_defaults(func = cmd.conf_new)
+p_new.add_argument('-n', dest = 'name', metavar = 'NAME', default = 'example',
+        help = 'define module name')
+p_new.add_argument('-g', dest = 'group', metavar = 'GROUP', default = 'example',
+        help = 'define group/subdirectory')
+p_new.add_argument('-v', dest = 'versions', metavar = 'VERSION', default = ['1.0'], nargs = '+',
+        help = 'define versions')
+p_new.add_argument('-d', dest = 'default', metavar = 'VERSION', default = None,
+        help = 'define default version')
+p_new.add_argument('-l', dest = 'latest', metavar = 'VERSION', default = None,
+        help = 'define latest version')
+p_new.add_argument('-r', dest = 'depends', metavar = 'MODULE', default = None, nargs = '+',
+        help = 'define dependencies/requirements of other modules')
+p_new.add_argument('-p', dest = 'prepends', metavar = 'VARIABLE=VALUE', default = None, nargs = '+',
+        help = 'define shell variable prepends (via prepend-path VARIABLE VALUE)')
+p_new.add_argument('-s', dest = 'setenvs', metavar = 'VARIABLE=VALUE', default = None, nargs = '+',
+        help = 'define shell variable overwrites (via setenv VARIABLE VALUE)')
+p_new.add_argument('-o', dest = 'output', metavar = 'FILE', default = None,
+        help = 'write config to file instead of standard output')
+p_new.add_argument('--verbose', action = 'store_true',
+        help = 'be verbose')
+
+p_template = s.add_parser('template', formatter_class = ap.ArgumentDefaultsHelpFormatter,
+        help='print config template')
+p_template.set_defaults(func = cmd.conf_template)
+p_template.add_argument('name', metavar = 'NAME', nargs = '?', default = None,
+        help = 'template name, leave empty to print available')
+
+a = p.parse_args()
+
+if __name__ == "__main__":
+    a.func(a)
+

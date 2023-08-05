@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="ascii"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+          "DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>littletable</title>
+  <link rel="stylesheet" href="epydoc.css" type="text/css" />
+  <script type="text/javascript" src="epydoc.js"></script>
+</head>
+
+<body bgcolor="white" text="black" link="blue" vlink="#204080"
+      alink="#204080">
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th bgcolor="#70b0f0" class="navbar-select"
+          >&nbsp;&nbsp;&nbsp;Home&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Project homepage -->
+      <th class="navbar" align="right" width="100%">
+        <table border="0" cellpadding="0" cellspacing="0">
+          <tr><th class="navbar" align="center"
+            >littletable</th>
+          </tr></table></th>
+  </tr>
+</table>
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr valign="top">
+    <td width="100%">
+      <span class="breadcrumbs">
+        Module&nbsp;littletable
+      </span>
+    </td>
+    <td>
+      <table cellpadding="0" cellspacing="0">
+        <!-- hide/show private -->
+        <tr><td align="right"><span class="options"
+            >[<a href="frames.html" target="_top">frames</a
+            >]&nbsp;|&nbsp;<a href="littletable-module.html"
+            target="_top">no&nbsp;frames</a>]</span></td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<!-- ==================== MODULE DESCRIPTION ==================== -->
+<h1 class="epydoc">Module littletable</h1><p class="nomargin-top"><span class="codelink"><a href="littletable-pysrc.html">source&nbsp;code</a></span></p>
+<p><code>littletable</code> - a Python module to give ORM-like access to 
+  a collection of objects</p>
+  <p>The <code>littletable</code> module provides a low-overhead, 
+  schema-less, in-memory database access to a collection of user objects.  
+  <code>littletable</code> provides a <a 
+  href="littletable.DataObject-class.html" class="link">DataObject</a> 
+  class for ad hoc creation of semi-immutable objects that can be stored in
+  a <code>littletable</code> <a href="littletable.Table-class.html" 
+  class="link">Table</a>.</p>
+  <p>In addition to basic insert/remove/query/delete access to the contents
+  of a Table, <code>littletable</code> offers:</p>
+  <ul>
+    <li>
+      simple indexing for improved retrieval performance, and optional 
+      enforcing key uniqueness
+    </li>
+    <li>
+      access to objects using indexed attributes
+    </li>
+    <li>
+      simplified joins using '+' operator syntax between annotated Tables
+    </li>
+    <li>
+      the result of any query or join is a new first-class 
+      <code>littletable</code> Table
+    </li>
+    <li>
+      pivot on one or two attributes to gather tabulated data summaries
+    </li>
+    <li>
+      easy import/export to CSV and JSON files
+    </li>
+  </ul>
+  <p><code>littletable</code> Tables do not require an upfront schema 
+  definition, but simply work off of the attributes in the stored values, 
+  and those referenced in any query parameters.</p>
+  <p>Here is a simple <code>littletable</code> data storage/retrieval 
+  example:</p>
+<pre class="literalblock">
+   from littletable import Table, DataObject
+
+   customers = Table('customers')
+   customers.create_index(&quot;id&quot;, unique=True)
+   customers.insert(DataObject(id=&quot;0010&quot;, name=&quot;George Jetson&quot;))
+   customers.insert(DataObject(id=&quot;0020&quot;, name=&quot;Wile E. Coyote&quot;))
+   customers.insert(DataObject(id=&quot;0030&quot;, name=&quot;Jonny Quest&quot;))
+
+   catalog = Table('catalog')
+   catalog.create_index(&quot;sku&quot;, unique=True)
+   catalog.insert(DataObject(sku=&quot;ANVIL-001&quot;, descr=&quot;1000lb anvil&quot;, unitofmeas=&quot;EA&quot;,unitprice=100))
+   catalog.insert(DataObject(sku=&quot;BRDSD-001&quot;, descr=&quot;Bird seed&quot;, unitofmeas=&quot;LB&quot;,unitprice=3))
+   catalog.insert(DataObject(sku=&quot;MAGNT-001&quot;, descr=&quot;Magnet&quot;, unitofmeas=&quot;EA&quot;,unitprice=8))
+   catalog.insert(DataObject(sku=&quot;MAGLS-001&quot;, descr=&quot;Magnifying glass&quot;, unitofmeas=&quot;EA&quot;,unitprice=12))
+   print(catalog.by.sku[&quot;ANVIL-001&quot;].descr)
+
+   wishitems = Table('wishitems')
+   wishitems.create_index(&quot;custid&quot;)
+   wishitems.create_index(&quot;sku&quot;)
+   wishitems.insert(DataObject(custid=&quot;0020&quot;, sku=&quot;ANVIL-001&quot;))
+   wishitems.insert(DataObject(custid=&quot;0020&quot;, sku=&quot;BRDSD-001&quot;))
+   wishitems.insert(DataObject(custid=&quot;0020&quot;, sku=&quot;MAGNT-001&quot;))
+   wishitems.insert(DataObject(custid=&quot;0030&quot;, sku=&quot;MAGNT-001&quot;))
+   wishitems.insert(DataObject(custid=&quot;0030&quot;, sku=&quot;MAGLS-001&quot;))
+
+   # print a particular customer name 
+   # (unique indexes will return a single item; non-unique
+   # indexes will return a list of all matching items)
+   print(customers.by.id[&quot;0030&quot;].name)
+
+   # print all items sold by the pound
+   for item in catalog.where(unitofmeas=&quot;LB&quot;):
+       print(item.sku, item.descr)
+
+   # print all items that cost more than 10
+   for item in catalog.where(lambda o : o.unitprice&gt;10):
+       print(item.sku, item.descr, item.unitprice)
+
+   # join tables to create queryable wishlists collection
+   wishlists = customers.join_on(&quot;id&quot;) + wishitems.join_on(&quot;custid&quot;) + catalog.join_on(&quot;sku&quot;)
+
+   # print all wishlist items with price &gt; 10
+   bigticketitems = wishlists().where(lambda ob : ob.unitprice &gt; 10)
+   for item in bigticketitems:
+       print(item)
+
+   # list all wishlist items in descending order by price
+   for item in wishlists().sort(&quot;unitprice desc&quot;):
+       print(item)
+</pre>
+
+<hr />
+<div class="fields">      <p><strong>Version:</strong>
+        0.10
+      </p>
+      <p><strong>Author:</strong>
+        Paul McGuire &lt;ptmcg@users.sourceforge.net&gt;
+      </p>
+</div><!-- ==================== CLASSES ==================== -->
+<a name="section-Classes"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td align="left" colspan="2" class="table-header">
+    <span class="table-header">Classes</span></td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a href="littletable.DataObject-class.html" class="summary-name">DataObject</a><br />
+      A generic semi-mutable object for storing data values in a table.
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a href="littletable.Table-class.html" class="summary-name">Table</a><br />
+      Table is the main class in <code>littletable</code>, for 
+        representing a collection of DataObjects or user-defined objects 
+        with publicly accessible attributes or properties.
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a href="littletable.PivotTable-class.html" class="summary-name">PivotTable</a><br />
+      Enhanced Table containing pivot results from calling table.pivot().
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a href="littletable.JoinTerm-class.html" class="summary-name">JoinTerm</a><br />
+      Temporary object created while composing a join across tables using
+        <a href="littletable.Table-class.html#join_on" 
+        class="link">Table.join_on</a> and '+' addition.
+    </td>
+  </tr>
+</table>
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th bgcolor="#70b0f0" class="navbar-select"
+          >&nbsp;&nbsp;&nbsp;Home&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Project homepage -->
+      <th class="navbar" align="right" width="100%">
+        <table border="0" cellpadding="0" cellspacing="0">
+          <tr><th class="navbar" align="center"
+            >littletable</th>
+          </tr></table></th>
+  </tr>
+</table>
+<table border="0" cellpadding="0" cellspacing="0" width="100%%">
+  <tr>
+    <td align="left" class="footer">
+    Generated by Epydoc 3.0.1 on Thu Jul 14 12:55:50 2016
+    </td>
+    <td align="right" class="footer">
+      <a target="mainFrame" href="http://epydoc.sourceforge.net"
+        >http://epydoc.sourceforge.net</a>
+    </td>
+  </tr>
+</table>
+
+<script type="text/javascript">
+  <!--
+  // Private objects are initially displayed (because if
+  // javascript is turned off then we want them to be
+  // visible); but by default, we want to hide them.  So hide
+  // them unless we have a cookie that says to show them.
+  checkCookie();
+  // -->
+</script>
+</body>
+</html>

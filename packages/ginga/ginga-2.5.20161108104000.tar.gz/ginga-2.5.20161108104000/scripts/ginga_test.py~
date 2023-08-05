@@ -1,0 +1,138 @@
+from PySide.QtGui import QApplication
+
+import traceback
+
+app = QApplication([''])
+
+from ginga.qtw.ImageViewCanvasQt import ImageViewCanvas
+from ginga.BaseImage import BaseImage
+from ginga.misc import log, Bunch
+
+import numpy as np
+from glue.core import Data, Subset
+
+
+class LazyArray(object):
+
+    def __init__(self, subset):
+        self._subset = subset
+
+    @property
+    def shape(self):
+        return self._subset.data.shape
+
+    @property
+    def size(self):
+        self._subset.data.size
+
+    def __getitem__(self, *args):
+        return self._subset.to_mask(args)
+
+
+class SubsetImage(BaseImage):
+
+    def __init__(self, subset):
+        super(SubsetImage, self).__init__(data_np = np.empty(subset.data.shape))
+        self._subset = subset
+
+    def get_data(self):
+        # several ginga workarounds needed to avoid calling get_data()
+        raise ValueError("Forbidden")
+
+    def _downsampled(self):
+        view = (slice(None, None, 10), slice(None, None, 10))
+        return self._subset.to_mask(view)
+
+    def calc_histogram(self, **params):
+        data = self._downsampled()
+        return self.autocuts.calc_histogram(data, **params)
+
+    def calc_zscale(self, **params):
+        data = self._downsampled()
+        return data.min(), data.max()
+
+    def _set_minmax(self):
+        self.minval = 0.
+        self.maxval = 1.
+
+    @property
+    def width(self):
+        return self._subset.data.shape[1]
+
+    @property
+    def height(self):
+        return self._subset.data.shape[0]
+
+    def get_scaled_cutout_basic(self, x1, y1, x2, y2, scale_x, scale_y):
+        #XXX ImageViewCanvas needs to be hacked on to call this method
+        #    directly, instead of get_data() and then trcalc.get_scaled_cutout_basic()
+        old_wd = x2 - x1 + 1
+        old_ht = y2 - y1 + 1
+
+        new_wd = int(round(scale_x * old_wd))
+        new_ht = int(round(scale_y * old_ht))
+
+        return self.get_scaled_cutout_wdht(x1, y1, x2, y2, new_wd, new_ht)
+
+    def get_scaled_cutout_wdht(self, x1, y1, x2, y2, new_wd, new_ht):
+        old_wd = x2 - x1 + 1
+        old_ht = y2 - y1 + 1
+
+        yi, xi = np.ogrid[0:new_ht, 0:new_wd]
+        iscale_x = float(old_wd) / float(new_wd)
+        iscale_y = float(old_ht) / float(new_ht)
+
+        xi *= iscale_x
+        yi *= iscale_y
+        xi += x1
+        yi += y1
+
+        ht, wd = self._subset.data.shape[0:2]
+        xi = xi.astype('int').clip(0, wd-1)
+        yi = yi.astype('int').clip(0, ht-1)
+
+        newdata = self._subset.to_mask((yi, xi))
+
+        # Calculate actual scale used (vs. desired)
+        ht, wd = newdata.shape[:2]
+        old_wd, old_ht = max(old_wd, 1), max(old_ht, 1)
+        scale_x = float(wd) / old_wd
+        scale_y = float(ht) / old_ht
+
+        # return newdata + actual scale factors used
+        return Bunch.Bunch(data=newdata, scale_x=scale_x, scale_y=scale_y)
+
+
+
+# this should make a circular mask
+y, x = np.mgrid[-500:500, -500:500]
+r = np.hypot(x, y)
+
+d = Data(x=x, y=y, r=r, label='data')
+
+s = d.new_subset()
+s.subset_state = d.id['r'] < 30
+
+img = SubsetImage(s)
+#img = BaseImage(LazyArray(s))
+
+logger = log.get_logger(name='ginga', log_stderr=True)
+canvas = ImageViewCanvas(logger, render='widget')
+canvas.set_follow_focus(False)
+
+bindings = canvas.get_bindings()
+bindings.enable_all(True)
+canvas.enable_draw(False)
+canvas.enable_autozoom('off')
+canvas.set_zoom_algorithm('rate')
+canvas.set_zoomrate(1.4)
+canvas.enable_autocuts('off')
+
+canvas.set_image(img)
+
+w = canvas.get_widget()
+w.show()
+w.raise_()
+
+
+app.exec_()

@@ -1,0 +1,178 @@
+Welcome to Ginga
+================
+Welcome, Gentle Reader, to the MacOS X version of Ginga, a python
+astronomical data viewer and toolkit.
+
+Installing
+----------
+This is a "distribution" of all python components necessary to run the
+Ginga reference viewer packaged as a standard application to run on Mac
+OS X 10.9 (aka "Mavericks").  To install simply drag the application
+icon to where you want to install it--a link to the Applications folder
+is provided for convenience.
+
+This type of installation does not interfere with any other python
+components or distributions you may have installed.  To uninstall,
+simply drag the ginga icon to the trash.
+
+Running
+-------
+To run the reference viewer, simply double click on the Ginga
+application icon where you installed it.  *On first startup*, Ginga
+will take a *long* time to initialize--this is because hundreds of
+python source files are being compiled.  Simply wait for this process to
+complete.  Subsequent starts will be *much* faster. 
+
+To open a FITS file, simply drag it from the finder onto the main pane
+of the Ginga viewer once it has completely initialized.
+
+What can I do with this?
+------------------------
+This application includes a number of useful python modules for
+astronomy as well as the Ginga toolkit and reference viewer.  Read on
+for different ways you can use this application.
+
+Using the reference viewer
+--------------------------
+Ginga provides a "reference viewer"--an example full-featured viewer
+for browsing astronomical FITS files as well as standard RGB files.
+If you are interested in trying a new FITS viewer you should explore
+this.  
+
+Please be aware that the reference viewer has been designed primarily as
+a tool that can be repurposed to various uses for observation control
+through the use of scriptable plugins written in python.  It has a short
+history of development compared to something like ds9 and does not
+include all the bells and whistles of that program.  Some of the plugins
+are still rather experimental and rough in the user interface.
+
+Using the Ginga module in other Python applications
+---------------------------------------------------
+Ginga is also a toolkit for building viewers in python and working with
+astronomical image data and includes components that are useful for
+doing so: viewing panes for different widget sets, automatic cuts levels
+algorithms, color scaling algorithms, etc.  It can be used as a
+full-featured "widget" to display FITS or numpy data in any python
+application, to add interactive FITS viewer features to matplotlib, or
+even generating images in ipython notebooks.
+
+Using the Ginga application as a mini python "distribution"
+-----------------------------------------------------------
+The main problem with distributing python applications on MacOS X is
+that the default python installation is not really standard in the sense
+that it works seamlessly with other key python modules like numpy, scipy,
+matplotlib and other third party modules.  To work around the problem of
+possibly conflicting python modules and distributions or missing
+modules, the Ginga application includes a complete python ecosystem
+necessary to run the reference viewer.  It includes python 2.7, ipython
+(with notebook), numpy, scipy, matplotlib, astropy, kapteyn and a few
+other useful modules in addition to the ginga git repository.
+
+You can access this distribution for your own python experimentation or
+workflow if desired.  To do so, open a terminal and navigate to a folder
+within the Ginga application.  For example, if you installed Ginga to
+the standard Applications folder, the path would be:: 
+
+    $ cd /Applications/Ginga.app/Contents/MacOS
+
+then run the script "pysh"::
+
+    $ ./pysh
+
+it will start a new bash shell with the paths set to run python,
+ipython, git and other programs from the Ginga application area.  You
+can install additional python modules with "pip" or by downloading
+source and using the standard distutils ("python setup.py install")
+methods.  As long as you are running from the pysh-invoked shell, these
+will be installed into the Ginga applications folder.
+
+Updating the version of Ginga
+-----------------------------
+Because this application includes the complete Ginga git repository,
+along with its own copy of git, you can update your Ginga application
+from recent commits to the github repository.  Simply activate a shell
+as described in the section above.  Then type::
+
+    $ cd /Applications/Ginga.app/Contents/MacOS/ginga-repo
+    $ git fetch origin
+    $ git merge origin/master
+
+You will need to have a working internet connection, of course.  Restart
+the reference viewer to pick up the changes.
+
+Installing the Ginga module for use in a different python environment
+---------------------------------------------------------------------
+Because this application includes the complete Ginga source, you can
+install the ginga module for use in other python environments you may
+have installed on your Mac.
+
+To do so, open a terminal and *get into the environment where you want
+to install ginga* (do *not* activate the Ginga version of the python
+shell as described above).  Then type::
+
+    $ cd /Applications/Ginga.app/Contents/MacOS/ginga-repo
+    $ python setup.py install
+
+This will install the Ginga module to the python environment of the
+python version used to run the install script.  Be sure to modify the
+parameters to the "python setup.py install" if necessary (for example,
+specifying a `--prefix`).
+
+Short FAQ
+=========
+
+Where can I get documentation on using Ginga?
+---------------------------------------------
+Best bet is the online documentation
+`here <https://ginga.readthedocs.io/en/latest/>`_.  
+
+What are the key and mouse/trackpad bindings?
+---------------------------------------------
+`See here <https://ginga.readthedocs.io/en/latest/quickref.html>`_.
+
+Can I change the key and mouse/trackpad bindings?
+-------------------------------------------------
+Yes, Ginga is very flexible in this regard, and it is recommended to
+change your bindings depending on your experience with other viewers
+and/or whether you are running on a laptop where you primarily interact
+with a touchpad.  There are some example bindings files that can be
+installed from a terminal.  For example, to install touchpad-friendly
+bindings:: 
+
+    $ cd /Applications/Ginga.app/Contents/MacOS/ginga-repo/examples/bindings
+    $ cp bindings.cfg.touchpad $HOME/.ginga/bindings.cfg
+
+Then restart Ginga to pick up the new bindings.  
+There is more `information here
+<https://ginga.readthedocs.io/en/latest/manual/customizing.html#sec-bindings>`_.
+
+Can I get ds9 bindings?
+-----------------------
+Yes, follow the directions above, but copy `bindings.cfg.ds9`.
+
+How can I combine Ginga with matplotlib?
+----------------------------------------
+Please see the `examples here
+<https://github.com/ejeschke/ginga/tree/master/examples>`_.  These can
+also be found in the source distributed with the application in the
+"examples" folder (look at the question about "updating the version of
+ginga"). 
+
+How can I use Ginga with ipython notebooks?
+-------------------------------------------
+Here is an `ipython notebook example
+<http://nbviewer.ipython.org/gist/anonymous/6067409>`_.
+This notebook can also be found in the source distributed with the
+application in the "examples" folder (look at the question about
+"updating the version of ginga"). 
+
+
+I've found a bug. Where can I file an issue?
+--------------------------------------------
+The `issue tracker at github
+<https://github.com/ejeschke/ginga/issues>`_.
+
+I've got questions
+------------------
+eric at naoj.org
+

@@ -1,0 +1,67 @@
+#! /usr/bin/env python
+#
+import sys
+from ginga.main import ReferenceViewer
+from optparse import OptionParser
+
+my_layout = ['seq', {},
+               ['vbox', dict(name='top', width=1400, height=1000),
+                dict(row=['hbox', dict(name='menu')],
+                     stretch=0),
+                dict(row=['hpanel', dict(name='hpnl'),
+                          ['vbox', dict(name='left', width=900, height=700),
+                           dict(row=['ws', dict(name='channels', wstype='tabs',
+                                                height=600, group=1),
+                                     ], stretch=1),
+                           dict(row=['ws', dict(name='readout', wstype='stack',
+                                                group=99)], stretch=0),
+                           ## dict(row=['ws', dict(name='cbar', wstype='stack',
+                           ##           group=99)], stretch=0),
+                           dict(row=['ws', dict(name='operations',
+                                                wstype='stack',
+                                                group=99)], stretch=0),
+                           ## dict(row=['ws', dict(name='toolbar', wstype='stack',
+                           ##                      height=40, group=5)],
+                           ##      stretch=0),
+                           dict(row=['ws', dict(name='tray', wstype='tabs',
+                                                height=300, group=99)],
+                                stretch=0),
+                           ],
+                          ['ws', dict(name='dialogs', wstype='tabs',
+                                      width=600, height=900, group=2),
+                           ],
+                          ], stretch=1),
+                dict(row=['hbox', dict(name='status')], stretch=0),
+                ]]
+
+if __name__ == "__main__":
+
+    viewer = ReferenceViewer(layout=my_layout)
+    # add global plugins
+    ## viewer.add_global_plugin('Header', "tray", start_plugin=True)
+    viewer.add_global_plugin('Pan', "tray", start_plugin=True)
+    ## viewer.add_global_plugin('Zoom', "zoom", start_plugin=True)
+
+    #viewer.add_global_plugin('Info', "right", start_plugin=True)
+    ## viewer.add_global_plugin('Thumbs', "right", start_plugin=True)
+
+    viewer.add_global_plugin('Cursor', "readout", start_plugin=True)
+    ## viewer.add_global_plugin('Colorbar', "cbar", start_plugin=True)
+    viewer.add_global_plugin('Operations', "operations", start_plugin=True)
+    ## viewer.add_global_plugin('Toolbar', "toolbar", start_plugin=True)
+    viewer.add_global_plugin('Errors', 'dialogs', start_plugin=True)
+
+    # add local plugins
+    viewer.add_local_plugin('Preferences', 'dialogs')
+    viewer.add_local_plugin('Pick', 'dialogs')
+    viewer.add_local_plugin('Mosaic', 'dialogs')
+    viewer.add_local_plugin('FBrowser', 'dialogs')
+
+    # Parse command line options with optparse module
+    usage = "usage: %prog [options] cmd [args]"
+    optprs = OptionParser(usage=usage)
+    viewer.add_default_options(optprs)
+
+    (options, args) = optprs.parse_args(sys.argv[1:])
+
+    viewer.main(options, args)

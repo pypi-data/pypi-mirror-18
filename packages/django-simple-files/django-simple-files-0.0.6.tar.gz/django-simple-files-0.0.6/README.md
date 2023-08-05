@@ -1,0 +1,1 @@
+# Django-Simple-Files保存上传文件基本信息及使用对象关系，提供简单的查询与删除操作。## Model 对象### models.Files上传文件基本信息### models.FilesRelated上传文件使用对象关系表## API方法## Utils方法## Settings设置

@@ -1,0 +1,352 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>schematics_xml.models &mdash; schematics-xml 0.1.0 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="schematics-xml 0.1.0 documentation" href="../../index.html"/>
+        <link rel="up" title="schematics_xml" href="../schematics_xml.html"/> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> schematics-xml
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer.html">Developer Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../internals/reference/index.html">Internal Module Reference</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../index.html">schematics-xml</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      
+          <li><a href="../schematics_xml.html">schematics_xml</a> &raquo;</li>
+      
+    <li>schematics_xml.models</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for schematics_xml.models</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    schematics_xml.models</span>
+<span class="sd">    ~~~~~~~~~~~~~~~~~~~~~</span>
+
+<span class="sd">    Base models that provide to/from XML methods.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">numbers</span>
+
+<span class="kn">import</span> <span class="nn">lxml.builder</span>
+<span class="kn">import</span> <span class="nn">lxml.etree</span>
+<span class="kn">from</span> <span class="nn">schematics</span> <span class="k">import</span> <span class="n">Model</span>
+<span class="kn">from</span> <span class="nn">schematics.types</span> <span class="k">import</span> <span class="n">BaseType</span><span class="p">,</span> <span class="n">ModelType</span><span class="p">,</span> <span class="n">CompoundType</span>
+<span class="kn">from</span> <span class="nn">schematics.types.base</span> <span class="k">import</span> <span class="n">MultilingualStringType</span>
+<span class="kn">from</span> <span class="nn">schematics.types.compound</span> <span class="k">import</span> <span class="n">PolyModelType</span>
+<span class="kn">from</span> <span class="nn">xmltodict</span> <span class="k">import</span> <span class="n">parse</span>
+
+
+<div class="viewcode-block" id="XMLModel"><a class="viewcode-back" href="../../internals/reference/schematics_xml.html#schematics_xml.models.XMLModel">[docs]</a><span class="k">class</span> <span class="nc">XMLModel</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A model that can convert it&#39;s fields to and from XML.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">xml_root</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__name__</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+
+<div class="viewcode-block" id="XMLModel.to_xml"><a class="viewcode-back" href="../../internals/reference/schematics_xml.html#schematics_xml.models.XMLModel.to_xml">[docs]</a>    <span class="k">def</span> <span class="nf">to_xml</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">role</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">app_data</span><span class="p">:</span> <span class="nb">dict</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a string of XML that represents this model.</span>
+
+<span class="sd">        Currently all arguments are passed through to schematics.Model.to_primitive.</span>
+
+<span class="sd">        :param role: schematics Model to_primitive role parameter.</span>
+<span class="sd">        :param app_data: schematics Model to_primitive app_data parameter.</span>
+<span class="sd">        :param kwargs: schematics Model to_primitive kwargs parameter.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">primitive</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_primitive</span><span class="p">(</span><span class="n">role</span><span class="o">=</span><span class="n">role</span><span class="p">,</span> <span class="n">app_data</span><span class="o">=</span><span class="n">app_data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">root</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">primitive_to_xml</span><span class="p">(</span><span class="n">primitive</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">tostring</span><span class="p">(</span>  <span class="c1"># pylint: disable=no-member</span>
+            <span class="n">root</span><span class="p">,</span>
+            <span class="n">pretty_print</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">xml_declaration</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;ISO-8859-1&#39;</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="XMLModel.primitive_to_xml"><a class="viewcode-back" href="../../internals/reference/schematics_xml.html#schematics_xml.models.XMLModel.primitive_to_xml">[docs]</a>    <span class="k">def</span> <span class="nf">primitive_to_xml</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">primitive</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">parent</span><span class="p">:</span> <span class="s1">&#39;lxml.etree._Element&#39;</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">element_maker</span> <span class="o">=</span> <span class="n">lxml</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">ElementMaker</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">parent</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">parent</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">element_maker</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">xml_root</span><span class="p">)()</span>
+
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">primitive</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">primitive_value_to_xml</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">parent</span></div>
+
+<div class="viewcode-block" id="XMLModel.primitive_value_to_xml"><a class="viewcode-back" href="../../internals/reference/schematics_xml.html#schematics_xml.models.XMLModel.primitive_value_to_xml">[docs]</a>    <span class="k">def</span> <span class="nf">primitive_value_to_xml</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">element_maker</span> <span class="o">=</span> <span class="n">lxml</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">ElementMaker</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="n">parent</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">element_maker</span><span class="p">,</span> <span class="n">key</span><span class="p">)(</span><span class="s1">&#39;1&#39;</span> <span class="k">if</span> <span class="n">value</span> <span class="k">else</span> <span class="s1">&#39;0&#39;</span><span class="p">))</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Number</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">parent</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">element_maker</span><span class="p">,</span> <span class="n">key</span><span class="p">)(</span><span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)))</span>
+
+        <span class="k">elif</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">parent</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">element_maker</span><span class="p">,</span> <span class="n">key</span><span class="p">)(</span><span class="s1">&#39;&#39;</span><span class="p">))</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">_parent</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">element_maker</span><span class="p">,</span> <span class="n">key</span><span class="p">)()</span>
+            <span class="n">parent</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">primitive_to_xml</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">_parent</span><span class="p">))</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">abc</span><span class="o">.</span><span class="n">Iterable</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">_value</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">primitive_value_to_xml</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">_value</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Unsupported data type: </span><span class="si">%s</span><span class="s1"> (</span><span class="si">%s</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">__name__</span><span class="p">))</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="XMLModel.from_xml"><a class="viewcode-back" href="../../internals/reference/schematics_xml.html#schematics_xml.models.XMLModel.from_xml">[docs]</a>    <span class="k">def</span> <span class="nf">from_xml</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">xml</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Model</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert XML into a model.</span>
+
+<span class="sd">        :param xml: A string of XML that represents this Model.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">model_has_field_type</span><span class="p">(</span><span class="n">MultilingualStringType</span><span class="p">,</span> <span class="n">cls</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Field type &#39;MultilingualStringType&#39; is not supported.&quot;</span><span class="p">)</span>
+        <span class="n">primitive</span> <span class="o">=</span> <span class="n">parse</span><span class="p">(</span><span class="n">xml</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">primitive</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">raw_data</span> <span class="ow">in</span> <span class="n">primitive</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">cls</span><span class="p">(</span><span class="n">raw_data</span><span class="o">=</span><span class="n">raw_data</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="model_has_field_type"><a class="viewcode-back" href="../../internals/reference/schematics_xml.html#schematics_xml.models.model_has_field_type">[docs]</a><span class="k">def</span> <span class="nf">model_has_field_type</span><span class="p">(</span><span class="n">needle</span><span class="p">:</span> <span class="n">BaseType</span><span class="p">,</span> <span class="n">haystack</span><span class="p">:</span> <span class="n">Model</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return True if haystack contains a field of type needle.</span>
+
+<span class="sd">    Iterates over all fields (and into field if appropriate) and searches for field type *needle* in model</span>
+<span class="sd">    *haystack*.</span>
+
+<span class="sd">    :param needle: A schematics field class to search for.</span>
+<span class="sd">    :param haystack: A schematics model to search within.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">haystack</span><span class="o">.</span><span class="n">_field_list</span><span class="p">:</span>  <span class="c1"># pylint: disable=protected-access</span>
+        <span class="k">if</span> <span class="n">field_has_type</span><span class="p">(</span><span class="n">needle</span><span class="p">,</span> <span class="n">field</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="field_has_type"><a class="viewcode-back" href="../../internals/reference/schematics_xml.html#schematics_xml.models.field_has_type">[docs]</a><span class="k">def</span> <span class="nf">field_has_type</span><span class="p">(</span><span class="n">needle</span><span class="p">:</span> <span class="n">BaseType</span><span class="p">,</span> <span class="n">field</span><span class="p">:</span> <span class="n">BaseType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>  <span class="c1"># pylint: disable=too-many-return-statements, too-many-branches</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return True if field haystack contains a field of type needle.</span>
+
+<span class="sd">    :param needle: A schematics field class to search for.</span>
+<span class="sd">    :param haystack: An instance of a schematics field within a model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">needle</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">ModelType</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">model_has_field_type</span><span class="p">(</span><span class="n">needle</span><span class="p">,</span> <span class="n">field</span><span class="o">.</span><span class="n">model_class</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">PolyModelType</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">needle</span> <span class="ow">in</span> <span class="p">[</span><span class="nb">type</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span> <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">field</span><span class="o">.</span><span class="n">model_classes</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="p">[</span><span class="n">obj</span> <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">field</span><span class="o">.</span><span class="n">model_classes</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">ModelType</span><span class="p">)]:</span>
+            <span class="k">if</span> <span class="n">model_has_field_type</span><span class="p">(</span><span class="n">needle</span><span class="p">,</span> <span class="n">obj</span><span class="o">.</span><span class="n">model_class</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">CompoundType</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">needle</span> <span class="o">==</span> <span class="nb">type</span><span class="p">(</span><span class="n">field</span><span class="o">.</span><span class="n">field</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">needle</span> <span class="o">==</span> <span class="n">field</span><span class="o">.</span><span class="n">model_class</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">model_has_field_type</span><span class="p">(</span><span class="n">needle</span><span class="p">,</span> <span class="n">field</span><span class="o">.</span><span class="n">model_class</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">if</span> <span class="n">field_has_type</span><span class="p">(</span><span class="n">needle</span><span class="p">,</span> <span class="n">field</span><span class="o">.</span><span class="n">field</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">return</span> <span class="kc">False</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, Alex Hayes.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.1.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

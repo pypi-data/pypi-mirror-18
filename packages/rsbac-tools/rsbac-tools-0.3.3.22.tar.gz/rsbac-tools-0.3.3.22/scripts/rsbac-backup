@@ -1,0 +1,110 @@
+#!/usr/bin/env python
+#
+# Tool to backup RSBAC attributes. 
+# Its just modularized the backup_all shellscript.
+# 
+# Usage: rsbac-backup --help
+#
+# Copyright (C) 2014-2015 Jens Kasten <jens@kasten-edv.de>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>
+#
+
+import sys
+import argparse
+import time
+import logging
+
+try:
+    from rsbactools import backup 
+except ImportError as error:
+    sys.exit(error)
+
+
+def main():
+    time_start = time.time()
+    Backup = backup.Backup()
+
+    parser = argparse.ArgumentParser(
+        description="RSBAC attributes backup.")
+
+    parser.add_argument("-v", "--verbose", default=False, action="store_true",
+        help="Make the script verbose.")
+    parser.add_argument("-t", "--time", default=False, action="store_true",
+        help="Print time to execute.")
+   
+    group_backup = parser.add_argument_group("options for backup")
+    group_backup.add_argument("-b", "--backup-directory", 
+        default=backup.BACKUP_DIRECTORY,
+        action="store_true",
+        help="Set backup directory for storing backup. "
+            "Default is %s" % backup.BACKUP_DIRECTORY)
+    # in progress
+    #group_backup.add_argument("-d", "--directory", 
+    #    default="/",
+    #    action="store_true",
+    #    help="Set directory for doing backup. "
+    #        "Default starts with '/' recurisive.")
+    #group_backup.add_argument("-e", "--excludes", 
+    #    default=backup.DIRECTORIES_EXCLUDE,
+    #    action="store_true",
+    #    help="Set this option to exclude this directories.")
+    group_backup.add_argument("--full", default=False, action="store_true",
+        help="Set full backup. This include all modules listed below.")
+
+    #group_restore = parser.add_argument_group("Options for restore")
+    #group_restore.add_argument("-r", "--restore", default=False, 
+    #    action="store_true",
+    #    help="Set this option then you can choose from which date.")
+
+    group_module = parser.add_argument_group("module list")
+    # create a dynamic console switch for available modules
+    counter = 2 
+    for key in sorted(Backup.modules_to_backup()):
+        help_group = "backup %s" % key.upper()
+        group_module.add_argument("--%s"  % key, default=False,
+            action="store_true", help=help_group)
+
+    status = False
+    args = parser.parse_args()
+    Backup.set_args(vars(args))
+    for key, value in Backup.args.items():
+        if key == "backup_directory":
+            continue
+        if value:
+            status = True
+    if not status:
+        parser.print_usage()
+        return 
+    if args.verbose:
+        Backup.set_log_level(logging.DEBUG)
+   
+    try:
+        Backup.run()
+    except KeyboardInterrupt as error:
+        print("\rUser did interrupt process.")
+
+    if args.time:
+        time_end = time.time()
+        time_all = time_end - time_start
+        if time_all > 61:
+            seconds = time_all % 60
+            minutes = int(time_all / 60)
+            print("Time to execute: %0.f min  %d sec" % (minutes, seconds))
+        else:
+            print("Time to execute: %3.2f seconds" % time_all)
+
+
+if __name__ == "__main__":
+    main()

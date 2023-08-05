@@ -1,0 +1,94 @@
+#! /usr/bin/env python
+# -*- coding: <encoding name> -*-
+#
+# Simple runtime protection from main directories with module FF.
+#
+# Requirement: python >= 3.3
+#
+# Usage: shields -h
+#
+#
+# Copyright (C) 2011-2014 Jens Kasten <jens@kasten-edv.de>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>
+# 
+
+import argparse
+import time
+import logging
+
+from rsbactools import ff, rsbac
+
+
+def main():
+    time_start = time.time()
+    action = ["on", "off", "show"]
+
+    parser = argparse.ArgumentParser(
+        description="Runtime protection with RSBAC FF module.")
+    parser.add_argument("-t", "--time", default=False, action="store_true", 
+        help="display time for execution")
+    parser.add_argument("-v", "--verbose", default=False, action="store_true",
+        help="make script noisily")
+
+    group1 = parser.add_argument_group("program arguments")
+    group1.add_argument("--full", choices=action, help="Set all FF policies.")
+    
+    # create shields instance
+    s = ff.Shields()
+    s.load_configs(ff.RSBAC_FF_CONFIG_DIR)
+
+    # create console switch dynamic
+    counter = 3 
+    for key in sorted(s.get_policies()):
+        if key.startswith("@"):
+            continue
+        help_group = "Set %s FF policies" % key
+        group1.add_argument("--%s"  % key, choices=action, help=help_group)
+
+    args = parser.parse_args()
+    s.add_args(vars(args))
+
+    status = False
+    for i in s.args.values():
+        if i:
+            status = True
+    if not status:
+        parser.print_usage()
+        return 
+
+    if args.verbose:
+        s.set_log_level(logging.DEBUG)
+
+    if s.run() is False:
+        parser.print_usage()
+        return
+    else :
+        if args.time:
+            time_end = time.time()
+            time_all = time_end - time_start
+            if time_all > 61:
+                seconds = time_all % 60
+                minutes = int(time_all / 60)
+                print("Time to execute: %0.f min  %d sec" % (minutes, seconds))
+            else:
+                print("Time to execute: %3.2f seconds" % time_all)
+        print("Amount of policies: %d" % s.get_policies_counter())
+
+
+if __name__ == "__main__":
+    if rsbac.Rsbac().get_module("FF"):
+        main()
+    else:
+        print("RSBAC FF module is not available.")

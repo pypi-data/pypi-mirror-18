@@ -1,0 +1,31 @@
+#!/bin/bash
+
+#
+# Sort a .vcf or .vcf.gz file.
+# Can read gzip and piped input.
+#
+
+set -euo pipefail
+
+args=
+if (( $# == 1 )); then
+  args=$1
+fi
+
+if (( $# > 1 )) || [[ $args =~ ^--?h ]]; then
+  echo "usage: $0 <file.vcf[.gz]>" 1>&2;
+  echo "  Or use:  sort -k1,1d -k2,2n" 1>&2;
+  exit -1
+fi
+
+gzip -fdc $args | \
+( while IFS= read -r c
+  do
+    if [[ $c =~ ^## ]]; then
+      echo $c
+    elif [[ $c =~ ^#CHROM ]]; then
+      echo $c
+      break
+    fi
+  done
+  sort -k1,1d -k2,2n -k4,4 -k5,5 -k3,3 )

@@ -1,0 +1,46 @@
+#!/bin/bash
+
+set -eou pipefail
+
+#
+# Rename a sample in a VCF file header. Can read from file or pipe.
+# Prints uncompressed VCF to STDOUT.
+#
+
+currdir="$(dirname "$0")"
+
+function usage {
+  echo "usage: $0 <sample-name> <new-sample-name> [file.vcf[.gz]]" 1>&2
+  echo "  Rename a sample in a VCF file/steam. Prints uncompressed VCF to STDOUT." 1>&2
+  exit -1
+}
+
+if (( $# < 2 || $# > 3 )); then
+  usage
+fi
+
+sample=$1
+newname=$2
+if (( $# == 3 )); then
+  file=$3
+else
+  file=
+fi
+
+gzip -fcd $file | \
+( while IFS= read -r c
+  do
+    if [[ $c =~ ^#CHROM ]]; then
+      # [[:<:]] is word start
+      # [[:>:]] is word end
+      echo $c | tail -1 | sed "s/[[:<:]]$sample[[:>:]]/$newname/g"
+      break
+    elif [[ $c =~ ^# ]]; then
+      echo $c
+    else
+      echo $c
+      break
+    fi
+  done;
+  # Print remaining contents of the file
+  cat )

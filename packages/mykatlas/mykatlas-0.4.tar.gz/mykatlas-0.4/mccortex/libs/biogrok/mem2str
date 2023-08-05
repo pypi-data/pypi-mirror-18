@@ -1,0 +1,56 @@
+#!/usr/bin/env perl
+
+#
+# Convert number of bytes to human readable string (using Kb,Mb,Gb,Tb,Pb)
+#
+
+use strict;
+use warnings;
+
+use File::Basename;
+my $currdir = dirname(__FILE__);
+
+# base 1000 or 1024?
+my $use_base_1000 = 0;
+
+sub usage {
+  for my $e (@_) { print STDERR "Error: $e\n"; }
+  print STDERR "$0 [number]\n";
+  exit(-1);
+}
+
+if(@ARGV == 0) {
+  while(defined(my $num = <STDIN>)) { chomp($num); mem2str($num); }
+}
+elsif(@ARGV == 1) {
+  mem2str($ARGV[0]);
+}
+else { usage(); }
+
+sub mem2str
+{
+  my ($x) = @_;
+  chomp($x);
+  if($x !~ /^\d*\.?\d*(e[+-]\d*)?$/) { usage("Not a number '$x'");}
+
+  my @t;
+  my $div;
+
+  if($use_base_1000) {
+    @t = qw(B kB MB GB TB PB EB);
+    # @t = qw(Kilobyte Megabyte Gigabyte Terabyte Petabyte Exabyte);
+    $div = 1000;
+  } else {
+    @t = qw(B KiB MiB GiB TiB PiB EiB);
+    # @t = qw(Bytes Kibibytes Mebibytes Gibibytes Tebibyte Pebibyte Exbibyte);
+    $div = 1024;
+  }
+
+  my $i;
+  for($i = 0; $x >= $div && $i+1 < @t; $i++) { $x /= $div; }
+
+  # num2str <num> <sep> <decimals> [force-decimals]
+  $x = `$currdir/num2str $x , 2`;
+  chomp($x);
+  print "$x $t[$i]\n";
+}

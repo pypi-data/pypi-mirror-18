@@ -1,0 +1,103 @@
+---
+kubectl_http_proxy:  ''
+kubectl_https_proxy: ''
+
+fileserver_http_proxy:  ''
+fileserver_https_proxy: ''
+
+docker_repo_cache_http_proxy:  ''
+docker_repo_cache_https_proxy: ''
+
+namespaces:
+  - kube-system
+  - k8sdc-infra
+  - k8sdc-development
+  - k8sdc-productivity
+
+solutions:
+  cs1_cluster_services:
+    enable:     yes
+    namespace:  kube-system
+    domain:     k8sdc.io
+    cluster_ip: 10.254.1.1
+    replicas:   1
+    images:
+      kubedns:
+        image: gcr.io/google_containers/kubedns-amd64
+        tag:   1.6
+      dnsmasq:
+        image: gcr.io/google_containers/kube-dnsmasq-amd64
+        tag:   1.3
+      healthz:
+        image: gcr.io/google_containers/exechealthz-amd64
+        tag:   1.0
+      heapster:
+        image: gcr.io/google_containers/heapster
+        tag:   v1.2.0
+
+  cm1_cluster_management:
+    enable:      yes
+    namespace:   kube-system
+    external_ip: "{{ hostvars[groups['k8sdc-nodes'][0]]['ansible_' + interface].ipv4.address }}"
+    replicas:    1
+    images:
+      kube_dashboard:
+        image: gcr.io/google_containers/kubernetes-dashboard-amd64
+        tag:   v1.4.0
+
+  dbs1_distributed_block_storage:
+    enable:     yes
+    namespace:  k8sdc-infra
+    images:
+      ceph:
+        image: ceph/daemon
+        tag:   tag-build-master-jewel-centos-7
+    mon_hosts:
+      - hostname: node1.vb.k8sdc.io
+      - hostname: node2.vb.k8sdc.io
+      - hostname: node3.vb.k8sdc.io
+    osd_hosts:
+      - hostname:   node1.vb.k8sdc.io
+        count_256m: 40
+      - hostname:   node2.vb.k8sdc.io
+        count_256m: 40
+      - hostname:   node3.vb.k8sdc.io
+        count_256m: 40
+
+  im1_identity_management:
+    enable:     yes
+    namespace:  k8sdc-infra
+    images:
+      opendj:
+        image: k8sdc/opendj
+        tag:   latest
+      keycloak:
+        image: jboss/keycloak
+        tag:   1.9.3.Final
+    hostnames: 
+      keycloack: keycloak.k8sdc.io
+
+  hrp1_https_reverse_proxy:
+    enable:     yes
+    namespace:  k8sdc-infra
+    images:
+      traefik:
+        image: traefik
+        tag:   latest
+    keepalived: yes
+    vip:        10.0.0.100
+
+  # m1_metrics:
+  #   enable:     yes
+  #   namespace:  k8sdc-infra
+  #   hostnames:
+  #     prometheus: prometheus.k8sdc.io
+  #     grafana:    grafana.k8sdc.io 
+
+  # l1_logging:
+  #   enable:     yes
+  #   namespace:  k8sdc-infra
+  #   hostnames:
+  #     kibana:         kibana.k8sdc.io
+  #     kafka_admin:    kafka.k8sdc.io
+  #     logstash_admin: logstash.k8sdc.io

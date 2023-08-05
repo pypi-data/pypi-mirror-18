@@ -1,0 +1,66 @@
+============
+pyconfreader
+============
+
+Overview
+========
+
+A library for reading config files written in Python. Since Python
+config files are not sandboxed, you should only read config files that
+you trust.
+
+By controlling the globals, locals, and builtins that are passed in to
+tthe config file, you can 'pre-populate' the config file with values,
+and you can control (to a very limited extent) what Python features
+are available to the config file.
+
+Two interfaces are provided:
+
+* A low-level interface for that takes strings.
+
+* A high-level interfaces that supports nested configuration files.
+
+In addition, there is a simple function to convert dicts to
+namedtuples.
+
+Typical usage
+=============
+
+Low-level interface
+-------------------
+
+High-level interface
+--------------------
+
+to_namedtuple
+-------------
+
+Change log
+==========
+
+0.4 2016-11-02 Eric V. Smith
+----------------------------
+
+* No code changes.
+
+* Always require setuptools (issue #2).
+
+* Remove code to modify the RPM name for bdist_rpm (issue #1).
+
+0.3 2016-08-22 Eric V. Smith
+----------------------------
+
+* Fixed fl_validator.  Switched to a single namespace, instead of
+  using globals and locals (This is because at module level, they're
+  the same).  Switch to a dict-based interface, instead of always
+  using namedtuples.  Added to_namedtuple.
+
+0.2 2016-08-21 Eric V. Smith
+----------------------------
+* Added fl_validator.
+
+0.1 2016-08-20 Eric V. Smith
+----------------------------
+* Initial release.
+
+

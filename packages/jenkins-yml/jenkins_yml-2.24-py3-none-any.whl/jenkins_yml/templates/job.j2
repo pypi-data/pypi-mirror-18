@@ -1,0 +1,215 @@
+{% macro base(build_name, description, disabled, periodic) %}
+<actions/>
+<description>{{ description|escape }}</description>
+<keepDependencies>false</keepDependencies>
+<canRoam>true</canRoam>
+<disabled>{{ disabled|lower }}</disabled>
+<blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+<blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+<triggers>
+{% if periodic is defined %}
+  <hudson.triggers.TimerTrigger>
+    <spec>{{ periodic }}</spec>
+  </hudson.triggers.TimerTrigger>
+{% endif %}
+</triggers>
+<concurrentBuild>true</concurrentBuild>
+<buildWrappers>
+  <org.jenkinsci.plugins.buildnamesetter.BuildNameSetter plugin="build-name-setter@1.6.5">
+    <template>{{ build_name }}</template>
+    <runAtStart>true</runAtStart>
+    <runAtEnd>true</runAtEnd>
+  </org.jenkinsci.plugins.buildnamesetter.BuildNameSetter>
+</buildWrappers>
+{% endmacro %}
+
+{% macro baseparameters(default_revision, params) %}
+{% for name, default in params|dictsort %}
+<hudson.model.StringParameterDefinition>
+  <name>{{ name }}</name>
+  <description></description>
+  <defaultValue>{{ default or '' }}</defaultValue>
+</hudson.model.StringParameterDefinition>
+{% endfor %}
+<hudson.model.StringParameterDefinition>
+  <name>REVISION</name>
+  <description></description>
+  <defaultValue>{{ default_revision }}</defaultValue>
+</hudson.model.StringParameterDefinition>
+{% endmacro %}
+
+{% macro baseproperties(blocking_jobs, github_repository) %}
+<hudson.plugins.buildblocker.BuildBlockerProperty plugin="build-blocker-plugin@1.7.3">
+  <useBuildBlocker>{% if blocking_jobs %}true{% else %}false{% endif %}</useBuildBlocker>
+  <blockLevel>NODE</blockLevel>
+  <scanQueueFor>DISABLED</scanQueueFor>
+  <blockingJobs>{{ blocking_jobs or '' }}</blockingJobs>
+</hudson.plugins.buildblocker.BuildBlockerProperty>
+{% if github_repository is defined %}
+<com.coravy.hudson.plugins.github.GithubProjectProperty plugin="github@1.17.0">
+  <projectUrl>{{ github_repository }}</projectUrl>
+  <displayName></displayName>
+</com.coravy.hudson.plugins.github.GithubProjectProperty>
+{% endif %}
+<jenkins.model.BuildDiscarderProperty>
+  <strategy class="hudson.tasks.LogRotator">
+    <daysToKeep>-1</daysToKeep>
+    <numToKeep>60</numToKeep>
+    <artifactDaysToKeep>-1</artifactDaysToKeep>
+    <artifactNumToKeep>-1</artifactNumToKeep>
+  </strategy>
+</jenkins.model.BuildDiscarderProperty>
+{% endmacro %}
+
+{% macro builders(set_commit_status) %}
+<builders>
+  {% if set_commit_status|default(False) %}
+  <com.cloudbees.jenkins.GitHubSetCommitStatusBuilder plugin="github@1.19.1">
+    <statusMessage>
+      <content/>
+    </statusMessage>
+  </com.cloudbees.jenkins.GitHubSetCommitStatusBuilder>
+  {% endif %}
+  <hudson.tasks.Shell>
+    <command>
+export CI_ARTEFACTS=_ci/
+rm -rf $CI_ARTEFACTS/ || true
+mkdir -p $CI_ARTEFACTS/
+exec jenkins-yml-runner</command>
+  </hudson.tasks.Shell>
+</builders>
+{% endmacro %}
+
+{% macro publishers() %}
+<publishers>
+  <hudson.tasks.ArtifactArchiver>
+    <artifacts>_ci/*,_ci/*/*,_ci/*/*/*</artifacts>
+    <allowEmptyArchive>true</allowEmptyArchive>
+    <onlyIfSuccessful>false</onlyIfSuccessful>
+    <fingerprint>false</fingerprint>
+    <defaultExcludes>true</defaultExcludes>
+    <caseSensitive>false</caseSensitive>
+  </hudson.tasks.ArtifactArchiver>
+  <hudson.tasks.junit.JUnitResultArchiver plugin="junit@1.13">
+    <testResults>_ci/xunit*.xml</testResults>
+    <keepLongStdio>false</keepLongStdio>
+    <healthScaleFactor>1.0</healthScaleFactor>
+    <allowEmptyResults>true</allowEmptyResults>
+  </hudson.tasks.junit.JUnitResultArchiver>
+  <hudson.plugins.cobertura.CoberturaPublisher plugin="cobertura@1.9.8">
+    <coberturaReportFile>coverage.xml</coberturaReportFile>
+    <onlyStable>false</onlyStable>
+    <failUnhealthy>false</failUnhealthy>
+    <failUnstable>false</failUnstable>
+    <autoUpdateHealth>false</autoUpdateHealth>
+    <autoUpdateStability>false</autoUpdateStability>
+    <zoomCoverageChart>false</zoomCoverageChart>
+    <maxNumberOfBuilds>0</maxNumberOfBuilds>
+    <failNoReports>false</failNoReports>
+    <healthyTarget>
+      <targets class="enum-map" enum-type="hudson.plugins.cobertura.targets.CoverageMetric">
+        <entry>
+          <hudson.plugins.cobertura.targets.CoverageMetric>METHOD</hudson.plugins.cobertura.targets.CoverageMetric>
+          <int>8000000</int>
+        </entry>
+        <entry>
+          <hudson.plugins.cobertura.targets.CoverageMetric>LINE</hudson.plugins.cobertura.targets.CoverageMetric>
+          <int>8000000</int>
+        </entry>
+        <entry>
+          <hudson.plugins.cobertura.targets.CoverageMetric>CONDITIONAL</hudson.plugins.cobertura.targets.CoverageMetric>
+          <int>7000000</int>
+        </entry>
+      </targets>
+    </healthyTarget>
+    <unhealthyTarget>
+      <targets class="enum-map" enum-type="hudson.plugins.cobertura.targets.CoverageMetric">
+        <entry>
+          <hudson.plugins.cobertura.targets.CoverageMetric>METHOD</hudson.plugins.cobertura.targets.CoverageMetric>
+          <int>0</int>
+        </entry>
+        <entry>
+          <hudson.plugins.cobertura.targets.CoverageMetric>LINE</hudson.plugins.cobertura.targets.CoverageMetric>
+          <int>0</int>
+        </entry>
+        <entry>
+          <hudson.plugins.cobertura.targets.CoverageMetric>CONDITIONAL</hudson.plugins.cobertura.targets.CoverageMetric>
+          <int>0</int>
+        </entry>
+      </targets>
+    </unhealthyTarget>
+    <failingTarget>
+      <targets class="enum-map" enum-type="hudson.plugins.cobertura.targets.CoverageMetric">
+        <entry>
+          <hudson.plugins.cobertura.targets.CoverageMetric>METHOD</hudson.plugins.cobertura.targets.CoverageMetric>
+          <int>0</int>
+        </entry>
+        <entry>
+          <hudson.plugins.cobertura.targets.CoverageMetric>LINE</hudson.plugins.cobertura.targets.CoverageMetric>
+          <int>0</int>
+        </entry>
+        <entry>
+          <hudson.plugins.cobertura.targets.CoverageMetric>CONDITIONAL</hudson.plugins.cobertura.targets.CoverageMetric>
+          <int>0</int>
+        </entry>
+      </targets>
+    </failingTarget>
+    <sourceEncoding>ASCII</sourceEncoding>
+  </hudson.plugins.cobertura.CoberturaPublisher>
+  <hudson.plugins.postbuildtask.PostbuildTask plugin="postbuild-task@1.8">
+    <tasks>
+      <hudson.plugins.postbuildtask.TaskProperties>
+        <logTexts>
+          <hudson.plugins.postbuildtask.LogProperties>
+            <logText></logText>
+            <operator>AND</operator>
+          </hudson.plugins.postbuildtask.LogProperties>
+        </logTexts>
+        <EscalateStatus>false</EscalateStatus>
+        <RunIfJobSuccessful>false</RunIfJobSuccessful>
+        <script>export CI_ARTEFACTS=_ci/
+YML_SCRIPT=after_script jenkins-yml-runner
+rm -rf $CI_ARTEFACTS/
+</script>
+      </hudson.plugins.postbuildtask.TaskProperties>
+    </tasks>
+  </hudson.plugins.postbuildtask.PostbuildTask>
+</publishers>
+{% endmacro %}
+
+{% macro scm(github_repository, credentials) %}
+{% if github_repository is defined %}
+<scm class="hudson.plugins.git.GitSCM" plugin="git@2.4.2">
+  <configVersion>2</configVersion>
+  <userRemoteConfigs>
+    <hudson.plugins.git.UserRemoteConfig>
+      <url>{{ github_repository }}.git</url>
+      <credentialsId>{{ credentials }}</credentialsId>
+    </hudson.plugins.git.UserRemoteConfig>
+  </userRemoteConfigs>
+  <branches>
+    <hudson.plugins.git.BranchSpec>
+      <name>${REVISION}</name>
+    </hudson.plugins.git.BranchSpec>
+  </branches>
+  <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+  <submoduleCfg class="list"/>
+  <extensions>
+    <hudson.plugins.git.extensions.impl.PruneStaleBranch/>
+    <hudson.plugins.git.extensions.impl.SubmoduleOption>
+      <disableSubmodules>false</disableSubmodules>
+      <recursiveSubmodules>true</recursiveSubmodules>
+      <trackingSubmodules>false</trackingSubmodules>
+      <reference></reference>
+    </hudson.plugins.git.extensions.impl.SubmoduleOption>
+    <hudson.plugins.git.extensions.impl.CloneOption>
+      <shallow>false</shallow>
+      <noTags>false</noTags>
+      <reference>/var/lib/jenkins/references/{{ github_repository|replace('https://github.com/', '') }}</reference>
+      <depth>0</depth>
+      <honorRefspec>true</honorRefspec>
+    </hudson.plugins.git.extensions.impl.CloneOption>
+  </extensions>
+</scm>
+{% endif %}
+{% endmacro %}

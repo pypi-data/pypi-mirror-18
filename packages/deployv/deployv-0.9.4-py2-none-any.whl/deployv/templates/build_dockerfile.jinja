@@ -1,0 +1,25 @@
+FROM {{ base_image_name }}
+COPY files/odoo_service.conf /etc/supervisor/conf.d/odoo_service.conf
+COPY files/supervisord_service.conf /etc/supervisor/supervisord.conf
+RUN  if [ -h /etc/supervisord.conf ]; then echo "This image has already been build with deployv";fi; ln -s /etc/supervisor/supervisord.conf /etc/supervisord.conf
+COPY files/openerp_serverrc /external_files/openerp_serverrc
+COPY files/instance /home/odoo/instance
+COPY files/openerp_serverrc /home/odoo/.openerp_serverrc
+COPY files/install_deps.py /tmp/install_deps.py
+COPY files/getaddons.py /home/odoo/getaddons.py
+RUN pip install reqgen
+RUN git clone -b {{ version }}  https://github.com/vauxoo/web.git /home/odoo/instance/extra_addons/web; exit 0
+RUN python /tmp/install_deps.py
+RUN rm -rf /tmp/*
+USER odoo
+ENV HOME="/home/odoo" \\
+ODOO_CONFIG_FILE="/home/odoo/.openerp_serverrc" \\
+ODOO_FILESTORE_PATH="/home/odoo/.local/share/Odoo/filestore" \\
+XDG_DATA_HOME="/home/odoo/.local/share" \\
+VERSION={{ version }}
+USER root
+## The volumes we want to use
+VOLUME ["/var/log/supervisor", "/home/odoo/.local/share/Odoo", "/tmp", "/home/odoo/.ssh"]
+## Expose xmlrpc and longpolling ports
+EXPOSE 8069 8072
+CMD /entry_point.py

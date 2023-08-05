@@ -1,0 +1,34 @@
+km3modules.HitCounter
+=====================
+
+.. currentmodule:: km3modules
+
+.. autoclass:: HitCounter
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~HitCounter.__init__
+      ~HitCounter.add
+      ~HitCounter.configure
+      ~HitCounter.finish
+      ~HitCounter.get
+      ~HitCounter.pre_finish
+      ~HitCounter.process
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~HitCounter.name
+   
+   

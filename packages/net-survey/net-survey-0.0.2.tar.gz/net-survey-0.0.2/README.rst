@@ -1,0 +1,137 @@
+Net-Survey
+==========
+
+Net-Survey allows you to deploy agents throughout your infrastructure to
+gather network, interface, and ip configuration with the end goal of running
+a smart scan of basic reachability and port scans.  Server and agents deployed
+will progress through a series of steps once started:
+
+* Gathering of interface and network information.
+* Updating the central server.
+* Processing of topology information.
+* Distribution of topology data to clients.
+* Clients then proceed to scanning of neighboring hosts.
+* Retrieeval of test results.
+
+The benefit of Net-Survey is testing in situations where networks
+are isolated, i.e. a backend storage network.  It is also very fast as
+the targeted scan will scan only neighboring IPs with the interest of learning
+where setup issues exist on a new or existing infrastructure.
+
+Installation
+============
+
+Simple install via pypi:
+
+```
+pip install net-survey
+```
+
+Command Line Usage
+==================
+
+Server start:
+
+```
+net-survey --mode server --inventory_file /home/user/myinventory
+```
+
+Client start:
+
+```
+net-survey --server_ip <server_ip>
+```
+
+Usage
+=====
+
+Ensure config file is installed during setup.  You might need sudo privileges
+to install net-survey as it creates /etc/net-survey.  The configuration file
+can be manually stated vie the --config-file param as well.
+
+Server start:
+
+```
+net-survey
+```
+
+Use the configuration file provided to set the mode to `server`. Optionally,
+adjust the API and Server ports to best fit your needs.
+
+
+Client start:
+
+```
+net-survey
+```
+
+Use the configuration file provided to set the mode to `client`. Set the IP
+Address of the server via `server_ip`, and optionally, adjust the options
+to best suite your needs.
+
+
+API Usage
+=========
+
+The API Server will respond to GET requests on / and return a JSON dump
+containing the results of a scan or the current status of a scan:
+
+```json
+
+{
+"_host_detail":
+    {
+    "compute02":
+        {"192.168.140.0/24":
+            {"ips": ["192.168.140.118"],
+            "results": {"192.168.140.117":
+                {"host": "compute01",
+                "result": "success",
+                "open_ports": [22]
+                }
+            }
+        }, "192.168.100.0/24":
+            {"ips": ["192.168.100.118"],
+            "results": {"192.168.100.117":
+                {"host": "compute01",
+                "result": "success",
+                "open_ports": [22]
+                }
+            }
+        }
+    },
+    "compute01":
+        {"192.168.140.0/24":
+            {"ips": ["192.168.140.117"],
+            "results": {"192.168.140.118":
+                {"host": "compute02",
+                "result": "success",
+                "open_ports": [22]
+                }
+            }
+        }, "192.168.100.0/24":
+            {"ips": ["192.168.100.117"],
+            "results":
+                {"192.168.100.118":
+                    {"host": "compute02",
+                    "result": "success",
+                    "open_ports": [22]
+                    }
+                }
+            }
+        }
+    },
+    "_state": "sleeping",
+    "_clients": {"compute02": "192.168.100.118", "compute01": "192.168.100.117"},
+    "_networks":
+        {
+            "192.168.140.0/24": ["compute02", "compute01"],
+            "192.168.100.0/24": ["compute02", "compute01"]
+        }
+}
+
+```
+
+The API Server can also control when a scan shall take place by issuing a
+POST to /start.  By default, the server service will not immediately start a
+scan, but this can be enabled by setting `scan_on_start` to `True`.

@@ -1,0 +1,325 @@
+Metadata-Version: 1.1
+Name: PyOTRS
+Version: 0.1.16
+Summary: Python wrapper for OTRS (using REST API)
+Home-page: https://gitlab.com/rhab/PyOTRS
+Author: Robert Habermann
+Author-email: mail@rhab.de
+License: The MIT License (MIT)
+
+Copyright (c) 2016 Robert Habermann
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Description: Overview
+        ========
+        
+        |VersionBadge| |BuildStatus| |DocsBuildStatus| |LicenseBadge| |PythonVersions|
+        
+        
+        .. |VersionBadge| image:: https://badge.fury.io/py/PyOTRS.svg
+            :target: https://badge.fury.io/py/PyOTRS
+            :alt: |version|
+        
+        .. |BuildStatus| image:: https://gitlab.com/rhab/PyOTRS/badges/master/build.svg
+            :target: https://gitlab.com/rhab/PyOTRS/commits/master
+            :alt: Build Status
+        
+        .. |DocsBuildStatus| image:: https://readthedocs.org/projects/pyotrs/badge/?version=latest
+            :target: https://pyotrs.readthedocs.org/en/latest/index.html
+            :alt: Docs Build Status
+        
+        .. |LicenseBadge| image:: https://img.shields.io/badge/license-MIT-blue.svg
+            :target: https://gitlab.com/rhab/PyOTRS/raw/master/LICENSE
+            :alt: MIT licensed
+        
+        .. |PythonVersions| image:: https://img.shields.io/badge/python-2.6%2C%202.7%2C%203.3%2C%203.4%2C%203.5-blue.svg
+            :alt: python: 2.6, 2.7, 3.3, 3.4, 3.5
+        
+        
+        
+        
+        PyOTRS is a Python wrapper for accessing `OTRS <https://www.otrs.com/>`_ (Version 5) using the
+        REST API.
+        
+        Features
+        --------
+        
+        Access an OTRS instance to::
+        
+            * create a new Ticket
+            * get the data of a specific Ticket
+            * search for Tickets
+            * update existing Tickets
+        
+        Some of the most notable methods provided are::
+        
+            * Client.session_create (Use credentials to "log in")
+            * Client.ticket_create
+            * Client.ticket_get_by_list  (takes a list)
+            * Client.ticket_get_by_id  (takes an int)
+            * Client.ticket_search
+            * Client.ticket_update
+        
+        More details can be found `here <pyotrs.html>`_
+        
+        Installation
+        ============
+        
+        Dependencies
+        ------------
+        
+        *Dependencies are installed automatically*
+        
+        pip::
+        
+            - python-requests
+            - click (for PyOTRS Shell CLI)
+            - colorama (for colors in PyOTRS Shell CLI)
+        
+        Install
+        -------
+        
+        install::
+        
+            pip install PyOTRS
+        
+        **or** consider using a virtual environment::
+        
+            virtualenv venv
+            source venv/bin/activate
+            pip install PyOTRS
+        
+        Python Usage
+        ============
+        
+        Quickstart
+        ----------
+        
+        Get Ticket with TicketID 1 from OTRS over the REST API::
+        
+            from pyotrs import Client
+            client = Client("https://otrs.example.com", "GenericTicketConnectorREST", "root@localhost", "x")
+            client.session_create()
+            client.ticket_get_by_id(1)
+        
+        
+        More Examples
+        -------------
+        
+        - instantiate a ``Client`` object called **client**
+        - create a session ("login") on **client**
+        - get the ``Ticket`` with ID 1
+        
+        >>> from pyotrs import Article, Client, Ticket
+        >>> client = Client("http://otrs.example.com", "GenericTicketConnectorREST", "root@localhost", "password")
+        >>> client.session_create()
+        True
+        
+        >>> client.ticket_get_by_id(1)
+        <Ticket: 1>
+        >>> my_ticket = client.result[0]
+        
+        >>> my_ticket.TicketNumber
+        u'2010080210123456'
+        >>> my_ticket.Title
+        u'Welcome to OTRS!'
+        >>> my_ticket.to_dct()  # Show complete ticket
+        
+        - add an ``Article`` to ``Ticket`` with ID 1
+        
+        >>> my_article = Article({"Subject": "Subj", "Body": "New Body"})
+        >>> client.ticket_update(1, article=my_article)
+        {u'ArticleID': u'3',
+         u'TicketID': u'1',
+         u'TicketNumber': u'2010080210123456'}
+        
+        
+        - get Articles and Attachments
+        
+        >>> client.ticket_get_by_id(1, articles=1, attachments=1)
+        >>> my_ticket = client.result[0]
+        
+        >>> my_ticket.list_articles
+        [<ArticleID: 3>, <ArticleID: 4>
+        
+        >>> my_ticket.list_dynamic_field
+        [<DynamicField: ProcessManagementActivityID: None>, <DynamicField: ProcessManagementProcessID: None>]
+        
+        
+        Searching
+        ---------
+        
+        - get list of Tickets created before a date (e.g. Jan 01, 2011)
+        
+        >>> from datetime import datetime
+        >>> client.ticket_search(TicketCreateTimeOlderDate=datetime(2011, 01, 01))
+        [u'1']
+        
+        
+        - get list of Tickets created less than a certain time ago (e.g. younger than 1 week)
+        
+        >>> from datetime import datetime
+        >>> from datetime import timedelta
+        >>> client.ticket_search(TicketCreateTimeNewerDate=datetime.utcnow() - timedelta(days=7))
+        [u'66', u'65', u'64', u'63']
+        
+        
+        - Show tickets with either 'open' or 'new' state in Queue 12 created over a week ago
+        
+        >>> from datetime import datetime
+        >>> from datetime import timedelta
+        >>> week = datetime.utcnow() - timedelta(days=7)
+        >>> client.ticket_search(TicketCreateTimeOlderDate=week, States=['open', 'new'], QueueIDs=[12])
+        
+        
+        
+        Tips
+        ----
+        
+        When using **ipython** you could run into UTF8 encoding issues on Python2. This is a workaround
+        that can help::
+        
+            import sys
+            reload(sys)
+            sys.setdefaultencoding('utf-8')
+        
+        
+        **If needed** the *insecure plattform warnings* can be disabled::
+        
+            # turn of platform insecurity warnings from urllib3
+            from requests.packages.urllib3 import disable_warnings
+            disable_warnings()  # TODO 2016-04-23 (RH) verify this
+        
+        PyOTRS Shell CLI
+        ================
+        
+        The PyOTRS Shell CLI is a kind of "proof-of-concept" for the PyOTRS wrapper library.
+        
+        **Attention: PyOTRS can only retrieve Ticket data at the moment!**
+        
+        Usage
+        -----
+        
+        Get a Ticket::
+        
+            PyOTRS get -b https://otrs.example.com/ -w GenericTicketConnectorREST -u root@localhost -p password -t 1
+            Starting PyOTRS CLI
+            No config file found at: /home/user/.pyotrs
+            Connecting to https://otrs.example.com/ as user..
+            Ticket:         Welcome to OTRS!
+            Queue:          Raw
+            State:          closed successful
+            Priority:       3 normal
+        
+            Full Ticket:
+            {u'Ticket': {u'TypeID': 1, [...]
+        
+        Get usage information::
+        
+            $: PyOTRS -h
+            Usage: PyOTRS [OPTIONS] COMMAND [ARGS]...
+        
+            Options:
+              --version      Show the version and exit.
+              --config PATH  Config File
+              -h, --help     Show this message and exit.
+        
+            Commands:
+              get  PyOTRS get command
+        
+            $: PyOTRS get -h
+            Starting PyOTRS CLI
+            No config file found at: /home/user/.pyotrs
+            Usage: PyOTRS get [OPTIONS]
+        
+              PyOTRS get command
+        
+            Options:
+              -b, --baseurl TEXT         Base URL
+              -w, --webservicename TEXT  Webservice Name
+              -u, --username TEXT        Username
+              -p, --password TEXT        Password
+              -t, --ticket-id INTEGER    Ticket ID
+              -h, --help                 Show this message and exit.
+        
+        
+        Get a Ticket "*interactively*\"::
+        
+            $: PyOTRS get
+            Starting PyOTRS CLI
+            No config file found at: /home/user/.pyotrs
+            Baseurl: http://otrs.example.com
+            Webservicename: GenericTicketConnectorREST
+            Username: user
+            Password:
+            Ticket id: 1
+        
+            Connecting to https://otrs.example.com as user..
+        
+            Ticket:         Welcome to OTRS!
+            Queue:          Raw
+            State:          closed successful
+            Priority:       3 normal
+        
+            Full Ticket:
+            {u'Ticket': {u'TypeID': 1  [...]
+        
+        
+        
+        Provide Config
+        --------------
+        
+        There are four ways to provide config values::
+        
+            1. interactively when prompted
+            2. as commandline arguments when calling (checkout -h/--help)
+            3. as settings in the environment
+            4. in a config file (default location: ~/.pyotrs)
+        
+        Both the config file and the environment use the same variable names::
+        
+            PYOTRS_BASEURL=http://otrs.example.com
+            PYOTRS_WEBSERVICENAME=GenericTicketConnectorREST
+            PYOTRS_USERNAME=root@localhost
+            PYOTRS_PASSWORD=otrs_password
+        
+        License
+        =======
+        
+        `MIT License <http://en.wikipedia.org/wiki/MIT_License>`__
+        
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Environment :: Console
+Classifier: Environment :: Web Environment
+Classifier: Framework :: Pytest
+Classifier: Framework :: Sphinx
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: System Administrators
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 2.6
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.3
+Classifier: Programming Language :: Python :: 3.4
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Topic :: Documentation :: Sphinx

@@ -1,0 +1,354 @@
+#ifndef POWELL_CL
+#define POWELL_CL
+
+/**
+ * Creator = Robbert Harms
+ * Date = 2014-02-05
+ * License = LGPL v3
+ * Maintainer = Robbert Harms
+ * Email = robbert.harms@maastrichtuniversity.nl
+ */
+
+/**
+   Uses the Powell's Quadratically Convergent Method of minimizing an objective function in a multidimensional space.
+
+    C code is from NUMERICAL RECIPES IN C --
+        Additional code written by Keith Poole
+        September - October 2009
+
+        OpenCL conversion by Robbert Harms 2016
+
+    This Uses Powell's Quadratically Convergent Method to find a minimum/maximum
+    of a multi-dimensional function
+                         |->func
+        Main -> powell --|          |->mnbrak |
+                         |->linmin->|         |
+                                    |->brent->f1dim->func
+
+             Powell minimizes a function of n variables.  The
+             starting values are in the vector p[1:n] and an n by n
+             matrix of directions -- normally a simplex.
+
+             func is the user defined function being
+             minimized/maximized;
+
+             linmin -- Finds the minimum on a line joining p and xi.
+
+    mnbrak -- Used by linmin.  It finds three points that bracket the
+             minimum.
+
+    brent -- Given the 3 points from mnbrak, it finds the
+    minimum
+
+ */
+
+/* Used to set the maximum number of iterations to patience*(number_of_parameters+1). */
+#define PATIENCE %(PATIENCE)r
+#define MAX_IT (PATIENCE * (%(NMR_PARAMS)r+1))
+#define PWLL_FTOL 30*MOT_EPSILON
+#define BRENT_TOL 2*30*MOT_EPSILON
+#define BRACKET_GOLD 1.618034 /* the default ratio by which successive intervals are magnified in Bracketing */
+#define GLIMIT 100.0 /* the maximum magnification allowed for a parabolic-fit step in Bracketing */
+#define EPSILON 30*MOT_EPSILON
+#define CGOLD 0.3819660 /* golden ratio = (3 - sqrt(5))/2 */
+#define ZEPS 30*MOT_EPSILON
+
+mot_float_type linmin(mot_float_type* const model_parameters,
+                      mot_float_type* const x_tmp_min,
+                      const void* const data);
+mot_float_type bracket_and_brent(const mot_float_type* const model_parameters, const mot_float_type* const x_tmp_min,
+                                 mot_float_type *xmin, const void* const data);
+mot_float_type f1dim(mot_float_type x,
+                     const void* const data,
+                     const mot_float_type* const model_parameters,
+                     const mot_float_type* const x_tmp_min);
+
+int powell(mot_float_type* model_parameters, const void* const data){
+    int i, j, i_greatest;
+    int iteration = 0;
+    mot_float_type fval = evaluate(model_parameters, data);
+    mot_float_type del, fval_tmp1, fval_tmp2;
+
+    mot_float_type x_tmp1[%(NMR_PARAMS)r];
+    mot_float_type x_tmp2[%(NMR_PARAMS)r];
+    mot_float_type x_tmp_min[%(NMR_PARAMS)r];
+    mot_float_type starting_vectors[%(NMR_PARAMS)r][%(NMR_PARAMS)r];
+
+    for(i=0; i < %(NMR_PARAMS)r; i++){
+        for(j=0; j < %(NMR_PARAMS)r; j++){
+            starting_vectors[i][j] = (i == j ? 1.0 : 0.0);
+        }
+
+        x_tmp1[i] = model_parameters[i];
+    }
+
+    while(iteration++ < MAX_IT){
+        fval_tmp1 = fval;
+        i_greatest = 0;
+        del = 0.0;
+
+        for(i=0; i < %(NMR_PARAMS)r; i++){
+            for(j=0; j < %(NMR_PARAMS)r; j++){
+                x_tmp_min[j] = starting_vectors[j][i];
+            }
+            fval_tmp2 = fval;
+
+            fval = linmin(model_parameters, x_tmp_min, data);
+
+            if(fval_tmp2 - fval > del){
+                del = fval_tmp2 - fval;
+                i_greatest = i;
+            }
+        }
+
+        if(2.0*(fval_tmp1-fval) <= PWLL_FTOL * (fabs(fval_tmp1) + fabs(fval)) + EPSILON){
+            return 1;
+        }
+
+        for(j=0; j < %(NMR_PARAMS)r; j++){
+            x_tmp2[j] = 2.0 * model_parameters[j] - x_tmp1[j];
+            x_tmp_min[j] = model_parameters[j] - x_tmp1[j];
+            x_tmp1[j] = model_parameters[j];
+        }
+
+        fval_tmp2 = evaluate(x_tmp2, data);
+
+        if(fval_tmp2 < fval_tmp1){
+            if(2.0 * (fval_tmp1 - 2.0 * fval + fval_tmp2) * ((fval_tmp1 - fval - del) * (fval_tmp1 - fval - del))
+                        - del * ((fval_tmp1 - fval_tmp2) * (fval_tmp1 - fval_tmp2)) < 0.0){
+
+                fval = linmin(model_parameters, x_tmp_min, data);
+
+                for(j=0; j < %(NMR_PARAMS)r; j++){
+                    starting_vectors[j][i_greatest] = starting_vectors[j][%(NMR_PARAMS)r-1];
+                    starting_vectors[j][%(NMR_PARAMS)r-1] = x_tmp_min[j];
+                }
+            }
+        }
+    }
+    return 6;
+}
+
+mot_float_type linmin(mot_float_type* const model_parameters,
+                      mot_float_type* const x_tmp_min,
+                      const void* const data){
+
+    mot_float_type xmin;
+    mot_float_type fval = bracket_and_brent(model_parameters, x_tmp_min, &xmin, data);
+    for(int j=0; j < %(NMR_PARAMS)r; j++){
+        x_tmp_min[j] *= xmin;
+        model_parameters[j] += x_tmp_min[j];
+    }
+
+    return fval;
+}
+
+mot_float_type bracket_and_brent(const mot_float_type* const model_parameters,
+                                 const mot_float_type* const x_tmp_min,
+                                 mot_float_type* xmin,
+                                 const void* const data){
+
+    mot_float_type ax = 0.0;
+    mot_float_type bx = 1.0;
+    mot_float_type cx;
+
+    mot_float_type ulim, u, r, q, fu, tmp;
+    mot_float_type maxarg = 0.0;
+    mot_float_type fa = 0.0;
+    mot_float_type fb = 0.0;
+    mot_float_type fc = 0.0;
+
+    int iter;
+    mot_float_type fx, p, tol1, tol2, v, w, x, xm;
+    mot_float_type e=0.0;
+
+    fa = f1dim(ax, data, model_parameters, x_tmp_min);
+    fb = f1dim(bx, data, model_parameters, x_tmp_min);
+
+    if(fb > fa){
+        tmp = ax;
+        ax = bx;
+        bx = tmp;
+
+        tmp = fb;
+        fb = fa;
+        fa = tmp;
+    }
+
+    cx = (bx) + BRACKET_GOLD * (bx - ax);
+    fc = f1dim(cx, data, model_parameters, x_tmp_min);
+
+    while(fb > fc){
+        r = (bx - ax) * (fb - fc);
+        q = (bx - cx) * (fb - fa);
+
+        maxarg = fmax(fabs(q-r), (mot_float_type)EPSILON);
+
+        u = (bx) - ((bx - cx) * q - (bx - ax) * r) / (2.0 * copysign(maxarg, q-r));
+        ulim = (bx) + GLIMIT * (cx - bx);
+
+        if((bx - u) * (u - cx) > 0.0){
+            fu = f1dim(u, data, model_parameters, x_tmp_min);
+
+            if(fu < fc){
+                ax = bx;
+                bx = u;
+                fa = fb;
+                fb = fu;
+                break;
+            }
+            else if(fu > fb){
+                cx = u;
+                fc = fu;
+                break;
+            }
+            u = (cx) + BRACKET_GOLD * (cx - bx);
+            fu = f1dim(u, data, model_parameters, x_tmp_min);
+        }
+        else if((cx - u) * (u - ulim) > 0.0){
+            fu = f1dim(u, data, model_parameters, x_tmp_min);
+
+            if(fu < fc){
+                bx = cx;
+                cx = u;
+                u = cx+BRACKET_GOLD*(cx-bx);
+
+                fb = fc;
+                fc = fu;
+                fu = f1dim(u, data, model_parameters, x_tmp_min);
+            }
+        }
+        else if((u - ulim) * (ulim - cx) >= 0.0){
+            u = ulim;
+            fu = f1dim(u, data, model_parameters, x_tmp_min);
+        }
+        else{
+            u = (cx) + BRACKET_GOLD * (cx - bx);
+            fu = f1dim(u, data, model_parameters, x_tmp_min);
+        }
+        ax = bx;
+        bx = cx;
+        cx = u;
+
+        fa = fb;
+        fb = fc;
+        fc = fu;
+    }
+
+    /** from here starts brent */
+    /** I inlined this function to save memory. Please view the original implementation for the details. */
+    mot_float_type d, fv, fw;
+
+    mot_float_type a=(ax < cx ? ax : cx);
+    mot_float_type b=(ax > cx ? ax : cx);
+
+    x=w=v=bx;
+    fw=fv=fx=f1dim(x, data, model_parameters, x_tmp_min);
+
+    #pragma unroll 1
+    for(iter=0; iter < MAX_IT; iter++){
+        xm = 0.5 * (a + b);
+        tol1 = BRENT_TOL * fabs(x) + ZEPS;
+        tol2 = 2.0 * tol1;
+
+        if(fabs(x - xm) <= (tol2 - 0.5 * (b - a))){
+            *xmin = x;
+            return fx;
+        }
+
+        if(fabs(e) > tol1){
+            r = (x - w) * (fx - fv);
+            q = (x - v) * (fx - fw);
+            p = (x - v) * q - (x - w) * r;
+            q = 2.0 * (q - r);
+
+            if(q > 0.0){
+                p = -p;
+            }
+
+            q = fabs(q);
+            tmp = e;
+            e = d;
+
+            if(fabs(p) >= fabs(0.5 * q * tmp) || p <= q * (a - x) || p >= q * (b - x)){
+                e = (x >= xm ? a : b) - x;
+                d = CGOLD * e;
+            }
+            else {
+                d = p / q;
+                u = x + d;
+                if(u - a < tol2 || b - u < tol2){
+                    d = copysign(tol1, xm - x);
+                }
+            }
+        }
+        else{
+            e = (x >= xm ? a : b) - x;
+            d = CGOLD * e;
+        }
+
+        u = (fabs(d) >= tol1 ? x + d : x + copysign(tol1, d));
+        fu = f1dim(u, data, model_parameters, x_tmp_min);
+
+        if(fu <= fx){
+            if(u >= x){
+                a=x;
+            }
+            else{
+                b=x;
+            }
+            v = w;
+            w = x;
+            x = u;
+
+            fv = fw;
+            fw = fx;
+            fx = fu;
+        } else {
+            if(u < x){
+                a=u;
+            }
+            else{
+                b=u;
+            }
+            if (fu <= fw || w == x) {
+                v=w;
+                w=u;
+                fv=fw;
+                fw=fu;
+            }
+            else if(fu <= fv || v == x || v == w){
+                v=u;
+                fv=fu;
+            }
+        }
+    }
+    *xmin=x;
+    return fx;
+}
+
+mot_float_type f1dim(mot_float_type x,
+                     const void* const data,
+                     const mot_float_type* const model_parameters,
+                     const mot_float_type* const x_tmp_min){
+
+    mot_float_type xt[%(NMR_PARAMS)r];
+    for(int j=0; j < %(NMR_PARAMS)r; j++){
+        xt[j] = x * x_tmp_min[j] + model_parameters[j];
+    }
+
+    return evaluate(xt, data);
+}
+
+
+#undef PATIENCE
+#undef MAX_IT
+#undef PWLL_FTOL
+#undef BRENT_TOL
+#undef BRACKET_GOLD
+#undef GLIMIT
+#undef EPSILON
+#undef CGOLD
+#undef ZEPS
+
+#endif // POWELL_CL

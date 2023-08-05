@@ -1,0 +1,199 @@
+**********************
+Editorial Sphinx Theme
+**********************
+
+.. image:: https://gitlab.com/opb/editorial-sphinx-theme/badges/master/build.svg
+    :target: https://gitlab.com/opb/editorial-sphinx-theme/commits/master
+    :alt: Build Status
+
+.. image:: https://img.shields.io/pypi/dm/editorial_sphinx_theme.svg
+    :target: https://pypi.python.org/editorial_sphinx_theme
+    :alt: Download per month
+
+.. image:: https://img.shields.io/pypi/v/editorial_sphinx_theme.svg
+    :target: https://pypi.python.org/editorial_sphinx_theme
+    :alt: Package version
+
+.. image:: https://img.shields.io/pypi/l/editorial_sphinx_theme.svg
+    :target: https://pypi.python.org/editorial_sphinx_theme
+    :alt: Python License
+
+.. image:: https://img.shields.io/pypi/pyversions/editorial_sphinx_theme.svg
+    :target: https://pypi.python.org/editorial_sphinx_theme
+    :alt: Supported Python versions
+
+.. image:: https://www.versioneye.com/user/projects/5823a8c39b260e0012ae752b/badge.svg?style=flat-square
+    :target: https://www.versioneye.com/user/projects/5823a8c39b260e0012ae752b
+    :alt: Dependency npm Status
+
+.. image:: https://www.versioneye.com/user/projects/5823a89936fd2f00164ea6b4/badge.svg?style=flat-square
+    :target: https://www.versioneye.com/user/projects/5823a89936fd2f00164ea6b4
+    :alt: Dependency PyPi Status
+
+Editorial is a theme for Sphinx, focused to facilitate the reading of the documentation to allow to use the entire
+width of the screen, your design is responsive and adapts to any device
+
+Live example of this theme can be seen on:
+
+.. Set up a sample site and captures
+
+This template is based on Editorial by HTML5 UP (html5up.net), just made the changes needed to use it at the Sphinx.
+
+Features
+========
+
+* Easy installation, does not make any extra settings
+* Clean and simple design
+* Responsive, adaptable from mobile devices to PC
+* Hide sidebar with one click
+* Integrated and optional support for Google Analytics
+
+Installation
+============
+
+Via package
+-----------
+
+Download the package or add it to your requirements.txt file:
+
+.. code:: bash
+
+    $ pip install editorial_sphinx_theme
+
+In your ``conf.py`` file:
+
+.. code:: python
+
+    import editorial_sphinx_theme
+
+    html_theme = "editorial_sphinx_theme"
+
+    html_theme_path = [editorial_sphinx_theme.get_html_theme_path()]
+
+
+Via git or download
+-------------------
+
+You can install it directly from the Git repository, keep in mind that this will download the last changes made that
+may not be stable and lead to failures. For sites in production try to use the version available in PyPi.
+
+There are two main branches 'master' with stable code and 'develop' with the latest modifications made.
+
+Symlink or subtree the editorial_sphinx_theme/editorial_sphinx_theme repository into your documentation at 
+docs/_themes/editorial_sphinx_theme then add the following two settings to your Sphinx conf.py file:
+
+Branch **master**
+
+.. code:: bash
+
+    pip install -e git+https://gitlab.com/opb/editorial-sphinx-theme.git@master#egg=editorial_sphinx_theme
+
+Branch **develop**
+
+.. code:: bash
+
+    pip install -e git+https://gitlab.com/opb/editorial-sphinx-theme.git@develop#egg=editorial_sphinx_theme
+
+.. code:: python
+
+    html_theme = "editorial_sphinx_theme"
+    html_theme_path = ["_themes", ]
+
+
+Options
+=======
+
+Basic
+-----
+
+Basic tools or functions
+
+**scroll_to_top**
+
+    Include a button in the lower right corner to return to the top of the page.
+
+**prev_next_buttons_bottom**
+
+    Navigation buttons at the end of the page, to go to the previous and next page.
+
+**prev_next_buttons_sidebar**
+
+    Navigation buttons at the end of the sidebar, to go to the previous and next page.
+
+
+Repo info
+---------
+
+Information related to the used repository
+
+**repo_name**
+
+    Name of the repository service, for example GitLab. This name will be displayed in some parts of the page.
+
+**repo_url**
+
+    Repository address, for example: https://gitlab.com/opb/editorial-sphinx-theme
+
+
+Google Analytics [Optional]
+---------------------------
+
+**analytics_id**
+
+    This indicates the Google Analytics ID used by this service, if you do not pass any value the javascript script
+    will not load on the page. The value must have the format "UA-XXXXX-Y".
+
+
+**analytics_async**
+
+    This option indicates which version of the Google Analytics script to use, for more information in your website
+    https://developers.google.com/analytics/devguides/collection/analyticsjs/#alternative_async_tracking_snippet
+
+
+Social links [Optional]
+-----------------------
+
+Add in the header a series of links to different social networks, they don't need individual explanation. It is enough
+to indicate the url of the social network to activate it
+
+Available: github, bitbucket, gitlab, other_git, twitter, facebook
+
+
+Fork Me Ribbon [Optional]
+-------------------------
+
+You can enable the use of a ribbon in a corner of the page, with the legend "Fork me on <repo_name>" and the
+destination url is the repository specified in the 'repo_url'
+
+The options that you can use are as follows:
+
+**forkme_ribbon**
+
+    It enables the use, only loaded if it is equal to 'True'.
+
+
+**forkme_alignment**
+
+    Where shown, take the following locations: left-top, right-top, left-bottom, right-bottom
+
+
+**forkme_fixed**
+
+    If you pass 'True' to this option, the ribbon will be shown with the CSS property fixed, and as we scroll on the
+    page will continue showing in the same corner.
+
+
+How To Contribute
+=================
+
+* Check for open issues or open a fresh issue to start a discussion around a feature idea or a bug.
+* Fork the repository on GitHub to start making your changes, preferably create a branch to dump these changes.
+* Run or write tests to make sure everything works correctly.
+* Send a pull request when you have finished
+
+License
+=======
+
+This template is distributed under the GNU General Public License v3 (GPLv3) license, for more information see the file LICENSE.
+
+

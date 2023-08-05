@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% load static %}
+{% load i18n %}
+{% load dj_diabetes_extras %}
+{% block title %}{% trans "My Glucose Manager" %}{% endblock %}
+{% block content %}
+    <div class="col-md-6" id="glucose-content-form">
+        <form method="post" role="form" class="form-horizontal" action="">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <fieldset>
+        <legend><span class="glyphicon glyphicon-tint"></span> {% trans "Glucoses" %}</legend>
+        <div class="panel panel-default">
+            <br/>
+
+            <div class="form-group{% if form.glucose.errors %} has-error has-feedback{% endif %}">
+                {% if form.glucose.errors %}
+                <div class="col-sm-offset-1 col-sm-10 alert alert-danger" role="alert">{{ form.glucose.errors }}</div>
+                <label for="id_glucose" class="col-sm-4 control-label">{% trans "Glucoses" %}</label>
+                <div class="col-sm-4">
+                {{ form.glucose }}
+                <span class="glyphicon glyphicon-remove form-control-feedback"></span>
+                </div>
+                {% else %}
+                <label for="id_glucose" class="col-sm-4 control-label">{% trans "Glucoses" %}</label>
+                <div class="col-sm-4">
+                {{ form.glucose }}
+                </div>
+                {% endif %}
+            </div>
+
+            {% if form.insulin %}
+            <div class="form-group{% if form.insulin.errors %} has-error has-feedback{% endif %}">
+                {% if form.insulin.errors %}
+                <div class="col-sm-offset-1 col-sm-10 alert alert-danger" role="alert">{{ form.insulin.errors }}</div>
+                <label for="id_insulin" class="col-sm-4 control-label">{% trans "Insulin" %}</label>
+                <div class="col-sm-4">
+                {{ form.insulin }}
+                <span class="glyphicon glyphicon-remove form-control-feedback"></span>
+                </div>
+                {% else %}
+                <label for="id_insulin" class="col-sm-4 control-label">{% trans "Insulin" %}</label>
+                <div class="col-sm-4">
+                {{ form.insulin }}
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="form-group{% if form.comment.errors %} has-error has-feedback{% endif %}">
+                {% if form.comment.errors %}
+                <div class="col-sm-offset-1 col-sm-10 alert alert-danger" role="alert">{{ form.comment.errors }}</div>
+                <label for="id_comment" class="col-sm-4 control-label">{% trans "Comment" %}</label>
+                <div class="col-sm-4">
+                {{ form.comment }}
+                <span class="glyphicon glyphicon-remove form-control-feedback"></span>
+                </div>
+                {% else %}
+                <label for="id_comment" class="col-sm-4 control-label">{% trans "Comment" %}</label>
+                <div class="col-sm-4">
+                {{ form.comment }}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group{% if form.moment.errors %} has-error has-feedback{% endif %}">
+                {% if form.moment.errors %}
+                <div class="col-sm-offset-1 col-sm-10 alert alert-danger" role="alert">{{ form.moment.errors }}</div>
+                {% endif %}
+                <label for="id_moment" class="col-sm-4 control-label">{% trans "Moment" %}</label>
+                <div class="col-sm-4">
+                {{ form.moment }}
+                </div>                
+            </div>            
+            
+            <div class="form-group{% if form.date_glucoses.errors %} has-error has-feedback{% endif %}">
+                {% if form.date_glucoses.errors %}            
+                <div class="col-sm-offset-1 col-sm-10 alert alert-danger" role="alert">{{ form.date_glucoses.errors }}</div>
+                {% endif %}
+                <label for="id_date_glucoses" class="col-sm-4 control-label">{% trans "Date" %}</label>
+                <div class="col-sm-4">
+                  {{ form.date_glucoses }}
+                </div>
+            </div>
+
+            <div class="form-group{% if form.hour_glucoses.errors %} has-error has-feedback{% endif %}">
+                {% if form.hour_glucoses.errors %}
+                <div class="col-sm-offset-1 col-sm-10 alert alert-danger" role="alert">{{ form.hour_glucoses.errors }}</div>
+                {% endif %}
+                <label for="id_hour_glucoses" class="col-sm-4 control-label">{% trans "Hour" %}</label>
+                <div class="col-sm-4">
+                  {{ form.hour_glucoses }}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="col-sm-offset-4 col-sm-4">
+                    <button class="btn btn-primary">{% trans "Save" %}</button>
+                </div>
+            </div>
+        </div>
+        </fieldset>
+        </form>
+    </div>
+    <div class="col-md-6" id="glucose-content-graph">
+        <legend><span class="glyphicon glyphicon-tint"></span>{% trans "Last mesures" %}</legend>
+        <div class="panel panel-default">
+            <div class="panel-body" id="chart_panel"></div>
+        </div>
+        <table class="table table-striped table-hover">
+            <tr>
+                <th>{% trans "Date" %}</th>
+                <th>{% trans "Glucose" %}</th>
+                <th>{% trans "Insulin" %}</th>
+                <th>{% trans "Moment" %}</th>
+                <th>{% trans "Actions" %}</th>
+            </tr>
+        {% for line in data %}
+            <tr>
+                <td>{{ line.date_glucoses }} {{ line.hour_glucoses }}</td>
+                <td>{{ line.glucose }}</td>
+                <td>{{ line.insulin }}</td>
+                <td>{{ line.moment|which_value:'moment' }}</td>
+                <td><a class="btn btn-sm btn-info" role="button" href="{% url 'glucose_edit' line.id %}"><span class="glyphicon glyphicon-pencil icon-white"></span></a> <a class="btn btn-sm btn-danger" role="button"  href="{% url 'glucose_delete' line.id %}"><span class="glyphicon glyphicon-trash icon-white"></span></a></td>
+            </tr>
+        {% endfor %}
+        </table>
+
+        <div class="col-md-12">
+            <ul class="pagination">
+                {% if data.has_previous %}
+                    <li><a href="{% url 'glucoses' %}?page={{ data.previous_page_number }}">{% trans "previous" %}</a></li>
+                {% endif %}
+                    <li class="active"><a >
+                    {% blocktrans with page_number=data.number total_of_pages=data.paginator.num_pages %}
+                    Page {{ page_number }} of {{ total_of_pages }}
+                    {% endblocktrans %}</a>
+                    </li>
+                {% if data.has_next %}
+                    <li><a href="{% url 'glucoses' %}?page={{ data.next_page_number }}">{% trans "next" %}</a></li>
+                {% endif %}
+            </ul>
+        </div>
+
+    </div>
+{% endblock %}
+{% block extrajs %}
+<script src="{% static 'js/highcharts/highcharts.js' %}"></script>
+<script src="{% static 'js/highcharts/modules/exporting.js' %}"></script>
+<script type="text/javascript">
+//<![CDATA[
+$(document).ready(function() {
+    // Glucose Average by Day chart
+     var dataByDayOptions = {
+        chart: {
+            renderTo: 'chart_panel',
+            type: 'line',
+        },
+        legend: {enabled: false},
+        title: {text: 'Last mesures of Glucose by Day'},
+        subtitle: {text: 'Last 14 Days'},
+        xAxis: {title: {text: null}, labels: {rotation: -45}},
+        yAxis: {title: {text: null}},
+        series: [{}],
+    };
+
+    var chartDataUrl = "{% url 'chart_data_json' %}";
+    $.getJSON(chartDataUrl,
+        function(data) {
+            dataByDayOptions.xAxis.categories = data['chart_data']['date_glucoses'];
+            dataByDayOptions.series[0].name = 'Glucose (mg/dL)';
+            dataByDayOptions.series[0].data = data['chart_data']['glucose'];
+            var chart = new Highcharts.Chart(dataByDayOptions);
+    });
+} );
+$(function(){
+    $('#id_date_glucoses').datepicker({
+            format: 'yyyy-mm-dd'
+    });
+});
+//]]>
+</script>
+
+{% endblock %}

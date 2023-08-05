@@ -1,0 +1,113 @@
+Metadata-Version: 2.0
+Name: gakp-pylib
+Version: 0.8.1
+Summary: UNKNOWN
+Home-page: https://gitlab.com/gakp/pylib.git
+Author: gatekeeper
+Author-email: arewa.olakunle@gmail.com
+License: UNKNOWN
+Platform: any
+Requires-Dist: falcon (==0.3.0)
+Requires-Dist: gakp-pyfunk (==0.4.0)
+Requires-Dist: marshmallow (==2.7.1)
+Requires-Dist: pymongo (==3.2.2)
+Requires-Dist: pytz (==2016.4)
+
+`__init__.py`
+```python
+from .patients import patients
+from pylib.falcon.jsonmiddlerware import RequireJSON, JSONTranslator
+
+import falcon
+
+# setup required middleware
+api = falcon.API(middleware=[
+    RequireJSON(),
+    JSONTranslator()
+])
+
+
+# our custom error serializer
+def __json_error_serializer(req, exception):
+    return ('application/json', exception.to_json())
+api.set_error_serializer(__json_error_serializer)
+
+
+patients.register(api)
+```
+
+`patients.py`
+```python
+from pylib.schema import validators
+from pylib.falcon import Collection
+
+from marshmallow import Schema
+from marshmallow.fields import Int, Str, Date
+
+all_patients = []
+counter = 0
+
+def authenticate(req, resp, res, params):
+    pass
+
+def authorize(req, resp, res, params):
+    pass
+
+class PatientSchema(Schema):
+    id = Int()
+    firstname = Str(required=True)
+    surname = Str()
+    dob = Date()
+    homephone = Str(validate=validators.phone_check)
+
+patients = Collection(
+    '/api/patients', 'pid',
+    PatientSchema(), before=[authenticate])
+
+
+def has_same_key_predicate(key, query):
+    def predicate(patient):
+        value = patient.get(key)
+        return value and value.startswith(query)
+    return predicate
+
+
+@patients.search(before=[authorize])
+def search(query, query_type, **kwargs):
+    if query is None:
+        return all_patients
+
+    query_type = 'firstname' if query_type is None else query_type
+    return list(filter(
+        has_same_key_predicate(query_type, query),
+        all_patients))
+
+
+@patients.create(before=[authorize])
+def create(patient, **kwargs):
+    all_patients.append(patient)
+    return len(all_patients) - 1
+
+
+@patients.read(before=[authorize])
+def get(pid):
+    if pid < len(all_patients):
+        return all_patients[pid]
+
+
+@patients.update(before=[authorize])
+def update(pid, patient):
+    if pid < len(all_patients):
+        all_patients[pid] = patient
+        return patient
+
+
+@patients.delete(before=[authorize])
+def delete(pid):
+    if pid < len(all_patients):
+        patient = all_patients[pid]
+        all_patients.pop(pid)
+        return patient
+
+```
+

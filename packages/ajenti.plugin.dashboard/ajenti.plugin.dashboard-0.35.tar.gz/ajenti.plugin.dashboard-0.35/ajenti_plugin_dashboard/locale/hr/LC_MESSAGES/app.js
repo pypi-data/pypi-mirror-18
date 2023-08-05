@@ -1,0 +1,1 @@
+{"": "", "15 min": "15 min", "Uptime": "", "Total": "", "Configure": "", "Memory usage": "", "Tabs": "", "Hostname": "", "Active cores": "", "Load average": "", "Add widget": "", "Add": "", "1 min": "1 min", "Remove": "", "5 min": "5 min", "CPU usage": "", "Save": "", "Rename": "", "Dashboard": ""}

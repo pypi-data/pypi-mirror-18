@@ -1,0 +1,1 @@
+{"": "", "15 min": "15 minutoj", "Uptime": "", "Total": "", "Configure": "Agordi", "Memory usage": "", "Tabs": "Langetoj", "Hostname": "", "Active cores": "Aktivaj kernoj", "Load average": "", "Add widget": "", "Add": "Aldoni", "1 min": "1 minuto", "Remove": "Forigi", "5 min": "5 minutoj", "CPU usage": "", "Save": "Konservi", "Rename": "", "Dashboard": ""}

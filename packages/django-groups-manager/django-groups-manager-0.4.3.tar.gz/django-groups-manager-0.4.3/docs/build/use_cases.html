@@ -1,0 +1,619 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Use cases &mdash; Django Groups Manager 0.3.0 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Django Groups Manager 0.3.0 documentation" href="index.html"/>
+        <link rel="next" title="API" href="API.html"/>
+        <link rel="prev" title="Settings" href="settings.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Django Groups Manager
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#basic-usage">Basic usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auth_integration.html">Django auth models integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="settings.html">Settings</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Use cases</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#projects-management-with-proxy-models">Projects management with Proxy Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#projects-management-with-model-mixins">Projects management with Model Mixins</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#model-mixins-example">Model mixins example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#resource-assignment-via-role-permissions">Resource assignment via role permissions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#custom-member-model">Custom member model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#custom-signals">Custom signals</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="API.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="todo.html">TODO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">Django Groups Manager</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>Use cases</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/use_cases.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="use-cases">
+<h1>Use cases<a class="headerlink" href="#use-cases" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="projects-management-with-proxy-models">
+<h2>Projects management with Proxy Models<a class="headerlink" href="#projects-management-with-proxy-models" title="Permalink to this headline">¶</a></h2>
+<p>John Boss is the project leader. Marcus Worker and Julius Backend are the
+django backend guys; Teresa Html is the front-end developer and Jack College is the
+student that has to learn to write good backends.
+The Celery pipeline is owned by Marcus, and Jack must see it without intercations.
+Teresa can&#8217;t see the pipeline, but John has full permissions as project leader.
+As part of the backend group, Julius has the right of viewing and editing, but not to
+stop (delete) the pipeline.</p>
+<p><strong>1) Define models in models.py</strong>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">groups_manager.models</span> <span class="k">import</span> <span class="n">Group</span><span class="p">,</span> <span class="n">GroupType</span>
+
+<span class="k">class</span> <span class="nc">Project</span><span class="p">(</span><span class="n">Group</span><span class="p">):</span>
+    <span class="c1"># objects = ProjectManager()</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">proxy</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_type</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">group_type</span> <span class="o">=</span> <span class="n">GroupType</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get_or_create</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Project&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Project</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">WorkGroup</span><span class="p">(</span><span class="n">Group</span><span class="p">):</span>
+    <span class="c1"># objects = WorkGroupManager()</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">proxy</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_type</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">group_type</span> <span class="o">=</span> <span class="n">GroupType</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get_or_create</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Workgroup&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">WorkGroup</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">Pipeline</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">permissions</span> <span class="o">=</span> <span class="p">((</span><span class="s1">&#39;view_pipeline&#39;</span><span class="p">,</span> <span class="s1">&#39;View Pipeline&#39;</span><span class="p">),</span> <span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Remember to define a <code class="docutils literal"><span class="pre">view_modelname</span></code> permission.</p>
+</div>
+<p><strong>2) Connect creation and deletion signals to the proxy models</strong>
+<em>(This step is required if you want to sync with django auth models)</em>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">django.db.models.signals</span> <span class="k">import</span> <span class="n">post_save</span><span class="p">,</span> <span class="n">post_delete</span>
+<span class="kn">from</span> <span class="nn">groups_manager.models</span> <span class="k">import</span> <span class="n">group_save</span><span class="p">,</span> <span class="n">group_delete</span>
+
+<span class="n">post_save</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">group_save</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">Project</span><span class="p">)</span>
+<span class="n">post_delete</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">group_delete</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">Project</span><span class="p">)</span>
+<span class="n">post_save</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">group_save</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">WorkGroup</span><span class="p">)</span>
+<span class="n">post_delete</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">group_delete</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">WorkGroup</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>3) Creates groups</strong>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">project_main</span> <span class="o">=</span> <span class="n">testproject_models</span><span class="o">.</span><span class="n">Project</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;Workgroups Main Project&#39;</span><span class="p">)</span>
+<span class="n">project_main</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+<span class="n">django_backend</span> <span class="o">=</span> <span class="n">testproject_models</span><span class="o">.</span><span class="n">WorkGroup</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;WorkGroup Backend&#39;</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">project_main</span><span class="p">)</span>
+<span class="n">django_backend</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+<span class="n">django_backend_watchers</span> <span class="o">=</span> <span class="n">testproject_models</span><span class="o">.</span><span class="n">WorkGroup</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;Backend Watchers&#39;</span><span class="p">,</span>
+                                                    <span class="n">parent</span><span class="o">=</span><span class="n">django_backend</span><span class="p">)</span>
+<span class="n">django_backend_watchers</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+<span class="n">django_frontend</span> <span class="o">=</span> <span class="n">testproject_models</span><span class="o">.</span><span class="n">WorkGroup</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;WorkGroup FrontEnd&#39;</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">project_main</span><span class="p">)</span>
+<span class="n">django_frontend</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>4) Creates members and assign them to groups</strong>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">john</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">Member</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">first_name</span><span class="o">=</span><span class="s1">&#39;John&#39;</span><span class="p">,</span> <span class="n">last_name</span><span class="o">=</span><span class="s1">&#39;Boss&#39;</span><span class="p">)</span>
+<span class="n">project_main</span><span class="o">.</span><span class="n">add_member</span><span class="p">(</span><span class="n">john</span><span class="p">)</span>
+<span class="n">marcus</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">Member</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">first_name</span><span class="o">=</span><span class="s1">&#39;Marcus&#39;</span><span class="p">,</span> <span class="n">last_name</span><span class="o">=</span><span class="s1">&#39;Worker&#39;</span><span class="p">)</span>
+<span class="n">julius</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">Member</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">first_name</span><span class="o">=</span><span class="s1">&#39;Julius&#39;</span><span class="p">,</span> <span class="n">last_name</span><span class="o">=</span><span class="s1">&#39;Backend&#39;</span><span class="p">)</span>
+<span class="n">django_backend</span><span class="o">.</span><span class="n">add_member</span><span class="p">(</span><span class="n">marcus</span><span class="p">)</span>
+<span class="n">django_backend</span><span class="o">.</span><span class="n">add_member</span><span class="p">(</span><span class="n">julius</span><span class="p">)</span>
+<span class="n">teresa</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">Member</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">first_name</span><span class="o">=</span><span class="s1">&#39;Teresa&#39;</span><span class="p">,</span> <span class="n">last_name</span><span class="o">=</span><span class="s1">&#39;Html&#39;</span><span class="p">)</span>
+<span class="n">django_frontend</span><span class="o">.</span><span class="n">add_member</span><span class="p">(</span><span class="n">teresa</span><span class="p">)</span>
+<span class="n">jack</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">Member</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">first_name</span><span class="o">=</span><span class="s1">&#39;Jack&#39;</span><span class="p">,</span> <span class="n">last_name</span><span class="o">=</span><span class="s1">&#39;College&#39;</span><span class="p">)</span>
+<span class="n">django_backend_watchers</span><span class="o">.</span><span class="n">add_member</span><span class="p">(</span><span class="n">jack</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>5) Create the pipeline and assign custom permissions</strong>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">custom_permissions</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;owner&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;view&#39;</span><span class="p">,</span> <span class="s1">&#39;change&#39;</span><span class="p">,</span> <span class="s1">&#39;delete&#39;</span><span class="p">],</span>
+    <span class="s1">&#39;group&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;view&#39;</span><span class="p">,</span> <span class="s1">&#39;change&#39;</span><span class="p">],</span>
+    <span class="s1">&#39;groups_upstream&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;view&#39;</span><span class="p">,</span> <span class="s1">&#39;change&#39;</span><span class="p">,</span> <span class="s1">&#39;delete&#39;</span><span class="p">],</span>
+    <span class="s1">&#39;groups_downstream&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;view&#39;</span><span class="p">],</span>
+    <span class="s1">&#39;groups_siblings&#39;</span><span class="p">:</span> <span class="p">[],</span>
+<span class="p">}</span>
+<span class="n">pipeline</span> <span class="o">=</span> <span class="n">testproject_models</span><span class="o">.</span><span class="n">Pipeline</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;Test Runner&#39;</span><span class="p">)</span>
+<span class="n">marcus</span><span class="o">.</span><span class="n">assing_object</span><span class="p">(</span><span class="n">django_backend</span><span class="p">,</span> <span class="n">pipeline</span><span class="p">,</span> <span class="n">custom_permissions</span><span class="o">=</span><span class="n">custom_permissions</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The full tested example is available in repository source code, <code class="docutils literal"><span class="pre">testproject</span></code>&#8216;s <code class="docutils literal"><span class="pre">tests.py</span></code> under <code class="docutils literal"><span class="pre">test_proxy_models</span></code> method.</p>
+</div>
+</div>
+<div class="section" id="projects-management-with-model-mixins">
+<h2>Projects management with Model Mixins<a class="headerlink" href="#projects-management-with-model-mixins" title="Permalink to this headline">¶</a></h2>
+<p>Mixins allows to create shared apps based on django-groups-manager.
+The mixins approach has pros and cons.</p>
+<dl class="docutils">
+<dt>Pros:</dt>
+<dd><ul class="first last simple">
+<li>models are completely customizable (add all fields you need);</li>
+<li>all fields are in the same table (with subclassed models, only extra fields are stored in the subclass table);</li>
+<li>better for shared applications (the &#8220;original&#8221; django-groups-manager tables don&#8217;t share entries from different models).</li>
+</ul>
+</dd>
+<dt>Cons:</dt>
+<dd><ul class="first last simple">
+<li>all external foreign keys must be declared in the concrete model;</li>
+<li>all signals must be declared with concrete models.</li>
+</ul>
+</dd>
+</dl>
+</div>
+<div class="section" id="model-mixins-example">
+<h2>Model mixins example<a class="headerlink" href="#model-mixins-example" title="Permalink to this headline">¶</a></h2>
+<p>The following models allow to manage a set of Organizations with related members (from <code class="docutils literal"><span class="pre">organization</span></code> app).
+In this example, a <code class="docutils literal"><span class="pre">last_edit_date</span></code> is added to models, and member display name has the user email (if defined).</p>
+<p><strong>1) Define models in models.py</strong>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">groups_manager.models</span> <span class="k">import</span> <span class="n">GroupMixin</span><span class="p">,</span> <span class="n">MemberMixin</span><span class="p">,</span> <span class="n">GroupMemberMixin</span><span class="p">,</span> <span class="n">GroupMemberRoleMixin</span><span class="p">,</span> \
+    <span class="n">GroupEntity</span><span class="p">,</span> <span class="n">GroupType</span><span class="p">,</span> \
+    <span class="n">group_save</span><span class="p">,</span> <span class="n">group_delete</span><span class="p">,</span> <span class="n">member_save</span><span class="p">,</span> <span class="n">member_delete</span><span class="p">,</span> <span class="n">group_member_save</span><span class="p">,</span> <span class="n">group_member_delete</span>
+
+
+<span class="k">class</span> <span class="nc">OrganizationMemberRole</span><span class="p">(</span><span class="n">GroupMemberRoleMixin</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">OrganizationGroupMember</span><span class="p">(</span><span class="n">GroupMemberMixin</span><span class="p">):</span>
+    <span class="n">group</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s1">&#39;OrganizationGroup&#39;</span><span class="p">,</span> <span class="n">related_name</span><span class="o">=</span><span class="s1">&#39;group_membership&#39;</span><span class="p">)</span>
+    <span class="n">member</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s1">&#39;OrganizationMember&#39;</span><span class="p">,</span> <span class="n">related_name</span><span class="o">=</span><span class="s1">&#39;group_membership&#39;</span><span class="p">)</span>
+    <span class="n">roles</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ManyToManyField</span><span class="p">(</span><span class="n">OrganizationMemberRole</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">OrganizationGroup</span><span class="p">(</span><span class="n">GroupMixin</span><span class="p">):</span>
+    <span class="n">last_edit_date</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span><span class="n">auto_now</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">short_name</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">country</span> <span class="o">=</span> <span class="n">CountryField</span><span class="p">(</span><span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">city</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+
+    <span class="n">group_type</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="n">GroupType</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">SET_NULL</span><span class="p">,</span>
+                                   <span class="n">related_name</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(app_label)s</span><span class="s1">_</span><span class="si">%(class)s</span><span class="s1">_set&#39;</span><span class="p">)</span>
+    <span class="n">group_entities</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ManyToManyField</span><span class="p">(</span><span class="n">GroupEntity</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                            <span class="n">related_name</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(app_label)s</span><span class="s1">_</span><span class="si">%(class)s</span><span class="s1">_set&#39;</span><span class="p">)</span>
+
+    <span class="n">django_group</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="n">DjangoGroup</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">SET_NULL</span><span class="p">)</span>
+    <span class="n">group_members</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ManyToManyField</span><span class="p">(</span><span class="s1">&#39;OrganizationMember&#39;</span><span class="p">,</span> <span class="n">through</span><span class="o">=</span><span class="n">OrganizationGroupMember</span><span class="p">,</span>
+                                           <span class="n">through_fields</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;group&#39;</span><span class="p">,</span> <span class="s1">&#39;member&#39;</span><span class="p">),</span>
+                                           <span class="n">related_name</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(app_label)s</span><span class="s1">_</span><span class="si">%(class)s</span><span class="s1">_set&#39;</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">permissions</span> <span class="o">=</span> <span class="p">((</span><span class="s1">&#39;manage_organization&#39;</span><span class="p">,</span> <span class="s1">&#39;Manage Organization&#39;</span><span class="p">),</span>
+                       <span class="p">(</span><span class="s1">&#39;view_organization&#39;</span><span class="p">,</span> <span class="s1">&#39;View Organization&#39;</span><span class="p">))</span>
+
+    <span class="k">class</span> <span class="nc">GroupsManagerMeta</span><span class="p">:</span>
+        <span class="n">member_model</span> <span class="o">=</span> <span class="s1">&#39;organizations.OrganizationMember&#39;</span>
+        <span class="n">group_member_model</span> <span class="o">=</span> <span class="s1">&#39;organizations.OrganizationGroupMember&#39;</span>
+
+    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">short_name</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">short_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">OrganizationGroup</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">members_names</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">member</span><span class="o">.</span><span class="n">full_name</span> <span class="k">for</span> <span class="n">member</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_members</span><span class="o">.</span><span class="n">all</span><span class="p">()]</span>
+
+
+<span class="k">class</span> <span class="nc">OrganizationMember</span><span class="p">(</span><span class="n">MemberMixin</span><span class="p">):</span>
+    <span class="n">last_edit_date</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span><span class="n">auto_now</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">django_user</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="n">DjangoUser</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">SET_NULL</span><span class="p">,</span>
+                                    <span class="n">related_name</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(app_label)s</span><span class="s1">_</span><span class="si">%(class)s</span><span class="s1">_set&#39;</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">GroupsManagerMeta</span><span class="p">:</span>
+        <span class="n">group_model</span> <span class="o">=</span> <span class="s1">&#39;organizations.OrganizationGroup&#39;</span>
+        <span class="n">group_member_model</span> <span class="o">=</span> <span class="s1">&#39;organizations.OrganizationGroupMember&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__unicode__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> (</span><span class="si">%s</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">full_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">full_name</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> (</span><span class="si">%s</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">full_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">full_name</span>
+</pre></div>
+</div>
+<p><strong>2) Connect creation and deletion signals to the models</strong></p>
+<p><em>(This step is required if you want to sync with django auth models)</em>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">post_save</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">group_save</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">OrganizationGroup</span><span class="p">)</span>
+<span class="n">post_delete</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">group_delete</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">OrganizationGroup</span><span class="p">)</span>
+
+<span class="n">post_save</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">member_save</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">OrganizationMember</span><span class="p">)</span>
+<span class="n">post_delete</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">member_delete</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">OrganizationMember</span><span class="p">)</span>
+
+<span class="n">post_save</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">group_member_save</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">OrganizationGroupMember</span><span class="p">)</span>
+<span class="n">post_delete</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">group_member_delete</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">OrganizationGroupMember</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>3) Customize the flag for AUTH_MODEL_SYNC</strong></p>
+<p>If you plan to create a reusable app and to let users decide if sync or not with Django auth models
+<strong>independently</strong> from <code class="docutils literal"><span class="pre">groups_manager</span></code> settings, you should define a separated function that
+returns the boolean value from your own settings:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">organization_with_mixin_get_auth_models_sync_func</span><span class="p">(</span><span class="n">instance</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">organization</span><span class="o">.</span><span class="n">SETTINGS</span><span class="p">[</span><span class="s1">&#39;DJANGO_AUTH_MODEL_SYNC&#39;</span><span class="p">]</span>  <span class="c1"># example</span>
+
+<span class="k">def</span> <span class="nf">organization_group_member_save</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">group_member_save</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">get_auth_models_sync_func</span><span class="o">=</span><span class="n">organization_get_auth_models_sync_func</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">organization_group_member_delete</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">group_member_delete</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">get_auth_models_sync_func</span><span class="o">=</span><span class="n">organization_get_auth_models_sync_func</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="n">post_save</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">organization_group_member_save</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">OrganizationGroupMember</span><span class="p">)</span>
+<span class="n">post_delete</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">organization_group_member_delete</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">OrganizationGroupMember</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The full tested example is available in repository source code, <code class="docutils literal"><span class="pre">testproject</span></code>&#8216;s <code class="docutils literal"><span class="pre">tests.py</span></code> under <code class="docutils literal"><span class="pre">test_model_mixins</span></code> method.</p>
+</div>
+</div>
+<div class="section" id="resource-assignment-via-role-permissions">
+<span id="custom-permissions-by-role"></span><h2>Resource assignment via role permissions<a class="headerlink" href="#resource-assignment-via-role-permissions" title="Permalink to this headline">¶</a></h2>
+<p>John Money is the commercial referent of the company; Patrick Html is the web
+developer. The company has only one group, but different roles.
+John can view and sell the site, and Patrick can view, change and delete the site.</p>
+<p><strong>1) Define models in models.py</strong>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Site</span><span class="p">(</span><span class="n">Group</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">permissions</span> <span class="o">=</span> <span class="p">((</span><span class="s1">&#39;view_site&#39;</span><span class="p">,</span> <span class="s1">&#39;View site&#39;</span><span class="p">),</span>
+                       <span class="p">(</span><span class="s1">&#39;sell_site&#39;</span><span class="p">,</span> <span class="s1">&#39;Sell site&#39;</span><span class="p">),</span> <span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>2) Create models and relations</strong>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">groups_manager.models</span> <span class="k">import</span> <span class="n">Group</span><span class="p">,</span> <span class="n">GroupMemberRole</span><span class="p">,</span> <span class="n">Member</span>
+<span class="kn">from</span> <span class="nn">models</span> <span class="k">import</span> <span class="n">Site</span>
+<span class="c1"># Group</span>
+<span class="n">company</span> <span class="o">=</span> <span class="n">Group</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;Company&#39;</span><span class="p">)</span>
+<span class="c1"># Group Member roles</span>
+<span class="n">commercial_referent</span> <span class="o">=</span> <span class="n">GroupMemberRole</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Commercial referent&#39;</span><span class="p">)</span>
+<span class="n">web_developer</span> <span class="o">=</span> <span class="n">GroupMemberRole</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Web developer&#39;</span><span class="p">)</span>
+<span class="c1"># Members</span>
+<span class="n">john</span> <span class="o">=</span> <span class="n">Member</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">first_name</span><span class="o">=</span><span class="s1">&#39;John&#39;</span><span class="p">,</span> <span class="n">last_name</span><span class="o">=</span><span class="s1">&#39;Money&#39;</span><span class="p">)</span>
+<span class="n">patrick</span> <span class="o">=</span> <span class="n">Member</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">first_name</span><span class="o">=</span><span class="s1">&#39;Patrick&#39;</span><span class="p">,</span> <span class="n">last_name</span><span class="o">=</span><span class="s1">&#39;Html&#39;</span><span class="p">)</span>
+<span class="c1"># Add to company</span>
+<span class="n">company</span><span class="o">.</span><span class="n">add_member</span><span class="p">(</span><span class="n">john</span><span class="p">,</span> <span class="p">[</span><span class="n">commercial_referent</span><span class="p">])</span>
+<span class="n">company</span><span class="o">.</span><span class="n">add_member</span><span class="p">(</span><span class="n">patrick</span><span class="p">,</span> <span class="p">[</span><span class="n">web_developer</span><span class="p">])</span>
+<span class="c1"># Create the site</span>
+<span class="n">site</span> <span class="o">=</span> <span class="n">Site</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;Django groups manager website&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>3) Define custom permissions and assign the site object</strong>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">custom_permissions</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;owner&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;commercial-referent&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;sell_site&#39;</span><span class="p">],</span>
+              <span class="s1">&#39;web-developer&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;change&#39;</span><span class="p">,</span> <span class="s1">&#39;delete&#39;</span><span class="p">],</span>
+              <span class="s1">&#39;default&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;view&#39;</span><span class="p">]},</span>
+    <span class="s1">&#39;group&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;view&#39;</span><span class="p">],</span>
+    <span class="s1">&#39;groups_upstream&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;view&#39;</span><span class="p">,</span> <span class="s1">&#39;change&#39;</span><span class="p">,</span> <span class="s1">&#39;delete&#39;</span><span class="p">],</span>
+    <span class="s1">&#39;groups_downstream&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;view&#39;</span><span class="p">],</span>
+    <span class="s1">&#39;groups_siblings&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;view&#39;</span><span class="p">],</span>
+<span class="p">}</span>
+<span class="n">john</span><span class="o">.</span><span class="n">assign_object</span><span class="p">(</span><span class="n">company</span><span class="p">,</span> <span class="n">site</span><span class="p">,</span> <span class="n">custom_permissions</span><span class="o">=</span><span class="n">custom_permissions</span><span class="p">)</span>
+<span class="n">patrick</span><span class="o">.</span><span class="n">assign_object</span><span class="p">(</span><span class="n">company</span><span class="p">,</span> <span class="n">site</span><span class="p">,</span> <span class="n">custom_permissions</span><span class="o">=</span><span class="n">custom_permissions</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>4) Check permissions</strong>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">john</span><span class="o">.</span><span class="n">has_perms</span><span class="p">([</span><span class="s1">&#39;view_site&#39;</span><span class="p">,</span> <span class="s1">&#39;sell_site&#39;</span><span class="p">],</span> <span class="n">site</span><span class="p">)</span>  <span class="c1"># True</span>
+<span class="n">john</span><span class="o">.</span><span class="n">has_perm</span><span class="p">(</span><span class="s1">&#39;change_site&#39;</span><span class="p">,</span> <span class="n">site</span><span class="p">)</span>  <span class="c1"># False</span>
+<span class="n">patrick</span><span class="o">.</span><span class="n">has_perms</span><span class="p">([</span><span class="s1">&#39;view_site&#39;</span><span class="p">,</span> <span class="s1">&#39;change_site&#39;</span><span class="p">,</span> <span class="s1">&#39;delete_site&#39;</span><span class="p">],</span> <span class="n">site</span><span class="p">)</span>  <span class="c1"># True</span>
+<span class="n">patrick</span><span class="o">.</span><span class="n">has_perm</span><span class="p">(</span><span class="s1">&#39;sell_site&#39;</span><span class="p">,</span> <span class="n">site</span><span class="p">)</span>  <span class="c1"># False</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The full tested example is available in repository source code, <code class="docutils literal"><span class="pre">testproject</span></code>&#8216;s <code class="docutils literal"><span class="pre">tests.py</span></code> under <code class="docutils literal"><span class="pre">test_roles</span></code> method.</p>
+</div>
+</div>
+<div class="section" id="custom-member-model">
+<span id="id1"></span><h2>Custom member model<a class="headerlink" href="#custom-member-model" title="Permalink to this headline">¶</a></h2>
+<p>By default, <code class="docutils literal"><span class="pre">Group</span></code>&#8216;s attribute <code class="docutils literal"><span class="pre">members</span></code> returns a list of <code class="docutils literal"><span class="pre">Member</span></code> instances.
+If you want to create also a custom Member model in addition to custom Group, maybe you
+want to obtain a list of custom Member model instances with <code class="docutils literal"><span class="pre">members</span></code> attribute.
+This can be obtained with <code class="docutils literal"><span class="pre">GroupsManagerMeta</span></code>&#8216;s <code class="docutils literal"><span class="pre">member_model</span></code> attribute. This class
+must be defined in Group subclass/proxy.
+The value of the attribute is in <code class="docutils literal"><span class="pre">&lt;application&gt;.&lt;model_name&gt;</span></code> form.</p>
+<p><strong>1) Define models in models.py</strong>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">groups_manager.models</span> <span class="k">import</span> <span class="n">Group</span><span class="p">,</span> <span class="n">Member</span>
+
+<span class="k">class</span> <span class="nc">Organization</span><span class="p">(</span><span class="n">Group</span><span class="p">):</span>
+
+    <span class="k">class</span> <span class="nc">GroupsModelMeta</span><span class="p">:</span>
+        <span class="n">model_name</span> <span class="o">=</span> <span class="s1">&#39;myApp.OrganizationMember&#39;</span>
+
+
+<span class="k">class</span> <span class="nc">OrganizationMember</span><span class="p">(</span><span class="n">Member</span><span class="p">):</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<p><strong>2) Call Organization members attribute</strong>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">org_a</span> <span class="o">=</span> <span class="n">Organization</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;Org, Inc.&#39;</span><span class="p">)</span>
+<span class="n">boss</span> <span class="o">=</span> <span class="n">OrganizationMember</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">first_name</span><span class="o">=</span><span class="s1">&#39;John&#39;</span><span class="p">,</span> <span class="n">last_name</span><span class="o">=</span><span class="s1">&#39;Boss&#39;</span><span class="p">)</span>
+<span class="n">org_a</span><span class="o">.</span><span class="n">add_member</span><span class="p">(</span><span class="n">boss</span><span class="p">)</span>
+<span class="n">org_members</span> <span class="o">=</span> <span class="n">org_a</span><span class="o">.</span><span class="n">members</span>  <span class="c1"># [&lt;OrganizationMember: John Boss&gt;]</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">A tested example is available in repository source code, <code class="docutils literal"><span class="pre">testproject</span></code>&#8216;s <code class="docutils literal"><span class="pre">tests.py</span></code> under
+<code class="docutils literal"><span class="pre">test_proxy_model_custom_member</span></code> and <code class="docutils literal"><span class="pre">test_subclassed_model_custom_member</span></code> methods.</p>
+</div>
+</div>
+<div class="section" id="custom-signals">
+<span id="id2"></span><h2>Custom signals<a class="headerlink" href="#custom-signals" title="Permalink to this headline">¶</a></h2>
+<p>If you redefine models via proxy or subclass and you need to manage sync permissions with
+a different setting (like <code class="docutils literal"><span class="pre">MY_APP['AUTH_MODELS_SYNC']</span></code> you need to use different signals functions
+when saving objects and relations.
+Signals functions accept kwargs:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">get_auth_models_sync_func</span></code>: a function that returns a boolean (default honours <code class="docutils literal"><span class="pre">GROUPS_MANAGER['AUTH_MODELS_SYNC']</span></code> setting), that also take an <code class="docutils literal"><span class="pre">instance</span></code> parameter to allow additional checks;</li>
+<li><code class="docutils literal"><span class="pre">prefix</span></code> and <code class="docutils literal"><span class="pre">suffix</span></code> on <cite>group_save``</cite>: override <code class="docutils literal"><span class="pre">GROUPS_MANAGER['GROUP_NAME_PREFIX']</span></code> and <code class="docutils literal"><span class="pre">GROUPS_MANAGER['GROUP_NAME_SUFFIX']</span></code>;</li>
+<li><code class="docutils literal"><span class="pre">prefix</span></code> and <code class="docutils literal"><span class="pre">suffix</span></code> on <cite>member_save``</cite>: override <code class="docutils literal"><span class="pre">GROUPS_MANAGER['USER_USERNAME_PREFIX']</span></code> and <code class="docutils literal"><span class="pre">GROUPS_MANAGER['USER_USERNAME_SUFFIX']</span></code>;</li>
+</ul>
+<p>So, for example, your wrapping functions will be like this:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ProjectGroup</span><span class="p">(</span><span class="n">Group</span><span class="p">):</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">permissions</span> <span class="o">=</span> <span class="p">((</span><span class="s1">&#39;view_projectgroup&#39;</span><span class="p">,</span> <span class="s1">&#39;View Project Group&#39;</span><span class="p">),</span> <span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">GroupsManagerMeta</span><span class="p">:</span>
+        <span class="n">member_model</span> <span class="o">=</span> <span class="s1">&#39;testproject.ProjectGroupMember&#39;</span>
+        <span class="n">group_member_model</span> <span class="o">=</span> <span class="s1">&#39;testproject.ProjectGroupMember&#39;</span>
+
+
+<span class="k">class</span> <span class="nc">ProjectMember</span><span class="p">(</span><span class="n">Member</span><span class="p">):</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">permissions</span> <span class="o">=</span> <span class="p">((</span><span class="s1">&#39;view_projectmember&#39;</span><span class="p">,</span> <span class="s1">&#39;View Project Member&#39;</span><span class="p">),</span> <span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">ProjectGroupMember</span><span class="p">(</span><span class="n">GroupMember</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">def</span> <span class="nf">project_get_auth_models_sync_func</span><span class="p">(</span><span class="n">instance</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">MY_APP</span><span class="p">[</span><span class="s1">&#39;AUTH_MODELS_SYNC&#39;</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">project_group_save</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">group_save</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">get_auth_models_sync_func</span><span class="o">=</span><span class="n">project_get_auth_models_sync_func</span><span class="p">,</span>
+               <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;PGS_&#39;</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s1">&#39;_Project&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">project_group_delete</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">group_delete</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">get_auth_models_sync_func</span><span class="o">=</span><span class="n">project_get_auth_models_sync_func</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">project_member_save</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">member_save</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">get_auth_models_sync_func</span><span class="o">=</span><span class="n">project_get_auth_models_sync_func</span><span class="p">,</span>
+                <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;PMS_&#39;</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s1">&#39;_Member&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">project_member_delete</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">member_delete</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">get_auth_models_sync_func</span><span class="o">=</span><span class="n">project_get_auth_models_sync_func</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">project_group_member_save</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">group_member_save</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">get_auth_models_sync_func</span><span class="o">=</span><span class="n">project_get_auth_models_sync_func</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">project_group_member_delete</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">group_member_delete</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">get_auth_models_sync_func</span><span class="o">=</span><span class="n">project_get_auth_models_sync_func</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="n">post_save</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">project_group_save</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">ProjectGroup</span><span class="p">)</span>
+<span class="n">post_delete</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">project_group_delete</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">ProjectGroup</span><span class="p">)</span>
+
+<span class="n">post_save</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">project_member_save</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">ProjectMember</span><span class="p">)</span>
+<span class="n">post_delete</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">project_member_delete</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">ProjectMember</span><span class="p">)</span>
+
+<span class="n">post_save</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">project_group_member_save</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">ProjectGroupMember</span><span class="p">)</span>
+<span class="n">post_delete</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">project_group_member_delete</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">ProjectGroupMember</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">A tested example is available in repository source code, <code class="docutils literal"><span class="pre">testproject</span></code>&#8216;s <code class="docutils literal"><span class="pre">tests.py</span></code> under
+<code class="docutils literal"><span class="pre">test_signals_kwargs</span></code> method.</p>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="API.html" class="btn btn-neutral float-right" title="API" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="settings.html" class="btn btn-neutral" title="Settings" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2014-2016, Vittorio Zamboni.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.3.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

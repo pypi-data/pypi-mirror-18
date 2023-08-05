@@ -1,0 +1,875 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>groups_manager.models &mdash; Django Groups Manager 0.3.0 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="Django Groups Manager 0.3.0 documentation" href="../../index.html"/>
+        <link rel="up" title="Module code" href="../index.html"/> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> Django Groups Manager
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../intro.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../intro.html#basic-usage">Basic usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../auth_integration.html">Django auth models integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../settings.html">Settings</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../use_cases.html">Use cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../API.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tests.html">Tests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../todo.html">TODO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog.html">Changelog</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../index.html">Django Groups Manager</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      
+    <li>groups_manager.models</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for groups_manager.models</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">OrderedDict</span>
+<span class="kn">from</span> <span class="nn">uuid</span> <span class="k">import</span> <span class="n">uuid4</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">from</span> <span class="nn">django.contrib.auth.models</span> <span class="k">import</span> <span class="n">Group</span> <span class="k">as</span> <span class="n">DjangoGroup</span>
+<span class="kn">from</span> <span class="nn">django.db</span> <span class="k">import</span> <span class="n">models</span>
+<span class="kn">from</span> <span class="nn">django.db.models.signals</span> <span class="k">import</span> <span class="n">post_save</span><span class="p">,</span> <span class="n">post_delete</span>
+
+<span class="kn">from</span> <span class="nn">django.apps</span> <span class="k">import</span> <span class="n">apps</span>
+<span class="n">django_get_model</span> <span class="o">=</span> <span class="n">apps</span><span class="o">.</span><span class="n">get_model</span>
+
+<span class="kn">from</span> <span class="nn">django.conf</span> <span class="k">import</span> <span class="n">settings</span> <span class="k">as</span> <span class="n">django_settings</span>
+<span class="kn">from</span> <span class="nn">django.contrib.auth.models</span> <span class="k">import</span> <span class="n">User</span> <span class="k">as</span> <span class="n">DefaultUser</span>
+<span class="n">DjangoUser</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">django_settings</span><span class="p">,</span> <span class="s1">&#39;AUTH_USER_MODEL&#39;</span><span class="p">,</span> <span class="n">DefaultUser</span><span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">jsonfield</span> <span class="k">import</span> <span class="n">JSONField</span>
+<span class="kn">from</span> <span class="nn">mptt.models</span> <span class="k">import</span> <span class="n">MPTTModel</span><span class="p">,</span> <span class="n">TreeForeignKey</span>
+<span class="kn">from</span> <span class="nn">slugify</span> <span class="k">import</span> <span class="n">slugify</span>
+
+<span class="kn">from</span> <span class="nn">groups_manager</span> <span class="k">import</span> <span class="n">exceptions_gm</span>
+<span class="kn">from</span> <span class="nn">groups_manager.perms</span> <span class="k">import</span> <span class="n">assign_object_to_member</span><span class="p">,</span> <span class="n">assign_object_to_group</span>
+
+
+<span class="k">def</span> <span class="nf">get_auth_models_sync_func_default</span><span class="p">(</span><span class="n">instance</span><span class="p">):</span>
+    <span class="kn">from</span> <span class="nn">groups_manager.settings</span> <span class="k">import</span> <span class="n">GROUPS_MANAGER</span>
+    <span class="k">return</span> <span class="n">GROUPS_MANAGER</span><span class="p">[</span><span class="s1">&#39;AUTH_MODELS_SYNC&#39;</span><span class="p">]</span>
+
+
+<span class="k">class</span> <span class="nc">MemberRelationsMixin</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">class</span> <span class="nc">GroupsManagerMeta</span><span class="p">:</span>
+        <span class="n">group_model</span> <span class="o">=</span> <span class="s1">&#39;groups_manager.Group&#39;</span>
+        <span class="n">group_member_model</span> <span class="o">=</span> <span class="s1">&#39;groups_manager.GroupMember&#39;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">group_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">group_model_path</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">GroupsManagerMeta</span><span class="p">,</span> <span class="s1">&#39;group_model&#39;</span><span class="p">,</span> <span class="s1">&#39;groups_manager.Group&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">django_get_model</span><span class="p">(</span><span class="o">*</span><span class="n">group_model_path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">))</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">group_member_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">group_member_model_path</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">GroupsManagerMeta</span><span class="p">,</span>
+                                          <span class="s1">&#39;group_member_model&#39;</span><span class="p">,</span> <span class="s1">&#39;groups_manager.GroupMember&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">django_get_model</span><span class="p">(</span><span class="o">*</span><span class="n">group_member_model_path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">))</span>
+
+
+<span class="k">class</span> <span class="nc">MemberMixin</span><span class="p">(</span><span class="n">MemberRelationsMixin</span><span class="p">,</span> <span class="n">models</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Member represents a person that can be related to one or more groups.</span>
+
+<span class="sd">    :Parameters:</span>
+<span class="sd">      - `first_name`: member&#39;s first name (required)</span>
+<span class="sd">      - `last_name`: member&#39;s last name (required)</span>
+<span class="sd">      - `username`: member&#39;s username, used as base for django auth&#39;s integration</span>
+<span class="sd">      - `email`: member&#39;s email</span>
+<span class="sd">      - `django_user`: django auth related User</span>
+<span class="sd">      - `django_auth_sync`: synchronize or not the member (if setting DJANGO_AUTH_SYNC is True)</span>
+<span class="sd">        (default: True)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">first_name</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">255</span><span class="p">)</span>
+    <span class="n">last_name</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">255</span><span class="p">)</span>
+    <span class="n">username</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">255</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">email</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">EmailField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">255</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">django_auth_sync</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">abstract</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">ordering</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;last_name&#39;</span><span class="p">,</span> <span class="s1">&#39;first_name&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__unicode__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">full_name</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">full_name</span>
+
+    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">username</span> <span class="o">=</span> <span class="n">slugify</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">full_name</span><span class="p">,</span> <span class="n">to_lower</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">separator</span><span class="o">=</span><span class="s2">&quot;_&quot;</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">MemberMixin</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">full_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">first_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_name</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">groups</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;The &quot;groups&quot; attribute will be removed in next version. &#39;</span> <span class="o">+</span> \
+                  <span class="s1">&#39;Use &quot;groups_manager_group_set&quot; instead.&#39;</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="ne">DeprecationWarning</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups_manager_group_set</span>
+
+    <span class="k">def</span> <span class="nf">has_perm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">perm</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Bind of django user&#39;s ``has_perm`` method (use it as a shortcut). &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">django_user</span><span class="o">.</span><span class="n">has_perm</span><span class="p">(</span><span class="n">perm</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">exceptions_gm</span><span class="o">.</span><span class="n">MemberDjangoUserSyncError</span><span class="p">(</span>
+                <span class="s2">&quot;Can&#39;t check for perm </span><span class="si">%s</span><span class="s2"> since member </span><span class="si">%s</span><span class="s2"> has no django_user&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">perm</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">has_perms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">perm_list</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Bind of django user&#39;s ``has_perms`` method (use it as a shortcut). &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">django_user</span><span class="o">.</span><span class="n">has_perms</span><span class="p">(</span><span class="n">perm_list</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">exceptions_gm</span><span class="o">.</span><span class="n">MemberDjangoUserSyncError</span><span class="p">(</span>
+                <span class="s2">&quot;Can&#39;t check for perms </span><span class="si">%s</span><span class="s2"> since member </span><span class="si">%s</span><span class="s2"> has no django_user&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">perm_list</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">assign_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Assign an object to the member honours the group relation.</span>
+
+<span class="sd">        :Parameters:</span>
+<span class="sd">          - `group`: the member group (required)</span>
+<span class="sd">          - `obj`: the object to assign (required)</span>
+
+<span class="sd">        :Kwargs:</span>
+<span class="sd">          - `custom_permissions`: a full or partial redefinition of PERMISSIONS setting.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">         This method needs django-guardian.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">group_member</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_member_model</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">group</span><span class="o">=</span><span class="n">group</span><span class="p">,</span> <span class="n">member</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">assign_object_to_member</span><span class="p">(</span><span class="n">group_member</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Member"><a class="viewcode-back" href="../../models.html#groups_manager.models.Member">[docs]</a><span class="k">class</span> <span class="nc">Member</span><span class="p">(</span><span class="n">MemberMixin</span><span class="p">):</span>
+
+    <span class="n">django_user</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="n">DjangoUser</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">SET_NULL</span><span class="p">,</span>
+                                    <span class="n">related_name</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(app_label)s</span><span class="s1">_</span><span class="si">%(class)s</span><span class="s1">_set&#39;</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">(</span><span class="n">MemberMixin</span><span class="o">.</span><span class="n">Meta</span><span class="p">):</span>
+        <span class="n">abstract</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+<span class="k">def</span> <span class="nf">member_save</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">created</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Add User to Django Users</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">groups_manager.settings</span> <span class="k">import</span> <span class="n">GROUPS_MANAGER</span>
+    <span class="n">get_auth_models_sync_func</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;get_auth_models_sync_func&#39;</span><span class="p">,</span>
+                                           <span class="n">get_auth_models_sync_func_default</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">get_auth_models_sync_func</span><span class="p">(</span><span class="n">instance</span><span class="p">)</span> <span class="ow">and</span> <span class="n">instance</span><span class="o">.</span><span class="n">django_auth_sync</span><span class="p">:</span>
+        <span class="n">original_prefix</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;prefix&#39;</span><span class="p">,</span> <span class="n">GROUPS_MANAGER</span><span class="p">[</span><span class="s1">&#39;USER_USERNAME_PREFIX&#39;</span><span class="p">])</span>
+        <span class="n">original_suffix</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;suffix&#39;</span><span class="p">,</span> <span class="n">GROUPS_MANAGER</span><span class="p">[</span><span class="s1">&#39;USER_USERNAME_SUFFIX&#39;</span><span class="p">])</span>
+        <span class="n">prefix</span> <span class="o">=</span> <span class="n">original_prefix</span>
+        <span class="n">suffix</span> <span class="o">=</span> <span class="n">original_suffix</span>
+        <span class="k">if</span> <span class="n">suffix</span> <span class="o">==</span> <span class="s1">&#39;_$$random&#39;</span><span class="p">:</span>
+            <span class="n">suffix</span> <span class="o">=</span> <span class="s1">&#39;_</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid4</span><span class="p">())[:</span><span class="mi">8</span><span class="p">]</span>
+        <span class="n">username</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s%s%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="n">instance</span><span class="o">.</span><span class="n">username</span><span class="p">,</span> <span class="n">suffix</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">instance</span><span class="o">.</span><span class="n">django_user</span><span class="p">:</span>
+            <span class="n">UserModel</span> <span class="o">=</span> <span class="n">instance</span><span class="o">.</span><span class="n">_meta</span><span class="o">.</span><span class="n">get_field</span><span class="p">(</span><span class="s1">&#39;django_user&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">rel</span><span class="o">.</span><span class="n">to</span>
+            <span class="k">if</span> <span class="n">GROUPS_MANAGER</span><span class="p">[</span><span class="s1">&#39;AUTH_MODELS_GET_OR_CREATE&#39;</span><span class="p">]:</span>
+                <span class="n">django_user</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">UserModel</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get_or_create</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">django_user</span> <span class="o">=</span> <span class="n">UserModel</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">)</span>
+            <span class="n">django_user</span><span class="o">.</span><span class="n">first_name</span> <span class="o">=</span> <span class="n">instance</span><span class="o">.</span><span class="n">first_name</span>
+            <span class="n">django_user</span><span class="o">.</span><span class="n">last_name</span> <span class="o">=</span> <span class="n">instance</span><span class="o">.</span><span class="n">last_name</span>
+            <span class="k">if</span> <span class="n">instance</span><span class="o">.</span><span class="n">email</span><span class="p">:</span>
+                <span class="n">django_user</span><span class="o">.</span><span class="n">email</span> <span class="o">=</span> <span class="n">instance</span><span class="o">.</span><span class="n">email</span>
+            <span class="n">django_user</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+            <span class="n">instance</span><span class="o">.</span><span class="n">django_user</span> <span class="o">=</span> <span class="n">django_user</span>
+            <span class="n">instance</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">instance</span><span class="o">.</span><span class="n">django_user</span><span class="o">.</span><span class="n">username</span> <span class="o">!=</span> <span class="n">username</span> <span class="ow">and</span> <span class="n">suffix</span> <span class="o">!=</span> <span class="s1">&#39;_$$random&#39;</span><span class="p">)</span> \
+                <span class="ow">or</span> <span class="p">(</span><span class="n">instance</span><span class="o">.</span><span class="n">django_user</span><span class="o">.</span><span class="n">username</span><span class="p">[:</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">suffix</span><span class="p">)]</span> <span class="o">!=</span> <span class="n">username</span><span class="p">[:</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">suffix</span><span class="p">)]</span> <span class="ow">and</span>
+                    <span class="n">original_suffix</span> <span class="o">==</span> <span class="s1">&#39;_$$random&#39;</span><span class="p">):</span>
+                <span class="n">instance</span><span class="o">.</span><span class="n">django_user</span><span class="o">.</span><span class="n">username</span> <span class="o">=</span> <span class="n">username</span>
+            <span class="n">instance</span><span class="o">.</span><span class="n">django_user</span><span class="o">.</span><span class="n">first_name</span> <span class="o">=</span> <span class="n">instance</span><span class="o">.</span><span class="n">first_name</span>
+            <span class="n">instance</span><span class="o">.</span><span class="n">django_user</span><span class="o">.</span><span class="n">last_name</span> <span class="o">=</span> <span class="n">instance</span><span class="o">.</span><span class="n">last_name</span>
+            <span class="n">instance</span><span class="o">.</span><span class="n">django_user</span><span class="o">.</span><span class="n">email</span> <span class="o">=</span> <span class="n">instance</span><span class="o">.</span><span class="n">email</span>
+            <span class="n">instance</span><span class="o">.</span><span class="n">django_user</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+
+
+<span class="k">def</span> <span class="nf">member_delete</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Remove the related Django Group</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">get_auth_models_sync_func</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;get_auth_models_sync_func&#39;</span><span class="p">,</span>
+                                           <span class="n">get_auth_models_sync_func_default</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">get_auth_models_sync_func</span><span class="p">(</span><span class="n">instance</span><span class="p">)</span> <span class="ow">and</span> <span class="n">instance</span><span class="o">.</span><span class="n">django_auth_sync</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">instance</span><span class="o">.</span><span class="n">django_user</span><span class="p">:</span>
+            <span class="n">django_user</span> <span class="o">=</span> <span class="n">instance</span><span class="o">.</span><span class="n">django_user</span>
+            <span class="n">django_user</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+
+
+<span class="n">post_save</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">member_save</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">Member</span><span class="p">)</span>
+<span class="n">post_delete</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">member_delete</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">Member</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">GroupTypeMixin</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;This model represents the kind of the group. One group could have only one type.</span>
+<span class="sd">    This objects could describe the group&#39;s nature (i.e. Organization, Division, ecc).</span>
+
+<span class="sd">    :Parameters:</span>
+<span class="sd">      - `label`: (required)</span>
+<span class="sd">      - `codename`: unique codename; if not set, it&#39;s autogenerated by slugifying the label</span>
+<span class="sd">        (lower case)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">255</span><span class="p">)</span>
+    <span class="n">codename</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">SlugField</span><span class="p">(</span><span class="n">unique</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">max_length</span><span class="o">=</span><span class="mi">255</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">abstract</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">ordering</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;label&#39;</span><span class="p">,</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__unicode__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">label</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">label</span>
+
+    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">codename</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">codename</span> <span class="o">=</span> <span class="n">slugify</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="n">to_lower</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">GroupTypeMixin</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">groups</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;The &quot;groups&quot; attribute will be removed in next version. &#39;</span> <span class="o">+</span> \
+                  <span class="s1">&#39;Use &quot;groups_manager_group_set&quot; instead.&#39;</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="ne">DeprecationWarning</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups_manager_group_set</span>
+
+
+<div class="viewcode-block" id="GroupType"><a class="viewcode-back" href="../../models.html#groups_manager.models.GroupType">[docs]</a><span class="k">class</span> <span class="nc">GroupType</span><span class="p">(</span><span class="n">GroupTypeMixin</span><span class="p">):</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">(</span><span class="n">GroupTypeMixin</span><span class="o">.</span><span class="n">Meta</span><span class="p">):</span>
+        <span class="n">abstract</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+<span class="k">class</span> <span class="nc">GroupEntityMixin</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;This model represents the entities of a group. One group could have more than one entity.</span>
+<span class="sd">    This objects could describe the group&#39;s properties (i.e. Administrators, Users, ecc).</span>
+
+<span class="sd">    :Parameters:</span>
+<span class="sd">      - `label`: (required)</span>
+<span class="sd">      - `codename`: unique codename; if not set, it&#39;s autogenerated by slugifying the label</span>
+<span class="sd">        (lower case)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">255</span><span class="p">)</span>
+    <span class="n">codename</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">SlugField</span><span class="p">(</span><span class="n">unique</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">max_length</span><span class="o">=</span><span class="mi">255</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">abstract</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">ordering</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;label&#39;</span><span class="p">,</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__unicode__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">label</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">label</span>
+
+    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">codename</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">codename</span> <span class="o">=</span> <span class="n">slugify</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="n">to_lower</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">GroupEntityMixin</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">groups</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;The &quot;groups&quot; attribute will be removed in next version. &#39;</span> <span class="o">+</span> \
+                  <span class="s1">&#39;Use &quot;groups_manager_group_set&quot; instead.&#39;</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="ne">DeprecationWarning</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups_manager_group_set</span>
+
+
+<div class="viewcode-block" id="GroupEntity"><a class="viewcode-back" href="../../models.html#groups_manager.models.GroupEntity">[docs]</a><span class="k">class</span> <span class="nc">GroupEntity</span><span class="p">(</span><span class="n">GroupEntityMixin</span><span class="p">):</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">(</span><span class="n">GroupEntityMixin</span><span class="o">.</span><span class="n">Meta</span><span class="p">):</span>
+        <span class="n">abstract</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+<span class="k">class</span> <span class="nc">GroupRelationsMixin</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">class</span> <span class="nc">GroupsManagerMeta</span><span class="p">:</span>
+        <span class="n">member_model</span> <span class="o">=</span> <span class="s1">&#39;groups_manager.Member&#39;</span>
+        <span class="n">group_member_model</span> <span class="o">=</span> <span class="s1">&#39;groups_manager.GroupMember&#39;</span>
+        <span class="n">group_members_attribute</span> <span class="o">=</span> <span class="s1">&#39;group_members&#39;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">member_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">member_model_path</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">GroupsManagerMeta</span><span class="p">,</span>
+                                    <span class="s1">&#39;member_model&#39;</span><span class="p">,</span> <span class="s1">&#39;groups_manager.Member&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">django_get_model</span><span class="p">(</span><span class="o">*</span><span class="n">member_model_path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">))</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">group_member_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">group_member_model_path</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">GroupsManagerMeta</span><span class="p">,</span>
+                                          <span class="s1">&#39;group_member_model&#39;</span><span class="p">,</span> <span class="s1">&#39;groups_manager.GroupMember&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">django_get_model</span><span class="p">(</span><span class="o">*</span><span class="n">group_member_model_path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">))</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">group_members_attribute</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">GroupsManagerMeta</span><span class="p">,</span> <span class="s1">&#39;group_members_attribute&#39;</span><span class="p">,</span> <span class="s1">&#39;group_members&#39;</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">GroupMixin</span><span class="p">(</span><span class="n">GroupRelationsMixin</span><span class="p">,</span> <span class="n">MPTTModel</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;This model represents the group. Each group could have a parent group (via the `parent`</span>
+<span class="sd">    attribute).</span>
+
+<span class="sd">    :Parameters:</span>
+<span class="sd">      - `name`: (required)</span>
+<span class="sd">      - `codename`: NON unique codename; if not set, it&#39;s autogenerated by slugifying the label</span>
+<span class="sd">        (lower case)</span>
+<span class="sd">      - `description`: text field</span>
+<span class="sd">      - `comment`: text field</span>
+<span class="sd">      - `full_name`: auto generated full name starting from tree root</span>
+<span class="sd">      - `properties`: jsonfield properties</span>
+<span class="sd">      - `group_members`: m2m to Member, through GroupMember model (related name: `groups`)</span>
+<span class="sd">      - `group_type`: foreign key to GroupType (related name: `groups`)</span>
+<span class="sd">      - `group_entities`: m2m to GroupEntity (related name: `groups`)</span>
+<span class="sd">      - `django_group`: django auth related group</span>
+<span class="sd">      - `django_auth_sync`: synchronize or not the group (if setting DJANGO_AUTH_SYNC is True)</span>
+<span class="sd">        (default: True)</span>
+<span class="sd">      - `level`: ``django-mptt`` level attribute</span>
+<span class="sd">        (default: True)</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">     If you want to add a custom manager for a sublcass of Group, use django-mppt</span>
+<span class="sd">     mptt.models.TreeManager.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">255</span><span class="p">)</span>
+    <span class="n">codename</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">SlugField</span><span class="p">(</span><span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">max_length</span><span class="o">=</span><span class="mi">255</span><span class="p">)</span>
+    <span class="n">description</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">TextField</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">comment</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">TextField</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">parent</span> <span class="o">=</span> <span class="n">TreeForeignKey</span><span class="p">(</span><span class="s1">&#39;self&#39;</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                            <span class="n">related_name</span><span class="o">=</span><span class="s1">&#39;sub_</span><span class="si">%(app_label)s</span><span class="s1">_</span><span class="si">%(class)s</span><span class="s1">_set&#39;</span><span class="p">)</span>
+    <span class="n">full_name</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">255</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">properties</span> <span class="o">=</span> <span class="n">JSONField</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="p">{},</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                            <span class="n">load_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;object_pairs_hook&#39;</span><span class="p">:</span> <span class="n">OrderedDict</span><span class="p">})</span>
+
+    <span class="n">django_auth_sync</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">abstract</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">ordering</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">MPTTMeta</span><span class="p">:</span>
+        <span class="n">level_attr</span> <span class="o">=</span> <span class="s1">&#39;level&#39;</span>
+        <span class="n">order_insertion_by</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="p">]</span>
+
+    <span class="k">class</span> <span class="nc">GroupsManagerMeta</span><span class="p">(</span><span class="n">GroupRelationsMixin</span><span class="o">.</span><span class="n">GroupsManagerMeta</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">__unicode__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+
+    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">full_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_full_name</span><span class="p">()[:</span><span class="mi">255</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">codename</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">codename</span> <span class="o">=</span> <span class="n">slugify</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">to_lower</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">GroupMixin</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_full_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> - </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">_get_full_name</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">subgroups</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;The &quot;subgroups&quot; attribute will be removed in next version. &#39;</span> <span class="o">+</span> \
+                  <span class="s1">&#39;Use &quot;sub_groups_manager_group_set&quot; instead.&#39;</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="ne">DeprecationWarning</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">sub_groups_manager_group_set</span>
+
+    <span class="k">def</span> <span class="nf">get_members</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subgroups</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return group members.</span>
+<span class="sd">        The result is a list of GroupsManagerMeta&#39;s attribute ``member_model`` instances.</span>
+
+<span class="sd">        :Parameters:</span>
+<span class="sd">          - `subgroups`: return also descendants members (default: `False`)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">member_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">member_model</span>
+        <span class="n">group_member_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_member_model</span>
+        <span class="k">if</span> <span class="n">group_member_model</span> <span class="o">==</span> <span class="n">GroupMember</span><span class="p">:</span>
+            <span class="n">members_relation</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_members_attribute</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">member_model</span> <span class="o">==</span> <span class="n">Member</span><span class="p">:</span>
+                <span class="n">members</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">members_relation</span><span class="o">.</span><span class="n">all</span><span class="p">())</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># proxy model</span>
+                <span class="k">if</span> <span class="n">member_model</span><span class="o">.</span><span class="n">_meta</span><span class="o">.</span><span class="n">proxy</span><span class="p">:</span>
+                    <span class="n">members</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">member_model</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span>
+                        <span class="n">id__in</span><span class="o">=</span><span class="n">members_relation</span><span class="o">.</span><span class="n">values_list</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="n">flat</span><span class="o">=</span><span class="kc">True</span><span class="p">)))</span>
+                <span class="c1"># subclassed</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">members</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">member_model</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span>
+                        <span class="n">member_ptr__in</span><span class="o">=</span><span class="n">members_relation</span><span class="o">.</span><span class="n">all</span><span class="p">()))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">members</span> <span class="o">=</span> <span class="p">[</span><span class="n">gm</span><span class="o">.</span><span class="n">member</span> <span class="k">for</span> <span class="n">gm</span> <span class="ow">in</span> <span class="n">group_member_model</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">group</span><span class="o">=</span><span class="bp">self</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="n">subgroups</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">subgroup</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">subgroups</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+                <span class="n">members</span> <span class="o">+=</span> <span class="n">subgroup</span><span class="o">.</span><span class="n">members</span>
+        <span class="n">members</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">members</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">members</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">members</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return group members. &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_members</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">users</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return group django users. &quot;&quot;&quot;</span>
+        <span class="n">users</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">member</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">members</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">member</span><span class="o">.</span><span class="n">django_user</span><span class="p">:</span>
+                <span class="n">users</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">member</span><span class="o">.</span><span class="n">django_user</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">users</span>
+
+    <span class="k">def</span> <span class="nf">get_entities</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subgroups</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return group entities.</span>
+
+<span class="sd">        :Parameters:</span>
+<span class="sd">          - `subgroups`: return also descendants entities (default: `False`)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">entities</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">group_entities</span><span class="o">.</span><span class="n">all</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">subgroups</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">subgroup</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">subgroups</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+                <span class="n">entities</span> <span class="o">+=</span> <span class="n">subgroup</span><span class="o">.</span><span class="n">entities</span>
+            <span class="n">entities</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">entities</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">entities</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">entities</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return group entities.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_entities</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">add_member</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">member</span><span class="p">,</span> <span class="n">roles</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Add a member to the group.</span>
+
+<span class="sd">        :Parameters:</span>
+<span class="sd">          - `member`: member (required)</span>
+<span class="sd">          - `roles`: list of roles. Each role could be a role id, a role label or codename,</span>
+<span class="sd">            a role instance (optional, default: ``[]``)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">roles</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">roles</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">exceptions_gm</span><span class="o">.</span><span class="n">GroupNotSavedError</span><span class="p">(</span>
+                <span class="s2">&quot;You must save the group before to create a relation with members&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">member</span><span class="o">.</span><span class="n">id</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">exceptions_gm</span><span class="o">.</span><span class="n">MemberNotSavedError</span><span class="p">(</span>
+                <span class="s2">&quot;You must save the member before to create a relation with groups&quot;</span><span class="p">)</span>
+        <span class="n">group_member_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_member_model</span>
+        <span class="n">group_member</span> <span class="o">=</span> <span class="n">group_member_model</span><span class="p">(</span><span class="n">member</span><span class="o">=</span><span class="n">member</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">group_member</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">roles</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">role</span> <span class="ow">in</span> <span class="n">roles</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">role</span><span class="p">,</span> <span class="n">GroupMemberRole</span><span class="p">):</span>
+                    <span class="n">group_member</span><span class="o">.</span><span class="n">roles</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">role</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">role</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                    <span class="n">role_obj</span> <span class="o">=</span> <span class="n">GroupMemberRole</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">role</span><span class="p">)</span>
+                    <span class="n">group_member</span><span class="o">.</span><span class="n">roles</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">role_obj</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">role_obj</span> <span class="o">=</span> <span class="n">GroupMemberRole</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">Q</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="n">role</span><span class="p">)</span> <span class="o">|</span>
+                                                               <span class="n">models</span><span class="o">.</span><span class="n">Q</span><span class="p">(</span><span class="n">codename</span><span class="o">=</span><span class="n">role</span><span class="p">))</span>
+                        <span class="n">group_member</span><span class="o">.</span><span class="n">roles</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">role_obj</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="n">exceptions_gm</span><span class="o">.</span><span class="n">GetRoleError</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">group_member</span>
+
+    <span class="k">def</span> <span class="nf">remove_member</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">member</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Remove a member from the group.</span>
+
+<span class="sd">        :Parameters:</span>
+<span class="sd">          - `member`: member (required)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">group_member_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_member_model</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">group_member</span> <span class="o">=</span> <span class="n">group_member_model</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">member</span><span class="o">=</span><span class="n">member</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">exceptions_gm</span><span class="o">.</span><span class="n">GetGroupMemberError</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        <span class="n">group_member</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">assign_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Assign an object to the group.</span>
+
+<span class="sd">        :Parameters:</span>
+<span class="sd">          - `obj`: the object to assign (required)</span>
+
+<span class="sd">        :Kwargs:</span>
+<span class="sd">          - `custom_permissions`: a full or partial redefinition of PERMISSIONS setting.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">         This method needs django-guardian.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">assign_object_to_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Group"><a class="viewcode-back" href="../../models.html#groups_manager.models.Group">[docs]</a><span class="k">class</span> <span class="nc">Group</span><span class="p">(</span><span class="n">GroupMixin</span><span class="p">):</span>
+
+    <span class="n">group_type</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="n">GroupType</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">SET_NULL</span><span class="p">,</span>
+                                   <span class="n">related_name</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(app_label)s</span><span class="s1">_</span><span class="si">%(class)s</span><span class="s1">_set&#39;</span><span class="p">)</span>
+    <span class="n">group_entities</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ManyToManyField</span><span class="p">(</span><span class="n">GroupEntity</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                            <span class="n">related_name</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(app_label)s</span><span class="s1">_</span><span class="si">%(class)s</span><span class="s1">_set&#39;</span><span class="p">)</span>
+
+    <span class="n">django_group</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="n">DjangoGroup</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">SET_NULL</span><span class="p">)</span>
+    <span class="n">group_members</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ManyToManyField</span><span class="p">(</span><span class="n">Member</span><span class="p">,</span> <span class="n">through</span><span class="o">=</span><span class="s1">&#39;GroupMember&#39;</span><span class="p">,</span>
+                                           <span class="n">related_name</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(app_label)s</span><span class="s1">_</span><span class="si">%(class)s</span><span class="s1">_set&#39;</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">(</span><span class="n">GroupMixin</span><span class="o">.</span><span class="n">Meta</span><span class="p">):</span>
+        <span class="n">abstract</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+<span class="k">def</span> <span class="nf">group_save</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">created</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Add Group to Django Groups</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">groups_manager.settings</span> <span class="k">import</span> <span class="n">GROUPS_MANAGER</span>
+    <span class="n">get_auth_models_sync_func</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;get_auth_models_sync_func&#39;</span><span class="p">,</span>
+                                           <span class="n">get_auth_models_sync_func_default</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">get_auth_models_sync_func</span><span class="p">(</span><span class="n">instance</span><span class="p">)</span> <span class="ow">and</span> <span class="n">instance</span><span class="o">.</span><span class="n">django_auth_sync</span><span class="p">:</span>
+        <span class="c1"># create a name compatible with django group name limit of 80 chars</span>
+        <span class="n">original_prefix</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;prefix&#39;</span><span class="p">,</span> <span class="n">GROUPS_MANAGER</span><span class="p">[</span><span class="s1">&#39;GROUP_NAME_PREFIX&#39;</span><span class="p">])</span>
+        <span class="n">original_suffix</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;suffix&#39;</span><span class="p">,</span> <span class="n">GROUPS_MANAGER</span><span class="p">[</span><span class="s1">&#39;GROUP_NAME_SUFFIX&#39;</span><span class="p">])</span>
+        <span class="n">prefix</span> <span class="o">=</span> <span class="n">original_prefix</span>
+        <span class="n">suffix</span> <span class="o">=</span> <span class="n">original_suffix</span>
+        <span class="k">if</span> <span class="n">suffix</span> <span class="o">==</span> <span class="s1">&#39;_$$random&#39;</span><span class="p">:</span>
+            <span class="n">suffix</span> <span class="o">=</span> <span class="s1">&#39;_</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid4</span><span class="p">())[:</span><span class="mi">8</span><span class="p">]</span>
+        <span class="n">parent_name</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="k">if</span> <span class="n">instance</span><span class="o">.</span><span class="n">parent</span><span class="p">:</span>
+            <span class="n">parent_name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">-&#39;</span> <span class="o">%</span> <span class="n">instance</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">name</span>
+        <span class="c1"># Django 80-len group name fix: remove from parent</span>
+        <span class="n">mid_name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">parent_name</span><span class="p">,</span> <span class="n">instance</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s%s%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="n">mid_name</span><span class="p">,</span> <span class="n">suffix</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">80</span><span class="p">:</span>
+            <span class="n">fix_length</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">instance</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">suffix</span><span class="p">)</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s%s%s%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="n">parent_name</span><span class="p">[</span><span class="o">-</span><span class="p">(</span><span class="mi">80</span><span class="o">-</span><span class="n">fix_length</span><span class="p">):],</span> <span class="n">instance</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">suffix</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">instance</span><span class="o">.</span><span class="n">django_group</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">GROUPS_MANAGER</span><span class="p">[</span><span class="s1">&#39;AUTH_MODELS_GET_OR_CREATE&#39;</span><span class="p">]:</span>
+                <span class="n">django_group</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">DjangoGroup</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get_or_create</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">django_group</span> <span class="o">=</span> <span class="n">DjangoGroup</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+            <span class="n">django_group</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+            <span class="n">instance</span><span class="o">.</span><span class="n">django_group</span> <span class="o">=</span> <span class="n">django_group</span>
+            <span class="n">instance</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">instance</span><span class="o">.</span><span class="n">django_group</span><span class="o">.</span><span class="n">name</span> <span class="o">!=</span> <span class="n">name</span> <span class="ow">and</span> <span class="n">original_suffix</span> <span class="o">!=</span> <span class="s1">&#39;_$$random&#39;</span><span class="p">)</span> \
+                <span class="ow">or</span> <span class="p">(</span><span class="n">instance</span><span class="o">.</span><span class="n">django_group</span><span class="o">.</span><span class="n">name</span><span class="p">[:</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">suffix</span><span class="p">)]</span> <span class="o">!=</span> <span class="n">name</span><span class="p">[:</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">suffix</span><span class="p">)]</span> <span class="ow">and</span>
+                    <span class="n">original_suffix</span> <span class="o">==</span> <span class="s1">&#39;_$$random&#39;</span><span class="p">):</span>
+            <span class="n">instance</span><span class="o">.</span><span class="n">django_group</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+            <span class="n">instance</span><span class="o">.</span><span class="n">django_group</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+
+
+<span class="k">def</span> <span class="nf">group_delete</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Remove the related Django Group</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">get_auth_models_sync_func</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;get_auth_models_sync_func&#39;</span><span class="p">,</span>
+                                           <span class="n">get_auth_models_sync_func_default</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">get_auth_models_sync_func</span><span class="p">(</span><span class="n">instance</span><span class="p">)</span> <span class="ow">and</span> <span class="n">instance</span><span class="o">.</span><span class="n">django_auth_sync</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">instance</span><span class="o">.</span><span class="n">django_group</span><span class="p">:</span>
+            <span class="n">django_group</span> <span class="o">=</span> <span class="n">instance</span><span class="o">.</span><span class="n">django_group</span>
+            <span class="n">django_group</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+
+
+<span class="n">post_save</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">group_save</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">Group</span><span class="p">)</span>
+<span class="n">post_delete</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">group_delete</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">Group</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">GroupMemberRoleMixin</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;This model represents the role of a user in a relation with a group</span>
+<span class="sd">    (i.e. Administrator, User, ecc).</span>
+
+<span class="sd">    :Parameters:</span>
+<span class="sd">      - `label`: (required)</span>
+<span class="sd">      - `codename`: unique codename; if not set, it&#39;s autogenerated by slugifying the label</span>
+<span class="sd">        (lower case)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">255</span><span class="p">)</span>
+    <span class="n">codename</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">SlugField</span><span class="p">(</span><span class="n">unique</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">max_length</span><span class="o">=</span><span class="mi">255</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">abstract</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">ordering</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;label&#39;</span><span class="p">,</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__unicode__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">label</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">label</span>
+
+    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">codename</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">codename</span> <span class="o">=</span> <span class="n">slugify</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="n">to_lower</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">GroupMemberRoleMixin</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="GroupMemberRole"><a class="viewcode-back" href="../../models.html#groups_manager.models.GroupMemberRole">[docs]</a><span class="k">class</span> <span class="nc">GroupMemberRole</span><span class="p">(</span><span class="n">GroupMemberRoleMixin</span><span class="p">):</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">(</span><span class="n">GroupMemberRoleMixin</span><span class="o">.</span><span class="n">Meta</span><span class="p">):</span>
+        <span class="n">abstract</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+<span class="k">class</span> <span class="nc">GroupMemberMixin</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">abstract</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">ordering</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;group&#39;</span><span class="p">,</span> <span class="s1">&#39;member&#39;</span><span class="p">)</span>
+        <span class="c1"># BUG in Django: https://code.djangoproject.com/ticket/16732</span>
+        <span class="c1"># unique_together = ((&#39;group&#39;, &#39;member&#39;), )</span>
+
+    <span class="k">def</span> <span class="nf">__unicode__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> - </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">group</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">member</span><span class="o">.</span><span class="n">full_name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> - </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">group</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">member</span><span class="o">.</span><span class="n">full_name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">assign_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Assign an object to the member.</span>
+
+<span class="sd">        :Parameters:</span>
+<span class="sd">          - `obj`: the object to assign (required)</span>
+
+<span class="sd">        :Kwargs:</span>
+<span class="sd">          - `custom_permissions`: a full or partial redefinition of PERMISSIONS setting.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">         This method needs django-guardian.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">assign_object_to_member</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="GroupMember"><a class="viewcode-back" href="../../models.html#groups_manager.models.GroupMember">[docs]</a><span class="k">class</span> <span class="nc">GroupMember</span><span class="p">(</span><span class="n">GroupMemberMixin</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;This model represents the intermediate model of the relation between a Member and a Group.</span>
+<span class="sd">    This middleware can have one or more GroupMemberRole associated.</span>
+<span class="sd">    A member could be in a group only once (group - member pair is unique).</span>
+
+<span class="sd">    :Parameters:</span>
+<span class="sd">      - `group`: Group (required) (defined in non abstract model)</span>
+<span class="sd">      - `member`: Member (required) (defined in non abstract model)</span>
+<span class="sd">      - `roles`: m2m to GroupMemberRole</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">group</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="n">Group</span><span class="p">,</span> <span class="n">related_name</span><span class="o">=</span><span class="s1">&#39;group_membership&#39;</span><span class="p">)</span>
+    <span class="n">member</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="n">Member</span><span class="p">,</span> <span class="n">related_name</span><span class="o">=</span><span class="s1">&#39;group_membership&#39;</span><span class="p">)</span>
+    <span class="n">roles</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ManyToManyField</span><span class="p">(</span><span class="n">GroupMemberRole</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">(</span><span class="n">GroupMemberMixin</span><span class="o">.</span><span class="n">Meta</span><span class="p">):</span>
+        <span class="n">unique_together</span> <span class="o">=</span> <span class="p">((</span><span class="s1">&#39;group&#39;</span><span class="p">,</span> <span class="s1">&#39;member&#39;</span><span class="p">),</span> <span class="p">)</span>  <span class="c1"># compatibility with Django &lt; 1.8</span>
+        <span class="n">abstract</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+<span class="k">def</span> <span class="nf">group_member_save</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">created</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Add Django User to Django Groups</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">get_auth_models_sync_func</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;get_auth_models_sync_func&#39;</span><span class="p">,</span>
+                                           <span class="n">get_auth_models_sync_func_default</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">get_auth_models_sync_func</span><span class="p">(</span><span class="n">instance</span><span class="p">):</span>
+        <span class="n">django_user</span> <span class="o">=</span> <span class="n">instance</span><span class="o">.</span><span class="n">member</span><span class="o">.</span><span class="n">django_user</span>
+        <span class="n">django_group</span> <span class="o">=</span> <span class="n">instance</span><span class="o">.</span><span class="n">group</span><span class="o">.</span><span class="n">django_group</span>
+        <span class="k">if</span> <span class="n">django_user</span> <span class="ow">and</span> <span class="n">django_group</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">django_group</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">django_user</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+                <span class="n">django_user</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">django_group</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">group_member_delete</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Remove Django User from Django Groups</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">get_auth_models_sync_func</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;get_auth_models_sync_func&#39;</span><span class="p">,</span>
+                                           <span class="n">get_auth_models_sync_func_default</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">get_auth_models_sync_func</span><span class="p">(</span><span class="n">instance</span><span class="p">):</span>
+        <span class="n">django_user</span> <span class="o">=</span> <span class="n">instance</span><span class="o">.</span><span class="n">member</span><span class="o">.</span><span class="n">django_user</span>
+        <span class="n">django_group</span> <span class="o">=</span> <span class="n">instance</span><span class="o">.</span><span class="n">group</span><span class="o">.</span><span class="n">django_group</span>
+        <span class="k">if</span> <span class="n">django_user</span> <span class="ow">and</span> <span class="n">django_group</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">django_group</span> <span class="ow">in</span> <span class="n">django_user</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+                <span class="n">django_user</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">django_group</span><span class="p">)</span>
+
+<span class="n">post_save</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">group_member_save</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">GroupMember</span><span class="p">)</span>
+<span class="n">post_delete</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">group_member_delete</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">GroupMember</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2014-2016, Vittorio Zamboni.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.3.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

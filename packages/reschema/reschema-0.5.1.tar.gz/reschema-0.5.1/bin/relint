@@ -1,0 +1,67 @@
+#!/usr/bin/env python
+
+# Copyright (c) 2015 Riverbed Technology, Inc.
+#
+# This software is licensed under the terms and conditions of the MIT License
+# accompanying the software ("License").  This software is distributed "AS IS"
+# as set forth in the License.
+
+from __future__ import print_function
+
+import sys
+import argparse
+
+import reschema
+import reschema.lint
+from reschema import ServiceDef, ServiceDefManager
+
+
+def start():
+    # Command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('filename', action='store',
+                        help='RestSchema file to process')
+
+    parser.add_argument('--verbose', '-v', action='count', default=0,
+                        help='print status messages, or debug with -vv')
+
+    parser.add_argument('-r', '--related', dest='related',
+                        help='JSON doc source file', action="append")
+
+    args = parser.parse_args()
+
+    servicedefmgr = ServiceDefManager()
+
+    reschema.lint.Validator.set_verbosity(args.verbose)
+
+    # Filenames
+    if not args.filename:
+        print("Input filename is required")
+        parser.print_usage()
+        sys.exit(1)
+
+    print('Processing file: {}\n'.format(args.filename))
+
+    servicedef = ServiceDef()
+    servicedef.load(args.filename)
+    servicedefmgr.add(servicedef)
+
+    for related in (args.related or []):
+        relateddef = ServiceDef()
+        relateddef.load(related)
+        servicedefmgr.add(relateddef)
+
+    # lint loaded service definition
+    failures = reschema.lint.lint(servicedef, args.filename)
+
+    return failures
+
+if __name__ == '__main__':
+    failures = start()
+
+    if failures > 0:
+        print('\n** FAILED : {} errors detected **\n\n'.format(failures))
+        sys.exit(1)
+    else:
+        print('\n** SUCCESS **\n\n')
+        sys.exit(0)

@@ -1,0 +1,112 @@
+Changelog for h5cube
+
+v0.3 (31 Oct 2016)
+================================================================================
+
+Bugfix:
+
+* Thresholding behavior was badly erroneous, sufficient to warrant immediate
+  repair.  Negative or zero field values would be thresholded unpredictably,
+  especially in 'signed' thresholding mode.
+
+Infrastructure:
+
+* A new test method 'test_FxnCubeToH5_Thresholding' in the TestCase
+  'TestFunctionsCubeToH5_Good' should(?) provide reasonable assurance of
+  the intended thresholding behavior.
+
+Functionality:
+
+* Proper fixing of the above thresholding misbehavior opened a natural
+  opportunity to implement the 'clip to zero' thresholding option of GitHub
+  Issue #21 (https://github.com/bskinn/h5cube/issues/21).
+
+v0.2 (27 Oct 2016)
+================================================================================
+
+Performance:
+
+* Re-implemented the data compression code such that all of the heavy
+  mathematical computation now occurs within numpy, instead of being handled
+  value-by-value in the Python interpreter. The speedup appears to be
+  approximately seven-fold, based on some cursory profiling.
+* Alongside the above, the numpy calculations were implemented using in-place
+  element-wise computations where practical, in order to minimize the RAM
+  footprint.
+
+Functionality:
+
+* Corrected some improper handling of orbital .cube files (flagged by a negative
+  number of atoms and the presence of one or more extra lines of orbital IDs).
+  Orbital CUBEs should now be handled properly on both compression
+  and decompression.
+* CUBEs with negative voxel dimensions should now be handled correctly. The
+  semantics of Bohrs vs Angstroms implied by these negative values are up to
+  the generating/parsing software to interpret, however.
+* When thresholding, zero field values are now coerced to the appropriate
+  threshold. Previously, the code did not detect zeros specially and the
+  calculation resulted in them staying as zero values in the final .h5cube.
+
+Implementation:
+
+* Handling and validation of command line input was refactored to be more
+  uniform and manageable, and much more amenable to future development if
+  required.
+* Validation of .cube files was made significantly more granular, such that
+  errors reported back to the user are much more targeted, and thus hopefully
+  much more useful.
+* Implemented a fix to cope with argparse's mis-detection of negative values in
+  scientific notation as multiple single-character arguments
+  (_tweak_neg_scinot)
+
+Infrastructure:
+
+* Test suite providing essentially complete code coverage is now in place
+  (test runner and test resources are not installed with the package, however)
+* The suite is set up to work with tox, for combinatorial testing of the various
+  claimed-compatible versions of Python, numpy and h5py
+
+v0.1.post2 (29 Aug 2016)
+================================================================================
+
+* Improve wording of commandline help messages
+* h5cube now ignores case when identifying file extensions
+
+
+v0.1.post1 (28 Aug 2016)
+================================================================================
+
+Administrative fix (typo in setup.py)
+
+
+v0.1 (28 Aug 2016)
+================================================================================
+
+Initial beta release, without documentation or a test suite. Below functionality
+believed functional and substantially bug-free
+
+File extensions are fixed:
+
+ - .h5cube files (case insensitive) are decompressed
+ - .cube and .cub files (case insensitive) are compressed
+
+Clobber of an existing output file always occurs. No options are available for
+selecting/changing the name of the output file.
+
+* General options
+  --delete, optionally delete the source file after (de)compression
+
+* Compression options
+  --compress, gzip compression level within the HDF5 file
+  --truncate, truncated precision of the log-10 mantissa of each data value
+  * Thresholding options
+    --absolute / --signed, whether indicated threshold values are applied to
+                           the signed value or the absolute magnitude
+    --minmax / --isofactor, whether the threshold values are specified by
+                            explicit min/max values, or a central isovalue
+			    and a multiplicative factor
+
+* Decompression options
+  --precision, the significant figures past the decimal point output for
+               each data point
+

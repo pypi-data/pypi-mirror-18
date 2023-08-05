@@ -1,0 +1,246 @@
+.TH git\-upstream 1 2016\-11\-02 "git-upstream v.0.12.1"
+.SH NAME
+git\-upstream \- git tool to help manage upstream repositories
+.SH SYNOPSIS
+.B git-upstream
+usage: [--version] [-h] [-q | -v] <command> ...
+
+Command-line tool for tracking upstream revisions
+
+optional arguments:
+  --version      show program's version number and exit
+  -h, --help     show this help message and exit
+  -q, --quiet    Suppress additional output except for errors, conflicts with
+                 --verbose
+  -v, --verbose  Increase verbosity from commands, conflicts with --quiet. May
+                 be set more than once.
+
+commands:
+  <command>
+    import       Import code from specified upstream branch.
+    help         Display help about this program or one of its commands.
+    supersede    Mark a commit as superseded by a set of change-ids.
+    drop         Mark a commit as dropped.
+
+See "help COMMAND" for help on a specific command.
+
+.SH DESCRIPTION
+\- What is git\-upstream?
+
+git\-upstream is an open source Python application that can be used to keep in
+sync with upstream open source projects, mainly OpenStack.
+
+The main usecase for this tool is for people who are doing active contributions
+to repositories that are mirrors of OpenStack repositories, with the intention
+that most of those contributions will be submitted to review.openstack.org at
+some point.
+If you are running a public cloud based on OpenStack, having local changes
+needed to use it in your environment, you can use git\-upstream to stay up to
+date with the upstream master in a easier way (with respect to using raw git
+commands).
+
+git\-upstream provides new git subcommands to support rebasing of local\-carried
+patches on top of upstream repositories. It provides commands to ease the use
+of git for who needs to integrate big upstream projects in their environment.
+The operations are performed using Git commands.
+
+See also README.md, and USAGE.md files.
+
+\- What git\-upstream is not
+
+The name of this tool includes the "git\-" prefix because of the Git naming
+convention that a Git subcommand must have. So, as git\-review (usually invoked
+with "git review [...]"), this tool can be invoked using "git upstream [...]".
+That said, and even if git\-upstream currently uses Change\-Ids, it is not
+strictly related to git\-review.
+In other words, git\-review can (and most of the time will) be used without even
+knowing about git\-upstream existence.
+
+\- How can I contribute to git\-upstream?
+
+Git\-upstream is in OpenStack:
+
+  https://git.openstack.org/openstack/git\-upstream
+
+As for any other OpenStack project, contributions are submitted thru the Gerrit
+review system.
+
+To summarise:
+
+1) create a Gerrit account (that is, a launchpad identity)
+
+  click on the "Sign in" link in the upper right corner here:
+  https://review.openstack.org
+
+2) install git\-review
+
+  pip install git\-review
+
+3) clone the repo
+
+  git clone https://git.openstack.org/openstack/git\-upstream
+
+4) setup to work with Gerrit
+
+  cd git\-upstream
+  git review \-s
+
+  git\-review will ask the username to use to submit changes to
+  review.openstack.org, just enter the name you have registered in 1)
+
+5) add cool features or fix nasty bugs
+
+6) create your commit as usual
+
+  git add/rm <...>
+  git commit
+
+7) submit the change for review
+
+  git review
+
+That's it. You can see your change signing in to your review.openstack.org
+account.
+
+Hold on tight, someone will come in shortly and will review your change!
+Meanwhile, you can join the OpenStack community on IRC. There is also a
+specific channel for git\-upstream:
+
+  #git\-upstream
+
+If you need help, please join us on IRC!
+
+Before writing new code, it is always a good idea to check if the required
+change is already in Gerrit:
+
+  https://review.openstack.org/#/q/project:openstack/git\-upstream,n,z
+
+More info about OpenStack and the Gerrit review process.
+
+https://wiki.openstack.org/wiki/IRC
+http://www.mediawiki.org/wiki/Gerrit/git\-review
+http://docs.openstack.org/infra/manual/developers.html
+http://docs.openstack.org/infra/manual/developers.html#development\-workflow
+https://review.openstack.org/#/q/status:open,n,z
+
+
+.SH OPTIONS
+.BR import
+
+usage: 
+git-upstream import [-i] [options] [--onto <branch>]
+    [--import-branch <import-branch>] [<upstream-branch>]
+    [<branches> ...]
+git-upstream import [--finish] [options] [--onto <branch>]
+    [--import-branch <import-branch>]
+
+Import code from specified upstream branch. Creates an import branch from the
+specified upstream branch, and optionally merges additional branches given as
+arguments. Current branch, unless overridden by the --into option, is used as
+the target branch from which a list of changes to apply onto the new import is
+constructed based on the specified strategy. Once complete it will merge and
+replace the contents of the target branch with those from the import branch,
+unless --no-merge is specified.
+
+positional arguments:
+  <upstream-branch>     Upstream branch to import. Must be specified if you
+                        wish to provide additional branches.
+  <branches>            Branches to additionally merge into the import branch
+                        using default git merging behaviour
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i, --interactive     Let the user edit the list of commits before applying.
+  -d, --dry-run         Only print out the list of commits that would be
+                        applied.
+  -f, --force           Force overwrite of existing import branch if it
+                        exists.
+  --finish              Merge the specified import branch into the target
+  --merge               Merge the resulting import branch into the target
+                        branch once complete
+  --no-merge            Disable merge of the resulting import branch
+  --search-refs <pattern>
+                        Refs to search for previous import commit. May be
+                        specified multiple times.
+  -s <strategy>, --strategy <strategy>
+                        Use the given strategy to re-apply locally carried
+                        changes to the import branch. (default: drop)
+  --into <branch>       Branch to take changes from, and replace with imported
+                        branch.
+  --import-branch <import-branch>
+                        Name of import branch to use
+
+.BR help
+
+usage: git-upstream help [-h] [<command>]
+
+Display help about this program or one of its commands.
+
+positional arguments:
+  <command>   command to display help about
+
+optional arguments:
+  -h, --help  show this help message and exit
+
+.BR supersede
+
+usage: git-upstream supersede [-h] [-f] [-u <upstream-branch>]
+                              <commit> <change id> [<change id> ...]
+
+Mark a commit as superseded by a set of change-ids. Marked commits will be
+skipped during the upstream rebasing process. See also the "git upstream
+import" command.
+
+positional arguments:
+  <commit>              Commit to be marked as superseded
+  <change id>           Change id which makes <commit> obsolete. The change id
+                        must be present in <upstream-branch> to drop <commit>.
+                        If more than one change id is specified, all must be
+                        present in <upstream-branch> to drop <commit>
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -f, --force           Apply the commit mark even if one or more change ids
+                        could not be found. Use this flag carefully as commits
+                        will not be dropped during import command execution as
+                        long as all associated change ids are present in the
+                        local copy of the upstream branch
+  -u <upstream-branch>, --upstream-branch <upstream-branch>
+                        Search change ids values in <upstream-branch> branch
+                        (default: upstream/master)
+
+.BR drop
+
+usage: git-upstream drop [-h] [-a <author>] <commit>
+
+Mark a commit as dropped. Marked commits will be skipped during the upstream
+rebasing process. See also the "git upstream import" command.
+
+positional arguments:
+  <commit>              Commit to be marked as dropped
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -a <author>, --author <author>
+                        Git author for the mark
+
+.SH AUTHORS
+.B git\-upstream
+was written by Darragh Bailey <dbailey@hpe.com>.
+.SH ACKNOWLEDGEMENTS
+Thanks to Aleksander Korzynski and Stanisław Pitucha for taking the
+original design spec and some basic manual steps and experiementing
+with initial implementations.
+
+To Davide Guerri, for picking up a rough python tool and turning it
+into something that was actually usable.
+
+Also to Jon Paul Sullivan and Monty Taylor to listening and providing
+a sounding board for different approaches.
+
+And finally to Coleman Corrigan among numerous others who acted as
+willing guinea pigs for the original manual approach. Hope this
+eventually helped save you time and some hair.
+
+.SH "SEE ALSO"
+.BR git (1)

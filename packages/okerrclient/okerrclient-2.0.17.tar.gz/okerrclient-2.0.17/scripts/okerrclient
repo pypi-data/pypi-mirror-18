@@ -1,0 +1,292 @@
+#!/usr/bin/python
+from __future__ import print_function
+
+import sys
+import argparse
+import os
+import logging
+import json
+import shlex
+import importlib
+import six
+import time
+import daemon
+import daemon.pidfile
+import lockfile
+import signal
+import configargparse
+import socket
+
+sys.path.insert(0, '.')
+
+import okerrclient
+import okerrclient.taskseq 
+import okerrclient.taskproc
+import okerrclient.fs
+import okerrclient.listcmd
+import okerrclient.stdin
+import okerrclient.run
+# import okerrclient.filter
+
+
+
+try:
+    import oclocal
+except ImportError:
+    pass
+
+cflist = ['~/.okerrclient.conf','/usr/local/etc/okerrclient.conf','/etc/okerr/okerrclient.conf','/etc/okerrclient.conf']
+
+
+def help(parser,cmd=None):
+    if cmd is None:
+        parser.print_help()
+    else:
+        print("help for sequence command:", cmd)
+        try:
+            print(okerrclient.taskseq.TaskSeq.tp[cmd].fullhelp())
+        except KeyError:
+            print("no such sequence processor '{}', can not print help for it".format(cmd))
+
+def defconf():
+    cfg={}
+    cfg['url']='http://update.okerr.com/okerr'
+    cfg['textid']=None
+    cfg['keyuser']='client'
+    cfg['keypass']=''
+    # cfg['cachepath']='/usr/local/etc/okerr-cache.json'
+    return cfg
+    
+def loadconf(fn):
+    cfg = defconf()
+    with open(fn) as f:
+        for line in f:
+            line = line.strip()            
+            if line and not line.startswith('#'):
+                try:
+                    k,v = line.split('=',1)
+                    k = k.strip()
+                    v = v.strip()
+                    cfg[k]=v
+                except ValueError:
+                    print("ERR: bad conf file line: '{}'".format(line))
+                    return None
+    return cfg
+
+
+def prepare(cfg, args):
+
+    oc = okerrclient.OkerrClient(cfg)
+
+    log = logging.getLogger('Logger')
+    
+    if not args.fg:
+        handler = logging.handlers.SysLogHandler(address='/dev/log')
+        log.addHandler(handler)
+
+    err = logging.StreamHandler(sys.stderr)
+    log.addHandler(err)
+
+    log.setLevel(logging.INFO)
+
+    # log.setLevel(logging.WARN)
+
+    # configure client object    
+    oc.log = log
+    okerrclient.taskseq.TaskSeq.oc = oc
+
+    if args.tpconf:
+        for tpc in args.tpconf:
+            try:
+                (code, kv) = tpc.split(':')
+                (k,v) = kv.split('=')
+                # print("code: {} arg: {} value: {}".format(code,k,v))
+                okerrclient.taskseq.TaskSeq.tp[code].tpconfset(k,v)
+            except:
+                oc.log.error('Can not process argument tpconf: {}'.format(tpc))
+                sys.exit(1)
+    return oc
+
+def run(oc,args):
+    data = None    
+   
+    try:
+        ts = okerrclient.taskseq.TaskSeq(args.defname,args.sequence, None)
+    except (okerrclient.OkerrBadMethod, ValueError) as e:
+        # dump to console, if no such method
+        oc.log.error(str(e))
+        sys.exit(1)
+
+    if args.verbose:
+        oc.log.setLevel(logging.DEBUG)
+
+    if args.quiet:
+        oc.log.setLevel(logging.CRITICAL)
+
+    
+    if not args.daemon:            
+        # these options aren't compatible with daemon mode
+        if args.retry:
+            oc.setretry(True)
+
+        if args.steps is not None:
+            ts.setsteps(args.steps)
+
+        if args.dump:
+            ts.setdump(args.dump)
+
+        if args.dumpname:
+            ts.setdumpname(args.dumpname)
+
+    # Run sequence
+    try:            
+        ts.run()               
+    except okerrclient.OkerrExc as e:
+        oc.log.error("OKERR ERROR: "+str(e))
+        return False
+    return True
+
+
+
+
+
+
+
+
+
+cfg=defconf()
+
+# main
+# parser = argparse.ArgumentParser(description='okerr client. update/create indicators over HTTP.', epilog=okerrclient.taskseq.TaskSeq.help(), formatter_class = argparse.RawDescriptionHelpFormatter, add_help=False)
+
+
+parser = configargparse.ArgumentParser(description='okerr client. update/create indicators over HTTP.',         epilog=okerrclient.taskseq.TaskSeq.help(), formatter_class = argparse.RawDescriptionHelpFormatter, add_help=False, default_config_files = cflist)
+
+# from command line only
+# parser.add_argument('-n',dest='name', help='indicator name')
+# parser.add_argument('-c',dest='conf', help='conf file name')
+
+parser.add_argument('-c',dest='conf', is_config_file=True, help='conf file name')
+
+parser.add_argument('--version', help='print version', action='store_true')
+parser.add_argument('-h', '--help', dest='help', help='print version', nargs='?', default=None, const=True)
+
+parser.add_argument('-v', '--verbose', dest='verbose',action='store_true',help='verbose mode')
+parser.add_argument('-q', dest='quiet',action='store_true',help='quiet mode')
+
+
+parser.add_argument('--name',dest='defname', help="default indicator name (hostname used if not set)", default=socket.gethostname())
+
+parser.add_argument('-s','--sequence',dest='sequence', help="sequence of commands. In simple cases, just OK or ERR or 'STR apache is running okay' or 'STR 42'. But could be complex like: CONNECTIONS 'FILTER status==\"LISTEN\"' ", nargs='+')
+# parser.add_argument('-d', metavar='details', dest='details',help='optional details')
+# parser.add_argument('-m', metavar='method', dest='method',default='heartbeat', help='checkmethod: heartbeat (default), numerical, streqs, streqd')
+
+parser.add_argument('-d', dest='daemon', help='daemon mode', nargs='?', type=int, default=None, const=20*60)
+parser.add_argument('--fg', dest='fg', help='foreground mode (used with -d), do not detach', default=False, action='store_true')
+parser.add_argument('--kill', help='kill running daemon', nargs='?', type=int, default=None, const=20)
+parser.add_argument('--pidfile', help='pidfile for daemon mode', default='/var/run/okerrclient.pid')
+
+
+parser.add_argument('--steps', type=int, help='stop and dump after N steps (for debugging)')
+parser.add_argument('--dump', nargs='+', help='dump method(s) (DUMP,JDUMP,SEQDUMP) to run after --steps (for debugging)')
+parser.add_argument('--dumpname', help='dump only stream with this name')
+
+parser.add_argument('--retry', action='store_true', help='if fail to upload status, retry until success')
+
+
+# from config or command line
+parser.add_argument('-i','--textid',metavar='TextID', dest='textid', help='project unique text id (not project name!)')
+parser.add_argument('-S','--secret', metavar='secret', dest='secret',help='optional secret')
+parser.add_argument('--url', metavar='url', dest='url', default=None, help='update url')
+# parser.add_argument('--cachepath', help='path to local cache', default=None)
+parser.add_argument('--keyuser', help='username for accessing key', default=None)
+parser.add_argument('--keypass', help='password for accessing key', default=None)
+parser.add_argument('--tpconf', nargs='*', metavar='CODE:key=value', help='change conf for task processors, e.g. RUN:enabled=1', default=None)
+
+
+# parser.add_argument('--prefix', help='prefix')
+
+args = parser.parse_args()
+
+
+if args.version:
+    print(okerrclient.version)
+    sys.exit(0)
+    
+if args.help:
+    if args.help is True: 
+        help(parser)
+    else:
+        help(parser,args.help)
+    sys.exit(0)    
+
+if args.kill:
+    try:
+        with open(args.pidfile,'r') as pf:
+            pid = int(pf.read())
+        os.kill(pid, signal.SIGTERM)
+    except IOError as e:
+        print("no pidfile: {}".format(args.pidfile))
+    except OSError as e:
+        print(str(e))
+
+    sys.exit(0)
+
+            
+# adjust conf from args
+for argname in ['keyuser','keypass','textid','secret','url','cachepath']:
+    if hasattr(args,argname) and getattr(args,argname) is not None:
+        cfg[argname]=getattr(args,argname)
+
+# load cache
+# oc.load()    
+
+if args.sequence is None:
+    print("must have sequence")
+    sys.exit(1)    
+    
+if args.daemon:
+
+    # minimal period - 20 minutes    
+    if(args.daemon < 20*60):
+        args.daemon = 20*60     
+
+    dctx = daemon.DaemonContext(
+        pidfile = daemon.pidfile.PIDLockFile(args.pidfile),
+        stderr = sys.stderr,
+        detach_process = not args.fg
+        # stdout = sys.stdout
+    ) 
+        
+    try:
+        with dctx:
+            oc = prepare(cfg, args)
+            
+            # sys.stderr.close()
+            if not args.fg:
+                devnull = file('/dev/null','w')
+                os.dup2(devnull.fileno(), sys.stderr.fileno())
+            
+            oc.log.warn("okerrclient started as daemon (pid: {}, period: {} seconds)".format(os.getpid(), args.daemon))
+            while True:
+                oc.log.debug('run...')                                
+                run(oc,args)
+                oc.log.debug('sleep {}s'.format(args.daemon))
+                time.sleep(args.daemon)
+    except (lockfile.LockFailed, lockfile.AlreadyLocked) as e:
+        oc = prepare(cfg, args)
+        oc.log.critical("Failed to lock {}".format(args.pidfile))
+
+
+else:
+    #not daemon, just run once
+    oc = prepare(cfg, args)
+    if run(oc,args):
+        sys.exit(0)
+    else:
+        sys.exit(1)
+
+# oc.save()
+
+
+

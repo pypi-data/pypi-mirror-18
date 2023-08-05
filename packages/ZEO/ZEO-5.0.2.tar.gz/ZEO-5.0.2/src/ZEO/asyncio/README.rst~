@@ -1,0 +1,44 @@
+================================
+asyncio-based networking for ZEO
+================================
+
+This package provides the networking interface for ZEO. It provides a
+somewhat RPC-like API.
+
+Notes
+=====
+
+Sending data immediately: ayncio vs asyncore
+--------------------------------------------
+
+The previous ZEO networking implementation used the asyncore library.
+When writing with asyncore, writes were done only from the event loop.
+This meant that when sending data, code would have to "wake up" the
+event loop, typically after adding data to some sort of output buffer.
+
+Asyncio takes an entirely different and saner approach.  When an
+application wants to send data, it writes to a transport.  All
+interactions with a transport (in a correct application) are from the
+same thread, which is also the thread running any event loop.
+Transports are always either idle or sending data.  When idle, the
+transport writes to the outout socket immediately. If not all data
+isn't sent, then it buffers it and becomes sending.  If a transport is
+sending, then we know that the socket isn't ready for more data, so
+``write`` can just buffer the data. There's no point in waking up the
+event loop, because the socket will do so when it's ready for more
+data.
+
+Server threading
+----------------
+
+There's a thread to service each client, and a thread that simply
+listens for and accepts incoming connections.  Because client threads
+are always working on behalf of a single client, there's not really an
+issue with making blocking calls.  (Conceivably, a multi-threaded
+client could have requests block each other.)
+
+All data output to a client is done by the client thread, with one
+special case, which is invalidations.  When a client commits a
+transaction, all other clients are sent the invalidations. This is
+done using asyncio's call-soon-threadsafe API so the invalidations are
+actually sent by the each client's thread.

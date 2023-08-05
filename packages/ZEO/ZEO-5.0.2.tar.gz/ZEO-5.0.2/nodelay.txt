@@ -1,0 +1,52 @@
+TCP_NODELAY
+
+tl;dr TCP_NODELAY should be set by default and/or there should be a
+      proper way to set it.
+
+I've ported ZEO, ZODB's client-server networking layer to asyncio.
+Things were going pretty well.  I've been developing on a
+Mac. Yesterday, I ran some performance measurements on Linux and found
+some tests ran 30x slower.
+
+After some digging, I came across this:
+
+https://github.com/python/asyncio/issues/311
+
+Then led me to try setting TCP_NODELAY, which provided Linux
+performance comparable to Mac OS performance.
+
+Issue 311 suggested that this was a kernal-version issue.  I think
+this is a failure to set, or at least provide a way to set a "don't be
+stupid" option.
+
+I originally tried this on Ubuntu 14.04, with kernal
+3.13.0-74-generic.  I then tried Ubuntu 16.04, in a docker image, with
+kernal 4.4.12-boot2docker. For both of these, performance for the
+write tests were 30x slower unless I set TCP_NODELAY.
+
+Finally, I tried an Amazon standard AMI, which runs some version of
+RedHat, with kernal 4.4.11-23.53.amzn1.x86_64.  On that system,
+performance of the tests was similar to Mac OS X without setting
+TCP_NODELAY.
+
+Note that the non-slow kernal version was lower than the slow (Ubuntu)
+one. I don't think this is mearly a kernal version issue, nor do I
+think this should have been dismissed as one.
+
+I couldn't find a way to set TCP_NODELAY cleanly. Did I miss something?
+https://github.com/python/asyncio/issues/286 suggests there isn't one.
+
+I ended up having to set the option on _sock transport attributes,
+which is dirty and, I assume, won't work with uvloop. (BTW, uvloop was
+only ~15x slower on linux systems with this problem.)
+
+I think TCP_NODELAY should be set by default.  Perhaps it shouldn't be
+set on mobile, by everywhere else, I think it's a "don't be stupid"
+option.
+
+I also think there should be a way to set it cleanly.
+
+IMO, this is extremely important. Linux is a wildly important platform
+for networking applications and Python, and, for better or worse,
+Ubuntu is a very commonly used distribution.  Having asyncio, perform
+so poorly on these platforms is a big deal.

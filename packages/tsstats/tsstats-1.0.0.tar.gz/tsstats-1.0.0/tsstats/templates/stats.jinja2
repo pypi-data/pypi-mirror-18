@@ -1,0 +1,22 @@
+{% set clients = server.clients %}
+{% for headline, clients in [
+    ('Onlinetime', clients.onlinetime),
+    ('Kicks', clients.kicks),
+    ('Passive kicks', clients.pkicks),
+    ('Bans', clients.bans),
+    ('Passive bans', clients.pbans)
+] %}
+  {% if clients|length > 0 %}
+  {% set headline_id = [server.sid, headline|lower|replace(' ', '_')]|join('.') %}
+  <h2 onclick="window.location = '#{{ headline_id }}'">{{ headline }}</h2>
+  <ul class="list-group" id="{{ headline_id }}">
+    {% for client, value in clients %}
+    {% set id = [headline_id, client.nick|striptags]|join('.') %}
+    <li id="{{ id }}" onclick="window.location = '#{{ id }}'" class="list-group-item{{ ' list-group-item-success' if client.connected else loop.cycle('" style="background-color: #eee;', '') }}">
+      <span {% if not client.connected %}class="hint--right" data-hint="{{ client.last_seen|frmttime }}"{% endif %}>{{ client.nick }}{{ " (" + client.identifier + ")" if debug }}</span>
+      <span class="badge">{{ value }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+{% endfor %}

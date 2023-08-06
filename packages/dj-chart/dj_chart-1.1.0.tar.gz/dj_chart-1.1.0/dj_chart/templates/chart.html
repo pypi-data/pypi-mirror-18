@@ -1,0 +1,36 @@
+{% load static i18n %}
+{% if to_many_records %}
+    <div style="margin: 25px 25px 0px 15px;"><h1>{% trans "Too many records" %}</h1></div>
+{% else %}
+    <script type="text/javascript" src="{% static "js/Chart.min.js" %}"></script>
+    <script>
+        var label_urls_{{ chart_id }} = {{ label_urls }};
+
+    document.getElementById("{{ chart_id }}").onclick = function(evt){
+        var activePoints = chart_{{ chart_id }}.getElementAtEvent(evt);
+        if (activePoints.length > 0) {
+            if ( {{ datasets }} == 1) {
+                var label = (chart_{{ chart_id }}['data']).labels[activePoints[0]._index];
+                window.open(label_urls_{{ chart_id }}[label].url, '_self');
+            }
+            else {
+                var label = activePoints[0]._model.label;
+                var datasetLabel = activePoints[0]._model.datasetLabel;
+                window.open(label_urls_{{ chart_id }}[label][datasetLabel].url, '_self');
+            }
+        }
+    };
+    </script>
+
+    <canvas id="{{ chart_id }}" class="canvas"></canvas>
+
+    <script>
+        var el_{{ chart_id }} = document.getElementById("{{ chart_id }}");
+        var chart_{{ chart_id }} = new Chart(el_{{ chart_id }}, {
+            type: '{{ chart_type }}',
+            data: {{ chart_data }},
+            options: {{ chart_options }},
+        });
+    </script>
+{% endif %}
+

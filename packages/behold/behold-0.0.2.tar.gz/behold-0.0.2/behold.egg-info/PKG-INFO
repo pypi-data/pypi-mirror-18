@@ -1,0 +1,94 @@
+Metadata-Version: 1.1
+Name: behold
+Version: 0.0.2
+Summary: UNKNOWN
+Home-page: https://github.com/robdmc/behold
+Author: Rob deCarvalho
+Author-email: not_listed@nothing.net
+License: MIT
+Description: Behold
+        ===
+        Working with real-world code inevitably involves a lot of debugging time.  In
+        order to get a full understanding of what your code is doing, you will need to
+        monitor its internal state as it is executed.  There are two main ways to do
+        this: step-debuggers, and print statements.  Behold is a tool that can be used
+        for either one of these work flows, but is focused mainly on logging program
+        state to the console as it is being run.  Think of it as a tool to help you
+        remove a lot of boiler-plate code when you want to drop into your code and
+        examine state.
+        
+        Contextual Debugging
+        ---
+        Behold enables you to do contextual debugging.  What this means is that you will
+        be able to control when you dump state in a module depending on the context of
+        how it is being used in another module.  For large code bases such as Django
+        projects, where your state can be spread across multiple apps and even the
+        database, such context-aware debugging becomes quite valuable.
+        
+        Perhaps this is best explained with an example.  Let's say you have the
+        following module.  You've defined it in its own module because it is used all
+        over your code base and you've factored it out to maximize your code reuse.
+        You have added a Behold state logger that will show the `value` attribute of the
+        metric, but only if processing in the `action='handler'` context.
+        ```python
+        #####################################################################
+        # processor.py
+        #####################################################################
+        
+        from behold import Behold
+        from my_complicated_module import do_something_hard
+        
+        def process(metric):
+            # Adding this line to your cold will log the metric value to the console
+            # but only if in the proper context
+            #
+            # Note that we could also filter on metric properties and show multiple
+            # metric attributes like this.
+            # Behold().when(metric.entity='Boston').show(t=metric.time, v=metric.value)
+            #
+            Behold().when_in_context(action='handler').show(value=metric.value)
+        
+            do_something_hard(metric)
+        ```
+        
+        In a completely different package of your code base you call your processor
+        on two different sets of metrics, and you want to be able to log those metrics
+        in the processor, but only when being processed in the `handler` context. 
+        
+        ```python
+        #####################################################################
+        # master.py
+        #####################################################################
+        from processor import process
+        from behold import in_context
+        
+        # Here we decorate a handler with a named context
+        @in_context(action='handler')
+        def handle_vendors():
+            metrics = get_vendor_metrics()
+            process(metrics)
+        
+        def handle_customers():
+            metrics = get_customer_metrics()
+        
+            # here we set the context using a with statement
+            with in_context(action='handler'):
+              process(metrics)
+        ```
+        
+        When you program is run, you would then see output like the following printed to
+        your console
+        
+        ```bash
+        value: 0.1
+        value: 0.2
+        value: 0.3
+        ```
+        
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3.4
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent

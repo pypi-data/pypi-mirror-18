@@ -1,0 +1,201 @@
+#:import _ kniteditor.localization._
+#:import AYABKnitSettings kniteditor.AYABKnitSettings
+#:import IntInput kniteditor.IntInput
+#:import KnittingPatternWidget kniteditor.KnittingPatternWidget
+
+Root:
+
+    page: 2
+    knitting_pattern: knitting_pattern
+    knit_settings: knit_settings
+    BoxLayout:
+        canvas.before:
+            # from http://stackoverflow.com/questions/20872598/kivy-change-background-color-to-white#20872657
+            Color:
+                rgba: 1, 1, 1, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        orientation: "vertical"
+        size_hint_y: None
+        height: 30
+        Button:
+            text: _("Load")
+            on_release: root.show_open_file_dialog()
+        Button:
+            text: _("Save")
+            on_release: root.show_save_file_dialog()
+    KnittingPatternWidget:
+        canvas.before:
+            # from http://stackoverflow.com/questions/20872598/kivy-change-background-color-to-white#20872657
+            Color:
+                rgba: 0, 0, 0, 1
+            Rectangle:
+                pos: (0, 0)
+                size: self.size
+        id: knitting_pattern
+    AYABKnitSettings:
+        id: knit_settings
+        machine_button: machine_button
+        connection_button: connection_button
+        colors_layout: colors_layout
+        start_knitting_button: start_knitting_button
+        pattern_in_progress: pattern_in_progress
+        list_of_actions: list_of_actions
+        canvas.before:
+            # from http://stackoverflow.com/questions/20872598/kivy-change-background-color-to-white#20872657
+            Color:
+                rgba: 0, 0, 0, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        orientation: "vertical"
+        size_hint_y: None
+        BoxLayout:
+            size_hint_y: 1
+            Label:
+                text: _("AYAB Knit Settings")
+        GridLayout:
+            cols: 2
+            Label:
+                text: _("Machine Type:")
+            Button:
+                id: machine_button
+                text: knit_settings.machine_name
+                size_hint_y: None
+                on_release: knit_settings.populate_machines_drop_down()
+        GridLayout:
+            cols: 2
+            Label:
+                text: _("Connections:")
+            Button:
+                id: connection_button
+                text: _(knit_settings.connection_name)
+                size_hint_y: None
+                on_release: knit_settings.populate_connections_drop_down()
+        BoxLayout:
+            id: colors_layout
+        GridLayout:
+            cols: 2
+            Slider:
+                id: left_end_needle_slider
+                min: 0
+                max: 100
+                value: 100 - left_end_needle_input.value
+                step: 1
+            Slider:
+                id: right_end_needle_slider
+                min: 0
+                max: 100
+                value: right_end_needle_input.value
+                step: 1
+            BoxLayout:
+                Label:
+                    canvas.before:
+                        # from http://stackoverflow.com/questions/20872598/kivy-change-background-color-to-white#20872657
+                        Color:
+                            rgba: 0, 0, 0, 1
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+                    text: _("left end needle")
+                IntInput:
+                    id: left_end_needle_input
+                    multiline: False
+                    value: 100 - left_end_needle_slider.value
+                    text: "30"
+            BoxLayout:
+                Label:
+                    canvas.before:
+                        # from http://stackoverflow.com/questions/20872598/kivy-change-background-color-to-white#20872657
+                        Color:
+                            rgba: 0, 0, 0, 1
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+                    text: _("right end needle")
+                IntInput:
+                    id: right_end_needle_input
+                    multiline: False
+                    value: right_end_needle_slider.value
+                    text: "30"
+        BoxLayout:
+            Button:
+                id: start_knitting_button
+                text: _("Start Knitting!")
+                on_press: knit_settings.start_knitting(knitting_pattern.pattern)
+    KnittingPatternWidget:
+        canvas.before:
+            # from http://stackoverflow.com/questions/20872598/kivy-change-background-color-to-white#20872657
+            Color:
+                rgba: 1, 1, 1, 1
+            Rectangle:
+                pos: (0, 0)
+                size: self.size
+        id: pattern_in_progress
+    ScrollView:
+        canvas.before:
+            # from http://stackoverflow.com/questions/20872598/kivy-change-background-color-to-white#20872657
+            Color:
+                rgba: 0, 0, 0, 1
+            Rectangle:
+                pos: (0, 0)
+                size: self.size
+        size_hint: (1, 1)
+        GridLayout:
+            id: list_of_actions
+            cols: 1
+            spacing: 3
+            size_hint_y: 1
+    
+<LoadDialog>:
+    BoxLayout:
+        size: root.size
+        pos: root.pos
+        orientation: "vertical"
+        FileChooserListView:
+            id: filechooser
+
+        BoxLayout:
+            size_hint_y: None
+            height: 30
+            Button:
+                text: _("Cancel")
+                on_release: root.cancel()
+
+            Button:
+                text: _("Load")
+                on_release: root.load(filechooser.path, filechooser.selection)
+
+<SaveDialog>:
+    text_input: text_input
+    BoxLayout:
+        size: root.size
+        pos: root.pos
+        orientation: "vertical"
+        FileChooserListView:
+            id: filechooser
+            on_selection: text_input.text = self.selection and self.selection[0] or ''
+
+        TextInput:
+            id: text_input
+            size_hint_y: None
+            height: 30
+            multiline: False
+
+        BoxLayout:
+            size_hint_y: None
+            height: 30
+            Button:
+                text: _("Cancel")
+                on_release: root.cancel()
+
+            Button:
+                text: _("Save")
+                on_release: root.save(filechooser.path, text_input.text)
+
+<SettingOptionMapping>:
+    Label:
+        text: (root.options[root.value] if root.value is not None else '')
+        pos: root.pos
+        font_size: '15sp'

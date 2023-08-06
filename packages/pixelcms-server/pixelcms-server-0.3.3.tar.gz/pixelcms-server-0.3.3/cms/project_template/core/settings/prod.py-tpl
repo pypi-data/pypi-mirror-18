@@ -1,0 +1,56 @@
+import sys
+
+from .base import *
+
+
+HTTPS = False
+HSTS = False
+DEBUG = False
+
+FRONTEND_ADDRESS = 'http://localhost:3000'
+
+ALLOWED_HOSTS = ()
+CORS_ORIGIN_WHITELIST = ()
+
+if HTTPS:
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    if HSTS:
+        SECURE_HSTS_SECONDS = 31536000
+        SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_FRAME_DENY = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+PREPEND_WWW = False
+
+
+# Database
+
+if 'test' not in sys.argv:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': SECRETS.get('prod_db_name'),
+            'USER': SECRETS.get('prod_db_user'),
+            'PASSWORD': SECRETS.get('prod_db_password'),
+            'HOST': SECRETS.get('prod_db_host'),
+        }
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': 'test_sqlite.db'
+        }
+    }
+
+
+# Mailing
+
+EMAIL_HOST = SECRETS.get('prod_email_host')
+EMAIL_PORT = SECRETS.get('prod_email_port')
+EMAIL_HOST_USER = SECRETS.get('prod_email_user')
+EMAIL_HOST_PASSWORD = SECRETS.get('prod_email_password')
+EMAIL_USE_SSL = SECRETS.get('prod_email_use_ssl')

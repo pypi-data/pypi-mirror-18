@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% macro format_authors(authors) %}
+  {% for author in authors %}
+    <a href='/feed?authors={{ author.username|urlencode }}'>
+      {{ author.format_name }}
+    </a>
+    {% if not loop.last %}
+      ,
+    {% endif %}
+  {% endfor %}
+{% endmacro %}
+
+
+{% block title %} Knowledge Repo {% endblock %}
+
+{% block content %}
+
+  <div class="row">
+    <br>
+    <div class="col-md-5">
+      <div class="btn-group btn-group-justified index-view-btn-group" role="group">
+        <a href="/feed" class="btn btn-default btn-card no-underline" role="button">
+          <i class="glyphicon glyphicon-post-org glyphicon-align-justify"></i>
+          <span class="index-view-name"> Card </span>
+        </a>
+        <a href="/table" class="btn btn-default btn-table no-underline" role="button">
+          <i class="glyphicon glyphicon-post-org glyphicon-th"></i>
+          <span class="index-view-name"> Table </span>
+        </a>
+        <a href="/cluster" class="btn btn-default btn-cluster no-underline" role="button">
+          <i class="glyphicon glyphicon-post-org glyphicon-th-list"></i>
+          <span class="index-view-nane"> Cluster </span>
+        </a>
+      </div>
+    </div>
+
+  {% if request.endpoint != 'index.render_cluster' %}
+  <div class='col-md-3 col-md-offset-4'>
+    {% set start = feed_params['start'] | default(0) %}
+    {% set results = feed_params['results'] | default(10) %}
+    {% set page = 1 if (start == 0) else (start//results + 1) %}
+
+    <div class="btn-group btn-sm btn-group-justified pagination-group" role="group">
+      {% set href = "#" if (page == 1) else request.path %}
+        <a href="{{ href }}" data-page="{{ page }}"
+           class="btn btn-default {{ "disabled" if (page == 1)}} prev-btn">
+          <i class="glyphicon glyphicon-chevron-left"></i>
+        </a>
+
+      {% if page == 1 %}
+        {% set page_nums = [page, page + 1, page + 2] %}
+      {% else %}
+        {% set page_nums = [page - 1, page, page + 1] %}
+      {% endif %}
+      {% for page_num in page_nums %}
+        {% if page == page_num %}
+          <a href= "{{ request.path }}"  data-page="{{ page_num }}" class="btn btn-default page-btn active-page"> {{ page_num }} </a>
+        {% else %}
+          <a href = "{{ request.path }}"  data-page="{{ page_num }}" class="btn btn-default page-btn"> {{ page_num }} </a>
+        {% endif %}
+      {% endfor %}
+
+      <a href="{{ request.path }}" class="btn btn-default next-btn" data-page="{{ page }}">
+        <i class="glyphicon glyphicon-chevron-right"></i>
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+  </div>
+
+  <div class="col-12">
+    {% block inner_content %}
+    {% endblock %}
+  </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script type="text/javascript">
+
+    $( document ).ready(function() {
+      $.ajaxSetup({
+        cache: true
+      });
+
+      function getParameters() {
+        var queries = {};
+        $.each(document.location.search.substr(1).split('&'), function(c,q) {
+        if (q.length > 0) {
+          var i = q.split('=');
+          queries[i[0].toString()] = decodeURIComponent(
+            i[1].toString().replace(/\+/g, '%20')
+          );
+        }
+      });
+      return queries;
+    }
+
+    // format the page navigation buttons - prev, btn, and page numbers
+    parameters = getParameters();
+
+    // By default, show 10 results
+    if (!("results" in parameters)){
+      parameters["results"] = 10;
+    }
+
+    if ($(".prev-btn").data("page") != 1){
+      prev_parameters = $.extend(true, {}, parameters);
+      prev_parameters["start"] = (parseInt(prev_parameters["start"]) - 10).toString();
+      $(".prev-btn").href += "?" + $.param(prev_parameters);
+    }
+
+    $(".page-btn").each(function(){
+      page = $(this).data("page");
+      page_parameters = $.extend(true, {}, parameters);
+      page_parameters["start"] = ((page - 1) * parameters["results"]).toString();
+      $(this)[0].href += "?" + $.param(page_parameters);
+    })
+
+    next_parameters = $.extend(true, {}, parameters);
+    if ("start" in next_parameters){
+      next_parameters["start"] = (parseInt(next_parameters["start"]) + 10).toString();
+    } else {
+      next_parameters["start"] = next_parameters["results"];
+    }
+    if ($(".next-btn").length > 0) {
+      $(".next-btn")[0].href += "?" + $.param(next_parameters);
+    }
+  });
+</script>
+{% endblock %}
+
+

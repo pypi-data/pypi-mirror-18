@@ -1,0 +1,31 @@
+#! /usr/bin/env ayrton
+
+# this script finds all the files 103 bytes long in a tree
+# and then generates a histogram of the different values in 3 bytes in those files
+
+# why I need this is long to explain, but I like the example of a complex
+# construct in shell-script and how to implement it in ayrton
+
+# this is the command in shell-script:
+
+# find -L Elevation/ -size 103c | while read file; do
+#     dd if=$file bs=1 skip=41 count=3 status=none | hexdump -C | head -n 1;
+# done | sort | uniq -c
+
+# shell has a great advantage here because you can put a while
+# implemented as a for in ayrton) in the middle of a pipe
+
+# in ayrton we can't do anything similar, so we work around it
+# by storing all the lines from the while in a list
+# and the post process the list
+
+# in this case we don't loose much because sort needs all the data in memory anyways
+# but in any other case this, let's put it bluntly, sucks
+
+files= []
+
+for line in find (-L=True, 'Elevation/', -size='103c'):
+    file= chomp (line)
+    files.append (dd (if=file, bs=1, skip=41, count=3, status='none') | hexdump (-C=True) | head (-n=1, _out=Capture)
+
+sort (_in=files) | uniq (-c=True)

@@ -1,0 +1,112 @@
+{% extends "layout/default.html" %}
+{% block body %}
+
+		<link rel="stylesheet" href="http://todomvc.com/examples/jquery/node_modules/todomvc-app-css/index.css">
+
+
+			<div class="row">
+			
+				<h1>{{ _('To Do')}}</h1>
+		
+				<input id="scriptBox" placeholder="{{_('What do you want to do ?')}}" autofocus onkeypress="return runScript(event)">
+
+				
+				<ul id="todo-list">
+				{% for task in tasks %}
+				<div id="content"></div>
+				<li id="{{ task.id }}">
+				<div class="view">
+					<label class="taskText">{{task.text}}</label>
+
+					<button  class="destroy" onclick="destroy('{{ task.id }}');"></button>
+				</div>
+			</li>
+			{% endfor %}
+				</ul>
+		
+			</div>
+
+		<script src="http://todomvc.com/examples/jquery/node_modules/todomvc-common/base.js"></script>
+		<script src="http://todomvc.com/examples/jquery/node_modules/jquery/dist/jquery.js"></script>
+		<script src="http://todomvc.com/examples/jquery/node_modules/handlebars/dist/handlebars.js"></script>
+		<script src="http://todomvc.com/examples/jquery/node_modules/director/build/director.js"></script>
+		<script src="http://todomvc.com/examples/jquery/js/app.js"></script>
+
+{% endblock %}
+{% block script %}
+
+<script>
+	$( window ).load(function() {
+  $('#main').toggle(todos.length > 0);
+});
+
+function runScript(e) {
+    if (e.keyCode == 13) {
+        var tb = document.getElementById("scriptBox");
+         var formvalue = tb.value;
+         tb.value = "";
+
+
+    var url = 'submit=1&content=' + formvalue;
+
+
+     $.ajax({
+       type: "POST",
+       url: "{{ url_for('core.addTask') }}",
+       data: url,
+       success: function(reponse){
+
+
+       	var rep = JSON.parse(reponse)
+
+
+		var d1 = document.getElementById('todo-list');
+		d1.insertAdjacentHTML('beforeend', '<li id="'+rep.id+'"><div class="view"><label class="taskText">'+formvalue+'</label><div id="'+rep.id+'"></div></div></li>');
+
+		 	var btn = document.createElement("button");        
+		    
+			btn.onclick = function() { 
+			    destroy(rep.id);
+			  };
+			  btn.classList.add("destroy");
+
+		var foo = document.getElementById(rep.id);
+
+		  foo.appendChild(btn);
+
+
+          
+       }
+
+
+
+     });
+
+
+    return false;
+    }
+}
+	
+
+function destroy(id){
+
+    var info = 'id=' + id;
+
+     $.ajax({
+       type: "POST",
+       url: "{{ url_for('core.deleteTask') }}",
+       data: info,
+       success: function(){
+       	
+       		$("#"+id).fadeOut("slow");
+       }
+     });
+
+
+    return false;
+
+}
+	
+</script>
+
+{% endblock %}

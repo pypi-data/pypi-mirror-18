@@ -1,0 +1,141 @@
+#!/usr/bin/env python -u
+# -*- coding: utf-8 -*-
+'''
+CLI interface for Pepa
+'''
+
+import argparse
+import sys
+from os.path import isfile
+import yaml
+import logging
+import pepa
+import requests
+import getpass
+
+# Add show option
+
+# Get arguments
+parser = argparse.ArgumentParser()
+parser.add_argument('hostname', help='Hostname')
+parser.add_argument('-c', '--config', default='/etc/salt/master', help='Configuration file')
+parser.add_argument('-r', '--resource', help='Resource, defaults to first resource')
+parser.add_argument('-d', '--debug', action='store_true', help='Print debug info')
+parser.add_argument('-g', '--grains', help='Input Grains as YAML')
+parser.add_argument('-p', '--pillar', help='Input Pillar as YAML')
+parser.add_argument('-n', '--no-color', dest='color', action='store_false', help='No color output')
+parser.add_argument('-q', '--query-api', action='store_true', help='Query Saltstack REST API for Grains')
+parser.add_argument('-u', '--url', default='https://salt:8000', help='URL for SaltStack REST API')
+parser.add_argument('-U', '--username', help='Username for SaltStack REST API')
+parser.add_argument('-P', '--password', help='Password for SaltStack REST API')
+args = parser.parse_args()
+
+# Create formatter
+if args.color:
+    try:
+        import colorlog
+        formatter = colorlog.ColoredFormatter("[%(log_color)s%(levelname)-8s%(reset)s] %(log_color)s%(message)s%(reset)s")
+    except ImportError:
+        formatter = logging.Formatter("[%(levelname)-8s] %(message)s")
+else:
+    formatter = logging.Formatter("[%(levelname)-8s] %(message)s")
+
+# Create console handle
+console = logging.StreamHandler()
+console.setFormatter(formatter)
+
+loglvl = logging.WARN
+if args.debug:
+    loglvl = logging.DEBUG
+
+# Create logger
+logger = logging.getLogger(__name__)
+logger.setLevel(loglvl)
+logger.addHandler(console)
+
+# Create logger for module
+logger_pepa = logging.getLogger('pepa')
+logger_pepa.setLevel(loglvl)
+logger_pepa.addHandler(console)
+
+# Load configuration file
+if not isfile(args.config):
+    logger.critical("Configuration file doesn't exist: {0}".format(args.config))
+    sys.exit(1)
+
+conf_yaml = open(args.config).read()
+try:
+    conf = yaml.load(conf_yaml)
+except Exception, e:
+    logger.critical('Failed to parse YAML in config file: {0}'.format(e))
+    sys.exit(1)
+
+# Get grains
+grains = {}
+if 'pepa_grains' in conf:
+    grains = conf['pepa_grains']
+if args.grains:
+    grains.update(yaml.load(args.grains))
+
+# Get grains from SaltStack API
+if args.query_api:
+    username = args.username
+    password = args.password
+    if username is None:
+        username = raw_input('Username: ')
+    if password is None:
+        password = getpass.getpass()
+
+    logger.info('Authenticate REST API')
+    auth = {'username': username, 'password': password, 'eauth': 'pam'}
+    request = requests.post(args.url + '/login', auth)
+
+    if not request.ok:
+        raise RuntimeError('Failed to authenticate to SaltStack REST API: {0}'.format(request.text))
+
+    response = request.json()
+    token = response['return'][0]['token']
+
+    logger.info('Request Grains from REST API')
+    headers = {'X-Auth-Token': token, 'Accept': 'application/json'}
+    request = requests.get(args.url + '/minions/' + args.hostname, headers=headers)
+
+    result = request.json().get('return', [{}])[0]
+    if args.hostname not in result:
+        raise RuntimeError('Failed to get Grains from SaltStack REST API')
+
+    grains.update(result[args.hostname])
+
+# Get pillar
+pillar = {}
+if 'pepa_pillar' in conf:
+    pillar = conf['pepa_pillar']
+if args.pillar:
+    pillar.update(yaml.load(args.pillar))
+
+# Get resource
+loc = 0
+for name in [e.keys()[0] for e in conf['ext_pillar']]:
+    if name == 'pepa':
+        if args.resource is None or args.resource == conf['ext_pillar'][loc]['pepa']['resource']:
+            break
+    loc += 1
+
+p = conf['ext_pillar'][loc]['pepa']
+
+# Subkey
+subkey = False
+if 'subkey' in p:
+    subkey = p['subkey']
+
+subkey_only = False
+if 'subkey_only' in p:
+    subkey_only = p['subkey_only']
+
+# Compile templates
+templ = pepa.Template(roots=conf['pepa_roots'], resource=p['resource'], sequence=p['sequence'], subkey=subkey, subkey_only=subkey_only)
+res = templ.compile(minion_id=args.hostname, grains=grains, pillar=pillar)
+
+# Print result
+yaml.dumper.SafeDumper.ignore_aliases = lambda self, data: True
+print yaml.safe_dump(res)

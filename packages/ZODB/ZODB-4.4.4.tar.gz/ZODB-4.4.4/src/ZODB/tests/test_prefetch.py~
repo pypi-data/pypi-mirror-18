@@ -1,0 +1,38 @@
+import unittest
+
+from ZODB.tests.utils import z64
+import ZODB
+
+class PrefetchTests(unittest.TestCase):
+
+    def test_prefetch(self):
+        db = ZODB.DB(None)
+
+        fetched = []
+        def prefetch(*args):
+            fetched.extend(args)
+
+        db.storage.prefetch = prefetch
+
+        with db.transaction() as conn:
+            for i in range(10):
+                conn.root()[i] = conn.root.__class__()
+
+        conn = db.open()
+        conn.prefetch(z64)
+        conn.prefetch([z64])
+        conn.prefetch(conn.root())
+
+        conn.prefetch(z64, (conn.root()[i] for i in range(3)), conn.root()[3])
+
+        self.assertEqual(fetched, [])
+
+
+    def test_prefetch_optional(self):
+        conn = ZODB.connection(None)
+        conn.prefetch(z64)
+        conn.prefetch([z64])
+        conn.prefetch(conn.root())
+        conn.prefetch(z64, [z64])
+        conn.prefetch(z64, [z64], conn.root())
+

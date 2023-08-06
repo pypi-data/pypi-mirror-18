@@ -1,0 +1,29 @@
+image: gitlab.alelec.net:5004/gitlab-buildbot/devpi_client_manylinux:i686-latest
+
+before_script:
+  - export PATH=/opt/python/cp35-cp35m/bin:$PATH
+  - pip install pytest numpy
+  - pip install --editable .
+
+stages:
+#  - test
+  - deploy
+
+#test:
+#  stage: test
+#  script:
+#  - make -C tests >/dev/null
+#  - py.test $@ tests/
+
+deploy:
+  stage: deploy
+  script:
+  - sed -i "s/<username>/$PYPI_USER/" ~/.pypirc
+  - sed -i "s/<password>/$PYPI_PASS/" ~/.pypirc
+  - devpi use $DEVPI_SERVER
+  - devpi login $DEVPI_USER --password $DEVPI_PASS
+  - devpi use $DEVPI_USER/prod
+  - devpi upload
+  - devpi push cfficloak==`python setup.py --version` pypi:pypi
+  only:
+  - tags

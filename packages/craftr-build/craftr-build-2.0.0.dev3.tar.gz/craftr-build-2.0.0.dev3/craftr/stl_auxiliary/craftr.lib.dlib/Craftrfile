@@ -1,0 +1,55 @@
+# The Craftr build system
+# Copyright (C) 2016  Niklas Rosenstein
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from craftr.loaders import external_archive, pkg_config
+
+source_directory = external_archive(
+  "http://dlib.net/files/dlib-{}.zip".format(options.version)
+)
+
+__all__ = ['dlib']
+load_module('craftr.lang.cxx.*')
+
+dlib = Framework('dlib',
+  include = [source_directory],
+  defines = [],
+  frameworks = [],
+  libs = []
+)
+
+if options.nogui:
+  dlib['defines'].append('DLIB_NO_GUI_SUPPORT')
+if options.isocpp:
+  dlib['defines'].append('DLIB_ISO_CPP_ONLY')
+
+if platform.name == 'win':
+  dlib['libs'] += ['ws2_32', 'winmm']
+  if not options.nogui:
+    dlib['libs'] += ['comctl32', 'gdi32', 'imm32']
+else:
+  dlib['libs'] += ['pthread']
+  dlib['frameworks'] += [pkg_config('x11')]
+  dlib['std'] = 'gnu++11'
+
+dlib_library = cxx_library(
+  inputs = cpp_compile(
+    sources = [path.join(source_directory, 'dlib/all/source.cpp')],
+    frameworks = [dlib]
+  ),
+  output = 'dlib'
+)
+
+cxx_extend_framework(dlib, dlib_library)

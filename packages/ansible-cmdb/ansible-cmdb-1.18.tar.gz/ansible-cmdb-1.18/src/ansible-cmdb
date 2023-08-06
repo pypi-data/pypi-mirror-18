@@ -1,0 +1,173 @@
+#!/usr/bin/env python
+
+# ansible_cmd
+#
+# Generate host overview (configuration management database) from ansible fact
+# gathering output.
+#
+# Usage:
+#
+#   $ ansible -m setup --tree out all
+#   $ ansible-cmdb out > cmdb.html
+#
+
+import optparse
+import sys
+import os
+import logging
+
+import ansiblecmdb
+from mako.template import Template
+from mako import exceptions
+
+
+def find_path(dirs, path_to_find):
+    """
+    Go through a bunch of dirs and see if dir+path_to_find exists there.
+    Returns the first dir that matches. Otherwise, return None.
+    """
+    for dir in dirs:
+        if os.path.exists(os.path.join(dir, path_to_find)):
+            return dir
+    return None
+
+
+if __name__ == "__main__":
+    # Set up logging
+    root = logging.getLogger()
+    root.setLevel(logging.CRITICAL)
+    ch = logging.StreamHandler(sys.stderr)
+    ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(message)s')
+    ch.setFormatter(formatter)
+    root.addHandler(ch)
+    log = root
+
+    # Find out our installation prefix and data directory. These can be in
+    # different places depending on how ansible-cmdb was installed.
+    data_dir_paths = [
+        os.path.join(os.path.dirname(ansiblecmdb.__file__), 'data'),
+        '/usr/local/lib/ansiblecmdb/data',
+        '/usr/lib/ansiblecmdb/data',
+    ]
+
+    data_dir = find_path(data_dir_paths, 'tpl/html_fancy.tpl')
+    tpl_dir = os.path.join(data_dir, 'tpl')
+    static_dir = os.path.join(data_dir, 'static')
+    version = open(os.path.join(data_dir, 'VERSION')).read().strip()
+
+    parser = optparse.OptionParser(version="%prog v{}".format(version))
+    parser.set_usage(sys.argv[0] + " [option] <dir> > output.html")
+    parser.add_option("-t", "--template", dest="template", action="store", default='html_fancy', help="Template to use. Default is 'html_fancy'")
+    parser.add_option("-i", "--inventory", dest="inventory", action="store", default=None, help="Inventory to read extra info from")
+    parser.add_option("-f", "--fact-cache", dest="fact_cache", action="store_true", default=False, help="<dir> contains fact-cache files")
+    parser.add_option("-p", "--params", dest="params", action="store", default=None, help="Params to send to template")
+    parser.add_option("-d", "--debug", dest="debug", action="store_true", default=False, help="Show debug output")
+    parser.add_option("-c", "--columns", dest="columns", action="store", default=None, help="Show only given columns")
+    (options, args) = parser.parse_args()
+
+    if len(args) < 1:
+        parser.print_usage()
+        sys.stderr.write("The <dir> argument is mandatory\n")
+        sys.exit(1)
+
+    if options.debug:
+        root.setLevel(logging.DEBUG)
+
+    # Log some path information
+    log.debug('data_dir = {0}'.format(data_dir))
+    log.debug('tpl_dir = {0}'.format(tpl_dir))
+    log.debug('static_dir = {0}'.format(static_dir))
+
+    # Use hosts file from the current dir if it exists
+    if os.path.isfile('hosts'):
+        options.inventory = 'hosts'
+
+    # Find configuration file to use. Params override options for this
+    # FIXME: use find_path()
+    config_file = None
+    config_locations = ['/etc/ansible/ansible.cfg', 'ansible.cfg']
+
+    for config_location in config_locations:
+        if os.path.exists(config_location):
+            config_file = os.path.realpath(config_location)
+
+    log.debug('config_file = {0}'.format(config_file))
+    if config_file:
+        with open(config_file, 'r') as cf:
+            for line in cf:
+                if line.startswith('hostfile'):
+                    options.inventory = line.split('=', 1)[1].strip()
+    log.debug('inventory hostfile = {0}'.format(options.inventory))
+
+    # Handle template params
+    params = {
+        'lib_dir': data_dir,  # Backwards compatibility for custom templates < ansible-cmdb v1.7
+        'data_dir': data_dir,
+        'version': version,
+        'columns': None,
+    }
+    if options.params:
+        try:
+            for param in options.params.split(','):
+                param_key, param_value = param.split('=', 1)
+                params[param_key] = param_value
+        except ValueError as e:
+            sys.stdout.write("Invalid params specified. Should be in format: <key=value>[,<key=value>..]\n")
+            sys.exit(1)
+        log.debug(params)
+    if options.columns is not None:
+        params['columns'] = options.columns.split(',')
+
+    ansible = ansiblecmdb.Ansible(args, options.inventory, options.fact_cache, debug=options.debug)
+
+    # Render a template with the gathered host info
+    if os.path.isfile(options.template):
+        # --template option points to an actual file
+        log.debug('template file = {0}'.format(options.template))
+        mytemplate = Template(filename=options.template, default_filters=['decode.utf8'], input_encoding='utf-8', output_encoding='utf-8')
+    else:
+        # Find template given with --template in the standard templates dir.
+        tpl_path = os.path.join(tpl_dir, '%s.tpl' % (options.template))
+        if not os.path.isfile(tpl_path):
+            sys.stderr.write("Template not found: {0}\n".format(tpl_path))
+            sys.exit(1)
+        log.debug('template file = {0}'.format(tpl_path))
+        mytemplate = Template(filename=tpl_path, default_filters=['decode.utf8'], input_encoding='utf-8', output_encoding='utf-8')
+
+    # Make sure we always output in UTF-8, regardless of the user's locale /
+    # terminal encoding. This is different in Python 2 and 3.
+    params['log'] = log
+    log.debug("Template params: {0}".format(params))
+    try:
+        if sys.version_info[0] == 3:
+            out = mytemplate.render(hosts=ansible.hosts, **params)
+            sys.stdout.buffer.write(out)
+        else:
+            out = mytemplate.render(hosts=ansible.hosts, **params)
+            sys.stdout.write(out)
+    except Exception as err:
+        if options.debug:
+            sys.stderr.write(exceptions.text_error_template().render())
+            sys.stderr.write('\n')
+        debug_cmd = "{0} -d {1}".format(sys.argv[0], ' '.join(sys.argv[1:]))
+        debug_txt = ("Whoops, it looks like something went wrong while rendering the template.\n\n"
+                     "The reported error was: {0}\n\n"
+                     "The output is probably not correct.\n".format(err))
+        if not options.debug:
+            debug_txt += ("You can re-run ansible-cmdb with the -d switch to turn on debugging\n"
+                          "to get an insight in what might be going wrong:\n\n"
+                          "  {0}\n\n".format(debug_cmd))
+        debug_txt += \
+"""\
+You can report a bug on the issue tracker:
+
+  https://github.com/fboender/ansible-cmdb/issues
+
+Please include the debugging output (-d switch) in the report!
+
+If you can, also include the hosts file and the facts file for the last host
+that rendered properly ('Rendering host...' in the output. If these files must
+remain confidential, you can send them to ferry.boender@gmail.com instead.
+"""
+        sys.stderr.write(debug_txt)

@@ -1,0 +1,105 @@
+{% load i18n %}
+{% load endless %}
+{% load photo %}
+{% load forum_tags %}
+
+<!-- Comments-->
+{% paginate comments %}
+{% for comment in comments %}
+  <article>
+    <div class="col-lg-12">
+      <div class="panel panel-default arrow left">
+        <div class="panel-body">
+          <header class="text-left">
+            <time class="comment-date"><i class="glyphicon glyphicon-time"></i> {{comment.date}}</time>
+          </header>
+          <div class="comment-post">
+            <div class="well" style="margin-top: 5px">
+              {{comment.description|safe}}
+            </div>
+            <span>
+                <a href="{% url 'profile' comment.user %}">
+                     <img class="img-circle" src="{{comment.user.id|get_photo}}"
+                     width="30" height="30" />
+                </a>
+                {{comment.user|get_path_profile|safe}}
+                <br>
+                {% if comment.user.user.online %}
+                    <div class="label label-success"><b>Online</b></div>
+                {% else %}
+                    <div class="label label-danger"><b>Online</b></div>
+                {% endif %}
+                <b>{% trans "Last Seen" %}</b>
+                {% if comment.user.user.last_seen %}
+                    {{ comment.user.user.last_seen|timesince }}
+                {% else %}
+                    {% trans "awhile ago" %}
+                {% endif %}
+            </span>
+          </div>
+          {% if comment.user.id == user.id %}
+            <div class="span4 offset4 text-right">
+              <button data-toggle="modal" data-target="#myModal_{{comment.idcomment}}" class="btn btn-inverse btn-sm">
+                <i class="glyphicon glyphicon-hand-up"></i> {% trans "Edit" %}</button>
+
+              <a style="cursor: pointer" data-toggle="modal" data-target="#myModal_{{comment.idcomment}}_remove" class="btn btn-danger btn-sm">
+                <i class="glyphicon glyphicon-trash"></i> {% trans "Remove" %}</a>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+   </div>
+  </article>
+
+  <!-- Modal edit comment -->
+  <div class="modal fade" id="myModal_{{comment.idcomment}}" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          <h4 class="modal-title" id="myModalLabel">{% trans "Edit comment" %}</h4>
+        </div>
+        <div class="modal-body">
+
+          <form action="{% url 'updatecomment' topic.forum.name topic.slug topic.idtopic comment.idcomment %}" method="POST">
+              {% csrf_token%}
+              <div class="in_div_textarea">
+                <textarea name="update_description" id="textarea_comment_{{comment.idcomment}}" style="width: 100%" required>
+                  {{comment.description|safe}}
+                </textarea>
+              </div>
+            <br>
+            <button type="submit" class="btn btn-inverse btn-sm">
+                <i class="glyphicon glyphicon-hand-up"></i> {% trans "Edit comment" %}
+            </button>
+          </form>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal remove comment -->
+  <div class="modal fade" id="myModal_{{comment.idcomment}}_remove" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          <h4 class="modal-title" id="myModalLabel">{% trans "Remove comment" %}</h4>
+        </div>
+        <div class="modal-body">
+          <p>{% trans "Do you want remove this comment?" %}</p>
+        </div>
+        <div class="modal-footer">
+            <form class="form-horizontal" action="{% url 'removecomment' topic.forum.name topic.slug topic.idtopic comment.idcomment %}" method="POST">{% csrf_token%}
+            <button type="submit" class="btn btn-danger btn-sm">
+              <i class="glyphicon glyphicon-trash"></i> {% trans "Remove comment" %}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+{% endfor %}
+{% show_more %}

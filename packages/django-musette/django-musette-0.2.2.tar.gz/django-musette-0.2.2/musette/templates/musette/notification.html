@@ -1,0 +1,55 @@
+{% load i18n %}
+{% load forum_tags %}
+
+<div class="dropdown" ng-controller="NotificationController">
+   <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" ng-click="view_all()">
+    <i class="fa fa-fw fa-bell-o"></i> {{ user.username }}
+    {% if user.id|get_pending_notifications > 0 %}
+      <span id="badge_notifications" class="badge">{{user.id|get_pending_notifications}}</span>
+    {% else %}
+      <span id="badge_notifications" class="badge hide"></span>
+    {% endif %}
+  </a>
+  <input type="hidden" ng-model="user" name="user" id="user_musette" value="{{user.id}}" />
+  <ul class="dropdown-menu notifications" role="menu" aria-labelledby="dLabel">
+
+    <div class="notification-heading">
+        <h4 class="menu-title">{% trans "Notifications" %}</h4>
+        <h4 class="menu-title pull-right">
+            <a href="{% url 'forum_all_notification' %}">
+            <strong>{% trans "All" %}</strong><i class="glyphicon glyphicon-circle-arrow-right"></i>
+            </a>
+        </h4>
+    </div>
+    <li class="divider"></li>
+    <div class="notifications-wrapper">
+        {% comment %} Real time notification with angular {% endcomment %}
+        {% verbatim %}
+          <a class="content" href="{% url 'topic' not.forum not.slug not.idtopic %}" ng-repeat="not in notifications_socket">
+            <div class="notification-item">
+               <h4 class="item-title">
+                  <img class="img-circle" ng-src="{{ not.photo }}" width=25 height=25 />
+                   {{ not.username }} - {% endverbatim %} {% trans "Now" %} {% verbatim %}</h4>
+                <p class="item-info"> {{ not.topic }}</p>
+            </div>
+          </a>
+        {% endverbatim %}
+        {% for notification in notifications|slice:"5" %}
+            {{notification|get_item_notification|safe}}
+        {% empty %}
+            <p style="margin-left: 5px">{% trans "No notifications"%}</p>
+        {% endfor %}
+     </div>
+    <li class="divider"></li>
+    <div class="notification-footer">
+        <h4 class="menu-title" class="pull-left">
+            <a href="{% url 'forum_all_notification' %}">
+            <strong><span>{% trans "All" %}</span><i class="glyphicon glyphicon-circle-arrow-right"></i></strong>
+            </a>
+        </h4>
+        <a href="{% url 'logout' %}" class="pull-right"><strong>{% trans "Logout" %}</strong></a>
+    </div>
+  </ul>
+
+</div>
+

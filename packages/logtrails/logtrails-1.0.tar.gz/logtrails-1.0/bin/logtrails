@@ -1,0 +1,121 @@
+#!/usr/bin/env python
+
+USAGE = """Log trails
+
+Parse log entries and export them to queues with a deamon.
+"""
+
+import glob
+
+from logtrails.config import Configuration, ConfigurationError, DEFAULT_CONFIGURATION_FILE
+from logtrails.logreader import LogTrailLogFile, LogFileError
+from systematic.shell import Script, ScriptCommand
+
+
+class LogtrailsCommand(ScriptCommand):
+    """Logtrails commands
+
+    Common subcommand config parser
+    """
+    def parse_args(self, args):
+        try:
+            self.config = Configuration(args.config)
+            self.config.load()
+        except ConfigurationError as e:
+            self.exit(1, e)
+
+        self.redis = self.config.get_redis_connection()
+
+        return args
+
+    def publish(self, entry):
+        """Publish entry to redis
+
+        Entry to publish must be instance of LogEntryParser
+        """
+        self.redis.publish(entry.channel, entry.to_json())
+
+
+class ReaderDaemonCommand(LogtrailsCommand):
+    """Daemon process to read logs
+
+    Tail mode daemon process for logs.
+
+    Does not actually daemonize, this is expected to be run from systemd.
+    """
+
+
+    def run(self, args):
+        args = self.parse_args(args)
+
+        readers = self.config.configure_readers(self.publish)
+        for reader in readers:
+            reader.start()
+
+
+class ListPatternsCommand(LogtrailsCommand):
+    """List configured patterns
+
+    """
+    def run(self, args):
+        args = self.parse_args(args)
+
+        for pattern in self.config.patterns:
+            self.message(' '.join([
+                pattern.group.parser.path,
+                pattern.group.name,
+                pattern.name,
+                pattern.pattern,
+            ]))
+
+
+class DumpCommand(LogtrailsCommand):
+    """Dump logfiles
+
+    """
+    def run(self, args):
+        args = self.parse_args(args)
+
+        patterns = self.config.patterns
+        for match in args.logfiles:
+            for filename in glob.glob(match):
+                try:
+                    log = LogTrailLogFile(filename, patterns)
+                except LogFileError as e:
+                    self.script.error(e)
+
+                while True:
+
+                    try:
+                        entry = log.next()
+
+                    except LogFileError as e:
+                        if not args.no_errors:
+                            self.script.error(e)
+                        continue
+
+                    except StopIteration:
+                        break
+
+                    try:
+                        self.publish(entry)
+                    except Exception as e:
+                        if not args.no_errors:
+                            self.script.error('Error publishing entry: {0}'.format(e))
+                        pass
+
+
+script = Script(USAGE)
+script.add_argument('-c', '--config', default=DEFAULT_CONFIGURATION_FILE, help='Configuration file')
+
+c = script.add_subcommand(ListPatternsCommand('list-patterns', 'List configured log patterns'))
+
+c = script.add_subcommand(ReaderDaemonCommand('daemon', 'Log reader daemon'))
+c.add_argument('--no-errors', action='store_true', help='Do not log errors to stderr')
+
+c = script.add_subcommand(DumpCommand('dump', 'Dump matches from logs'))
+c.add_argument('--no-errors', action='store_true', help='Do not log errors to stderr')
+c.add_argument('logfiles', nargs='*', help='Paths to logfiles to dump')
+
+args = script.parse_args()
+

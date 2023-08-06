@@ -1,0 +1,500 @@
+.TH "BUKU" "1" "Nov 2016" "Version 2.7" "User Commands"
+.SH NAME
+buku \- Powerful command-line bookmark manager. Your mini web!
+.SH SYNOPSIS
+.B buku [OPTIONS] [KEYWORD [KEYWORD ...]]
+.SH DESCRIPTION
+.B buku
+is a command-line utility to store, tag, search and organize bookmarks.
+.PP
+.B Features
+.PP
+  * Add, open, tag, comment on, update, remove, shorten URLs
+  * Fetch page title from web, refresh all titles in a go
+  * Multiple search options, continuous search at prompt
+  * Portable merge-able database to sync between systems
+  * Import/export in Markdown or HTML (FF, Chrome compatible)
+  * Open (multiple) search results directly in default browser
+  * Manual password protection using AES256 encryption
+  * Completion scripts (Bash, Fish, Zsh), man page with examples
+  * Several options for power users (see help or man page)
+  * Fast and clean interface, distinct symbols for record fields
+  * Minimal dependencies
+.SH OPERATIONAL NOTES
+.PP
+.IP 1. 4
+The database file is stored in:
+  - \fI$XDG_DATA_HOME/buku/bookmarks.db\fR, if XDG_DATA_HOME is defined (first preference) or
+  - \fI$HOME/.local/share/buku/bookmarks.db\fR, if HOME is defined (second preference) or
+  - the \fIcurrent directory\fR.
+.PP
+.IP 2. 4
+If the URL contains characters like ';', '&' or brackets they may be interpreted specially by the shell. To avoid it, add the URL within single or double quotes ('/").
+.PP
+.IP 3. 4
+URLs are unique in DB. The same URL cannot be added twice.
+.PP
+.IP 4. 4
+Bookmarks with immutable titles are listed with bold '(L)' after the URL.
+.PP
+.IP 5. 4
+\fBTags\fR:
+  - Comma (',') is the tag delimiter in DB. A tag cannot have comma(s) in it. Tags are filtered (for unique tags) and sorted. Tags are stored in lower case and can be replaced, appended or deleted.
+.PP
+.IP 6. 4
+\fBUpdate\fR operation:
+  - If --title, --tag or --comment is passed without argument, clear the corresponding field from DB.
+  - If --url is passed (and --title is omitted), update the title from web using the URL.
+  - If indices are passed without any other options (--url, --title, --tag, --comment and --immutable), read the URLs from DB and update titles from web. Bookmarks marked immutable are skipped.
+.PP
+.IP 7. 4
+\fBDelete\fR operation:
+  - When a record is deleted, the last record is moved to the index.
+  - Delete doesn't work with range and indices provided together as arguments. It's an intentional decision to avoid extra sorting, in-range checks and to keep the auto-DB compaction functionality intact. On the same lines, indices are deleted in descending order.
+  - Can delete bookmarks matching a search, when combined with any of the search options.
+.PP
+.IP 8. 4
+\fBSearch\fR works in mysterious ways:
+  - Case-insensitive.
+  - Matches words in URL, title and tags.
+  - --sany : match any of the keywords in URL, title or tags.
+  - --sall : match all the keywords in URL, title or tags.
+  - --deep : match \fBsubstrings\fR (`match` matches `rematched`) in URL, title and tags.
+  - --sreg : match a regular expression (ignores --deep).
+  - --stag : search bookmarks by a tag, or list all tags alphabetically with usage count (if no arguments).
+  - Search results are indexed serially. This index is different from actual database index of a bookmark record which is shown in bold within '[]' after the URL.
+.PP
+.IP 9. 4
+\fBEncryption\fR is optional and manual. AES256 algorithm is used. To use encryption, the database file should be unlocked (-k) before using buku and locked (-l) afterwards. Between these 2 operations, the database file lies unencrypted on the disk, and NOT in memory. Also, note that the database file is \fBunencrypted on creation\fR.
+.PP
+.IP 10. 4
+\fBProxy\fR support: please refer to the \fBENVIRONMENT\fR section.
+.SH GENERAL OPTIONS
+.TP
+.BI \-a " " \--add " URL [tag, ...]"
+Bookmark
+.I URL
+along with comma-separated tags. A tag can have multiple words.
+.TP
+.BI \-u " " \--update " [...]"
+Update fields of the bookmarks at specified indices in DB. If no arguments are specified, all titles are refreshed from the web. Works with update modifiers for the fields url, title, tag and comment. If only indices are passed without any edit options, titles are fetched and updated (if not empty). Accepts hyphenated ranges and space-separated indices.
+.TP
+.BI \-d " " \--delete " [...]"
+Delete bookmarks. Accepts space-separated list of indices (e.g. 5 6 23 4 110 45) or a single hyphenated range (e.g. 100-200). Note that range and list don't work together. Deletes search results when combined with search options.
+.TP
+.BI \-h " " \--help
+Show program help and exit.
+.SH EDIT OPTIONS
+.TP
+.BI \--url " [...]"
+Specify the URL, works with --update only. Fetches and updates title if --title is not used.
+.TP
+.BI \--tag " [+|-] [...]"
+Specify comma separated tags, works with --add, --update. Clears the tags, if no arguments passed. Appends or deletes tags, if list of tags is preceded by '+' or '-' respectively.
+.TP
+.BI \-t " " \--title " [...]"
+Manually specify the title, works with --add, --update. Omits or clears the title, if no arguments passed.
+.TP
+.BI \-c " " \--comment " [...]"
+Add comment or description on the bookmark, works with --add, --update. Clears the comment, if no arguments passed.
+.TP
+.BI \--immutable " N"
+Set the title of a bookmark immutable during updates. Works with --add, --update. N=1 sets the immutable flag, N=0 removes it. If omitted, bookmarks are added with N=0.
+.SH SEARCH OPTIONS
+.TP
+.BI \-s " " \--sany " keyword [...]"
+Search bookmarks with ANY of the keyword(s) in URL, title or tags and show the results. Prompts to enter result number to open in browser. Note that the sequential result index is not the DB index. The DB index is shown in bold within '[]' after the URL.
+.TP
+.BI \-S " " \--sall " keyword [...]"
+Search bookmarks with ALL keywords in URL, title or tags and show the results. Behaviour same as --sany.
+.br
+Special keywords:
+.br
+"blank": list entries with empty title/tag
+.br
+"immutable": list entries with locked title
+.br
+NOTE: To search the keywords, use --sany
+.TP
+.BI \--sreg " expression"
+Scan for a regular expression match.
+.TP
+.BI \--deep
+Search modifier to match substrings. Works with --sany, --sall.
+.TP
+.BI \--stag " [...]"
+Search bookmarks by a tag. List all tags alphabetically, if no arguments. The usage count (number of bookmarks having the tag) is shown within first brackets.
+.SH ENCRYPTION OPTIONS
+.TP
+.BI \-l " " \--lock " [N]"
+Encrypt (lock) the DB file with
+.I N
+(> 0, default 8) hash passes to generate key.
+.TP
+.BI \-k " " \--unlock " [N]"
+Decrypt (unlock) the DB file with
+.I N
+(> 0, default 8) hash passes to generate key.
+.SH POWER OPTIONS
+.TP
+.BI \-e " " \--export " file"
+Export bookmarks to Firefox bookmarks formatted HTML. Works with --tag to export only specific tags.
+.TP
+.BI \-i " " \--import " file"
+Import bookmarks exported from Firefox or Google Chrome in HTML format.
+.TP
+.BI \--markdown
+Use markdown for --export and --import. Supported format is '[title](url)', one entry per line.
+.TP
+.BI \-m " " \--merge " file"
+Add bookmarks from another Buku database file.
+.TP
+.BI \-p " " \--print " [...]"
+Show details (DB index, URL, title, tags and comment) of bookmark record by DB index. If no arguments, all records with actual index from DB are shown. Accepts hyphenated ranges and space-separated indices.
+.TP
+.BI \-f " " \--format " N"
+Show selective monochrome output with specific fields. Works with --print. Search results honour the option when used along with --json. Useful for creating batch scripts.
+.br
+.I N
+= 1, show only URL.
+.br
+.I N
+= 2, show URL and tags in a single line.
+.br
+.I N
+= 3, show only title.
+.TP
+.BI \-r " " \--replace " oldtag [newtag ...]"
+Replace
+.I oldtag
+with
+.I newtag
+if both are passed; delete
+.I oldtag
+if
+.I newtag
+is omitted.
+.TP
+.BI \-j " " \--json
+Output data formatted as json, works with --print output and search results.
+.TP
+.BI \--noprompt
+Do not show the prompt, run and exit.
+.TP
+.BI \-o " " \--open " [N]"
+Open URL at DB index
+.I N
+in browser. Open a random index if N is omitted.
+.TP
+.BI \--shorten " N/URL"
+Shorten the URL at DB index
+.I N
+or an independent
+.I URL
+using the tny.im URL shortener service.
+.TP
+.BI \--tacit
+Show lesser output. Reduces the verbosity of certain operations like add, update etc.
+.TP
+.BI \--threads
+Maximum number of parallel network connection threads to use during full DB refresh. By default 4 connections are spawned.
+.I N
+can range from 1 to 10.
+.TP
+.BI \--upstream
+Check the latest upstream version available. This is FYI. It is possible the latest upstream released version is still not available in your package manager as the process takes a while.
+.TP
+.BI \-z " " \--debug
+Show debug information and additional logs.
+.SH PROMPT KEYS
+.TP
+.BI "1-N"
+Browse search results by indices and ranges.
+.TP
+.BI "a"
+Open all search results in browser.
+.TP
+.BI "s" " keyword [...]"
+Search for records with ANY keyword.
+.TP
+.BI "S" " keyword [...]"
+Search for records with ALL keywords.
+.TP
+.BI "d"
+Toggle deep search to match substrings ('pen' matches 'opened').
+.TP
+.BI "r" " expression"
+Run a regular expression search.
+.TP
+.BI "t" " [...]"
+Search bookmarks by a tag. List all tags alphabetically, if no arguments. The index of a tag from the tag list can be used to search all bookmarks having the tag. Note that multiple indices and/or ranges do not work in this case.
+.TP
+.BI "?"
+Show help on prompt keys.
+.TP
+.BI "q, ^D, double Enter"
+Exit buku.
+.SH ENVIRONMENT
+.TP
+.BI BROWSER
+Overrides the default browser. Refer to:
+.br
+.I http://docs.python.org/library/webbrowser.html
+.TP
+.BI https_proxy
+If defined, will be used to access http and https resources through the configured proxy. Supported format:
+
+    http[s]://[username:password@]proxyhost:proxyport/
+.TP
+.BI "GUI integration"
+.B buku
+can be integrated in a GUI environment with simple tweaks. Refer to:
+.br
+.I https://github.com/jarun/Buku#gui-integration
+.SH EXAMPLES
+.PP
+.IP 1. 4
+\fBAdd\fR a bookmark with \fBtags\fR 'linux news' and 'open source', \fBcomment\fR 'Informative website on Linux and open source', \fBfetch page title\fR from the web:
+.PP
+.EX
+.IP
+.B buku -a https://tuxdiary.com linux news, open source -c Informative website on Linux and open source
+In the output, >: title, +: comment, #: tags.
+.PP
+.IP 2. 4
+\fBAdd\fR a bookmark with tags 'linux news' and 'open source' & \fBimmutable custom title\fR 'Linux magazine':
+.PP
+.EX
+.IP
+.B buku -a http://tuxdiary.com linux news, open source -t 'Linux magazine' --immutable 1
+.EE
+.PP
+.IP "" 4
+Note that URL must precede tags.
+.PP
+.IP 3. 4
+\fBAdd\fR a bookmark \fBwithout a title\fR (works for update too):
+.PP
+.EX
+.IP
+.B buku -a http://tuxdiary.com linux news, open source -t
+.PP
+.IP 4. 4
+\fBUpdate\fR existing bookmark at index 15012014 with new URL, tags and comments, fetch title from the web:
+.PP
+.EX
+.IP
+.B buku -u 15012014 --url http://tuxdiary.com/ --tag linux news, open source, magazine -c site for Linux utilities
+.PP
+.IP 5. 4
+\fBFetch and update only title\fR for bookmark at 15012014:
+.PP
+.EX
+.IP
+.B $ buku -u 15012014
+.PP
+.IP 6. 4
+\fBUpdate only comment\fR for bookmark at 15012014:
+.PP
+.EX
+.IP
+.B buku -u 15012014 -c this is a new comment
+.EE
+.PP
+.IP "" 4
+Applies to --url, --title and --tag too.
+.PP
+.IP 7. 4
+\fBExport\fR bookmarks tagged 'tag 1' or 'tag 2' to HTML and markdown:
+.PP
+.EX
+.IP
+.B buku -e bookmarks.html --tag tag 1, tag 2
+.B buku -e bookmarks.md --markdown --tag tag 1, tag 2
+.EE
+.PP
+.IP "" 4
+All bookmarks are exported if --tag is not specified.
+.PP
+.IP 8. 4
+\fBImport\fR bookmarks from HTML and markdown:
+.PP
+.EX
+.IP
+.B buku -i bookmarks.html
+.B buku -i bookmarks.md --markdown
+.PP
+.IP 9. 4
+\fBDelete only comment\fR for bookmark at 15012014:
+.PP
+.EX
+.IP
+.B buku -u 15012014 -c
+.EE
+.PP
+.IP "" 4
+Applies to --title and --tag too. URL cannot be deleted without deleting the bookmark.
+.PP
+.IP 10. 4
+\fBUpdate\fR or refresh \fBfull DB\fR with page titles from the web:
+.PP
+.EX
+.IP
+.B buku -u
+.B buku -u --tacit (show only failures and exceptions)
+.EE
+.PP
+.IP "" 4
+This operation does not modify the indexes, URLs, tags or comments. Only title is refreshed if fetched title is non-empty.
+.PP
+.IP 11. 4
+\fBDelete\fR bookmark at index 15012014:
+.PP
+.EX
+.IP
+.B buku -d 15012014
+.EE
+.PP
+.IP "" 4
+The last index is moved to the deleted index to keep the DB compact.
+.PP
+.IP 12. 4
+\fBDelete all\fR bookmarks:
+.PP
+.EX
+.IP
+.B buku -d
+.PP
+.IP 13. 4
+\fBDelete\fR a \fBrange or list\fR of bookmarks:
+.PP
+.EX
+.IP
+.B $ buku -d 100-200
+.B $ buku -d 100 15 200
+.PP
+.IP 14. 4
+\fBSearch\fR bookmarks for \fBANY\fR of the keywords 'kernel' and 'debugging' in URL, title or tags:
+.PP
+.EX
+.IP
+.B buku -s kernel debugging
+.PP
+.IP 15. 4
+\fBSearch\fR bookmarks with \fBALL\fR the keywords 'kernel' and 'debugging' in URL, title or tags:
+.PP
+.EX
+.IP
+.B buku -S kernel debugging
+.PP
+.IP 16. 4
+\fBSearch\fR bookmarks \fBtagged\fR 'general kernel concepts':
+.PP
+.EX
+.IP
+.B buku --stag general kernel concepts
+.PP
+.IP 17. 4
+List \fBall unique tags\fR alphabetically:
+.PP
+.EX
+.IP
+.B buku --stag
+.PP
+.IP 18. 4
+Run a \fBsearch and delete\fR the results:
+.PP
+.EX
+.IP
+.B buku -s kernel debugging -d
+.PP
+.IP 19. 4
+\fBEncrypt or decrypt\fR DB with \fBcustom number of iterations\fR (15) to generate key:
+.PP
+.EX
+.IP
+.B buku -l 15
+.br
+.B buku -k 15
+.EE
+.PP
+.IP "" 4
+The same number of iterations must be specified for one lock & unlock instance. Default is 8, if omitted.
+.PP
+.IP 20. 4
+\fBShow details\fR of bookmarks at index 15012014 and ranges 20-30, 40-50:
+.PP
+.EX
+.IP
+.B buku -p 20-30 15012014 40-50
+.PP
+.IP 21. 4
+\fBShow all\fR bookmarks with real index from database:
+.PP
+.EX
+.IP
+.B buku -p
+.B buku -p | more
+.PP
+.IP 22. 4
+\fBReplace tag\fR 'old tag' with 'new tag':
+.PP
+.EX
+.IP
+.B buku -r 'old tag' new tag
+.PP
+.IP 23. 4
+\fBDelete tag\fR 'old tag' from DB:
+.PP
+.EX
+.IP
+.B buku -r 'old tag'
+.PP
+.IP 24. 4
+\fBAppend (or delete) tags\fR 'tag 1', 'tag 2' to (or from) existing tags of bookmark at index 15012014:
+.PP
+.EX
+.IP
+.B buku -u 15012014 --tag + tag 1, tag 2
+.B buku -u 15012014 --tag - tag 1, tag 2
+.PP
+.IP 25. 4
+\fBOpen URL\fR at index 15012014 in browser:
+.PP
+.EX
+.IP
+.B buku -o 15012014
+.PP
+.IP 26. 4
+List bookmarks with \fBno title or tags\fR for bookkeeping:
+.PP
+.EX
+.IP
+.B buku -S blank
+.PP
+.IP 27. 4
+List bookmarks with \fBimmutable title\fR:
+.PP
+.EX
+.IP
+.B buku -S immutable
+.PP
+.IP 28. 4
+\fBShorten\fR the URL www.google.com and the URL at index 20:
+.PP
+.EX
+.IP
+.B buku --shorten www.google.com
+.B buku --shorten 20
+.SH AUTHOR
+Arun Prakash Jana <engineerarun@gmail.com>.
+.SH HOME
+.I https://github.com/jarun/Buku
+.SH REPORTING BUGS
+.I https://github.com/jarun/Buku/issues
+.SH LICENSE
+Copyright \(co 2015-2016 Arun Prakash Jana <engineerarun@gmail.com>.
+.PP
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
+.br
+This is free software: you are free to change and redistribute it. There is NO WARRANTY, to the extent permitted by law.

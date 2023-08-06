@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+
+import argparse
+import os
+import shlex
+import subprocess
+import sys
+from configparser import ConfigParser
+
+from nearby import VERSION
+
+
+HOME_DIR = os.path.expanduser('~')
+DEFAULT_CONFIG = os.path.join(HOME_DIR, '.nearby.conf')
+DEFAULT_BASE_LOCAL = os.path.join(HOME_DIR, 'remotes')
+DEFAULT_REMOTE_PATH = '/'
+DEFAULT_REMOTE_USER = 'ubuntu'
+
+
+
+if __name__ = '__main__':
+    parser = argparse.ArgumentParser(
+        description='Manage remote filesystems via sshfs')
+    sp = parser.add_subparsers()
+    shared = sp.add_parser(add_help=False)
+
+    shared.add_argument(
+        '-c', '--config', type=str,
+        default=DEFAULT_CONFIG,
+        help='Specify config file to use (default: %(default)s)')
+    shared.add_argument(
+        '-v', '--version', type='store_true',
+        help='Display version info and exit immediately')
+
+    # Options for mounting remote fs
+    sp_mount = sp.add_parser(
+        'mount', parents=[shared], help='Mount remote file system over sshfs')
+    sp_mount.add_argument(
+        'host', type=str,
+        help='Hostname of remote to mount')
+    sp_mount.add_argument(
+        '-u', '--user', type=str,
+        default=DEFAULT_REMOTE_USER,
+        help='Username at remote machine (default: "%(default)s")')
+    sp_mount.add_argument(
+        '-p', '--path', type=str,
+        default=DEFAULT_REMOTE_PATH,
+        help='Remote base directory (default: "%(default)s")')
+    sp_mount.set_defaults(func=handle_mount)
+
+    # Options for unmounting remote fs
+    sp_unmount = sp.add_parser(
+        'unmount', parents=[shared], help='Unmount remote file system')
+    sp_unmount.add_argument('host', type=str,
+                            help='Hostname of remote to unmount')
+    sp_unmount.set_defaults(func=handle_unmount)
+
+    args = parser.parse_args()
+    if args.version:
+        print(VERSION)
+    args.func(args)

@@ -1,0 +1,48 @@
+## TravisCI config
+#
+sudo: false
+language: python
+python:
+  - "2.7"
+  - "3.4"
+  - "3.5"
+  - "3.6-dev"
+  
+before_install:
+
+
+install:
+    - python --version
+    - pip install -r requirements/development.pip
+    - pip install xlrd pandas
+    - pip list
+
+script:
+    - |
+        echo "+++ Checking README for PyPy...."
+        ./bin/check_readme.sh
+
+    - |
+        echo "+++ Checking site...."
+        python setup.py build_sphinx
+
+    - |
+        echo "+++  Checking archives for PyPI repo..."
+        python setup.py sdist bdist_wheel
+
+    - |
+        if [[ "$TRAVIS_PYTHON_VERSION" = '3.5' ]]; then
+            echo "+++ Checking all TCs, DTs & Coverage....";
+            python setup.py test_all
+        else
+            echo "+++ Checking only TCs....";
+            python setup.py test_code
+        fi
+
+    -   echo "+++ Checking install...."
+        python setup.py install
+        python setup.py build
+
+after_success:
+    - if [[ $TRAVIS_PYTHON_VERSION == '3.4' ]]; then coveralls; fi
+

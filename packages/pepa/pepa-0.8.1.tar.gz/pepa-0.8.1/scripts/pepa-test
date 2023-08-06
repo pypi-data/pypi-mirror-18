@@ -1,0 +1,84 @@
+#!/usr/bin/env python -u
+# -*- coding: utf-8 -*-
+'''
+CLI interface for Pepa Test
+'''
+
+import logging
+import argparse
+from os.path import isfile
+import yaml
+import sys
+import pepa
+
+# Get arguments
+parser = argparse.ArgumentParser()
+parser.add_argument('-c', '--config', default='/etc/salt/master', help='Configuration file')
+parser.add_argument('-r', '--resource', help='Resource, defaults to first resource')
+parser.add_argument('-d', '--debug', action='store_true', help='Print debug info')
+parser.add_argument('-s', '--show', action='store_true', help='Show result of template')
+parser.add_argument('-t', '--teamcity', action='store_true', help='Output validation in TeamCity format')
+parser.add_argument('-n', '--no-color', dest='color', action='store_false', help='No color output')
+args = parser.parse_args()
+
+# Create formatter
+if args.color:
+    try:
+        import colorlog
+        formatter = colorlog.ColoredFormatter("[%(log_color)s%(levelname)-8s%(reset)s] %(log_color)s%(message)s%(reset)s")
+    except ImportError:
+        formatter = logging.Formatter("[%(levelname)-8s] %(message)s")
+else:
+    formatter = logging.Formatter("[%(levelname)-8s] %(message)s")
+
+# Create console handle
+console = logging.StreamHandler()
+console.setFormatter(formatter)
+
+loglvl = logging.WARN
+if args.debug:
+    loglvl = logging.DEBUG
+
+# Create logger
+logger = logging.getLogger(__name__)
+logger.setLevel(loglvl)
+logger.addHandler(console)
+
+# Create logger for module
+logger_pepa = logging.getLogger('pepa')
+logger_pepa.setLevel(loglvl)
+logger_pepa.addHandler(console)
+
+# Load configuration file
+if not isfile(args.config):
+    logger.critical("Configuration file doesn't exist: {0}".format(args.config))
+    sys.exit(1)
+
+conf_yaml = open(args.config).read()
+try:
+    conf = yaml.load(conf_yaml)
+except Exception, e:
+    logger.critical('Failed to parse YAML in config file: {0}'.format(e))
+    sys.exit(1)
+
+# Load configuration file
+if not isfile(args.config):
+    logger.critical('Configuration file doesn\'t exist {0}'.format(args.config))
+    sys.exit(1)
+
+# Get resource
+loc = 0
+for name in [e.keys()[0] for e in conf['ext_pillar']]:
+    if name == 'pepa':
+        if args.resource is None or args.resource == conf['ext_pillar'][loc]['pepa']['resource']:
+            break
+    loc += 1
+
+p = conf['ext_pillar'][loc]['pepa']
+
+# Test templates
+p = conf['ext_pillar'][loc]['pepa']
+templ = pepa.Template(roots=conf['pepa_roots'], resource=p['resource'], sequence=p['sequence'])
+success = templ.test(show=args.show, teamcity=args.teamcity)
+if not success:
+    sys.exit(1)

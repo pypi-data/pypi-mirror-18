@@ -1,0 +1,47 @@
+autoversion_pbr is branch-aware git versioning for pbr
+
+pbr can generate development versions when building from a git checkout.
+However, it uses "git describe" as its means of counting commits.
+Describe always picks the latest tag, but this creates problems when
+more than one branch is being built.
+
+For example, let's say that a project has two branches "stable" and
+"master". stable holds version 0.1.0 and master will have version 0.2.0
+although it is still under development and has not been tagged yet. pbr
+will count commits since 0.1.0 was tagged. Dev versions on master look
+like 0.2.0dev1 and so forth. Now a hotfix needs to be made
+for 0.1.0 and is tagged as 0.1.1 -- what happens to the builds on
+"master"? git looks at the most recent tag - now 0.1.1 - and starts
+counting again from 1. Another 0.2.0dev1 is built, a conflict occurs (if
+you're lucky), and everybody is very confused.
+
+autoversion_pbr solves this by sorting tags based on what branch they
+are expected to be found in, and always counts from a consistent tag
+when versioning future releases. This requires a little extra
+configuration, however it also serves as documentation and eliminates
+the need for explicitly telling pbr which patchlevel version numbers to
+use.
+
+To use it, add to your setup.cfg:
+
+    [global]
+    setup-hooks = autoversion_pbr.hook
+
+    [autoversion]
+    branches.master = 0.2
+    branches.stable = 0.1
+
+And extend setup_requires in setup.py:
+
+    setup_requires=["pbr", "autoversion_pbr"]
+
+Now with autoversion_pbr, let's revisit the earlier example. On the
+stable branch a tag matching the pattern 0.1.x already exists, so dev
+versions will increment from that tag, just like pbr: 0.1.2dev1 and so
+forth. On the master branch no 0.2.x tag exists yet so versions look
+like 0.2.0dev1. But rather than counting from the most recent tag,
+autoversion_pbr instead counts from the first tag on the previous branch
+-- 0.1.0 -- because that is the point where master might have branched
+from. No matter how many 0.1.x tags are created, master keeps counting
+from the same point, and the versions continue incrementing until a
+0.2.0 tag is created.

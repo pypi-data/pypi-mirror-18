@@ -1,0 +1,263 @@
+Metadata-Version: 1.1
+Name: passwordgen
+Version: 0.1.3
+Summary: A generator for safe and random passwords defined by a user-defined pattern
+Home-page: https://github.com/nkrim/passwordgen
+Author: Noah Krim
+Author-email: nkrim62@gmail.com
+License: MIT License
+Description: <h1>passwordgen</h1>
+        
+        <p>A generator for safe and random passwords defined by a user-defined pattern. The pattern allows for sequences of random digits, symbols, and characters, as well as whole words, with a multitude of options to customize the generated password.</p>
+        
+        <h2>Installation</h2>
+        
+        <p><code>bash
+        $ pip install passwordgen
+        </code></p>
+        
+        <h2>Options</h2>
+        
+        <table>
+        <thead>
+        <tr>
+          <th align="center">Flag</th>
+          <th>Argument</th>
+          <th>Definition</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+          <td align="center"><code>-h</code>, <code>--help</code></td>
+          <td>none</td>
+          <td>Display help menu</td>
+        </tr>
+        <tr>
+          <td align="center"><code>-c</code>, <code>--copy</code></td>
+          <td>none</td>
+          <td>Whenever a password is succesfully generated (in either singlue-use mode or interactive mode), the string will be copied to your clipboard (may require external libraries, depending on platform)</td>
+        </tr>
+        <tr>
+          <td align="center"><code>-i</code>, <code>--interactive</code></td>
+          <td>none</td>
+          <td>Launches in interactive mode, where passwords of the given pattern are continuously printed after each input, and if a valid pattern is given as input at any time, then the new pattern will be used going forward (enter <code>q</code> to exit)</td>
+        </tr>
+        <tr>
+          <td align="center"><code>-w</code>, <code>--worddict</code></td>
+          <td>file</td>
+          <td>Sets the <code>words.txt</code> file that iss used as the dictionary for the generator when generating whole words. The parser goes line by line, using non-word characters to separate each word (this excludes hyphens and apostrophes, which are removed prior to parsing and the two sides of the word are merged) and a new, formatted <code>words.txt</code> file will be created (the previous version will be copied to words.txt.old)</td>
+        </tr>
+        <tr>
+          <td align="center"><code>-R</code>, <code>--revert</code></td>
+          <td>none</td>
+          <td>Reverts the worddict file at <code>words.txt</code> with the backup file, if there is one. This is performed before a new <code>words.txt</code> file is generated if the <code>-w</code> command is used with this.</td>
+        </tr>
+        </tbody>
+        </table>
+        
+        <h2>How to Use</h2>
+        
+        <h4>Pattern Basics</h4>
+        
+        <p>A full pattern is comprised of one or more signifier expressions.  A signifier expression is composed of three parts, one or more <strong>signifiers</strong>, zero or more <strong>flags</strong>, and zero or one <strong>length specifier</strong>.  All signifier expressions follows this basic pattern <code>%'sig''flags'['length']</code> (more complex examples will be shown after the following definitions).  All signifiers and flags are singular characters, while the length specifier can be defined as <code>[n]</code> where <code>n &gt; 0</code> or <code>[n-N]</code> where <code>n &gt;= 0</code> and <code>N &gt; 0</code> and <code>N &gt;= n</code>.</p>
+        
+        <h4>Signifiers</h4>
+        
+        <p>Signifiers can appear alone, to represent one character (or one word) from it's respective pool of possibilities. Every signifier expression must contain at least one signifier, preceeded by a <code>%</code> character.</p>
+        
+        <h4>Multiple Signifiers</h4>
+        
+        <p>If multiple signifiers are used for the same expression, they must be wrapped by curly-brackets along with their flags (but not their length specifier), for example: <code>%{'sig1''sig2''sigN''flags'}['length']</code>. When multiple signifiers are used, each character in the expression's sequence is picked randomly from the pool of all available characters defined by the union of the sets of characters each signifier represents (therefore a <code>c</code> signifier used in a multiple signifier expression is redundant, as <code>c</code> is defined as including all charaters from the other signifier pools, unless used with the <code>~</code> flag to include the chance of using the pool of all characters). <br />
+        <strong>Note:</strong> The <code>W</code> signifier <strong>cannot</strong> be included in an expression with multiple signifiers unless the <code>~</code> flag is present (raises an error).</p>
+        
+        <table>
+        <thead>
+        <tr>
+          <th align="center">Character</th>
+          <th>Definition</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+          <td align="center"><code>d</code></td>
+          <td>Random digit(s)</td>
+        </tr>
+        <tr>
+          <td align="center"><code>s</code></td>
+          <td>Random symbol(s)</td>
+        </tr>
+        <tr>
+          <td align="center"><code>w</code></td>
+          <td>Random word character (<code>[a-z]</code>)</td>
+        </tr>
+        <tr>
+          <td align="center"><code>W</code></td>
+          <td>Random word (from dictionary, defaults to lowercase)</td>
+        </tr>
+        <tr>
+          <td align="center"><code>c</code></td>
+          <td>Random character (excluding whitespace; word characters are of random capitalization)</td>
+        </tr>
+        </tbody>
+        </table>
+        
+        <h4>Flags</h4>
+        
+        <p>Flags are ways to manipulate the default action of each signifier. Certain flags can only interact with certain signifiers. If a flag is present but no signifiers that it can interact with are present, then it produces no effect.</p>
+        
+        <table>
+        <thead>
+        <tr>
+          <th align="center">Character</th>
+          <th align="center">Relevant Signifiers</th>
+          <th>Definition</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+          <td align="center"><code>~</code></td>
+          <td align="center">(any)</td>
+          <td>When used in an expresion with multiple signifiers, one signifier from the given set is randomly chosen (without bias) to represent the sole signifier of the entire expression</td>
+        </tr>
+        <tr>
+          <td align="center"><code>=</code></td>
+          <td align="center"><code>d</code>, <code>s</code>, <code>w</code>, <code>c</code></td>
+          <td>Expression will produce a sequence of a single random character repeated a number of times (defined by it's length specifier) from it's pool of characters (defined by it's signifiers)</td>
+        </tr>
+        <tr>
+          <td align="center"><code>+</code></td>
+          <td align="center"><code>w</code>, <code>W</code></td>
+          <td>Word characters will be upper-case instead of their default of lowercase</td>
+        </tr>
+        <tr>
+          <td align="center"><code>^</code></td>
+          <td align="center"><code>w</code>, <code>W</code></td>
+          <td>One word character of the sequence will be uppercase (equivalent to <code>+</code> when the <code>=</code> flag is present)</td>
+        </tr>
+        <tr>
+          <td align="center"><code>+</code> and <code>^</code></td>
+          <td align="center"><code>w</code>, <code>W</code></td>
+          <td>Word character capitalization is randomized (this does not double the chance of getting a character when using the <code>c</code> signifier or a multiple signifier expression; when the <code>=</code> flag is present there is a 50/50 chance between the whole sequence being lowercase or uppercase)</td>
+        </tr>
+        </tbody>
+        </table>
+        
+        <h4>Length Specifier</h4>
+        
+        <p>The length specifier represents the length of the character sequence the signifier expression will produce. A length specifier can represent an explicit number, an inclusive range of numbers, or it can be absent. The length specifier, if present, is always surrounded by square brackets. The explicit specifier must satisfy <code>n &gt; 0</code> where <code>n</code> is the explicit length given, and the range specifier must satisfy <code>n &gt;= 0</code> and <code>N &gt; 0</code> and <code>N &gt;= n</code> where <code>n</code> is the lower bound of the range and <code>N</code> is the upper bound of the range. If any of these conditions are not satisfied, an error is raised and the program is terminated.</p>
+        
+        <h4>Length Specifiers With the <code>W</code> Signifier</h4>
+        
+        <p>The generator <em>does not</em> pick the length randomly and then finds a random word of that length, but rather it groups up all words of acceptable length and picks randomly from that set, so whichever word-length is most frequent from that range, that would be the most probable result of the length of the word. Therefore, if part of the range exceeds the maximum word length, it is merely disregarded and the set to choose from is constructed from all available words with minimum length equal to the lower bound of the given range. If no words can be found satisfying the specified length (explicitly or via a range) a warning will be issued and the generator will choose a random word disregarding length.</p>
+        
+        <table>
+        <thead>
+        <tr>
+          <th align="center">Form</th>
+          <th>Definition</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+          <td align="center"><code>[n]</code></td>
+          <td>The sequence will be explicitly of length <code>n</code></td>
+        </tr>
+        <tr>
+          <td align="center"><code>[n-N]</code></td>
+          <td>The length of the sequence will fall between the range of <code>n</code> and <code>N</code>, inclusively</td>
+        </tr>
+        <tr>
+          <td align="center">(absent)</td>
+          <td>The sequence will be either a single character, or, for the <code>W</code> signifier, will be a single word of random length</td>
+        </tr>
+        </tbody>
+        </table>
+        
+        <h3>Signifier Expression Examples</h3>
+        
+        <ul>
+        <li><p>A single random digit</p>
+        
+        <pre><code>$ passwordgen %d
+        6
+        </code></pre></li>
+        <li><p>A single random lowercase word</p>
+        
+        <pre><code>$ passwordgen %W
+        password
+        </code></pre></li>
+        <li><p>A sequence of random lowercase word characters</p>
+        
+        <pre><code>$ passwordgen %w[4]
+        dvzv
+        </code></pre></li>
+        <li><p>A random lowercase word of length 5</p>
+        
+        <pre><code>$ passwordgen %W[5]
+        cakes
+        </code></pre></li>
+        <li><p>A sequence of random symbols with a length between 2 and 6</p>
+        
+        <pre><code>$ passwordgen %s[2-6]
+        @$$#
+        </code></pre></li>
+        <li><p>A sequence of a singular random digit, repeated between 4 and 6 times</p>
+        
+        <pre><code>$ passwordgen %d=[4-6]
+        22222
+        </code></pre></li>
+        <li><p>A random uppercase word</p>
+        
+        <pre><code>$ passwordgen %W+
+        GENERATOR
+        </code></pre></li>
+        <li><p>A sequence of a singular random lowercase or uppercase character, repeated 3 times</p>
+        
+        <pre><code>$ passwordgen %w=^+[3]
+        fff
+        </code></pre></li>
+        <li><p>A random word with a length between 2 and 4, with one uppercase letter (the <code>=</code> flag has no effect)</p>
+        
+        <pre><code>$ passwordgen %W=^[2-4]
+        gRip
+        </code></pre></li>
+        <li><p>A random sequence of characters of length 8, with random capitalization</p>
+        
+        <pre><code>$ passwordgen %c+^[8]
+        0es#V4uB
+        </code></pre></li>
+        <li><p>A random sequence of digits and symbols of length 4</p>
+        
+        <pre><code>$ passwordgen %{ds}[4]
+        1##8
+        </code></pre></li>
+        <li><p>A random sequence of length 5 consisting entirely of either of word characters or digits</p>
+        
+        <pre><code>$ passwordgen %{wd~}[5]
+        82535
+        </code></pre></li>
+        <li><p>A sequence of a singular random lowercase or uppercase word character or symbol, repeated 7 times</p>
+        
+        <pre><code>$ passwordgen %{ws=^+}[7]
+        GGGGGGG
+        </code></pre></li>
+        <li><p>Same as above, except the chance between choosing a word character and a symbol is now equal because of the <code>~</code> flag, where previously the chance was weighted by the number of word characters vs the number of symbols</p>
+        
+        <pre><code>$ passwordgen %{ws=^+~}[7]
+        $$$$$$$
+        </code></pre></li>
+        </ul>
+        
+Keywords: passwordgen password generator safe random pattern
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Environment :: Console
+Classifier: Intended Audience :: End Users/Desktop
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: English
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 3
+Classifier: Topic :: Security
+Classifier: Topic :: Utilities

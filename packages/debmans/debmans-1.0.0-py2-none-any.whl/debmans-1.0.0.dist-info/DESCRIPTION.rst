@@ -1,0 +1,148 @@
+Documentation extractor and renderer for Debian packages
+========================================================
+
+``debmans`` is a tool to extract documentation (currently manpages) from
+Debian packages and transform them into HTML for viewing with a normal
+web browser.
+
+This suite of tools is designed to run on `manpages.debian.org
+<https://manpages.debian.org/>`_, `manpages.debian.org
+<http://manpages.ubuntu.com/>`_, `linux.die.net
+<https://linux.die.net/man/>`_ or similar services.
+
+.. split
+Example
+-------
+
+You can do a test run of this software against your local APT cache,
+like this::
+
+    $ ( cd /var/cache/apt/archives/ && dpkg-scanpackages . | sudo tee Packages > /dev/null )
+    dpkg-scanpackages: warning: package tar (filename ./tar_1.27.1-2+b1_amd64.deb) is repeat;
+    dpkg-scanpackages: warning: ignored that one and using data from ./tar_1.27.1-2+deb8u1_amd64.deb!
+    $ debmans -m /var/cache/apt/archives -o html -v --progress extract render site serve
+    extracting files matching patterns: (u'man/(?:\\w+/)?man[1-9]/.+\\.[1-9]\\w*(?:\\.gz)?$',) in mirror /var/cache/apt/archives
+    extracting packages  [####################################]  100%             
+    completed inspection of 564 packages, extracted 559 files
+    received 559 paths from extractor
+    rendering manpages  [#################################---]   92%  0d 00:00:02man2html: unable to open or read file man1/dmenu.1
+    rendering manpages  [####################################]  100%             
+    looking for static files to render in *.mdwn
+    Serving HTTP on 0.0.0.0 port 8000...
+
+Your rendered manpages will be available at <http://localhost:8000/>.
+
+Note that you will need ``dpkg-scanpackages`` from the
+`dpkg-dev <https://tracker.debian.org/dpkg-dev>`__ package to run the
+above test. The warnings can be safely ignored. ``debmans`` doesn't
+normally require ``dpkg-dev`` in operation if you use a properly
+configured mirror.
+
+Common tasks
+------------
+
+A more normal run would be to run on a regular mirror. This will extract
+all manpages from the given mirror and convert to HTML::
+
+    debmans --mirror /srv/mirror --output static extract render
+
+This can be ran repeatedly and only extracted manpages will be rendered.
+
+Extraction only
+~~~~~~~~~~~~~~~
+
+You can also run the process step by step, for example, this will only
+extract the manpages::
+
+    debmans -m /srv/mirror -o html extract
+
+Note that extract creates a cache in the output directory to avoid
+re-extracting already found archives. Render also uses a caching
+mechanism by not converting to HTML if the HTML version is newer than
+the manpage. Those mechanisms can be disabled with ``--no-cache``.
+
+::
+
+    debmans -m /srv/mirror -o html --no-cache extract
+
+You can make a trial run with the ``-n`` flag and enable more verbose
+logging::
+
+    debmans -v -n -m /srv/mirror -o manpages extract
+
+Rendering only
+~~~~~~~~~~~~~~
+
+Rendering the pages can be done separately with::
+
+    debmans -o html render --srcdir manpages
+
+This is especially important if the extraction process was interrupted,
+as only part of the manpages will be rendered on subsequent runs.
+
+Manpages are currently rendered with
+`man2html <http://users.actrix.gen.nz/michael/vhman2html.html>`__ but
+this can be changed with the ``-r`` flag, although no other renderer has
+been tested and the output may not be compatible with ``man2html``.
+
+Static pages rendering
+~~~~~~~~~~~~~~~~~~~~~~
+
+The templating engine is fairly simple, based on Jinja2, which uses
+standard ``{{foo}}`` placeholders. The template is in
+``static/template.html`` and should be following debian.org's graphic
+design conventions.
+
+This should generate the markdown files::
+
+    debmans -o html site
+
+Use ``--prefix`` if the directory is not at the root of the host.
+
+Installation
+------------
+
+``debmans`` can be installed through pip with::
+
+    pip install debmans
+
+Source code can also be found on `Gitlab
+<https://gitlab.com/anarcat/debmans>`_ with Git or as a tarball, or
+on Debian's `collab-maint repository
+<git://anonscm.debian.org/collab-maint/debmans.git>`_.
+
+The source code is should be installed with::
+
+    ./setup.py install
+
+It can also be ran from the source tree directly with::
+
+    python -m debmans render
+
+The dependencies are listed in the ``setup.py`` file.
+
+Acknowledgements
+----------------
+
+``debmans`` was written by Antoine Beaupré and is licensed under the
+Affero GPLv3, see :doc:`license` for the complete license.
+
+Parts of this software were inspired by a review of existing tools, most
+notably the `Ubuntu manpages
+converter <https://code.launchpad.net/ubuntu-manpage-repository>`__ and
+`dgilman's converter <https://github.com/dgilman/manpages>`__. The
+`sources.debian.net <http://sources.debian.net/>`__ service source code
+and design was also directly used in some parts, which is partly why
+``debmans`` is licensed under the AGPL.
+
+Also thanks to Paul Wise for nudging me along and all the help
+navigating the various tools and protocols to make all this work.
+
+This project mostly follows the `Core
+Infrastructure <https://coreinfrastructure.org/>`__ `best
+practices <https://bestpractices.coreinfrastructure.org/>`__, see the
+`full
+report <https://bestpractices.coreinfrastructure.org/projects/489>`__
+for details.
+
+

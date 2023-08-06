@@ -1,0 +1,32 @@
+"""
+    mtxPython - A framework to create matrix games.
+    Copyright (C) 2016  Tobias Stampfl <info@matrixgames.rocks>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation in version 3 of the License.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+"""
+
+from .. import BaseObject
+
+
+class SolidObject(BaseObject):
+    """
+    A solid object can not be moved, removed or collected.
+    No other object can be moved to a cell where a solid object is placed.
+    """
+
+    def IsSolid(self):
+        """
+        Returns:
+            True if the object is solid, False otherwise.
+        """
+        return True

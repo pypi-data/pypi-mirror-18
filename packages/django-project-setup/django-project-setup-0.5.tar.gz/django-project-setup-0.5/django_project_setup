@@ -1,0 +1,137 @@
+#!/usr/bin/env python
+from subprocess import Popen
+from shutil import copyfile
+import os
+import sys
+import string
+import pkgutil
+
+virtualenv_folder = ".virtualenvs"
+project_folder = "PycharmProjects"
+
+environment_folder_path = os.path.join(os.environ['HOME'], virtualenv_folder)
+project_folder_path = os.path.join(os.environ['HOME'], project_folder)
+accepting_characters = string.ascii_letters + string.digits + "_"
+readme_file_content = pkgutil.get_data('django-project-setup', 'helper-readme.md')
+
+sample_env_content = "SECRET_KEY = '<Secret key of the django project>'\n" \
+                     "DATABASE_NAME = '<Database name for the project>'\n" \
+                     "DATABASE_USER = '<Database username for the project>'\n" \
+                     "DATABASE_PASSWORD = '<Database password for the project>'\n" \
+                     "EMAIL_HOST = '<Email host name>'\n" \
+                     "EMAIL_HOST_USER = '<Email username>'\n" \
+                     "EMAIL_HOST_PASSWORD = '<Email password>'\n" \
+                     "SMS_USER = '<SMS Gateway username>'\n" \
+                     "SMS_PASSWORD = '<SMS Gateway password>'\n"
+
+gitignore_content = ".env\n" \
+                    "migrations\n" \
+                    "*.pyc\n" \
+                    ".idea\n" \
+                    ".DS_Store\n" \
+                    "/media\n" \
+                    "staticfiles\n" \
+                    "mysite.log\n"
+
+# Getting project name from arguments
+if len(sys.argv) > 1:
+    project_name = sys.argv[1]
+
+# if project name is provided as argument
+else:
+    project_name = raw_input("What should be your project name?\n")
+
+# Replacing whitespace with underscore 
+project_name = project_name.replace(' ', '_')
+
+if any(i not in accepting_characters for i in project_name):
+    print "%s is not valid project name" % project_name
+    print "Only letters, digits and '_' special character is allowed in project name"
+
+else:
+
+    # Initializing the my project, environment folder path
+    my_project_folder_path = os.path.join(project_folder_path, project_name)
+    my_environment_folder_path = os.path.join(environment_folder_path, project_name)
+
+    # Checking whether environment folder exists and creating one if doesn't
+    if os.path.isdir(environment_folder_path):
+        print "Enviroment folder exist, Continuing process.."
+    else:
+        print "Environment folder does not exist, Creating folder"
+        os.makedirs(environment_folder_path)
+
+    # Checking whether project folder exists and creating one if doesn't
+    if os.path.isdir(project_folder_path):
+        print "Project folder exist, Continuing process.."
+    else:
+        print "Project folder does not exist, Creating folder"
+        os.makedirs(project_folder_path)
+
+    if not os.path.isdir(os.path.join(environment_folder_path, project_name)) and not os.path.isdir(
+            os.path.join(project_folder_path, project_name)):
+        # Setting up virtualenv and install django to it
+        print "Creating virtualenv..."
+        Popen('virtualenv {0}'.format(os.path.join(environment_folder_path, project_name)), shell=True).communicate()
+
+        print "Installing django in virtualenv..."
+        Popen('{0}/bin/pip install django'.format(os.path.join(environment_folder_path, project_name)),
+              shell=True).communicate()
+
+        print "Installing Mysql python in virtualenv..."
+        Popen('{0}/bin/pip install Mysql-Python'.format(os.path.join(environment_folder_path, project_name)),
+              shell=True).communicate()
+
+        print "Installing rollbar in virtualenv..."
+        Popen('{0}/bin/pip install rollbar'.format(os.path.join(environment_folder_path, project_name)),
+              shell=True).communicate()
+
+        print "Installing django-api-base in virtualenv..."
+        Popen('{0}/bin/pip install django-api-base'.format(os.path.join(environment_folder_path, project_name)),
+              shell=True).communicate()
+
+        # Creating a folder for the django project
+        print "Creating project root folder.."
+        os.makedirs(os.path.join(project_folder_path, project_name))
+
+        # Creating django project
+        print "Creating django project..."
+        Popen('{0}/bin/django-admin startproject {1} {2}'.format(
+            os.path.join(environment_folder_path, project_name), project_name,
+            os.path.join(project_folder_path, project_name)), shell=True).communicate()
+
+        # Creates requirements file
+        print "Creating requirements file..."
+        Popen('{0}/bin/pip freeze > {1}/requirements.txt'.format(os.path.join(environment_folder_path, project_name),
+                                                                 os.path.join(project_folder_path, project_name)),
+              shell=True)
+
+        # Creates necessary folder for project
+        print "Creating neccessary folder for project.."
+        os.makedirs(os.path.join(project_folder_path, project_name, 'static'))
+        os.makedirs(os.path.join(project_folder_path, project_name, 'media'))
+        os.makedirs(os.path.join(project_folder_path, project_name, 'templates'))
+
+        # Creates environment variables sample file
+        print "Creating sample_env file.."
+        with open(os.path.join(project_folder_path, project_name, 'sample_env.txt'), 'w+') as sample_env_file:
+            sample_env_file.write(sample_env_content)
+
+        # Copies the env sample file to .env file
+        print "Creating .env file"
+        copyfile(os.path.join(project_folder_path, project_name, 'sample_env.txt'),
+                 os.path.join(project_folder_path, project_name, '.env'))
+
+        # Copies the readme file to project folder
+        print "Creating readme file"
+        with open(os.path.join(project_folder_path, project_name, 'readme.md'), 'w+') as read_me_file:
+            read_me_file.write(readme_file_content)
+
+        # Creates gitignore file
+        print "Creating gitignore file.."
+        with open(os.path.join(project_folder_path, project_name, '.gitignore'), 'w+') as gitignore_file:
+            gitignore_file.write(gitignore_content)
+
+    else:
+        print "Folder with project name (%s) already exists in Environment folder/Project Folder.\n" \
+              "Please choose a different project name" % project_name

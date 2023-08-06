@@ -1,0 +1,139 @@
+#!/usr/bin/env python
+from __future__ import print_function
+import daemon
+import logging
+import os
+import sys
+import time
+
+from cloudmanager.board import MicropythonBoards, MicropythonBoard
+from cloudmanager.utility import connect_to_redis
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
+
+logger = logging.getLogger('mbm_sync')
+
+
+class BoardHandler(FileSystemEventHandler):
+    def __init__(self, *args, **kwargs):
+        self.watch_directory = kwargs.get('watch_directory', '/tmp/mbm')
+        super(BoardHandler, self).__init__(*args, **kwargs)
+
+    def relative_filename(self, filename):
+        return filename[len(self.watch_directory):].lstrip('/')
+
+    def file_name(self, filename):
+        return '/'.join(self.relative_filename(filename).split('/')[1:])
+
+    def get_board_for_file(self, filename):
+        board_name = self.relative_filename(filename).split('/')[0]
+        board = MicropythonBoard(board_name)
+        return board
+
+    def on_any_event(self, event):
+        if event.is_directory:
+            return None
+
+        elif event.event_type == 'created':
+            logger.debug("Received created event - %s" % event.src_path)
+
+        elif event.event_type == 'modified':
+            logger.debug("Received modified event - %s" % event.src_path)
+            board = self.get_board_for_file(event.src_path)
+            board.upload(event.src_path, self.file_name(event.src_path))
+
+        elif event.event_type == 'moved':
+            logger.debug("Received moved event - %s" % event.src_path)
+
+        elif event.event_type == 'deleted':
+            logger.debug("Received deleted event - %s" % event.src_path)
+            command = "import os\ros.remove(%r)\n" % self.file_name(event.src_path)
+            logger.debug('Running command: %s', command)
+            # self.get_board_for_file(event.src_path).execute(command)
+            logger.debug('Deleted file: %s' % self.file_name(event.src_path))
+
+
+def wait_for_exit(observer, path):
+    redis_db = connect_to_redis()
+    micropython_boards = MicropythonBoards(redis_db=redis_db)
+    board_names = set([board.name for board in micropython_boards.all()])
+    try:
+        while True:
+            time.sleep(1)
+            redis_db.setex('mbm_sync:heartbeat', 'ok', 10)
+            new_boards = set([board.name for board in micropython_boards.all()])
+            for board in new_boards.difference(board_names):
+                logger.info('Found new board %r', board)
+                create_sync_directory(board, path)
+            for board in board_names.difference(new_boards):
+                logger.warn('Board %r has gone away', board)
+            board_names = new_boards
+            check_for_command(redis_db)
+    except KeyboardInterrupt:
+        observer.stop()
+    redis_db.delete('mbm_sync:heartbeat')
+    observer.join()
+
+
+def create_sync_directory(board, path):
+    """
+    Create the sync directory for a board
+
+    Parameters
+    ----------
+    board : cloudmanager Board Object
+    """
+    board_directory = os.path.join(path, board)
+    if not os.path.exists(board_directory):
+        logger.info('Creating Board Sync Directory: %s', board_directory)
+        os.makedirs(board_directory)
+
+
+def create_sync_directories(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+    for board in MicropythonBoards().all():
+        create_sync_directory(board.name, path)
+
+
+def check_for_command(redis_db):
+    command = redis_db.rpop('mbm_sync:command')
+    if command:
+        logger.info('Got command %r', command)
+    if command == b'quit':
+        redis_db.delete('mbm_sync:heartbeat')
+        redis_db.delete('mbm_sync:command')
+        sys.exit(0)
+
+
+def main(path):
+
+    logger.debug('Setting up sync directories')
+
+    create_sync_directories(path)
+
+    event_handler = BoardHandler()
+    observer = Observer()
+    observer.schedule(event_handler, path, recursive=True)
+    observer.start()
+    try:
+        wait_for_exit(observer, path)
+    except:
+        logger.exception('Got an exception')
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, filename='mbm_sync.log')
+    preserve = [handler.stream.fileno() for handler in logging.root.handlers]
+    redis_db = connect_to_redis()
+    if sys.argv[-1] == 'stop':
+        redis_db.lpush('mbm_sync:command', 'quit')
+        redis_db.expire('mbm_sync:command', 15)
+        sys.exit(0)
+    if redis_db.exists('mbm_sync:heartbeat'):
+        print('mbm_sync is already running, exiting', file=sys.stderr)
+        sys.exit(1)
+    with daemon.DaemonContext(files_preserve=preserve):
+        logger.info('Monitoring /tmp/mbm for items to sync')
+        main('/tmp/mbm')

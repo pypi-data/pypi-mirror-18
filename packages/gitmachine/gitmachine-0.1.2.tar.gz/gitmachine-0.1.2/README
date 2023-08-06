@@ -1,0 +1,41 @@
+GitMachine is a python library that aims to mimic git checkout processes to
+handle url aliasing and cases where submodules may need to be overriden ad-hoc.
+
+This is based on the submodule override schema in baserock, but can be used
+independently of baserock build tooling.
+
+Here's how to use it
+
+    # Set some aliases, this is usually a dictionary of prefix mappings. Here
+    # we set a single prefix meaning, wherever we see 'upstream:', substitute
+    # it for 'git://git.baserock.org/delta'
+
+    aliases = { 'upstream:': 'git://git.baserock.org/delta/'}
+
+    # Make a GitMachine, specifying a 'gits' directory, a 'tmp' directory and
+    # the aliases. 'gits' is where the gits end up stored. GitMachine will name
+    # them in a standard way.
+
+    gitmachine = GitMachine('gits', 'tmp', aliases)
+
+    # We're going to check out ansible at the ref ebc8d48d34296fe010096f044e2b7591df37a622,
+    # using the upstream baserock repository. We need to make a submodule mask, which maps
+    # the path of the submodule in the main repository to an alternate url. It looks like
+    # this:
+
+    ansible = {'lib/ansible/modules/core': { 'url': 'upstream:ansible-modules-core.git' },
+               'v2/ansible/modules/core': { 'url': 'upstream:ansible-modules-core.git' },
+               'v2/ansible/modules/extras': { 'url': 'upstream:ansible-modules-extras.git' },
+               'lib/ansible/modules/extras': { 'url': 'upstream:ansible-modules-extras.git' }}
+
+    # Use the arrange_into_folder method to clone upstream:ansible from git.baserock.org,
+    # also passing in the ref, the submodule mask, and a folder, to clone into the folder
+    # using the overriden sources. Here it will evaluate upstream:ansible and clone it
+    # into the folder 'ansible.build', using the submodule override mask.
+
+    gitmachine.arrange_into_folder('upstream:ansible', 'ebc8d48d34296fe010096f044e2b7591df37a622', ansible, 'ansible.build')
+
+
+
+GitMachine also works recursively. An example of a recursive checkout of the qt5 master
+repository can be found in 'quick-check.py'

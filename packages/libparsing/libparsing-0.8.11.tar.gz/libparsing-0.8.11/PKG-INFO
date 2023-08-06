@@ -1,0 +1,89 @@
+Metadata-Version: 1.1
+Name: libparsing
+Version: 0.8.11
+Summary: Python wrapper for libparsing, a PEG-based parsing library written in C
+Home-page: https://github.com/sebastien/libparsing
+Author: Sébastien Pierre
+Author-email: sebastien.pierre@gmail.com
+License: BSD
+Description: ``libparsing`` is a parsing element grammar (PEG) library written in C
+        with *Python bindings*. It offers good performance while allowing for a
+        lot of flexibility. It is mainly intended to be used to create
+        programming languages and software engineering tools.
+        
+        As opposed to more traditional parsing techniques, the grammar is not
+        compiled but constructed using an API that allows for the dynamic update
+        of the grammar.
+        
+        The parser does not do any tokeninzation, instead, an input stream is
+        consumed and parsing elements are dynamically asked to match the next
+        element of it. Once parsing elements match, the resulting matched input
+        is processed and an action is triggered.
+        
+        ``libparsing`` supports the following features:
+        
+        -  *backtracking*, ie. going back in the input stream if a match is not
+           found
+        -  *cherry-picking*, ie. skipping unrecognized input
+        -  *contextual rules*, ie. a rule that will match or not depending on
+           external variables
+        
+        Parsing elements are usually slower than compiled or FSM-based parsers
+        as they trade performance for flexibility. It's probably not a great
+        idea to use ``libparsing`` if the parsing has to happen as fast as
+        possible (ie. a protocol implementation), but it is a great use for
+        programming languages, as it opens up the door to dynamic syntax
+        plug-ins and multiple language embedding.
+        
+        If you're interested in PEG, you can start reading Brian Ford's original
+        article. Projects such as PEG/LEG by Ian Piumarta
+        http://piumarta.com/software/peg/ ,OMeta by Alessandro Warth
+        http://www.tinlizzie.org/ometa/ or Haskell's Parsec library
+        https://www.haskell.org/haskellwiki/Parsec are of particular interest in
+        the field.
+        
+        Here is a short example of what creating a simple grammar looks like in
+        Python:
+        
+        ::
+        
+            g = Grammar()
+            s = g.symbols
+            g.token("WS",       "\s+")
+            g.token("NUMBER",   "\d+(\.\d+)?")
+            g.token("VARIABLE", "\w+")
+            g.token("OPERATOR", "[\/\+\-\*]")
+            g.group("Value",     s.NUMBER, s.VARIABLE)
+            g.rule("Suffix",     s.OPERATOR._as("operator"), s.Value._as("value"))
+            g.rule("Expression", s.Value, s.Suffix.zeroOrMore())
+            g.axiom(s.Expression)
+            g.skip(s.WS)
+            match = g.parseString("10 + 20 / 5")
+        
+        and the equivalent code in C
+        
+        ::
+        
+            Grammar* g = Grammar_new()
+            SYMBOL(WS,         TOKEN("\\s+"))
+            SYMBOL(NUMBER,     TOKEN("\\d+(\\.\\d+)?"))
+            SYMBOL(VARIABLE,   TOKEN("\\w+"))
+            SYMBOL(OPERATOR,   GROUP("[\\/\\+\\-\\*]"))
+            SYMBOL(Value,      GOUP(_S(NUMBER), _S(VARIABLE)))
+            SYMBOL(Suffix,     RULE(_AS(_S(OPERATOR), "operator"), _AS(_S(Value), "value")))
+            SYMBOL(Expression, RULE(_S(Value), _MO(Suffix))
+            g->axiom = s_Expression;
+            g->skip(s_WS);
+            Grammar_prepare(g);
+            Match* match = Grammar_parseString(g, "10 + 20 / 5")
+        
+Keywords: parsing PEG grammar libparsing
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Build Tools
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.4

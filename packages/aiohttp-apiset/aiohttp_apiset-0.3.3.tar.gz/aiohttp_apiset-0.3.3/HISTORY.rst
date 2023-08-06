@@ -1,0 +1,68 @@
+=======
+History
+=======
+
+0.3.3 (2016-12-16)
+------------------
+
+* Added support pathlib
+* Drop deprecated methods in views
+
+0.3.2 (2016-12-14)
+------------------
+
+* Added support for collectionFormat (#4)
+
+0.3.1 (2016-11-25)
+------------------
+
+* fix zero for number parameter
+* transfer validation errors into client handler if specified argument errors
+
+0.3.0 (2016-11-24)
+------------------
+
+* Added class OperationIdMapping and param operationId_mapping in SwaggerRouter.include
+  for load authentic specification with specify operationId (#2)
+* Fixed validation form with file
+* Fixed overriding basePath
+* Added jinja2 decorator for working with aiohttp_jinja2
+* Loading operation body from docstring
+* Blank string param for number and integer treated as a missed
+
+0.2.5 (2016-11-08)
+------------------
+
+* Fixed verbosity errors
+* Set default value from swagger operationObject
+* Started docs on http://aiohttp-apiset.readthedocs.io
+* Swagger-ui index on `basePath`/apidoc/
+
+0.2.4 (2016-11-06)
+------------------
+
+* Added verbosity errors validate with jsonschema
+
+0.2.3 (2016-11-05)
+------------------
+
+* Added compatibility with aiohttp >= 1.1
+* Added safe decode form and json
+* Fixed extract body
+
+0.2.2 (2016-10-28)
+------------------
+
+* Fixed convertation from match_info
+
+0.2.1 (2016-10-27)
+------------------
+
+* Output conversion parameter errors in response
+* Fix validation
+
+0.2.0 (2016-10-26)
+------------------
+
+0.1.13 (2016-05-02)
+-------------------

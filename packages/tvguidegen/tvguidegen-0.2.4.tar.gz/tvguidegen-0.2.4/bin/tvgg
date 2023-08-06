@@ -1,0 +1,209 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+""" Script XMLTV generator """
+
+import sys, getopt, os.path,json,datetime
+import pymongo
+
+def main(argv):
+    outputfile = None
+    channels_src = None
+    m3uChannels_src = None
+    mongodb_uri = None
+    mongodb_db = None
+    limit = None
+    verbose = False
+    pretty=False
+    m3u_only=False
+    try:
+        opts, args = getopt.getopt(argv,"hvl:o:c:",["help","m3u-channels=","output=","channels=","mongodb-uri=","mongodb-db=","limit=","pretty","m3u-only"])
+    except getopt.GetoptError as err:
+        print err
+        print 'Type -h,--help for command help'
+        sys.exit(2)
+
+    if len(sys.argv) < 2:
+        usage()
+
+    for opt, arg in opts:
+        if opt in ('-h','--help'):
+            usage()
+        elif opt ==  "-v":
+            verbose = True
+        elif opt in ("-o", "--output"):
+            outputfile = arg
+        elif opt in ("-c", "--channels"):
+            channels_src = arg
+        elif opt in ("-l", "--limit"):
+            limit = int(arg)
+        elif opt in ("--pretty"):
+            pretty = True
+        elif opt in ("--m3u-only"):
+            m3u_only = True
+        elif opt ==  "--m3u-channels":
+            m3uChannels_src = arg
+        elif opt ==  "--mongodb-uri":
+            mongodb_uri = arg
+        elif opt ==  "--mongodb-db":
+            mongodb_db = arg
+
+    if channels_src is None:
+        print "Channels source argument required."
+        sys.exit(2)
+
+    generate(outputfile,channels_src,m3uChannels_src,mongodb_uri,mongodb_db,limit,verbose,pretty,m3u_only)
+
+
+def generate(outputfile,channels_src,m3uChannels_src=None,mongodb_uri=None,mongodb_db=None,limit=None,verbose=False,pretty=False,m3u_only=False):
+
+
+    from tvguidegen.model import collections
+    from tvguidegen.processors import xmltv
+    from tvguidegen.m3u import tools
+
+    m3uChannels = []
+
+    if channels_src is None:
+        print ("Channels source arguments can not be empty")
+        sys.exit(1)
+
+    if mongodb_uri:
+        try:
+            client = pymongo.MongoClient(mongodb_uri)
+            db = client[mongodb_db]
+
+            cnt = db[channels_src].count()
+            if cnt < 1:
+                raise Exception("No channels found")
+
+        except Exception as ex:
+            if verbose: raise ex
+            print ex;
+            sys.exit(1)
+
+        MONGO_URI = mongodb_uri
+        MONGO_DATABASE = mongodb_db
+
+        try:
+            yesterdayStr = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime('%Y%m%d')
+            if verbose: print "Run query channels from %s mongodb collection with start date is %s" % (channels_src,yesterdayStr)
+            criteria = [
+               {
+                  "$project": {
+                     "name": 1,
+                     "slug": 1,
+                     "timezone": 1,
+                     "country": 1,
+                     "locale": 1,
+                     "logo": 1,
+                     "groups": 1,
+                     "guide": {
+                        "$filter": {
+                           "input": "$guide",
+                           "as": "prog",
+                           "cond": { "$gte": [ "$$prog.datetime", (datetime.datetime.now() - datetime.timedelta(days=1)) ] }
+                        }
+                     }
+                  }
+               }
+            ]
+
+
+
+            channels = list(collections.Channels(channels_src,mongodb_uri,mongodb_db).aggregate(criteria))#.getCollection({'guide.date':{'$gt':yesterdayStr}})
+            #if limit: criteria[0]['$limit'] = limit
+            if limit: channels = channels[:limit]
+            if verbose: print "%d channels found from your guide source" % (len(channels))
+
+
+            #if m3uChannels_src:
+            #    if verbose and m3uChannels_src: print "Find channels from %s mongodb collection" % (m3uChannels_src)
+            #    m3uChannels = collections.M3uChannels(m3uChannels_src,mongodb_uri,mongodb_db).getCollection()
+            #    m3uchannels = list(m3uChannels)
+            #    if verbose: print "%d channels found from your m3u playlist source" % (len(m3uChannels))
+
+        except Exception as e:
+            if verbose: raise e
+            print e
+            sys.exit(1)
+
+    elif os.path.isfile(channels_src):
+
+        with open(channels_src) as channels_file:
+            channels =  json.load(channels_file)
+            if limit: channels = channels[:limit]
+
+        #if  m3uChannels_src:
+        #    with open(m3uChannels_src) as m3uChannels_file:
+        #        m3uChannels = json.load(m3uChannels_src)
+    else:
+        try:
+            channels = json.loads(channels_src)
+            #if  m3uChannels_src :
+            #    m3uChannels = json.loads(m3uChannels_src)
+        except JSONDecodeError as err:
+            if verbose: raise err
+            print err
+            sys.exit(1)
+
+    if  m3uChannels_src:
+        if m3uChannels_src.startswith('http'):
+            m3uChannels = tools.Extractor(url=m3uChannels_src).extract()
+        else:
+            m3uChannels = tools.Extractor(filename=m3uChannels_src).extract()
+
+    #try:
+    if verbose: print "Begin export..."
+
+    xmltv.Export(channels,m3uChannels,verbose=verbose).run(filename=outputfile,outputXml=not outputfile,prettyXml=pretty,m3u_only=m3u_only)
+
+    if verbose: print "File %s generated." % (outputfile)
+
+    #except Exception as e:
+    #    if verbose: raise e
+    #    print("Error: {0}".format(e))
+    #    sys.exit(1)
+
+def usage(exitcode=0):
+
+    print ' *********************************************************************************************************************************************************'
+    print ' *'
+    print ' * TV GUIDE GENERATOR'
+    print ' * Python script used to generate tv guide in many format '
+    print ' * '
+    print ' * Typical usage:'
+    print ' *   * With JSON file source:'
+    print ' *     ~# tvgg -c /data/tvguide.json -o <outputfile>  --m3u-channels=/data/mym3uchannels.json'
+    print ' *'
+    print ' *   * With mongodb collection source:'
+    print ' *     ~# tvgg -c channels_collection -o <outputfile>  --m3u-channels=http://example.com/list.m3u --mongodb-uri=localhost --mongodb-db=tvguide --limit=50'
+    print ' *'
+    print ' * -c, --channels    Filename path with Channels and TV programing content in JSON format'
+    print ' *                   or a Mongodb collection name. (MANDATORY)'
+    print ' *'
+    print ' * -o, --output      Output filename. If not set, Tv guide will be output to STDOUT.'
+    print ' *'
+    print ' * --m3u-channels    Filename path or url with your channels names (Eg. From m3u playlist) in M3U format.(Optionnal)'
+    print ' *                   This useful to match your channels with tv guide channels source.'
+    print ' *'
+    print ' * --m3u-only        Export only matched channels.'
+    print ' *'
+    print ' * --mongodb-uri     Mongodb HOST URI.(Optionnal)'
+    print ' *                   If is set,--channels and --m3u-channels are selected from Mongodb\'s collections'
+    print ' *                   Default: 127.0.0.1'
+    print ' *'
+    print ' * --mongodb-db      Mongodb DATABASE Name. (Optionnal) '
+    print ' *                   Default: tvguide'
+    print ' *'
+    print ' * -l, --limit       Limit channels to generate. (Optionnal) '
+    print ' *'
+    print ' * -v                Verbose script execution. (Optionnal)'
+    print ' * '
+    print ' * '
+    print ' * 7jtv (kas.iptv@gmail.com)'
+    print ' *********************************************************************************************************************************************************'
+    sys.exit(exitcode)
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

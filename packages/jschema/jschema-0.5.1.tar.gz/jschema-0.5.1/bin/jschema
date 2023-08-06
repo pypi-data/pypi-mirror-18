@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+CHECK_COMMAND=$(echo "make-ajv make-golang make-js make-json" | grep $1)
+if [ "${CHECK_COMMAND}" = "" ]; then
+  cat <<HelpMessage
+
+jschema COMMAND OPTIONS
+
+Commands:
+  make-ajv
+  make-golang
+  make-js
+  make-json
+
+Options:
+  dst_dir:<dst_dir>
+  ns:<ns>
+
+HelpMessage
+
+else
+  cmd=$(cat <<PythonCode
+from jschema import Schema
+from jschema.parse_options import parse_options
+
+schema = Schema()
+
+schema.load("${PWD}")
+schema.resolve_refs()
+if "$1" not in ["make-docs"]:
+  schema.clear()
+
+schema.make("$1".split("-")[1], parse_options("${@:2}"))
+PythonCode
+  )
+  python -c "${cmd}"
+fi

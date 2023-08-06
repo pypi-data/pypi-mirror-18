@@ -1,0 +1,130 @@
+#!/usr/bin/env python
+
+# Copyright (c) 2015, 2016 Tim Savannah GPLv2
+# You should have recieved a copy of LICENSE with this distrubition. Details on the license can be found therein
+#
+# This is a program that scans the running processes of a system for mappings (running executable, shared library, something else) and prints the results
+
+# vim: set ts=4 sw=4 expandtab
+
+import os
+import sys
+
+import ProcessMappingScanner
+
+__version__ = '2.2.0'
+
+def printUsage():
+    sys.stderr.write('''Usage: findProcessesUsing (options) [search portion]
+
+Searches all running processes for those containing a given mapping, or an open file (with -f). 
+Mappings include running executables (like python), or a shared library, or a device.
+
+Options:
+
+   -f or --files          Scan for open files instead of mappings. This should not be a symbolic link.
+
+   -v or --verbose        Also print mapping lines containing the given pattern, or matched filenames when given -f.
+   -e or --exact          Require exact match. Default is to allow partial matches
+   -p or --pids-only      Only print pids, one per line
+   -i or --ignore-case    Search case-insensitively. By default, case must be an exact match.
+
+   --version              Print the version
+   -h or --help           Display this message and quit
+
+
+Examples: 
+findProcessesUsing libpython2.7             # Scan for any processes linking against anything containing "libpython2.7"
+findProcessesUsing -f /var/lib/data.db      # Scan for any processes with an open handle to "/var/lib/data.db"
+
+
+It is recommended to run this process as root, otherwise you are only able to scan your own processes.
+''')
+
+if __name__ == '__main__':
+
+    isFileScan = False
+    isExactMatch = False
+    isVerbose = False
+    isPidsOnly = False
+    ignoreCase = False
+
+
+    args = sys.argv[1:]
+
+    if '--version' in args:
+        sys.stdout.write('findProcessesUsing version %s by Tim Savannah\n' %(__version__,))
+        sys.exit(0)
+
+    if '--help' in args or '-h' in args or '-?' in args:
+        printUsage()
+        sys.exit(0)
+
+    searchPortion = None
+
+    for arg in args:
+        if arg in ('-f', '--files'):
+            isFileScan = True
+            continue
+        elif arg in ('-e', '--exact'):
+            isExactMatch = True
+            continue
+        elif arg in ('-v', '--verbose'):
+            isVerbose = True
+            continue
+        elif arg in ('-p', '--pids-only'):
+            isPidsOnly = True
+            continue
+        elif arg in ('-i', '--ignore-case'):
+            ignoreCase = True
+            continue
+        else:
+            if searchPortion is not None:
+                sys.stderr.write('Too many / unknown argument: %s\n\n' %(arg,))
+                printUsage()
+                sys.exit(1)
+
+            searchPortion = arg
+            
+
+    if not searchPortion:
+        sys.stderr.write('Missing search portion argument.\n\n')
+        printUsage()
+        sys.exit(1)
+        
+
+    if isPidsOnly and isVerbose:
+        sys.stderr.write('Cannot specify both pids-only and verbose\n')
+        sys.exit(1)
+
+    if os.getuid() != 0:
+        sys.stderr.write('Warning: You are not root. Results will only contain processes for which you are the owner.\n\n')
+
+
+    if isFileScan is False:
+        scanResults = ProcessMappingScanner.scanAllProcessesForMapping(searchPortion, isExactMatch, ignoreCase)
+    else:
+        scanResults = ProcessMappingScanner.scanAllProcessesForOpenFile(searchPortion, isExactMatch, ignoreCase)
+
+    pids = scanResults.keys()
+    if isPidsOnly:
+        if pids:
+            pids = [str(pid) for pid in pids]
+            sys.stdout.write('\n'.join(pids))
+            sys.stdout.write('\n')
+    else:
+        for pid in pids:
+            result = scanResults[pid]
+            if isFileScan is False:
+                sys.stdout.write('Found %s in %d (%s) [ %s ]\n' %(searchPortion, result['pid'], result['owner'], result['cmdline']))
+                if isVerbose is True:
+                    sys.stdout.write('\n'.join(["\t" + line for line in result['matchedMappings']]) + '\n\n')
+            else:
+                sys.stdout.write('Found %s {fd=%s} in %d (%s) [ %s ]\n' %(searchPortion, ','.join(result['fds']), result['pid'], result['owner'], result['cmdline']))
+                if isVerbose is True:
+                    for i in range(len(result['filenames'])):
+                        (fd, filename) = (result['fds'][i], result['filenames'][i])
+                        sys.stdout.write('\n\t%4d = "%s"' %(int(fd), filename))
+                    sys.stdout.write('\n\n')
+
+

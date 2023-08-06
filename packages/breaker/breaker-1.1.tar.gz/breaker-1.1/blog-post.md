@@ -1,0 +1,341 @@
+---
+title: breaker
+...
+
+*A python package and command-line tools for the PanSTARRS & ATLAS LIGO-VIRGO (PSAT) group to aid surveys of the likely sky-locations of LIGO-VIRGO discovered Gravitational Waves*.
+
+Here’s a summary of what’s included in the python package:
+
+Command-Line Usage
+==================
+
+``` sourceCode
+*The CL tools for breaker*
+
+:Author:
+    David Young
+
+:Date Created:
+    October 29, 2015
+
+Usage:
+    breaker update [-n] [-s <pathToSettingsFile>]
+    breaker skymap <gwid> <pathToLVMap>
+    breaker plot (timeline|history|sources) [-w <gwid>] [-s <pathToSettingsFile>]
+    breaker plot comparison <gwid> <pathToMapDirectory> [-s <pathToSettingsFile>]
+    breaker faker <ps1ExpId> [-s <pathToSettingsFile>]
+    breaker stats <gwid> [-s <pathToSettingsFile>]
+    breaker listen <far> (<mjdStart> <mjdEnd> | <inLastNMins>) [-s <pathToSettingsFile>]
+    breaker listen -d <far> [-s <pathToSettingsFile>]
+
+    COMMANDS
+    --------
+    update                update the PS1 footprint table in breaker database and associate with GW-IDs. Optionally download overlapping NED source and also add to the database
+    skymap                generate an all sky FITS & PDF image map given the path to the LV likeihood map (Meractor and Mollweide projections respectively)
+    plot                  enter plotting mode
+    timeline              plot from the epoch of the wave detection forward in time
+    history               plot from now back in time over the last days, weeks and months
+    comparison            produce a multi-panel plot to compare wave maps
+    stats                 generate some coverage stats for a given wave survey campaign
+    sources               overplot map with NED sources found within the wave campaign footprint
+    faker                 generate a catalogue of simulated transient sources in PS1 exposure ID footprint
+    listen                connect to grace DB and download maps found within the given time range
+
+    ARGUMENTS
+    ---------
+    far                   false alarm rate limit in Hz (1e-7 Hz ~= 3.2 per year)
+    gwid                  the gravitational wave ID
+    pathToSettingsFile    path to the yaml settings file
+    pathToMapDirectory    path to a directory containing localisation maps
+    ps1ExpId              a panstarrs exposure ID
+    mjdStart              start of an MJD range
+    mjdEnd                end of the MJD range
+    inLastNMins           in the last N number of minutes
+    pathToLVMap           path to the LV likelihood map
+
+    FLAGS
+    -----
+    -h, --help            show this help message
+    -s, --settings        the settings file
+    -n, --updateNed       update the NED database steam
+    -d, --daemon          listen in daemon mode
+    -w, --waveId          a gravitational wave ID
+```
+
+Installation
+============
+
+The easiest way to install breaker us to use `pip`:
+
+``` sourceCode
+pip install breaker
+```
+
+Or you can clone the [github repo](https://github.com/thespacedoctor/breaker) and install from a local version of the code:
+
+``` sourceCode
+git clone git@github.com:thespacedoctor/breaker.git
+cd breaker
+python setup.py install
+```
+
+To upgrade to the latest version of breaker use the command:
+
+``` sourceCode
+pip install breaker --upgrade
+```
+
+Troubleshooting
+---------------
+
+If you’re having trouble with the installation here are a few things to try:
+
+**Astropy and Clang**. On Mac OS you may have to set your C-compiler to clang before astropy will install. So before the breaker installation, try:
+
+``` sourceCode
+setenv CC clang
+```
+
+or, for bash:
+
+``` sourceCode
+export CC=clang
+```
+
+Then try and install breaker again.
+
+**healpy**. If you’re having trouble installing healpy try installing the [latest version from github](https://github.com/healpy/healpy/releases). Download and extract the tarball.
+
+Untar, set your `MACOSX_DEPLOYMENT_TARGET` environment variable and install:
+
+``` sourceCode
+tar -xvf healpy-1.9.0.tar.gz
+cd healpy-1.9.0
+setenv MACOSX_DEPLOYMENT_TARGET 10.11
+python setup.py install
+```
+
+Documentation
+=============
+
+Documentation for breaker is hosted by [Read the Docs](http://breaker.readthedocs.org/en/stable/) (last [stable version](http://breaker.readthedocs.org/en/stable/) and [latest version](http://breaker.readthedocs.org/en/latest/)).
+
+Command-Line Tutorial
+=====================
+
+This is a tutorial for using the CL `breaker` tools. To use `breaker` in your python scripts, see the full documentation.
+
+Example Maps
+------------
+
+To follow along with this tutorial, you may want to grab some of the publically available wave maps. Here are some maps for [GW150914 (aka G184098)](https://losc.ligo.org/events/GW150914/) and [GW151226 (aka G211117)](https://losc.ligo.org/events/GW151226/).
+
+Settings File
+-------------
+
+Most settings for `breaker` are found and set in the `breaker.yaml` settings file. By default these are placed in `~/.config/breaker/breaker.yaml` and running breaker for the first time with generate a default settings file at this location.
+
+As well as some fundamental logging settings, the settings file needs to contain certain database info and ssh tunnel setups, which obviously need to remain private. If you need these settings, ask Dave Young.
+
+**General settings** include where `breaker` is to store maps and where to place the output files (plots, faker lists, FITS stamps etc).
+
+``` sourceCode
+# I/O SETTINGS
+gw maps directory: /Users/Dave/.config/breaker/maps
+output directory: "/Users/Dave/Desktop/breaker-output"
+```
+
+There are also **wave specific settings**, indicting where to find the most accurate map for the wave for plots, timeline ranges and details of sky-areas to show in the plots. Here’s an example for the first burst:
+
+``` sourceCode
+G184098:
+    time:
+        mjdStart: 57279.90
+        mjdEnd: 57369.90
+    plot:
+        raRange: 48.  # CENTRAL WIDTH IN DEGREES
+        decRange: 45.  # CENTRAL HEIGHT IN DEGREES
+        centralCoordinate: [141., 0.0]
+    mapPath: "/Users/Dave/.config/breaker/maps/G184098/LALInference_skymap.fits"
+```
+
+Refreshing the Database
+-----------------------
+
+To update the PS1 footprint table in the breaker database and associate these footprints with the GWs run the following command:
+
+``` sourceCode
+breaker update
+```
+
+and to also download all the overlapping NED sources and add them to the database, use the `-n` flag:
+
+``` sourceCode
+breaker update -n
+```
+
+Plots
+-----
+
+Once you have the settings file organised and some sky-maps maps downloaded from graceDB you can start plotting.
+
+### Timeline and History Plots
+
+It’s possible to plot a timeline of observations over the likelihood map for each wave. By choosing the `breaker plot timeline` command, the code plots from the epoch of the wave detection (in settings file) forward in time. Alternatively by choosing the `breaker plot history` command, the code will plot from now back in time over the last days, weeks and months.
+
+For example the following command will produce a set of plots for the wave G184098 = GW150914:
+
+``` sourceCode
+breaker plot timeline -w G184098
+```
+
+The plots produced in the output directory (from settings file) are:
+
+``` sourceCode
+G184098_Probability_Map_PS1_Footprints_and_Transients_Discovered_in_First_3_Days_of_Wave_Detection_tan.png
+G184098_Probability_Map_PS1_Footprints_and_Transients_Discovered_Between_3-10_Days_of_Wave_Detection_tan.png
+G184098_Probability_Map_PS1_Footprints_and_Transients_Discovered_Between_10-17_Days_of_Wave_Detection_tan.png
+G184098_Probability_Map_PS1_Footprints_and_Transients_Discovered_Between_17-24_Days_of_Wave_Detection_tan.png
+G184098_Probability_Map_PS1_Footprints_and_Transients_Discovered_Between_24-31_Days_of_Wave_Detection_tan.png
+G184098_Probability_Map_PS1_Footprints_and_Transients_Discovered_gt_31_Days_of_Wave_Detection_tan.png
+```
+
+and look similar to this:
+
+<img src="https://i.imgur.com/EC0oyhq.png" alt="Example Timeline Plot" width="800" />
+
+To run the history command for the same wave:
+
+``` sourceCode
+breaker plot history -w G184098
+```
+
+Note running either of these commands without a GWID will generate the timeline/history plots for *all* waves found in your settings file:
+
+``` sourceCode
+breaker plot timeline
+```
+
+Alongside the PNG plots, a FITS image is also generated showing the same cutout sky-area as the plots. The signal in the FITS image scales with the probability in the Healpix map.
+
+<img src="https://i.imgur.com/PXcsfmw.png" alt="FITS image of Healpix map" width="1000" />
+
+Over-plotting NED Sources
+————————=
+
+If the database tables are brought up-to-date using the `breaker -n update` command, it is possible to overplot NED sources found within the wave campaign footprint. More fine-grained control of these plots can be gained by scripting solutions by importing `breaker` into your own python code. But running the command:
+
+``` sourceCode
+breaker plot sources -w G184098
+```
+
+produces this plot:
+
+<img src="https://i.imgur.com/vn8tTJy.png" alt="NED source found in wave footprint" width="800" />
+
+### Multi-Panel Comparison Plots
+
+The localisation maps for each wave come in various flavours at different stages of processing and with varying degrees of accuracy. It can be useful to produce a multi-panel plot of these maps to compare them. The following command will generate this plot, with a normalise colour range so the probabilities on each map can be directly compared.
+
+``` sourceCode
+breaker plot comparison <gwid> <pathToMapDirectory> [-s <pathToSettingsFile>]
+```
+
+So for example:
+
+``` sourceCode
+breaker plot comparison G211117 /Users/Dave/git_repos/breaker/breaker/plots/tests/input
+```
+
+produces the following plot in the output directory found in the settings file.
+
+<img src="https://i.imgur.com/9jubCq2.png" alt="GW151226 4 Panel Comparison Plot" width="1000" />
+
+Fake Source Catalogues
+----------------------
+
+It might be useful at some point to determine the completeness of our campaigns. The `faker` command will take a PS1 exposure and extract out all NED galaxy sources with redshift and semi-major axis measurements in the FOV of that exposure. For each of those galaxies a fake transient is placed at a random location within the galaxy semi-major axes. An extra 17.6% locations are then randomly distributed throughout the area of the exposure to give a overall total of 85% galaxy associations and 15% ‘orphans’. Two versions of the fake source catalogue are output, *trimmed* and *complete*, which can then be used to test our pipelines end-to-end.
+
+**Trimmed** example:
+
+``` sourceCode
+index,ra,dec,i-mag
+0001,132.76954,4.56831,17.50
+0002,132.70450,4.55963,18.76
+0003,132.81176,4.58280,18.86
+0004,132.74161,4.49493,17.46
+0005,132.82488,4.48862,18.99
+0006,132.71868,4.45854,19.31
+0007,132.60267,4.61480,18.18
+0008,132.59662,4.60154,17.76
+...
+```
+
+**Complete** example:
+
+``` sourceCode
+index,ra,dec,i-mag,redshift,galaxy-id,2mass-k-mag,2mass-k-mag-error
+0001,132.76954,4.56831,17.50,0.073,"SDSS J085105.10+043414.0",15.00,0.14
+0002,132.70450,4.55963,18.76,0.095,"SDSS J085048.39+043335.7",14.45,null
+0003,132.81176,4.58280,18.86,0.071,"SDSS J085114.79+043453.7",14.58,null
+0004,132.74161,4.49493,17.46,0.095,"SDSS J085057.98+042943.8",14.79,0.12
+0005,132.82488,4.48862,18.99,0.071,"SDSS J085118.00+042918.8",null,null
+0006,132.71868,4.45854,19.31,0.077,"SDSS J085052.02+042732.4",null,null
+0007,132.60267,4.61480,18.18,0.097,"SDSS J085024.94+043654.9",15.16,0.17
+0008,132.59662,4.60154,17.76,0.077,"SDSS J085023.19+043602.4",null,null
+...
+```
+
+Campaign Stats
+--------------
+
+The `stats` command can be run to generate some stats for a given wave survey campaign. For example the command:
+
+``` sourceCode
+breaker stats G211117
+```
+
+will rattle through the ATLAS and PS1 footprints in chronological order and determine some cumulative stats, including the total sky-area covered (squ. deg.) and the total likelihood covered (in 2-dimensions only):
+
+``` sourceCode
+0/1449.  MJD: 57382.29419. AREA: 30.67. PROB: 0.00923. SURVEY: atlas
+1/1449.  MJD: 57382.302442. AREA: 59.51. PROB: 0.02116. SURVEY: atlas
+2/1449.  MJD: 57382.313403. AREA: 87.18. PROB: 0.02246. SURVEY: atlas
+3/1449.  MJD: 57384.216272. AREA: 87.18. PROB: 0.02246. SURVEY: ps1
+4/1449.  MJD: 57384.216771. AREA: 87.18. PROB: 0.02246. SURVEY: ps1
+5/1449.  MJD: 57384.221982. AREA: 87.18. PROB: 0.02246. SURVEY: ps1 
+...
+...
+```
+
+Download Recently Detected Wave Maps
+------------------------------------
+
+Before running the `listen` command you need to create a `.netrc` file with your GraceDb credentials (with 600 permissions). [See here for a tutorial](https://dcc.ligo.org/public/0118/G1500442/010/ligo-virgo-emfollowup-tutorial.html)
+
+The `listen` command is used to connect to [graceDB](https://gracedb.ligo.org) and download the maps from recently detected waves. You can connect either once and download all maps within a time range, or connect in daemon mode to ping graceDB every 60 secs for new maps.
+
+To connect and download maps between MJDs 57382. and 57384. with a false alarm rate lower limit of 1e-7 Hz:
+
+``` sourceCode
+> breaker listen 1e-7 57382. 57384.
+Downloading bayestar.fits.gz for GW event G211117
+```
+
+Or to download maps within the last 15 mins:
+
+``` sourceCode
+> breaker listen 1e-7 15
+```
+
+To connect in daemon mode:
+
+``` sourceCode
+> breaker listen -d 1e-7
+Downloading bayestar.fits.gz for GW event G211117
+Downloading skymap.fits.gz for GW event G194575
+2 recent events found, will try again in 60 secs
+No recent events, will try again in 60 secs
+```
+
+Note the first time `breaker` connects to graceDB in daemon mode it downloads all maps from the beginning of time.

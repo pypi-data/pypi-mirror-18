@@ -1,0 +1,141 @@
+#!python
+# -*- coding: utf-8 -*-
+# ***********************************************************************
+# ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
+# *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
+#
+# (c) 2015.                            (c) 2015.
+#  Government of Canada                 Gouvernement du Canada
+#  National Research Council            Conseil national de recherches
+#  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
+#  All rights reserved                  Tous droits réservés
+#
+#  NRC disclaims any warranties,        Le CNRC dénie toute garantie
+#  expressed, implied, or               énoncée, implicite ou légale,
+#  statutory, of any kind with          de quelque nature que ce
+#  respect to the software,             soit, concernant le logiciel,
+#  including without limitation         y compris sans restriction
+#  any warranty of merchantability      toute garantie de valeur
+#  or fitness for a particular          marchande ou de pertinence
+#  purpose. NRC shall not be            pour un usage particulier.
+#  liable in any event for any          Le CNRC ne pourra en aucun cas
+#  damages, whether direct or           être tenu responsable de tout
+#  indirect, special or general,        dommage, direct ou indirect,
+#  consequential or incidental,         particulier ou général,
+#  arising from the use of the          accessoire ou fortuit, résultant
+#  software.  Neither the name          de l'utilisation du logiciel. Ni
+#  of the National Research             le nom du Conseil National de
+#  Council of Canada nor the            Recherches du Canada ni les noms
+#  names of its contributors may        de ses  participants ne peuvent
+#  be used to endorse or promote        être utilisés pour approuver ou
+#  products derived from this           promouvoir les produits dérivés
+#  software without specific prior      de ce logiciel sans autorisation
+#  written permission.                  préalable et particulière
+#                                       par écrit.
+#
+#  This file is part of the             Ce fichier fait partie du projet
+#  OpenCADC project.                    OpenCADC.
+#
+#  OpenCADC is free software:           OpenCADC est un logiciel libre ;
+#  you can redistribute it and/or       vous pouvez le redistribuer ou le
+#  modify it under the terms of         modifier suivant les termes de
+#  the GNU Affero General Public        la “GNU Affero General Public
+#  License as published by the          License” telle que publiée
+#  Free Software Foundation,            par la Free Software Foundation
+#  either version 3 of the              : soit la version 3 de cette
+#  License, or (at your option)         licence, soit (à votre gré)
+#  any later version.                   toute version ultérieure.
+#
+#  OpenCADC is distributed in the       OpenCADC est distribué
+#  hope that it will be useful,         dans l’espoir qu’il vous
+#  but WITHOUT ANY WARRANTY;            sera utile, mais SANS AUCUNE
+#  without even the implied             GARANTIE : sans même la garantie
+#  warranty of MERCHANTABILITY          implicite de COMMERCIALISABILITÉ
+#  or FITNESS FOR A PARTICULAR          ni d’ADÉQUATION À UN OBJECTIF
+#  PURPOSE.  See the GNU Affero         PARTICULIER. Consultez la Licence
+#  General Public License for           Générale Publique GNU Affero
+#  more details.                        pour plus de détails.
+#
+#  You should have received             Vous devriez avoir reçu une
+#  a copy of the GNU Affero             copie de la Licence Générale
+#  General Public License along         Publique GNU Affero avec
+#  with OpenCADC.  If not, see          OpenCADC ; si ce n’est
+#  <http://www.gnu.org/licenses/>.      pas le cas, consultez :
+#                                       <http://www.gnu.org/licenses/>.
+#
+# ***********************************************************************
+
+"""Given an x509 cert determine if a user is a member of at least one
+of a list of groups"""
+
+from canfar.groups.client import GroupsClient
+from canfar.common.parser import BaseParser
+import sys
+from canfar.groups.exceptions import GroupExistsException, UserNotFoundException
+from canfar.groups.group import Group
+from canfar.groups.identity import Identity
+from canfar.groups.user import User
+from canfar.__version__ import version
+
+description = "Create a group"
+
+if __name__ == '__main__':
+
+    # Parse the command line
+    parser = BaseParser(description=description,version=version)
+    parser.add_argument('groupname', type=str, help="Group name to create.")
+    parser.add_argument('--pi_username', type=str,
+                        help="PI username to create.")
+
+    args = parser.parse_args()
+    log_level = parser.get_log_level(args)
+    groupname = args.groupname
+    pi_username = args.pi_username
+    certfile = args.certfile
+    anonymous=args.anonymous
+    host=args.host
+
+    # Create a groups client and check for membership
+    try:
+        c = GroupsClient(certfile=certfile, anonymous=anonymous,
+                         log_level=log_level, host=host)
+        logger = c.logger
+
+        group = Group(groupname, User(Identity(c.current_user_dn, 'X500')))
+        if pi_username:
+            current_user = User(Identity(pi_username, 'HTTP'))
+            group.add_user_member(current_user)
+            group.add_user_admin(current_user)
+        c.create_group(group)
+        sys.exit(0)
+    except ValueError as ve:
+        print str(ve)
+        sys.exit(-1)
+    except UserNotFoundException:
+        logger.error("Unable to PUT new group. User '%s' not found." % \
+                         c.get_current_user_dn())
+        sys.exit(-1)
+    except GroupExistsException:
+        logger.info("Unable to PUT new group. Group '%s' already exists." % \
+                        format(groupname))
+
+        # If a user was given for an existing group,
+        # add user as an admin user
+        if pi_username:
+            group = c.get_group(groupname)
+            current_user = User(Identity(pi_username, 'HTTP'))
+
+            # The set of user_admins contains the distinguishedName of the
+            # users.
+            # The user is a uid and we can't map between the two. Add the user
+            # to the set and the server will sort out that they are dups.
+            group.user_admins.add(current_user)
+            try:
+                c.update_group(group)
+                sys.exit(0)
+            except UserNotFoundException:
+                logger.error("Unable to update existing group. " + \
+                                 "User admin '%s' not found." % \
+                                 current_user.user_id)
+        else:
+            sys.exit(-1)

@@ -1,0 +1,58 @@
+#!/usr/bin/python
+from bs4 import BeautifulSoup
+import requests
+import subprocess
+import time
+
+base_url = "http://www.espncricinfo.com"
+filename = "./cricket_summary.txt"
+info_dict = {'old_info': "ENG 239/3 (80.0 ov, MM Ali 86*, JM Bairstow 44*, KK Nair 0/4) | Live Scorecard | ESPN Cricinfo"}
+
+
+def send_notification(cric_summary):
+    try:
+        subprocess.Popen(["notify-send", cric_summary], stdout=subprocess.PIPE)
+        return "Notification sent successfully!"
+    except Exception as e:
+        print e
+        return "Unable to send notification"
+
+
+def parse_score(urls):
+    for i_url in urls:
+        info_dict['url'] = str(i_url['href'])
+    url_to_crawl = base_url + info_dict['url']
+    target_r = requests.get(url_to_crawl)
+    target_data = target_r.text
+    target_soup = BeautifulSoup(target_data, "html.parser")
+    return target_soup
+
+
+while True:
+    base_r = requests.get(base_url)
+    base_data = base_r.text
+    base_soup = BeautifulSoup(base_data, "html.parser")
+    score_cards = base_soup.find_all("li", class_='espni-livescores-scoreline')
+    urls = score_cards[0].find_all('a')
+    crawled_soup = parse_score(urls)
+
+    for i in crawled_soup.find_all('title'):
+        info = i.get_text()
+        info_dict['new_info'] = info
+        split_string_old = str(info_dict['old_info'].split('('))
+        split_string_new = str(info_dict['new_info'].split('('))
+        old_overs = str(split_string_old.split(" ")[3])
+        new_overs = str(split_string_new.split(" ")[3])
+        try:
+            old_overs_final = float(old_overs.replace("'", ""))
+        except:
+            old_overs_final = float(old_overs.replace("u'", ""))
+        new_overs_final = float(new_overs.replace("u'", ""))
+        if info_dict['new_info'] != info_dict['old_info'] and new_overs_final > old_overs_final:
+            with open(filename, 'wb') as score_file_w:
+                score_file_w.write(info)
+            info_dict['old_info'] = info_dict['new_info']
+            with open(filename, 'r') as score_file_r:
+                cric_sum = str(score_file_r.readline())
+            send_notification(cric_sum)
+

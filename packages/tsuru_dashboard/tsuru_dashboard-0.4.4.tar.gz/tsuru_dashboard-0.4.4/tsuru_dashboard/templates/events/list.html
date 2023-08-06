@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load filters_deploys %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static "css/pages/event-list.css" %}">
+{% endblock %}
+
+{% block bar %}
+<div class="bar">
+  <a href="/">dashboard</a> <span class="arrow">></span>
+  events
+
+  {% if event.Cancelable and event.Running %}
+  <button id="cancel-button">Cancel</button>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block header %}
+<h1>Events</h1>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-md-12">
+      <div id="controls"></div>
+      </form>
+      <table class="events table" id="list">
+        <thead>
+          <tr>
+            <th>Action</th>
+            <th>Target</th>
+            <th>Owner</th>
+            <th>Start</th>
+            <th>Duration</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for event in events %}
+          <tr onclick='window.document.location = "{% url 'event-info' event.UniqueID %}"'>
+            <td>
+                {{ event.Kind.Name }}
+            </td>
+            <td>
+              {{ event.Target.Type }}: {{ event.Target.Value }}
+            </td>
+            <td>
+              {{ event.Owner.Type }}{% if event.Owner.Name %}: {{ event.Owner.Name }}{% endif %}
+            </td>
+            <td>
+              {% if event.StartTime %}
+              {{ event.StartTime|date:" d-m-Y H:i:s " }}
+              {% endif %}
+            </td>
+            <td>
+              {% if event.EndTime %}
+              {{ event.StartTime|timesince:event.EndTime }}
+              {% endif %}
+            </td>
+            <td class="{% if not event.Running and not event.CancelInfo.Canceled and not event.Error %}status-success{% endif %}{% if event.Running %}status-running{% endif %}{% if event.Error %}status-error{% endif %}">
+              {% if event.Running %}
+              Running
+              {% endif %}
+              {% if event.Error %}
+              Error
+              {% endif %}
+              {% if not event.Running and not event.CancelInfo.Canceled and not event.Error %}
+              Success
+              {% endif %}
+            </td>
+          </tr>
+          </a>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="pager">
+        {% if previous %}
+        <span class="page">
+          <a href="?page={{ previous }}{% if request.GET.kindName %}&kindName={{ request.GET.kindName }}{% endif %}">&lt; Prev</a>
+        </span>
+        {% endif %}
+
+        {% if next %}
+        <span class="page">
+          <a href="?page={{ next }}{% if request.GET.kindName %}&kindName={{ request.GET.kindName }}{% endif %}">Next &gt;</a>
+        </span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static "js/event-list.js" %}"></script>
+{% endblock %}

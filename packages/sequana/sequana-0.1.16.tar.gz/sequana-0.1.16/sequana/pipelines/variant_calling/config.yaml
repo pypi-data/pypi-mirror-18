@@ -1,0 +1,92 @@
+# ============================================================================
+# Config file for  Variant Calling
+#
+# ==========================================[ Sections for the users ]========
+#
+# One of input_directory, input_pattern and input_samples must be provided
+# If input_directory provided, use it otherwise if input_pattern provided,
+# use it, otherwise use input_samples.
+# If input_extension provided, use it otherwise assume fastq.gz
+# ============================================================================
+input_directory: "%(input_directory)s"
+input_extension: "%(input_extension)s"
+input_pattern: "%(input_pattern)s"
+input_samples:
+    file1: "%(file1)s"
+    file2: "%(file2)s"
+
+# =========================================== Sequencing information
+
+sequencing:
+    platform: "Illumina"
+    instrument: "Hiseq2500"
+    flowcell: "Unknown"
+
+# =========================================== Sections related to variant calling
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Bwa
+
+bwa_mem_ref:
+    reference: "%(reference)s"  # Genome of reference
+    # IS is for small genome and bwtsw for large genome (like human)
+    index_algorithm: 'is' # Algorithm for constructing index [is|bwtsw]
+    options: '-T 30'
+    threads: 2
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ SnpEff
+
+#Results filter options:
+#	-no-downstream: Do not show DOWNSTREAM changes
+#	-no-intergenic: Do not show INTERGENIC changes
+#	-no-intron: Do not show INTRON changes
+#	-no-upstream: Do not show UPSTREAM changes
+#	-no-utr: Do not show 5_PRIME_UTR or 3_PRIME_UTR changes
+snpeff:
+    do: no
+    reference:
+    options: "-no-downstream -no-upstream"
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Freebayes
+
+freebayes:
+    ploidy: 1  # Set the ploidy of your sample (default:2)
+    # Additional options
+    options: ''
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Indel realigner (GATK)
+
+indel_realigner:
+    do: yes
+    options: ''
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Mark duplicates (picard-tools)
+
+mark_duplicates:
+    do: yes
+    options: ''
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Bam quality filter
+
+bam_quality_filter:
+    do: yes
+    threshold: 30  # between 0 and 60
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Report Mapping
+
+report_mapping:
+    do: yes
+    k: 2                      # Number of gaussian predicted
+    circular: no              # If your genome is circular
+    window_size: 30001        # Window size for compute the running median
+    high_threshold: 4.0         # Threshold to detect high coverage regions 
+    low_threshold: -4.0         # Threshold to detect low coverage regions
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ VCF filter (dedicated to freebayes)
+
+vcf_filter:
+    freebayes_score: 200         # Minimal freebayes score
+    frequency: 0.8               # Minimal alternative allele frequency
+    min_depth: 10                    # Minimal coverage depth
+    forward_depth: 3             # Minimal coverage depth of forward strand
+    reverse_depth: 3             # Minimal coverage depth of reverse strand
+    strand_ratio: 0.2            # Minimal strand ratio between 0 and 0.5 

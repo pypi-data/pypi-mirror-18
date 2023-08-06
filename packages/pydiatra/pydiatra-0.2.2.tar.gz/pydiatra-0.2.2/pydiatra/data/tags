@@ -1,0 +1,228 @@
+[assertion-always-true]
+severity = minor
+certainty = certain
+references =
+ https://docs.python.org/2/reference/simple_stmts.html#grammar-token-assert_stmt
+description =
+ It's a mistake to write code like this::
+ .
+ .    assert(x > 0, "x must be positive")  # wrong!
+ .
+ The intention was to check whether ``x > 0`` is true.
+ But this code checks if the tuple is true,
+ and it always is, regardless of the value of ``x``.
+ The correct code omits the parentheses::
+ .
+ .    assert x > 0, "x must be positive"
+
+[embedded-code-copy]
+severity = important
+certainty = possible
+references =
+ https://www.debian.org/doc/debian-policy/ch-source.html#s-embeddedfiles
+description =
+ The source appears to include
+ a convenience copy of code from other software package.
+
+[except-shadows-builtin]
+severity = important
+certainty = possible
+references =
+ https://docs.python.org/2/whatsnew/2.6.html#pep-3110-exception-handling-changes
+description =
+ It's a mistake to write code like this::
+ .
+ .    try:
+ .        ...
+ .    except TypeError, ValueError:  # wrong!
+ .        ...
+ .
+ The intention was to catch both ``TypeError`` and ``ValueError`` exceptions,
+ but this code does something different: it will catch ``TypeError``
+ and bind the resulting exception object to the local name ``ValueError``.
+ The ``ValueError`` exception will not be caught at all.
+ The correct code specifies a tuple of exceptions::
+ .
+ .    try:
+ .        ...
+ .    except (TypeError, ValueError):
+ .        ...
+
+[bare-except]
+severity = minor
+certainty = possible
+experimental = yes
+references =
+ https://docs.python.org/2/howto/doanddont.html#except
+description =
+ It's a mistake to write code like this::
+ .
+ .    try:
+ .        ...
+ .    except:  # wrong!
+ .        ...
+ .
+ The ``except:`` clause catches all the exceptions,
+ including exceptions that the programmer never expected to happen,
+ potentially hiding programming errors,
+ or ignoring ``KeyboardInterrupt`` triggered by user's Ctrl+C.
+ .
+ Please catch only the exceptions you expect to be raised.
+
+[hardcoded-errno-value]
+severity = normal
+certainty = possible
+references =
+ https://lists.debian.org/20100803162901.GA5419@jwilk.net
+ http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_03
+description =
+ It's a mistake to write code like this::
+ .
+ .    try:
+ .        ...
+ .    except OSError as exc:
+ .        if e.errno == 17:  # non-portable!
+ .           ...
+ .
+ The code was meant to check for ``EEXIST``,
+ but actual value of this constant may vary with architecture.
+ The portable code uses constant from the ``errno`` module::
+ .
+ .    try:
+ .        ...
+ .    except OSError as exc:
+ .        if e.errno == errno.EEXIST:
+ .           ...
+
+[inconsistent-use-of-tabs-and-spaces-in-indentation]
+severity = normal
+certainty = certain
+references =
+ https://docs.python.org/2/reference/lexical_analysis.html#indentation
+description =
+ The source file mixes tabs and spaces for indentation in a way that makes it
+ depend on the worth of a tab expressed in spaces.
+ .
+ You can check consistency of indentation with the following command::
+ .
+ .    python -m tabnanny <pyfile>
+
+[mkstemp-file-descriptor-leak]
+severity = normal
+certainty = possible
+description =
+ ``tempfile.mkstemp()`` returns a tuple containing
+ a file descriptor and the pathname.
+ It is responsibility of the caller to close the file descriptor
+ when it's no longer needed.
+ It's a mistake to write code like this::
+ .
+ .    path = tempfile.mkstemp()[1]
+ .
+ because it leaks the file descriptor.
+ .
+ Please consider using a higher-level function instead,
+ ``tempfile.TemporaryFile()`` or ``tempfile.NamedTemporaryFile()``,
+ which take care of file closing automatically.
+
+references =
+ https://docs.python.org/2/library/tempfile.html#tempfile.mkstemp
+
+[obsolete-pil-import]
+severity = important
+certainty = possible
+references =
+ https://mail.python.org/pipermail/image-sig/2011-January/006650.html
+ https://lists.debian.org/5117D0B7.801@debian.org
+description =
+ Python Imaging Library 1.2 and Pillow (a PIL fork) no longer support this
+ style of imports::
+ .
+ .    import Image
+ .
+ Imports from the PIL namespace should be used instead::
+ .
+ .    from PIL import Image
+
+[py3k-compat-warning]
+severity = wishlist
+certainty = certain
+description =
+ The parser encountered a syntactic construct
+ that is no longer supported in Python 3.
+
+[regexp-duplicate-range]
+severity = minor
+certainty = possible
+description =
+ A character set in a regular expression includes
+ the same character range twice.
+ This is probably a mistake.
+ .
+ For example::
+ .
+ .    [A-ZA-Z]
+ .
+ could be simplified to::
+ .
+ .    [A-Z]
+
+[regexp-overlapping-ranges]
+severity = important
+certainty = possible
+description =
+ A character set in a regular expression includes
+ two intersecting character ranges.
+ This is probably a mistake.
+ .
+ For example::
+ .
+ .    [A-za-z]
+ .
+ is a common misspelling of::
+ .
+ .    [A-Za-z]
+
+[regexp-syntax-error]
+severity = important
+certainty = certain
+references =
+ https://docs.python.org/2/library/re.html#regular-expression-syntax
+description =
+ The code attempts to compile a regular expression
+ that is not syntactically valid.
+
+[string-exception]
+severity = important
+certainty = possible
+references =
+ https://docs.python.org/2/whatsnew/2.6.html#deprecations-and-removals
+description =
+ The code attempts to raise or catch strings exceptions.
+ .
+ String exceptions have been removed in Python 2.6.
+ Attempting to raise them causes ``TypeError``.
+
+[string-formatting-error]
+severity = important
+certainty = certain
+references =
+ https://docs.python.org/2/library/stdtypes.html#string-formatting-operations
+ https://docs.python.org/2/library/string.html#formatstrings
+description =
+ The code uses string formatting (either ``%``-formatting or ``str.format()``)
+ in a way that always causes runtime error.
+
+[syntax-error]
+severity = serious
+certainty = certain
+description =
+ The parser encountered a syntax error.
+
+[syntax-warning]
+severity = important
+certainty = possible
+description =
+ The parser encountered a dubious syntactic construct.
+
+# vim:ft=dosini

@@ -1,0 +1,100 @@
+#!/usr/bin/env python
+'''
+boatdctl - boatd control
+
+Usage:
+    boatdctl status
+    boatdctl heading
+    boatdctl position
+    boatdctl spin
+    boatdctl rudder <angle>
+    boatdctl sail <angle>
+
+Options:
+    -h --help     Show this screen.
+    --version     Show boatd version
+
+'''
+
+import argparse
+import sys
+
+from boatdclient import Boat
+from boatdclient import Behaviour
+
+if __name__ == '__main__':
+    arger = argparse.ArgumentParser()
+    subparsers = arger.add_subparsers(dest='command')
+
+    help_parser = subparsers.add_parser('help')
+    info_parser = subparsers.add_parser('status')
+    quit_parser = subparsers.add_parser('quit')
+
+    behaviour_list_parser = subparsers.add_parser('behaviour-list')
+    behaviour_start_parser = subparsers.add_parser('behaviour-start')
+    behaviour_stop_parser = subparsers.add_parser('behaviour-stop')
+    behaviour_start_parser.add_argument('behaviour')
+
+    heading_parser = subparsers.add_parser('heading')
+    position_parser = subparsers.add_parser('position')
+    spin_parser = subparsers.add_parser('spin')
+
+    rudder_parser = subparsers.add_parser('rudder')
+    rudder_parser.add_argument('angle')
+
+    sail_parser = subparsers.add_parser('sail')
+    sail_parser.add_argument('angle')
+
+    opts = arger.parse_args()
+
+    boat = Boat()
+
+    if opts.command == 'help':
+        print(__doc__)
+
+    if opts.command == 'status':
+        try:
+            v = boat.boatd.version
+        except Exception as e:
+            print('Problem talking to boatd: "{}"'.format(e))
+            sys.exit(1)
+        print('boatd version \'{}\' responding to requests on {}'.format(v,
+              boat.boatd.url('/')))
+
+    if opts.command == 'quit':
+        boat.boatd.quit()
+
+    if opts.command == 'behaviour-list':
+        behaviour = Behaviour()
+        for name in behaviour.list():
+            print(name)
+
+    if opts.command == 'behaviour-start':
+        behaviour = Behaviour()
+        name = opts.behaviour
+        message = behaviour.start(name)
+        print(message)
+
+    if opts.command == 'behaviour-stop':
+        behaviour = Behaviour()
+        behaviour.stop()
+
+    if opts.command == 'heading':
+        print('heading: {}'.format(boat.heading))
+
+    if opts.command == 'position':
+        print('position: {0:.9f}, {0:.9f}'.format(*boat.position))
+
+    if opts.command == 'rudder':
+        print('setting rudder to', opts.angle)
+        boat.set_rudder(float(opts.angle))
+
+    if opts.command == 'sail':
+        print('setting sail to', opts.angle)
+        boat.set_sail(float(opts.angle))
+
+    if opts.command == 'spin':
+        import time
+        for i in range(90):
+            a = 45 - (i)
+            boat.set_rudder(a)

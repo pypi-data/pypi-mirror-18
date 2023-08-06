@@ -1,0 +1,738 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>GitPython Tutorial &mdash; GitPython 2.0.9dev0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '2.0.9dev0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="GitPython 2.0.9dev0 documentation" href="index.html" />
+    <link rel="next" title="API Reference" href="reference.html" />
+    <link rel="prev" title="Whats New in 0.3" href="whatsnew.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="gitpython-tutorial">
+<span id="tutorial-label"></span><h1>GitPython Tutorial<a class="headerlink" href="#gitpython-tutorial" title="Permalink to this headline">¶</a></h1>
+<p>GitPython provides object model access to your git repository. This tutorial is composed of multiple sections, most of which explains a real-life usecase.</p>
+<p>All code presented here originated from <a class="reference external" href="https://github.com/gitpython-developers/GitPython/blob/master/git/test/test_docs.py">test_docs.py</a> to assure correctness. Knowing this should also allow you to more easily run the code for your own testing purposes, all you need is a developer installation of git-python.</p>
+<div class="section" id="meet-the-repo-type">
+<h2>Meet the Repo type<a class="headerlink" href="#meet-the-repo-type" title="Permalink to this headline">¶</a></h2>
+<p>The first step is to create a <a class="reference internal" href="reference.html#git.repo.base.Repo" title="git.repo.base.Repo"><code class="xref py py-class docutils literal"><span class="pre">git.Repo</span></code></a> object to represent your repository.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="kn">from</span> <span class="nn">git</span> <span class="kn">import</span> <span class="n">Repo</span>
+        <span class="n">join</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span>
+
+        <span class="c1"># rorepo is a Repo instance pointing to the git-python repository.</span>
+        <span class="c1"># For all you know, the first argument to Repo is a path to the repository</span>
+        <span class="c1"># you want to work with</span>
+        <span class="n">repo</span> <span class="o">=</span> <span class="n">Repo</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rorepo</span><span class="o">.</span><span class="n">working_tree_dir</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="n">repo</span><span class="o">.</span><span class="n">bare</span>
+</pre></div>
+</div>
+<p>In the above example, the directory <code class="docutils literal"><span class="pre">self.rorepo.working_tree_dir</span></code> equals <code class="docutils literal"><span class="pre">/Users/mtrier/Development/git-python</span></code> and is my working repository which contains the <code class="docutils literal"><span class="pre">.git</span></code> directory. You can also initialize GitPython with a <em>bare</em> repository.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">bare_repo</span> <span class="o">=</span> <span class="n">Repo</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">join</span><span class="p">(</span><span class="n">rw_dir</span><span class="p">,</span> <span class="s1">&#39;bare-repo&#39;</span><span class="p">),</span> <span class="n">bare</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">bare_repo</span><span class="o">.</span><span class="n">bare</span>
+</pre></div>
+</div>
+<p>A repo object provides high-level access to your data, it allows you to create and delete heads, tags and remotes and access the configuration of the repository.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">repo</span><span class="o">.</span><span class="n">config_reader</span><span class="p">()</span>             <span class="c1"># get a config reader for read-only access</span>
+        <span class="n">cw</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">config_writer</span><span class="p">()</span>        <span class="c1"># get a config writer to change configuration</span>
+        <span class="n">cw</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>                     <span class="c1"># call release() to be sure changes are written and locks are released</span>
+</pre></div>
+</div>
+<p>Query the active branch, query untracked files or whether the repository data has been modified.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="k">assert</span> <span class="ow">not</span> <span class="n">bare_repo</span><span class="o">.</span><span class="n">is_dirty</span><span class="p">()</span>  <span class="c1"># check the dirty state</span>
+        <span class="n">repo</span><span class="o">.</span><span class="n">untracked_files</span>             <span class="c1"># retrieve a list of untracked files</span>
+        <span class="c1"># [&#39;my_untracked_file&#39;]</span>
+</pre></div>
+</div>
+<p>Clone from existing repositories or initialize new empty ones.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">cloned_repo</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">clone</span><span class="p">(</span><span class="n">join</span><span class="p">(</span><span class="n">rw_dir</span><span class="p">,</span> <span class="s1">&#39;to/this/path&#39;</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="n">cloned_repo</span><span class="o">.</span><span class="n">__class__</span> <span class="ow">is</span> <span class="n">Repo</span>     <span class="c1"># clone an existing repository</span>
+        <span class="k">assert</span> <span class="n">Repo</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">join</span><span class="p">(</span><span class="n">rw_dir</span><span class="p">,</span> <span class="s1">&#39;path/for/new/repo&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">__class__</span> <span class="ow">is</span> <span class="n">Repo</span>
+</pre></div>
+</div>
+<p>Archive the repository contents to a tar file.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">repo</span><span class="o">.</span><span class="n">archive</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">join</span><span class="p">(</span><span class="n">rw_dir</span><span class="p">,</span> <span class="s1">&#39;repo.tar&#39;</span><span class="p">),</span> <span class="s1">&#39;wb&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="section" id="advanced-repo-usage">
+<h3>Advanced Repo Usage<a class="headerlink" href="#advanced-repo-usage" title="Permalink to this headline">¶</a></h3>
+<p>And of course, there is much more you can do with this type, most of the following will be explained in greater detail in specific tutorials. Don&#8217;t worry if you don&#8217;t understand some of these examples right away, as they may require a thorough understanding of gits inner workings.</p>
+<p>Query relevant repository paths ...</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="k">assert</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">cloned_repo</span><span class="o">.</span><span class="n">working_tree_dir</span><span class="p">)</span>                    <span class="c1"># directory with your work files</span>
+        <span class="k">assert</span> <span class="n">cloned_repo</span><span class="o">.</span><span class="n">git_dir</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">cloned_repo</span><span class="o">.</span><span class="n">working_tree_dir</span><span class="p">)</span>   <span class="c1"># directory containing the git repository</span>
+        <span class="k">assert</span> <span class="n">bare_repo</span><span class="o">.</span><span class="n">working_tree_dir</span> <span class="ow">is</span> <span class="bp">None</span>                             <span class="c1"># bare repositories have no working tree</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="reference.html#git.refs.head.Head" title="git.refs.head.Head"><code class="xref py py-class docutils literal"><span class="pre">Heads</span></code></a> Heads are branches in git-speak. <a class="reference internal" href="reference.html#git.refs.reference.Reference" title="git.refs.reference.Reference"><code class="xref py py-class docutils literal"><span class="pre">References</span></code></a> are pointers to a specific commit or to other references. Heads and <a class="reference internal" href="reference.html#git.refs.tag.TagReference" title="git.refs.tag.TagReference"><code class="xref py py-class docutils literal"><span class="pre">Tags</span></code></a> are a kind of references. GitPython allows you to query them rather intuitively.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="k">assert</span> <span class="n">repo</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">ref</span> <span class="o">==</span> <span class="n">repo</span><span class="o">.</span><span class="n">heads</span><span class="o">.</span><span class="n">master</span>                   <span class="c1"># head is a symbolic reference pointing to master</span>
+        <span class="k">assert</span> <span class="n">repo</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="s1">&#39;0.3.5&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">repo</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="s1">&#39;refs/tags/0.3.5&#39;</span><span class="p">)</span>    <span class="c1"># you can access tags in various ways too</span>
+        <span class="k">assert</span> <span class="n">repo</span><span class="o">.</span><span class="n">refs</span><span class="o">.</span><span class="n">master</span> <span class="o">==</span> <span class="n">repo</span><span class="o">.</span><span class="n">heads</span><span class="p">[</span><span class="s1">&#39;master&#39;</span><span class="p">]</span>             <span class="c1"># .refs provides access to all refs, i.e. heads ...</span>
+        
+        <span class="k">if</span> <span class="s1">&#39;TRAVIS&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">repo</span><span class="o">.</span><span class="n">refs</span><span class="p">[</span><span class="s1">&#39;origin/master&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">repo</span><span class="o">.</span><span class="n">remotes</span><span class="o">.</span><span class="n">origin</span><span class="o">.</span><span class="n">refs</span><span class="o">.</span><span class="n">master</span>  <span class="c1"># ... remotes ...</span>
+        <span class="k">assert</span> <span class="n">repo</span><span class="o">.</span><span class="n">refs</span><span class="p">[</span><span class="s1">&#39;0.3.5&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">repo</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="s1">&#39;0.3.5&#39;</span><span class="p">]</span>             <span class="c1"># ... and tags</span>
+</pre></div>
+</div>
+<p>You can also create new heads ...</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">new_branch</span> <span class="o">=</span> <span class="n">cloned_repo</span><span class="o">.</span><span class="n">create_head</span><span class="p">(</span><span class="s1">&#39;feature&#39;</span><span class="p">)</span>               <span class="c1"># create a new branch ...</span>
+        <span class="k">assert</span> <span class="n">cloned_repo</span><span class="o">.</span><span class="n">active_branch</span> <span class="o">!=</span> <span class="n">new_branch</span>                <span class="c1"># which wasn&#39;t checked out yet ...</span>
+        <span class="k">assert</span> <span class="n">new_branch</span><span class="o">.</span><span class="n">commit</span> <span class="o">==</span> <span class="n">cloned_repo</span><span class="o">.</span><span class="n">active_branch</span><span class="o">.</span><span class="n">commit</span>  <span class="c1"># and which points to the checked-out commit</span>
+        <span class="c1"># It&#39;s easy to let a branch point to the previous commit, without affecting anything else</span>
+        <span class="c1"># Each reference provides access to the git object it points to, usually commits</span>
+        <span class="k">assert</span> <span class="n">new_branch</span><span class="o">.</span><span class="n">set_commit</span><span class="p">(</span><span class="s1">&#39;HEAD~1&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">commit</span> <span class="o">==</span> <span class="n">cloned_repo</span><span class="o">.</span><span class="n">active_branch</span><span class="o">.</span><span class="n">commit</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>... and tags ...</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">past</span> <span class="o">=</span> <span class="n">cloned_repo</span><span class="o">.</span><span class="n">create_tag</span><span class="p">(</span><span class="s1">&#39;past&#39;</span><span class="p">,</span> <span class="n">ref</span><span class="o">=</span><span class="n">new_branch</span><span class="p">,</span>
+                                      <span class="n">message</span><span class="o">=</span><span class="s2">&quot;This is a tag-object pointing to </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">new_branch</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">past</span><span class="o">.</span><span class="n">commit</span> <span class="o">==</span> <span class="n">new_branch</span><span class="o">.</span><span class="n">commit</span>        <span class="c1"># the tag points to the specified commit</span>
+        <span class="k">assert</span> <span class="n">past</span><span class="o">.</span><span class="n">tag</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;This is&quot;</span><span class="p">)</span>  <span class="c1"># and its object carries the message provided</span>
+
+        <span class="n">now</span> <span class="o">=</span> <span class="n">cloned_repo</span><span class="o">.</span><span class="n">create_tag</span><span class="p">(</span><span class="s1">&#39;now&#39;</span><span class="p">)</span>            <span class="c1"># This is a tag-reference. It may not carry meta-data</span>
+        <span class="k">assert</span> <span class="n">now</span><span class="o">.</span><span class="n">tag</span> <span class="ow">is</span> <span class="bp">None</span>
+</pre></div>
+</div>
+<p>You can traverse down to <a class="reference internal" href="reference.html#git.objects.base.Object" title="git.objects.base.Object"><code class="xref py py-class docutils literal"><span class="pre">git</span> <span class="pre">objects</span></code></a> through references and other objects. Some objects like <a class="reference internal" href="reference.html#git.objects.commit.Commit" title="git.objects.commit.Commit"><code class="xref py py-class docutils literal"><span class="pre">commits</span></code></a> have additional meta-data to query.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="k">assert</span> <span class="n">now</span><span class="o">.</span><span class="n">commit</span><span class="o">.</span><span class="n">message</span> <span class="o">!=</span> <span class="n">past</span><span class="o">.</span><span class="n">commit</span><span class="o">.</span><span class="n">message</span>
+        <span class="c1"># You can read objects directly through binary streams, no working tree required</span>
+        <span class="k">assert</span> <span class="p">(</span><span class="n">now</span><span class="o">.</span><span class="n">commit</span><span class="o">.</span><span class="n">tree</span> <span class="o">/</span> <span class="s1">&#39;VERSION&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">data_stream</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;ascii&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;2&#39;</span><span class="p">)</span>
+
+        <span class="c1"># You can traverse trees as well to handle all contained files of a particular commit</span>
+        <span class="n">file_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">tree_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">tree</span> <span class="o">=</span> <span class="n">past</span><span class="o">.</span><span class="n">commit</span><span class="o">.</span><span class="n">tree</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">tree</span><span class="o">.</span><span class="n">traverse</span><span class="p">():</span>
+            <span class="n">file_count</span> <span class="o">+=</span> <span class="n">item</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;blob&#39;</span>
+            <span class="n">tree_count</span> <span class="o">+=</span> <span class="n">item</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;tree&#39;</span>
+        <span class="k">assert</span> <span class="n">file_count</span> <span class="ow">and</span> <span class="n">tree_count</span>                        <span class="c1"># we have accumulated all directories and files</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">tree</span><span class="o">.</span><span class="n">blobs</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">tree</span><span class="o">.</span><span class="n">trees</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span>   <span class="c1"># a tree is iterable itself to traverse its children</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="reference.html#git.remote.Remote" title="git.remote.Remote"><code class="xref py py-class docutils literal"><span class="pre">Remotes</span></code></a> allow to handle fetch, pull and push operations, while providing optional real-time progress information to <a class="reference internal" href="reference.html#git.util.RemoteProgress" title="git.util.RemoteProgress"><code class="xref py py-class docutils literal"><span class="pre">progress</span> <span class="pre">delegates</span></code></a>.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="kn">from</span> <span class="nn">git</span> <span class="kn">import</span> <span class="n">RemoteProgress</span>
+
+        <span class="k">class</span> <span class="nc">MyProgressPrinter</span><span class="p">(</span><span class="n">RemoteProgress</span><span class="p">):</span>
+            <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">op_code</span><span class="p">,</span> <span class="n">cur_count</span><span class="p">,</span> <span class="n">max_count</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+                <span class="k">print</span><span class="p">(</span><span class="n">op_code</span><span class="p">,</span> <span class="n">cur_count</span><span class="p">,</span> <span class="n">max_count</span><span class="p">,</span> <span class="n">cur_count</span> <span class="o">/</span> <span class="p">(</span><span class="n">max_count</span> <span class="ow">or</span> <span class="mf">100.0</span><span class="p">),</span> <span class="n">message</span> <span class="ow">or</span> <span class="s2">&quot;NO MESSAGE&quot;</span><span class="p">)</span>
+        <span class="c1"># end</span>
+
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">cloned_repo</span><span class="o">.</span><span class="n">remotes</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>                    <span class="c1"># we have been cloned, so there should be one remote</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">bare_repo</span><span class="o">.</span><span class="n">remotes</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>                      <span class="c1"># this one was just initialized</span>
+        <span class="n">origin</span> <span class="o">=</span> <span class="n">bare_repo</span><span class="o">.</span><span class="n">create_remote</span><span class="p">(</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="n">cloned_repo</span><span class="o">.</span><span class="n">working_tree_dir</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">origin</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">fetch_info</span> <span class="ow">in</span> <span class="n">origin</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">progress</span><span class="o">=</span><span class="n">MyProgressPrinter</span><span class="p">()):</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Updated </span><span class="si">%s</span><span class="s2"> to </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fetch_info</span><span class="o">.</span><span class="n">ref</span><span class="p">,</span> <span class="n">fetch_info</span><span class="o">.</span><span class="n">commit</span><span class="p">))</span>
+        <span class="c1"># create a local branch at the latest fetched master. We specify the name statically, but you have all</span>
+        <span class="c1"># information to do it programatically as well.</span>
+        <span class="n">bare_master</span> <span class="o">=</span> <span class="n">bare_repo</span><span class="o">.</span><span class="n">create_head</span><span class="p">(</span><span class="s1">&#39;master&#39;</span><span class="p">,</span> <span class="n">origin</span><span class="o">.</span><span class="n">refs</span><span class="o">.</span><span class="n">master</span><span class="p">)</span>
+        <span class="n">bare_repo</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">set_reference</span><span class="p">(</span><span class="n">bare_master</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="n">bare_repo</span><span class="o">.</span><span class="n">delete_remote</span><span class="p">(</span><span class="n">origin</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+        <span class="c1"># push and pull behave very similarly</span>
+</pre></div>
+</div>
+<p>The <a class="reference internal" href="reference.html#git.index.base.IndexFile" title="git.index.base.IndexFile"><code class="xref py py-class docutils literal"><span class="pre">index</span></code></a> is also called stage in git-speak. It is used to prepare new commits, and can be used to keep results of merge operations. Our index implementation allows to stream date into the index, which is useful for bare repositories that do not have a working tree.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="k">assert</span> <span class="n">new_branch</span><span class="o">.</span><span class="n">checkout</span><span class="p">()</span> <span class="o">==</span> <span class="n">cloned_repo</span><span class="o">.</span><span class="n">active_branch</span>     <span class="c1"># checking out a branch adjusts the working tree</span>
+        <span class="k">assert</span> <span class="n">new_branch</span><span class="o">.</span><span class="n">commit</span> <span class="o">==</span> <span class="n">past</span><span class="o">.</span><span class="n">commit</span>                       <span class="c1"># Now the past is checked out</span>
+
+        <span class="n">new_file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cloned_repo</span><span class="o">.</span><span class="n">working_tree_dir</span><span class="p">,</span> <span class="s1">&#39;my-new-file&#39;</span><span class="p">)</span>
+        <span class="nb">open</span><span class="p">(</span><span class="n">new_file_path</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>                             <span class="c1"># create new file in working tree</span>
+        <span class="n">cloned_repo</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">add</span><span class="p">([</span><span class="n">new_file_path</span><span class="p">])</span>                        <span class="c1"># add it to the index</span>
+        <span class="c1"># Commit the changes to deviate masters history</span>
+        <span class="n">cloned_repo</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="s2">&quot;Added a new file in the past - for later merege&quot;</span><span class="p">)</span>
+
+        <span class="c1"># prepare a merge</span>
+        <span class="n">master</span> <span class="o">=</span> <span class="n">cloned_repo</span><span class="o">.</span><span class="n">heads</span><span class="o">.</span><span class="n">master</span>                         <span class="c1"># right-hand side is ahead of us, in the future</span>
+        <span class="n">merge_base</span> <span class="o">=</span> <span class="n">cloned_repo</span><span class="o">.</span><span class="n">merge_base</span><span class="p">(</span><span class="n">new_branch</span><span class="p">,</span> <span class="n">master</span><span class="p">)</span>   <span class="c1"># allwos for a three-way merge</span>
+        <span class="n">cloned_repo</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">merge_tree</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="n">merge_base</span><span class="p">)</span>     <span class="c1"># write the merge result into index</span>
+        <span class="n">cloned_repo</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="s2">&quot;Merged past and now into future ;)&quot;</span><span class="p">,</span>
+                                 <span class="n">parent_commits</span><span class="o">=</span><span class="p">(</span><span class="n">new_branch</span><span class="o">.</span><span class="n">commit</span><span class="p">,</span> <span class="n">master</span><span class="o">.</span><span class="n">commit</span><span class="p">))</span>
+
+        <span class="c1"># now new_branch is ahead of master, which probably should be checked out and reset softly.</span>
+        <span class="c1"># note that all these operations didn&#39;t touch the working tree, as we managed it ourselves.</span>
+        <span class="c1"># This definitely requires you to know what you are doing :) !</span>
+        <span class="k">assert</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">new_file_path</span><span class="p">)</span> <span class="ow">in</span> <span class="n">new_branch</span><span class="o">.</span><span class="n">commit</span><span class="o">.</span><span class="n">tree</span>  <span class="c1"># new file is now in tree</span>
+        <span class="n">master</span><span class="o">.</span><span class="n">commit</span> <span class="o">=</span> <span class="n">new_branch</span><span class="o">.</span><span class="n">commit</span>            <span class="c1"># let master point to most recent commit</span>
+        <span class="n">cloned_repo</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">reference</span> <span class="o">=</span> <span class="n">master</span>          <span class="c1"># we adjusted just the reference, not the working tree or index</span>
+</pre></div>
+</div>
+<p><code class="xref py py-class docutils literal"><span class="pre">Submodules</span></code> represent all aspects of git submodules, which allows you query all of their related information, and manipulate in various ways.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="c1"># create a new submodule and check it out on the spot, setup to track master branch of `bare_repo`</span>
+        <span class="c1"># As our GitPython repository has submodules already that point to github, make sure we don&#39;t</span>
+        <span class="c1"># interact with them</span>
+        <span class="k">for</span> <span class="n">sm</span> <span class="ow">in</span> <span class="n">cloned_repo</span><span class="o">.</span><span class="n">submodules</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="ow">not</span> <span class="n">sm</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>                   <span class="c1"># after removal, the sm doesn&#39;t exist anymore</span>
+        <span class="n">sm</span> <span class="o">=</span> <span class="n">cloned_repo</span><span class="o">.</span><span class="n">create_submodule</span><span class="p">(</span><span class="s1">&#39;mysubrepo&#39;</span><span class="p">,</span> <span class="s1">&#39;path/to/subrepo&#39;</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="n">bare_repo</span><span class="o">.</span><span class="n">git_dir</span><span class="p">,</span> <span class="n">branch</span><span class="o">=</span><span class="s1">&#39;master&#39;</span><span class="p">)</span>
+
+        <span class="c1"># .gitmodules was written and added to the index, which is now being committed</span>
+        <span class="n">cloned_repo</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="s2">&quot;Added submodule&quot;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="n">sm</span><span class="o">.</span><span class="n">module_exists</span><span class="p">()</span>             <span class="c1"># this submodule is defintely available</span>
+        <span class="n">sm</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">configuration</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>           <span class="c1"># remove the working tree</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">sm</span><span class="o">.</span><span class="n">module_exists</span><span class="p">()</span>         <span class="c1"># the submodule itself is still available</span>
+
+        <span class="c1"># update all submodules, non-recursively to save time, this method is very powerful, go have a look</span>
+        <span class="n">cloned_repo</span><span class="o">.</span><span class="n">submodule_update</span><span class="p">(</span><span class="n">recursive</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">module_exists</span><span class="p">()</span>                             <span class="c1"># The submodules working tree was checked out by update</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="examining-references">
+<h2>Examining References<a class="headerlink" href="#examining-references" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference internal" href="reference.html#git.refs.reference.Reference" title="git.refs.reference.Reference"><code class="xref py py-class docutils literal"><span class="pre">References</span></code></a> are the tips of your commit graph from which you can easily examine the history of your project.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="kn">import</span> <span class="nn">git</span>
+        <span class="n">repo</span> <span class="o">=</span> <span class="n">git</span><span class="o">.</span><span class="n">Repo</span><span class="o">.</span><span class="n">clone_from</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_small_repo_url</span><span class="p">(),</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">rw_dir</span><span class="p">,</span> <span class="s1">&#39;repo&#39;</span><span class="p">),</span> <span class="n">branch</span><span class="o">=</span><span class="s1">&#39;master&#39;</span><span class="p">)</span>
+
+        <span class="n">heads</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">heads</span>
+        <span class="n">master</span> <span class="o">=</span> <span class="n">heads</span><span class="o">.</span><span class="n">master</span>       <span class="c1"># lists can be accessed by name for convenience</span>
+        <span class="n">master</span><span class="o">.</span><span class="n">commit</span>               <span class="c1"># the commit pointed to by head called master</span>
+        <span class="n">master</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s1">&#39;new_name&#39;</span><span class="p">)</span>   <span class="c1"># rename heads</span>
+        <span class="n">master</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s1">&#39;master&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="reference.html#git.refs.tag.TagReference" title="git.refs.tag.TagReference"><code class="xref py py-class docutils literal"><span class="pre">Tags</span></code></a> are (usually immutable) references to a commit and/or a tag object.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">tags</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">tags</span>
+        <span class="n">tagref</span> <span class="o">=</span> <span class="n">tags</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">tagref</span><span class="o">.</span><span class="n">tag</span>                  <span class="c1"># tags may have tag objects carrying additional information</span>
+        <span class="n">tagref</span><span class="o">.</span><span class="n">commit</span>               <span class="c1"># but they always point to commits</span>
+        <span class="n">repo</span><span class="o">.</span><span class="n">delete_tag</span><span class="p">(</span><span class="n">tagref</span><span class="p">)</span>     <span class="c1"># delete or</span>
+        <span class="n">repo</span><span class="o">.</span><span class="n">create_tag</span><span class="p">(</span><span class="s2">&quot;my_tag&quot;</span><span class="p">)</span>   <span class="c1"># create tags using the repo for convenience</span>
+</pre></div>
+</div>
+<p>A <a class="reference internal" href="reference.html#git.refs.symbolic.SymbolicReference" title="git.refs.symbolic.SymbolicReference"><code class="xref py py-class docutils literal"><span class="pre">symbolic</span> <span class="pre">reference</span></code></a> is a special case of a reference as it points to another reference instead of a commit.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">head</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">head</span>            <span class="c1"># the head points to the active branch/ref</span>
+        <span class="n">master</span> <span class="o">=</span> <span class="n">head</span><span class="o">.</span><span class="n">reference</span>     <span class="c1"># retrieve the reference the head points to</span>
+        <span class="n">master</span><span class="o">.</span><span class="n">commit</span>               <span class="c1"># from here you use it as any other reference</span>
+</pre></div>
+</div>
+<p>Access the <a class="reference internal" href="reference.html#git.refs.log.RefLog" title="git.refs.log.RefLog"><code class="xref py py-class docutils literal"><span class="pre">reflog</span></code></a> easily.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">log</span> <span class="o">=</span> <span class="n">master</span><span class="o">.</span><span class="n">log</span><span class="p">()</span>
+        <span class="n">log</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>                      <span class="c1"># first (i.e. oldest) reflog entry</span>
+        <span class="n">log</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>                     <span class="c1"># last (i.e. most recent) reflog entry</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="modifying-references">
+<h2>Modifying References<a class="headerlink" href="#modifying-references" title="Permalink to this headline">¶</a></h2>
+<p>You can easily create and delete <a class="reference internal" href="reference.html#git.refs.reference.Reference" title="git.refs.reference.Reference"><code class="xref py py-class docutils literal"><span class="pre">reference</span> <span class="pre">types</span></code></a> or modify where they point to.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">new_branch</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">create_head</span><span class="p">(</span><span class="s1">&#39;new&#39;</span><span class="p">)</span>     <span class="c1"># create a new one</span>
+        <span class="n">new_branch</span><span class="o">.</span><span class="n">commit</span> <span class="o">=</span> <span class="s1">&#39;HEAD~10&#39;</span>            <span class="c1"># set branch to another commit without changing index or working trees</span>
+        <span class="n">repo</span><span class="o">.</span><span class="n">delete_head</span><span class="p">(</span><span class="n">new_branch</span><span class="p">)</span>             <span class="c1"># delete an existing head - only works if it is not checked out</span>
+</pre></div>
+</div>
+<p>Create or delete <a class="reference internal" href="reference.html#git.refs.tag.TagReference" title="git.refs.tag.TagReference"><code class="xref py py-class docutils literal"><span class="pre">tags</span></code></a> the same way except you may not change them afterwards.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">new_tag</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">create_tag</span><span class="p">(</span><span class="s1">&#39;my_new_tag&#39;</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s1">&#39;my message&#39;</span><span class="p">)</span>
+        <span class="c1"># You cannot change the commit a tag points to. Tags need to be re-created</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">failUnlessRaises</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="nb">setattr</span><span class="p">,</span> <span class="n">new_tag</span><span class="p">,</span> <span class="s1">&#39;commit&#39;</span><span class="p">,</span> <span class="n">repo</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="s1">&#39;HEAD~1&#39;</span><span class="p">))</span>
+        <span class="n">repo</span><span class="o">.</span><span class="n">delete_tag</span><span class="p">(</span><span class="n">new_tag</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Change the <a class="reference internal" href="reference.html#git.refs.symbolic.SymbolicReference" title="git.refs.symbolic.SymbolicReference"><code class="xref py py-class docutils literal"><span class="pre">symbolic</span> <span class="pre">reference</span></code></a> to switch branches cheaply (without adjusting the index or the working tree).</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">new_branch</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">create_head</span><span class="p">(</span><span class="s1">&#39;another-branch&#39;</span><span class="p">)</span>
+        <span class="n">repo</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">reference</span> <span class="o">=</span> <span class="n">new_branch</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="understanding-objects">
+<h2>Understanding Objects<a class="headerlink" href="#understanding-objects" title="Permalink to this headline">¶</a></h2>
+<p>An Object is anything storable in git&#8217;s object database. Objects contain information about their type, their uncompressed size as well as the actual data. Each object is uniquely identified by a binary SHA1 hash, being 20 bytes in size, or 40 bytes in hexadecimal notation.</p>
+<p>Git only knows 4 distinct object types being <a class="reference internal" href="reference.html#git.objects.blob.Blob" title="git.objects.blob.Blob"><code class="xref py py-class docutils literal"><span class="pre">Blobs</span></code></a>, <a class="reference internal" href="reference.html#git.objects.tree.Tree" title="git.objects.tree.Tree"><code class="xref py py-class docutils literal"><span class="pre">Trees</span></code></a>, <a class="reference internal" href="reference.html#git.objects.commit.Commit" title="git.objects.commit.Commit"><code class="xref py py-class docutils literal"><span class="pre">Commits</span></code></a> and <a class="reference internal" href="reference.html#git.objects.tag.TagObject" title="git.objects.tag.TagObject"><code class="xref py py-class docutils literal"><span class="pre">Tags</span></code></a>.</p>
+<p>In GitPython, all objects can be accessed through their common base, can be compared and hashed. They are usually not instantiated directly, but through references or specialized repository functions.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">hc</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">commit</span>
+        <span class="n">hct</span> <span class="o">=</span> <span class="n">hc</span><span class="o">.</span><span class="n">tree</span>
+        <span class="n">hc</span> <span class="o">!=</span> <span class="n">hct</span>
+        <span class="n">hc</span> <span class="o">!=</span> <span class="n">repo</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">hc</span> <span class="o">==</span> <span class="n">repo</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">commit</span>
+</pre></div>
+</div>
+<p>Common fields are ...</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="k">assert</span> <span class="n">hct</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;tree&#39;</span>           <span class="c1"># preset string type, being a class attribute</span>
+        <span class="k">assert</span> <span class="n">hct</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span>                 <span class="c1"># size in bytes</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">hct</span><span class="o">.</span><span class="n">hexsha</span><span class="p">)</span> <span class="o">==</span> <span class="mi">40</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">hct</span><span class="o">.</span><span class="n">binsha</span><span class="p">)</span> <span class="o">==</span> <span class="mi">20</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="reference.html#git.objects.base.IndexObject" title="git.objects.base.IndexObject"><code class="xref py py-class docutils literal"><span class="pre">Index</span> <span class="pre">objects</span></code></a> are objects that can be put into git&#8217;s index. These objects are trees, blobs and submodules which additionally know about their path in the file system as well as their mode.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="k">assert</span> <span class="n">hct</span><span class="o">.</span><span class="n">path</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span>                  <span class="c1"># root tree has no path</span>
+        <span class="k">assert</span> <span class="n">hct</span><span class="o">.</span><span class="n">trees</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">path</span> <span class="o">!=</span> <span class="s1">&#39;&#39;</span>         <span class="c1"># the first contained item has one though</span>
+        <span class="k">assert</span> <span class="n">hct</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="mi">0</span><span class="n">o40000</span>              <span class="c1"># trees have the mode of a linux directory</span>
+        <span class="k">assert</span> <span class="n">hct</span><span class="o">.</span><span class="n">blobs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="mi">0</span><span class="n">o100644</span>   <span class="c1"># blobs have a specific mode though comparable to a standard linux fs</span>
+</pre></div>
+</div>
+<p>Access <a class="reference internal" href="reference.html#git.objects.blob.Blob" title="git.objects.blob.Blob"><code class="xref py py-class docutils literal"><span class="pre">blob</span></code></a> data (or any object data) using streams.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">hct</span><span class="o">.</span><span class="n">blobs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data_stream</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>        <span class="c1"># stream object to read data from</span>
+        <span class="n">hct</span><span class="o">.</span><span class="n">blobs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">stream_data</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">rw_dir</span><span class="p">,</span> <span class="s1">&#39;blob_data&#39;</span><span class="p">),</span> <span class="s1">&#39;wb&#39;</span><span class="p">))</span>  <span class="c1"># write data to given stream</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="the-commit-object">
+<h2>The Commit object<a class="headerlink" href="#the-commit-object" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference internal" href="reference.html#git.objects.commit.Commit" title="git.objects.commit.Commit"><code class="xref py py-class docutils literal"><span class="pre">Commit</span></code></a> objects contain information about a specific commit. Obtain commits using  references as done in <a class="reference internal" href="#examining-references">Examining References</a> or as follows.</p>
+<p>Obtain commits at the specified revision</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">repo</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="s1">&#39;master&#39;</span><span class="p">)</span>
+        <span class="n">repo</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="s1">&#39;v0.8.1&#39;</span><span class="p">)</span>
+        <span class="n">repo</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="s1">&#39;HEAD~10&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Iterate 50 commits, and if you need paging, you can specify a number of commits to skip.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">fifty_first_commits</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">repo</span><span class="o">.</span><span class="n">iter_commits</span><span class="p">(</span><span class="s1">&#39;master&#39;</span><span class="p">,</span> <span class="n">max_count</span><span class="o">=</span><span class="mi">50</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">fifty_first_commits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">50</span>
+        <span class="c1"># this will return commits 21-30 from the commit list as traversed backwards master</span>
+        <span class="n">ten_commits_past_twenty</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">repo</span><span class="o">.</span><span class="n">iter_commits</span><span class="p">(</span><span class="s1">&#39;master&#39;</span><span class="p">,</span> <span class="n">max_count</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">skip</span><span class="o">=</span><span class="mi">20</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">ten_commits_past_twenty</span><span class="p">)</span> <span class="o">==</span> <span class="mi">10</span>
+        <span class="k">assert</span> <span class="n">fifty_first_commits</span><span class="p">[</span><span class="mi">20</span><span class="p">:</span><span class="mi">30</span><span class="p">]</span> <span class="o">==</span> <span class="n">ten_commits_past_twenty</span>
+</pre></div>
+</div>
+<p>A commit object carries all sorts of meta-data</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">headcommit</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">commit</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">headcommit</span><span class="o">.</span><span class="n">hexsha</span><span class="p">)</span> <span class="o">==</span> <span class="mi">40</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">headcommit</span><span class="o">.</span><span class="n">parents</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="k">assert</span> <span class="n">headcommit</span><span class="o">.</span><span class="n">tree</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;tree&#39;</span>
+        <span class="k">assert</span> <span class="n">headcommit</span><span class="o">.</span><span class="n">author</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;Sebastian Thiel&#39;</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">headcommit</span><span class="o">.</span><span class="n">authored_date</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">headcommit</span><span class="o">.</span><span class="n">committer</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;Sebastian Thiel&#39;</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">headcommit</span><span class="o">.</span><span class="n">committed_date</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">headcommit</span><span class="o">.</span><span class="n">message</span> <span class="o">!=</span> <span class="s1">&#39;&#39;</span>
+</pre></div>
+</div>
+<p>Note: date time is represented in a <code class="docutils literal"><span class="pre">seconds</span> <span class="pre">since</span> <span class="pre">epoch</span></code> format. Conversion to human readable form can be accomplished with the various <a class="reference external" href="http://docs.python.org/library/time.html">time module</a> methods.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="kn">import</span> <span class="nn">time</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">asctime</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">gmtime</span><span class="p">(</span><span class="n">headcommit</span><span class="o">.</span><span class="n">committed_date</span><span class="p">))</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%a, </span><span class="si">%d</span><span class="s2"> %b %Y %H:%M&quot;</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">gmtime</span><span class="p">(</span><span class="n">headcommit</span><span class="o">.</span><span class="n">committed_date</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>You can traverse a commit&#8217;s ancestry by chaining calls to <code class="docutils literal"><span class="pre">parents</span></code></p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="k">assert</span> <span class="n">headcommit</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">repo</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="s1">&#39;master^^^&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The above corresponds to <code class="docutils literal"><span class="pre">master^^^</span></code> or <code class="docutils literal"><span class="pre">master~3</span></code> in git parlance.</p>
+</div>
+<div class="section" id="the-tree-object">
+<h2>The Tree object<a class="headerlink" href="#the-tree-object" title="Permalink to this headline">¶</a></h2>
+<p>A <a class="reference internal" href="reference.html#git.objects.tree.Tree" title="git.objects.tree.Tree"><code class="xref py py-class docutils literal"><span class="pre">tree</span></code></a> records pointers to the contents of a directory. Let&#8217;s say you want the root tree of the latest commit on the master branch</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">tree</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">heads</span><span class="o">.</span><span class="n">master</span><span class="o">.</span><span class="n">commit</span><span class="o">.</span><span class="n">tree</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">tree</span><span class="o">.</span><span class="n">hexsha</span><span class="p">)</span> <span class="o">==</span> <span class="mi">40</span>
+</pre></div>
+</div>
+<p>Once you have a tree, you can get its contents</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">tree</span><span class="o">.</span><span class="n">trees</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>          <span class="c1"># trees are subdirectories</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">tree</span><span class="o">.</span><span class="n">blobs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>          <span class="c1"># blobs are files</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">tree</span><span class="o">.</span><span class="n">blobs</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">tree</span><span class="o">.</span><span class="n">trees</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>It is useful to know that a tree behaves like a list with the ability to query entries by name</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="k">assert</span> <span class="n">tree</span><span class="p">[</span><span class="s1">&#39;smmap&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">tree</span> <span class="o">/</span> <span class="s1">&#39;smmap&#39;</span>          <span class="c1"># access by index and by sub-path</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">tree</span><span class="p">:</span>                                         <span class="c1"># intuitive iteration of tree members</span>
+            <span class="k">print</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+        <span class="n">blob</span> <span class="o">=</span> <span class="n">tree</span><span class="o">.</span><span class="n">trees</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">blobs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>                              <span class="c1"># let&#39;s get a blob in a sub-tree</span>
+        <span class="k">assert</span> <span class="n">blob</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">blob</span><span class="o">.</span><span class="n">path</span><span class="p">)</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">blob</span><span class="o">.</span><span class="n">abspath</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">tree</span><span class="o">.</span><span class="n">trees</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">blob</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">blob</span><span class="o">.</span><span class="n">path</span>   <span class="c1"># this is how the relative blob path is generated</span>
+        <span class="k">assert</span> <span class="n">tree</span><span class="p">[</span><span class="n">blob</span><span class="o">.</span><span class="n">path</span><span class="p">]</span> <span class="o">==</span> <span class="n">blob</span>                             <span class="c1"># you can use paths like &#39;dir/file&#39; in tree[...]</span>
+</pre></div>
+</div>
+<p>There is a convenience method that allows you to get a named sub-object from a tree with a syntax similar to how paths are written in a posix system</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="k">assert</span> <span class="n">tree</span> <span class="o">/</span> <span class="s1">&#39;smmap&#39;</span> <span class="o">==</span> <span class="n">tree</span><span class="p">[</span><span class="s1">&#39;smmap&#39;</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="n">tree</span> <span class="o">/</span> <span class="n">blob</span><span class="o">.</span><span class="n">path</span> <span class="o">==</span> <span class="n">tree</span><span class="p">[</span><span class="n">blob</span><span class="o">.</span><span class="n">path</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>You can also get a commit&#8217;s root tree directly from the repository</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="c1"># This example shows the various types of allowed ref-specs</span>
+        <span class="k">assert</span> <span class="n">repo</span><span class="o">.</span><span class="n">tree</span><span class="p">()</span> <span class="o">==</span> <span class="n">repo</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">commit</span><span class="o">.</span><span class="n">tree</span>
+        <span class="n">past</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="s1">&#39;HEAD~5&#39;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">repo</span><span class="o">.</span><span class="n">tree</span><span class="p">(</span><span class="n">past</span><span class="p">)</span> <span class="o">==</span> <span class="n">repo</span><span class="o">.</span><span class="n">tree</span><span class="p">(</span><span class="n">past</span><span class="o">.</span><span class="n">hexsha</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">repo</span><span class="o">.</span><span class="n">tree</span><span class="p">(</span><span class="s1">&#39;v0.8.1&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;tree&#39;</span>               <span class="c1"># yes, you can provide any refspec - works everywhere</span>
+</pre></div>
+</div>
+<p>As trees allow direct access to their intermediate child entries only, use the traverse method to obtain an iterator to retrieve entries recursively</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">tree</span><span class="o">.</span><span class="n">traverse</span><span class="p">()))</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If trees return Submodule objects, they will assume that they exist at the current head&#8217;s commit. The tree it originated from may be rooted at another commit though, that it doesn&#8217;t know. That is why the caller would have to set the submodule&#8217;s owning or parent commit using the <code class="docutils literal"><span class="pre">set_parent_commit(my_commit)</span></code> method.</p>
+</div>
+</div>
+<div class="section" id="the-index-object">
+<h2>The Index Object<a class="headerlink" href="#the-index-object" title="Permalink to this headline">¶</a></h2>
+<p>The git index is the stage containing changes to be written with the next commit or where merges finally have to take place. You may freely access and manipulate this information using the <a class="reference internal" href="reference.html#git.index.base.IndexFile" title="git.index.base.IndexFile"><code class="xref py py-class docutils literal"><span class="pre">IndexFile</span></code></a> object.
+Modify the index with ease</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">index</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">index</span>
+        <span class="c1"># The index contains all blobs in a flat list</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">index</span><span class="o">.</span><span class="n">iter_blobs</span><span class="p">()))</span> <span class="o">==</span> <span class="nb">len</span><span class="p">([</span><span class="n">o</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">repo</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">commit</span><span class="o">.</span><span class="n">tree</span><span class="o">.</span><span class="n">traverse</span><span class="p">()</span> <span class="k">if</span> <span class="n">o</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;blob&#39;</span><span class="p">])</span>
+        <span class="c1"># Access blob objects</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">stage</span><span class="p">),</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">index</span><span class="o">.</span><span class="n">entries</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">pass</span>
+        <span class="n">new_file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">repo</span><span class="o">.</span><span class="n">working_tree_dir</span><span class="p">,</span> <span class="s1">&#39;new-file-name&#39;</span><span class="p">)</span>
+        <span class="nb">open</span><span class="p">(</span><span class="n">new_file_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">index</span><span class="o">.</span><span class="n">add</span><span class="p">([</span><span class="n">new_file_path</span><span class="p">])</span>                                             <span class="c1"># add a new file to the index</span>
+        <span class="n">index</span><span class="o">.</span><span class="n">remove</span><span class="p">([</span><span class="s1">&#39;LICENSE&#39;</span><span class="p">])</span>                                              <span class="c1"># remove an existing one</span>
+        <span class="k">assert</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">repo</span><span class="o">.</span><span class="n">working_tree_dir</span><span class="p">,</span> <span class="s1">&#39;LICENSE&#39;</span><span class="p">))</span>  <span class="c1"># working tree is untouched</span>
+
+        <span class="k">assert</span> <span class="n">index</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="s2">&quot;my commit message&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;commit&#39;</span>              <span class="c1"># commit changed index</span>
+        <span class="n">repo</span><span class="o">.</span><span class="n">active_branch</span><span class="o">.</span><span class="n">commit</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="s1">&#39;HEAD~1&#39;</span><span class="p">)</span>                      <span class="c1"># forget last commit</span>
+
+        <span class="kn">from</span> <span class="nn">git</span> <span class="kn">import</span> <span class="n">Actor</span>
+        <span class="n">author</span> <span class="o">=</span> <span class="n">Actor</span><span class="p">(</span><span class="s2">&quot;An author&quot;</span><span class="p">,</span> <span class="s2">&quot;author@example.com&quot;</span><span class="p">)</span>
+        <span class="n">committer</span> <span class="o">=</span> <span class="n">Actor</span><span class="p">(</span><span class="s2">&quot;A committer&quot;</span><span class="p">,</span> <span class="s2">&quot;committer@example.com&quot;</span><span class="p">)</span>
+        <span class="c1"># commit by commit message and author and committer</span>
+        <span class="n">index</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="s2">&quot;my commit message&quot;</span><span class="p">,</span> <span class="n">author</span><span class="o">=</span><span class="n">author</span><span class="p">,</span> <span class="n">committer</span><span class="o">=</span><span class="n">committer</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Create new indices from other trees or as result of a merge. Write that result to a new index file for later inspection.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="kn">from</span> <span class="nn">git</span> <span class="kn">import</span> <span class="n">IndexFile</span>
+        <span class="c1"># loads a tree into a temporary index, which exists just in memory</span>
+        <span class="n">IndexFile</span><span class="o">.</span><span class="n">from_tree</span><span class="p">(</span><span class="n">repo</span><span class="p">,</span> <span class="s1">&#39;HEAD~1&#39;</span><span class="p">)</span>
+        <span class="c1"># merge two trees three-way into memory</span>
+        <span class="n">merge_index</span> <span class="o">=</span> <span class="n">IndexFile</span><span class="o">.</span><span class="n">from_tree</span><span class="p">(</span><span class="n">repo</span><span class="p">,</span> <span class="s1">&#39;HEAD~10&#39;</span><span class="p">,</span> <span class="s1">&#39;HEAD&#39;</span><span class="p">,</span> <span class="n">repo</span><span class="o">.</span><span class="n">merge_base</span><span class="p">(</span><span class="s1">&#39;HEAD~10&#39;</span><span class="p">,</span> <span class="s1">&#39;HEAD&#39;</span><span class="p">))</span>
+        <span class="c1"># and persist it</span>
+        <span class="n">merge_index</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">rw_dir</span><span class="p">,</span> <span class="s1">&#39;merged_index&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="handling-remotes">
+<h2>Handling Remotes<a class="headerlink" href="#handling-remotes" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference internal" href="reference.html#git.remote.Remote" title="git.remote.Remote"><code class="xref py py-class docutils literal"><span class="pre">Remotes</span></code></a> are used as alias for a foreign repository to ease pushing to and fetching from them</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">empty_repo</span> <span class="o">=</span> <span class="n">git</span><span class="o">.</span><span class="n">Repo</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">rw_dir</span><span class="p">,</span> <span class="s1">&#39;empty&#39;</span><span class="p">))</span>
+        <span class="n">origin</span> <span class="o">=</span> <span class="n">empty_repo</span><span class="o">.</span><span class="n">create_remote</span><span class="p">(</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="n">repo</span><span class="o">.</span><span class="n">remotes</span><span class="o">.</span><span class="n">origin</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">origin</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="n">origin</span> <span class="o">==</span> <span class="n">empty_repo</span><span class="o">.</span><span class="n">remotes</span><span class="o">.</span><span class="n">origin</span> <span class="o">==</span> <span class="n">empty_repo</span><span class="o">.</span><span class="n">remotes</span><span class="p">[</span><span class="s1">&#39;origin&#39;</span><span class="p">]</span>
+        <span class="n">origin</span><span class="o">.</span><span class="n">fetch</span><span class="p">()</span>                  <span class="c1"># assure we actually have data. fetch() returns useful information</span>
+        <span class="c1"># Setup a local tracking branch of a remote branch</span>
+        <span class="n">empty_repo</span><span class="o">.</span><span class="n">create_head</span><span class="p">(</span><span class="s1">&#39;master&#39;</span><span class="p">,</span> <span class="n">origin</span><span class="o">.</span><span class="n">refs</span><span class="o">.</span><span class="n">master</span><span class="p">)</span>  <span class="c1"># create local branch &quot;master&quot; from remote branch &quot;master&quot;</span>
+        <span class="n">empty_repo</span><span class="o">.</span><span class="n">heads</span><span class="o">.</span><span class="n">master</span><span class="o">.</span><span class="n">set_tracking_branch</span><span class="p">(</span><span class="n">origin</span><span class="o">.</span><span class="n">refs</span><span class="o">.</span><span class="n">master</span><span class="p">)</span>  <span class="c1"># set local &quot;master&quot; to track remote &quot;master</span>
+        <span class="n">empty_repo</span><span class="o">.</span><span class="n">heads</span><span class="o">.</span><span class="n">master</span><span class="o">.</span><span class="n">checkout</span><span class="p">()</span>  <span class="c1"># checkout local &quot;master&quot; to working tree</span>
+        <span class="c1"># Three above commands in one:</span>
+        <span class="n">empty_repo</span><span class="o">.</span><span class="n">create_head</span><span class="p">(</span><span class="s1">&#39;master&#39;</span><span class="p">,</span> <span class="n">origin</span><span class="o">.</span><span class="n">refs</span><span class="o">.</span><span class="n">master</span><span class="p">)</span><span class="o">.</span><span class="n">set_tracking_branch</span><span class="p">(</span><span class="n">origin</span><span class="o">.</span><span class="n">refs</span><span class="o">.</span><span class="n">master</span><span class="p">)</span><span class="o">.</span><span class="n">checkout</span><span class="p">()</span>
+        <span class="c1"># rename remotes</span>
+        <span class="n">origin</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s1">&#39;new_origin&#39;</span><span class="p">)</span>
+        <span class="c1"># push and pull behaves similarly to `git push|pull`</span>
+        <span class="n">origin</span><span class="o">.</span><span class="n">pull</span><span class="p">()</span>
+        <span class="n">origin</span><span class="o">.</span><span class="n">push</span><span class="p">()</span>
+        <span class="c1"># assert not empty_repo.delete_remote(origin).exists()     # create and delete remotes</span>
+</pre></div>
+</div>
+<p>You can easily access configuration information for a remote by accessing options as if they where attributes. The modification of remote configuration is more explicit though.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="k">assert</span> <span class="n">origin</span><span class="o">.</span><span class="n">url</span> <span class="o">==</span> <span class="n">repo</span><span class="o">.</span><span class="n">remotes</span><span class="o">.</span><span class="n">origin</span><span class="o">.</span><span class="n">url</span>
+        <span class="n">cw</span> <span class="o">=</span> <span class="n">origin</span><span class="o">.</span><span class="n">config_writer</span>
+        <span class="n">cw</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;pushurl&quot;</span><span class="p">,</span> <span class="s2">&quot;other_url&quot;</span><span class="p">)</span>
+        <span class="n">cw</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+
+        <span class="c1"># Please note that in python 2, writing origin.config_writer.set(...) is totally safe.</span>
+        <span class="c1"># In py3 __del__ calls can be delayed, thus not writing changes in time.</span>
+</pre></div>
+</div>
+<p>You can also specify per-call custom environments using a new context manager on the Git command, e.g. for using a specific SSH key. The following example works with <cite>git</cite> starting at <em>v2.3</em>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">ssh_cmd</span> <span class="o">=</span> <span class="s1">&#39;ssh -i id_deployment_key&#39;</span>
+<span class="k">with</span> <span class="n">repo</span><span class="o">.</span><span class="n">git</span><span class="o">.</span><span class="n">custom_environment</span><span class="p">(</span><span class="n">GIT_SSH_COMMAND</span><span class="o">=</span><span class="n">ssh_cmd</span><span class="p">):</span>
+    <span class="n">repo</span><span class="o">.</span><span class="n">remotes</span><span class="o">.</span><span class="n">origin</span><span class="o">.</span><span class="n">fetch</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This one sets a custom script to be executed in place of <cite>ssh</cite>, and can be used in <cite>git</cite> prior to <em>v2.3</em>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">ssh_executable</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">rw_dir</span><span class="p">,</span> <span class="s1">&#39;my_ssh_executable.sh&#39;</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">repo</span><span class="o">.</span><span class="n">git</span><span class="o">.</span><span class="n">custom_environment</span><span class="p">(</span><span class="n">GIT_SSH</span><span class="o">=</span><span class="n">ssh_executable</span><span class="p">):</span>
+    <span class="n">repo</span><span class="o">.</span><span class="n">remotes</span><span class="o">.</span><span class="n">origin</span><span class="o">.</span><span class="n">fetch</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Here&#8217;s an example executable that can be used in place of the <cite>ssh_executable</cite> above:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>#!/bin/sh
+ID_RSA=/var/lib/openshift/5562b947ecdd5ce939000038/app-deployments/id_rsa
+exec /usr/bin/ssh -o StrictHostKeyChecking=no -i $ID_RSA &quot;$@&quot;
+</pre></div>
+</div>
+<p>Please note that the script must be executable (i.e. <cite>chomd +x script.sh</cite>). <cite>StrictHostKeyChecking=no</cite> is used to avoid prompts asking to save the hosts key to <cite>~/.ssh/known_hosts</cite>, which happens in case you run this as daemon.</p>
+<p>You might also have a look at <cite>Git.update_environment(...)</cite> in case you want to setup a changed environment more permanently.</p>
+</div>
+<div class="section" id="submodule-handling">
+<h2>Submodule Handling<a class="headerlink" href="#submodule-handling" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference internal" href="reference.html#git.objects.submodule.base.Submodule" title="git.objects.submodule.base.Submodule"><code class="xref py py-class docutils literal"><span class="pre">Submodules</span></code></a> can be conveniently handled using the methods provided by GitPython, and as an added benefit, GitPython provides functionality which behave smarter and less error prone than its original c-git implementation, that is GitPython tries hard to keep your repository consistent when updating submodules recursively or adjusting the existing configuration.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">repo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rorepo</span>
+        <span class="n">sms</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">submodules</span>
+
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">sms</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="n">sm</span> <span class="o">=</span> <span class="n">sms</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;gitdb&#39;</span>                         <span class="c1"># git-python has gitdb as single submodule ...</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">children</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;smmap&#39;</span>           <span class="c1"># ... which has smmap as single submodule</span>
+
+        <span class="c1"># The module is the repository referenced by the submodule</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">module_exists</span><span class="p">()</span>                         <span class="c1"># the module is available, which doesn&#39;t have to be the case.</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">module</span><span class="p">()</span><span class="o">.</span><span class="n">working_tree_dir</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;gitdb&#39;</span><span class="p">)</span>
+        <span class="c1"># the submodule&#39;s absolute path is the module&#39;s path</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">abspath</span> <span class="o">==</span> <span class="n">sm</span><span class="o">.</span><span class="n">module</span><span class="p">()</span><span class="o">.</span><span class="n">working_tree_dir</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">sm</span><span class="o">.</span><span class="n">hexsha</span><span class="p">)</span> <span class="o">==</span> <span class="mi">40</span>                       <span class="c1"># Its sha defines the commit to checkout</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>                                <span class="c1"># yes, this submodule is valid and exists</span>
+        <span class="c1"># read its configuration conveniently</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">config_reader</span><span class="p">()</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="s1">&#39;path&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="n">sm</span><span class="o">.</span><span class="n">path</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">sm</span><span class="o">.</span><span class="n">children</span><span class="p">())</span> <span class="o">==</span> <span class="mi">1</span>                    <span class="c1"># query the submodule hierarchy</span>
+</pre></div>
+</div>
+<p>In addition to the query functionality, you can move the submodule&#8217;s repository to a different path &lt;<code class="docutils literal"><span class="pre">move(...)</span></code>&gt;, write its configuration &lt;<code class="docutils literal"><span class="pre">config_writer().set_value(...).release()</span></code>&gt;, update its working tree &lt;<code class="docutils literal"><span class="pre">update(...)</span></code>&gt;, and remove or add them &lt;<code class="docutils literal"><span class="pre">remove(...)</span></code>, <code class="docutils literal"><span class="pre">add(...)</span></code>&gt;.</p>
+<p>If you obtained your submodule object by traversing a tree object which is not rooted at the head&#8217;s commit, you have to inform the submodule about its actual commit to retrieve the data from by using the <code class="docutils literal"><span class="pre">set_parent_commit(...)</span></code> method.</p>
+<p>The special <a class="reference internal" href="reference.html#git.objects.submodule.root.RootModule" title="git.objects.submodule.root.RootModule"><code class="xref py py-class docutils literal"><span class="pre">RootModule</span></code></a> type allows you to treat your master repository as root of a hierarchy of submodules, which allows very convenient submodule handling. Its <code class="docutils literal"><span class="pre">update(...)</span></code> method is reimplemented to provide an advanced way of updating submodules as they change their values over time. The update method will track changes and make sure your working tree and submodule checkouts stay consistent, which is very useful in case submodules get deleted or added to name just two of the handled cases.</p>
+<p>Additionally, GitPython adds functionality to track a specific branch, instead of just a commit. Supported by customized update methods, you are able to automatically update submodules to the latest revision available in the remote repository, as well as to keep track of changes and movements of these submodules. To use it, set the name of the branch you want to track to the <code class="docutils literal"><span class="pre">submodule.$name.branch</span></code> option of the <em>.gitmodules</em>  file, and use GitPython update methods on the resulting repository with the <code class="docutils literal"><span class="pre">to_latest_revision</span></code> parameter turned on. In the latter case, the sha of your submodule will be ignored, instead a local tracking branch will be updated to the respective remote branch automatically, provided there are no local changes. The resulting behaviour is much like the one of svn::externals, which can be useful in times.</p>
+</div>
+<div class="section" id="obtaining-diff-information">
+<h2>Obtaining Diff Information<a class="headerlink" href="#obtaining-diff-information" title="Permalink to this headline">¶</a></h2>
+<p>Diffs can generally be obtained by subclasses of <a class="reference internal" href="reference.html#git.diff.Diffable" title="git.diff.Diffable"><code class="xref py py-class docutils literal"><span class="pre">Diffable</span></code></a> as they provide the <code class="docutils literal"><span class="pre">diff</span></code> method. This operation yields a <a class="reference internal" href="reference.html#git.diff.DiffIndex" title="git.diff.DiffIndex"><code class="xref py py-class docutils literal"><span class="pre">DiffIndex</span></code></a> allowing you to easily access diff information about paths.</p>
+<p>Diffs can be made between the Index and Trees, Index and the working tree, trees and trees as well as trees and the working copy. If commits are involved, their tree will be used implicitly.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">hcommit</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">commit</span>
+        <span class="n">hcommit</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span>                  <span class="c1"># diff tree against index</span>
+        <span class="n">hcommit</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="s1">&#39;HEAD~1&#39;</span><span class="p">)</span>          <span class="c1"># diff tree against previous tree</span>
+        <span class="n">hcommit</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="bp">None</span><span class="p">)</span>              <span class="c1"># diff tree against working tree</span>
+
+        <span class="n">index</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">index</span>
+        <span class="n">index</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span>                    <span class="c1"># diff index against itself yielding empty diff</span>
+        <span class="n">index</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="bp">None</span><span class="p">)</span>                <span class="c1"># diff index against working copy</span>
+        <span class="n">index</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="s1">&#39;HEAD&#39;</span><span class="p">)</span>              <span class="c1"># diff index against current HEAD tree</span>
+</pre></div>
+</div>
+<p>The item returned is a DiffIndex which is essentially a list of Diff objects. It provides additional filtering to ease finding what you might be looking for.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="c1"># Traverse added Diff objects only</span>
+        <span class="k">for</span> <span class="n">diff_added</span> <span class="ow">in</span> <span class="n">hcommit</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="s1">&#39;HEAD~1&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">iter_change_type</span><span class="p">(</span><span class="s1">&#39;A&#39;</span><span class="p">):</span>
+            <span class="k">print</span><span class="p">(</span><span class="n">diff_added</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Use the diff framework if you want to implement git-status like functionality.</p>
+<ul class="simple">
+<li>A diff between the index and the commit&#8217;s tree your HEAD points to</li>
+</ul>
+<blockquote>
+<div><ul class="simple">
+<li>use <code class="docutils literal"><span class="pre">repo.index.diff(repo.head.commit)</span></code></li>
+</ul>
+</div></blockquote>
+<ul class="simple">
+<li>A diff between the index and the working tree</li>
+</ul>
+<blockquote>
+<div><ul class="simple">
+<li>use <code class="docutils literal"><span class="pre">repo.index.diff(None)</span></code></li>
+</ul>
+</div></blockquote>
+<ul class="simple">
+<li>A list of untracked files</li>
+</ul>
+<blockquote>
+<div><ul class="simple">
+<li>use <code class="docutils literal"><span class="pre">repo.untracked_files</span></code></li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="switching-branches">
+<h2>Switching Branches<a class="headerlink" href="#switching-branches" title="Permalink to this headline">¶</a></h2>
+<p>To switch between branches similar to <code class="docutils literal"><span class="pre">git</span> <span class="pre">checkout</span></code>, you effectively need to point your HEAD symbolic reference to the new branch and reset your index and working copy to match. A simple manual way to do it is the following one</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="c1"># Reset our working tree 10 commits into the past</span>
+        <span class="n">past_branch</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">create_head</span><span class="p">(</span><span class="s1">&#39;past_branch&#39;</span><span class="p">,</span> <span class="s1">&#39;HEAD~10&#39;</span><span class="p">)</span>
+        <span class="n">repo</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">reference</span> <span class="o">=</span> <span class="n">past_branch</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="n">repo</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">is_detached</span>
+        <span class="c1"># reset the index and working tree to match the pointed-to commit</span>
+        <span class="n">repo</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">working_tree</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+        <span class="c1"># To detach your head, you have to point to a commit directy</span>
+        <span class="n">repo</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">reference</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="s1">&#39;HEAD~5&#39;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">repo</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">is_detached</span>
+        <span class="c1"># now our head points 15 commits into the past, whereas the working tree</span>
+        <span class="c1"># and index are 10 commits in the past</span>
+</pre></div>
+</div>
+<p>The previous approach would brutally overwrite the user&#8217;s changes in the working copy and index though and is less sophisticated than a <code class="docutils literal"><span class="pre">git-checkout</span></code>. The latter will generally prevent you from destroying your work. Use the safer approach as follows.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="c1"># checkout the branch using git-checkout. It will fail as the working tree appears dirty</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">failUnlessRaises</span><span class="p">(</span><span class="n">git</span><span class="o">.</span><span class="n">GitCommandError</span><span class="p">,</span> <span class="n">repo</span><span class="o">.</span><span class="n">heads</span><span class="o">.</span><span class="n">master</span><span class="o">.</span><span class="n">checkout</span><span class="p">)</span>
+        <span class="n">repo</span><span class="o">.</span><span class="n">heads</span><span class="o">.</span><span class="n">past_branch</span><span class="o">.</span><span class="n">checkout</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="initializing-a-repository">
+<h2>Initializing a repository<a class="headerlink" href="#initializing-a-repository" title="Permalink to this headline">¶</a></h2>
+<p>In this example, we will initialize an empty repository, add an empty file to the index, and commit the change.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="kn">import</span> <span class="nn">git</span>
+
+        <span class="n">repo_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">rw_dir</span><span class="p">,</span> <span class="s1">&#39;my-new-repo&#39;</span><span class="p">)</span>
+        <span class="n">file_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">repo_dir</span><span class="p">,</span> <span class="s1">&#39;new-file&#39;</span><span class="p">)</span>
+
+        <span class="n">r</span> <span class="o">=</span> <span class="n">git</span><span class="o">.</span><span class="n">Repo</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">repo_dir</span><span class="p">)</span>
+        <span class="c1"># This function just creates an empty file ...</span>
+        <span class="nb">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">r</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">add</span><span class="p">([</span><span class="n">file_name</span><span class="p">])</span>
+        <span class="n">r</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="s2">&quot;initial commit&quot;</span><span class="p">)</span>
+
+</pre></div>
+</div>
+<p>Please have a look at the individual methods as they usually support a vast amount of arguments to customize their behavior.</p>
+</div>
+<div class="section" id="using-git-directly">
+<h2>Using git directly<a class="headerlink" href="#using-git-directly" title="Permalink to this headline">¶</a></h2>
+<p>In case you are missing functionality as it has not been wrapped, you may conveniently use the <a class="reference internal" href="reference.html#git.cmd.Git" title="git.cmd.Git"><code class="xref py py-class docutils literal"><span class="pre">git</span></code></a> command directly. It is owned by each repository instance.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>        <span class="n">git</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">git</span>
+        <span class="n">git</span><span class="o">.</span><span class="n">checkout</span><span class="p">(</span><span class="s1">&#39;HEAD&#39;</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="s2">&quot;my_new_branch&quot;</span><span class="p">)</span>         <span class="c1"># create a new branch</span>
+        <span class="n">git</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="s1">&#39;another-new-one&#39;</span><span class="p">)</span>
+        <span class="n">git</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="s1">&#39;-D&#39;</span><span class="p">,</span> <span class="s1">&#39;another-new-one&#39;</span><span class="p">)</span>             <span class="c1"># pass strings for full control over argument order</span>
+        <span class="n">git</span><span class="o">.</span><span class="n">for_each_ref</span><span class="p">()</span>                              <span class="c1"># &#39;-&#39; becomes &#39;_&#39; when calling it</span>
+</pre></div>
+</div>
+<p>The return value will by default be a string of the standard output channel produced by the command.</p>
+<p>Keyword arguments translate to short and long keyword arguments on the command-line.
+The special notion <code class="docutils literal"><span class="pre">git.command(flag=True)</span></code> will create a flag without value like <code class="docutils literal"><span class="pre">command</span> <span class="pre">--flag</span></code>.</p>
+<p>If <code class="docutils literal"><span class="pre">None</span></code> is found in the arguments, it will be dropped silently. Lists and tuples passed as arguments will be unpacked recursively to individual arguments. Objects are converted to strings using the <code class="docutils literal"><span class="pre">str(...)</span></code> function.</p>
+</div>
+<div class="section" id="object-databases">
+<h2>Object Databases<a class="headerlink" href="#object-databases" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference internal" href="reference.html#git.repo.base.Repo" title="git.repo.base.Repo"><code class="xref py py-class docutils literal"><span class="pre">git.Repo</span></code></a> instances are powered by its object database instance which will be used when extracting any data, or when writing new objects.</p>
+<p>The type of the database determines certain performance characteristics, such as the quantity of objects that can be read per second, the resource usage when reading large data files, as well as the average memory footprint of your application.</p>
+<div class="section" id="gitdb">
+<h3>GitDB<a class="headerlink" href="#gitdb" title="Permalink to this headline">¶</a></h3>
+<p>The GitDB is a pure-python implementation of the git object database. It is the default database to use in GitPython 0.3. Its uses less memory when handling huge files, but will be 2 to 5 times slower when extracting large quantities small of objects from densely packed repositories:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">repo</span> <span class="o">=</span> <span class="n">Repo</span><span class="p">(</span><span class="s2">&quot;path/to/repo&quot;</span><span class="p">,</span> <span class="n">odbt</span><span class="o">=</span><span class="n">GitDB</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="gitcmdobjectdb">
+<h3>GitCmdObjectDB<a class="headerlink" href="#gitcmdobjectdb" title="Permalink to this headline">¶</a></h3>
+<p>The git command database uses persistent git-cat-file instances to read repository information. These operate very fast under all conditions, but will consume additional memory for the process itself. When extracting large files, memory usage will be much higher than the one of the <code class="docutils literal"><span class="pre">GitDB</span></code>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">repo</span> <span class="o">=</span> <span class="n">Repo</span><span class="p">(</span><span class="s2">&quot;path/to/repo&quot;</span><span class="p">,</span> <span class="n">odbt</span><span class="o">=</span><span class="n">GitCmdObjectDB</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="git-command-debugging-and-customization">
+<h2>Git Command Debugging and Customization<a class="headerlink" href="#git-command-debugging-and-customization" title="Permalink to this headline">¶</a></h2>
+<p>Using environment variables, you can further adjust the behaviour of the git command.</p>
+<ul class="simple">
+<li><strong>GIT_PYTHON_TRACE</strong></li>
+</ul>
+<blockquote>
+<div><ul class="simple">
+<li>If set to non-0, all executed git commands will be shown as they happen</li>
+<li>If set to <em>full</em>, the executed git command _and_ its entire output on stdout and stderr will be shown as they happen</li>
+</ul>
+<p><strong>NOTE</strong>: All logging is outputted using a Python logger, so make sure your program is configured to show INFO-level messages.  If this is not the case, try adding the following to your program:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">logging</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+</pre></div>
+</div>
+</div></blockquote>
+<ul class="simple">
+<li><strong>GIT_PYTHON_GIT_EXECUTABLE</strong></li>
+</ul>
+<blockquote>
+<div><ul class="simple">
+<li>If set, it should contain the full path to the git executable, e.g. <em>c:\Program Files (x86)\Git\bin\git.exe</em> on windows or <em>/usr/bin/git</em> on linux.</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="and-even-more">
+<h2>And even more ...<a class="headerlink" href="#and-even-more" title="Permalink to this headline">¶</a></h2>
+<p>There is more functionality in there, like the ability to archive repositories, get stats and logs, blame, and probably a few other things that were not mentioned here.</p>
+<p>Check the unit tests for an in-depth introduction on how each function is supposed to be used.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">GitPython Tutorial</a><ul>
+<li><a class="reference internal" href="#meet-the-repo-type">Meet the Repo type</a><ul>
+<li><a class="reference internal" href="#advanced-repo-usage">Advanced Repo Usage</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#examining-references">Examining References</a></li>
+<li><a class="reference internal" href="#modifying-references">Modifying References</a></li>
+<li><a class="reference internal" href="#understanding-objects">Understanding Objects</a></li>
+<li><a class="reference internal" href="#the-commit-object">The Commit object</a></li>
+<li><a class="reference internal" href="#the-tree-object">The Tree object</a></li>
+<li><a class="reference internal" href="#the-index-object">The Index Object</a></li>
+<li><a class="reference internal" href="#handling-remotes">Handling Remotes</a></li>
+<li><a class="reference internal" href="#submodule-handling">Submodule Handling</a></li>
+<li><a class="reference internal" href="#obtaining-diff-information">Obtaining Diff Information</a></li>
+<li><a class="reference internal" href="#switching-branches">Switching Branches</a></li>
+<li><a class="reference internal" href="#initializing-a-repository">Initializing a repository</a></li>
+<li><a class="reference internal" href="#using-git-directly">Using git directly</a></li>
+<li><a class="reference internal" href="#object-databases">Object Databases</a><ul>
+<li><a class="reference internal" href="#gitdb">GitDB</a></li>
+<li><a class="reference internal" href="#gitcmdobjectdb">GitCmdObjectDB</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#git-command-debugging-and-customization">Git Command Debugging and Customization</a></li>
+<li><a class="reference internal" href="#and-even-more">And even more ...</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="whatsnew.html" title="previous chapter">Whats New in 0.3</a></li>
+      <li>Next: <a href="reference.html" title="next chapter">API Reference</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/tutorial.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;Copyright (C) 2008, 2009 Michael Trier and contributors, 2010-2015 Sebastian Thiel.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+      |
+      <a href="_sources/tutorial.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

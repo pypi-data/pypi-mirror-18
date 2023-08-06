@@ -1,0 +1,270 @@
+#!/usr/bin/python
+# Copyright 2016 Red Hat, Inc.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+import argparse
+import logging
+import os
+import pwd
+import shutil
+import socket
+import subprocess
+import sys
+import time
+import copy
+import tempfile
+import getpass
+from ipapython.ipautil import run, kinit_password, user_input
+from ipalib import api
+from ipalib import errors
+from novajoin.errors import ConfigurationError
+from novajoin import configure_ipa
+from six.moves import input
+from six.moves.configparser import ConfigParser
+from subprocess import CalledProcessError
+from string import Template
+
+
+DATADIR = '/usr/share/novajoin'
+NOVADIR = '/etc/nova'
+IPACONF = '/etc/ipa/default.conf'
+NOVACONF = '/etc/nova/nova.conf'
+JOINCONF = '/etc/join/join.conf'
+
+
+LOGFILE = '/var/log/novajoin-install.log'
+logger = logging.getLogger()
+
+
+def openlogs():
+    global logger  # pylint: disable=W0603
+    if os.path.isfile(LOGFILE):
+        try:
+            created = '%s' % time.strftime(
+                '%Y%m%d%H%M%SZ', time.gmtime(os.path.getctime(LOGFILE)))
+            shutil.move(LOGFILE, '%s.%s' % (LOGFILE, created))
+        except IOError:
+            pass
+    logger = logging.getLogger()
+    try:
+        lh = logging.FileHandler(LOGFILE)
+    except IOError as e:
+        print >> sys.stderr, 'Unable to open %s (%s)' % (LOGFILE, str(e))
+        lh = logging.StreamHandler(sys.stderr)
+    formatter = logging.Formatter('[%(asctime)s] %(message)s')
+    lh.setFormatter(formatter)
+    lh.setLevel(logging.DEBUG)
+    logger.addHandler(lh)
+    logger.propagate = False
+    ch = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter('%(message)s')
+    ch.setFormatter(formatter)
+    ch.setLevel(logging.INFO)
+    logger.addHandler(ch)
+
+
+def write_from_template(destfile, template, opts):
+    with open(template) as f:
+        t = Template(f.read())
+    text = t.substitute(**opts)
+    with open(destfile, 'w+') as f:
+        f.write(text)
+    logger.debug(destfile)
+    logger.debug(text)
+
+
+def install(args):
+    logger.info('Installation initiated')
+
+    if not os.path.exists(IPACONF):
+        raise ConfigurationError('Must be enrolled in IPA')
+
+    try:
+        os.environ['OS_PASSWORD']
+        os.environ['OS_USERNAME']
+        os.environ['OS_AUTH_URL']
+    except KeyError as e:
+        raise ConfigurationError('%s environment variable not set.'
+                                 % e.message)
+
+    try:
+        user = pwd.getpwnam(args['user'])
+    except KeyError:
+        raise ConfigurationError('User: %s not found on the system' %
+                                 args['user'])
+
+    api.bootstrap(context='novajoin')
+    api.finalize()
+
+    novajoin = configure_ipa.NovajoinRole(user=args.get('user'))
+    if not args.get('no_kinit', False):
+        novajoin.kinit(args.get('principal'), args.get('password'))
+
+    try:
+        api.Backend.rpcclient.connect()
+    except errors.CCacheError:
+        raise ConfigurationError("No Kerberos credentials")
+
+    logger.info('Installing default config files')
+
+    confopts = {'FQDN': args['hostname'],
+                'MASTER': api.env.server,  # pylint: disable=no-member
+                'DOMAIN': api.env.domain,  # pylint: disable=no-member
+                'KEYSTONE_AUTH_URL': args['keystone_auth_url'],
+                'NOVA_PASSWORD': args['nova_password'],
+                }
+
+    write_from_template(JOINCONF,
+                        os.path.join(DATADIR, 'join.conf.template'),
+                        confopts)
+
+    FILES = ['cloud-config.json']
+    for fn in FILES:
+        dst = os.path.join(NOVADIR, fn)
+        source = os.path.join(DATADIR, fn)
+        logger.info('Installing %s' % dst)
+        shutil.copyfile(source, dst)
+
+    config = ConfigParser()
+    config.read(NOVACONF)
+    config.set('DEFAULT',
+               'vendordata_jsonfile_path',
+               '/etc/nova/cloud-config.json')
+
+    # set the default domain to the IPA domain. This is added to the
+    # instance name to set the hostname.
+    config.set('DEFAULT',
+               'dhcp_domain',
+               api.env.domain)
+
+    # Novajoin service
+    config.set('DEFAULT',
+               'vendordata_providers',
+               'StaticJSON, DynamicJSON')
+
+    config.set('DEFAULT',
+               'vendordata_dynamic_targets',
+               'join@http://127.0.0.1:9999/v1/')
+
+    # Notifications
+    config.set('DEFAULT',
+               'notification_topic',
+               'notifications')
+
+    config.set('DEFAULT',
+               'notify_on_state_change',
+               'vm_state')
+
+    try:
+        transport_url = config.get('DEFAULT', 'transport_url')
+    except ConfigParser.NoOptionError:
+        transport_url = None
+
+    with open(NOVACONF, 'w') as f:
+        config.write(f)
+
+    if transport_url:
+        join_config = ConfigParser()
+        join_config.read(JOINCONF)
+        join_config.set('DEFAULT', 'transport_url', transport_url)
+        with open(JOINCONF, 'w') as f:
+            join_config.write(f)
+
+    logger.info('Importing IPA metadata')
+    (stdout, stderr, returncode) = run(
+        ['glance',
+         '--os-image-api-version',
+         '2',
+         'md-namespace-import',
+         '--file',
+         '/usr/share/novajoin/freeipa.json'], raiseonerr=False)
+    if returncode != 0:
+        logger.error('Adding IPA metadata failed: %s' % stderr)
+
+    logger.info('Creating IPA permissions')
+
+    novajoin.configure_ipa()
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Nova join Install Options')
+    parser.add_argument('--hostname',
+                        help='Machine\'s fully qualified host name')
+    parser.add_argument('--keystone-auth-url', dest='keystone_auth_url',
+                        help='Keystone auth URL')
+    parser.add_argument('--nova-password', dest='nova_password',
+                        help='Nova service user password')
+    parser = configure_ipa.ipa_options(parser)
+
+    args = vars(parser.parse_args())
+
+    configure_ipa.validate_options(args)
+
+    if not args['hostname']:
+        args['hostname'] = socket.getfqdn()
+
+    if len(args['hostname'].split('.')) < 2:
+        raise ConfigurationError('Hostname: %s is not a FQDN' %
+                                 args['hostname'])
+
+    if not args['keystone_auth_url']:
+        args['keystone_auth_url'] = user_input("Keystone auth URL", "",
+                                               allow_empty=False)
+
+    if not args['nova_password']:
+        try:
+            args['nova_password'] = getpass.getpass("nova service Password: ")
+        except EOFError:
+            args['nova_password'] = None
+        if not args['nova_password']:
+            raise ConfigurationError('nova service user password required.')
+
+    try:
+        pwd.getpwnam(args['user'])
+    except KeyError:
+        raise ConfigurationError('User: %s not found on the system' %
+                                 args['user'])
+
+    return args
+
+if __name__ == '__main__':
+    opts = []
+    out = 0
+    openlogs()
+    logger.setLevel(logging.DEBUG)
+
+    try:
+        opts = parse_args()
+
+        logger.debug('Installation arguments:')
+        for k in sorted(opts.iterkeys()):
+            logger.debug('%s: %s', k, opts[k])
+
+        install(opts)
+    except Exception as e:  # pylint: disable=broad-except
+        logger.info(str(e))          # emit message to console
+        logger.debug(e, exc_info=1)  # add backtrace information to logfile
+
+        logger.info('Installation aborted.')
+        logger.info('See log file %s for details' % LOGFILE)
+        out = 1
+    except SystemExit:
+        out = 1
+        raise
+    finally:
+        if out == 0:
+            logger.info('Installation complete.')
+            logger.info(
+                'Please restart nova-api to enable the join service.')
+    sys.exit(out)

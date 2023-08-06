@@ -1,0 +1,98 @@
+tosca_definitions_version: tosca_simple_yaml_1_0
+
+description: >
+  node definition of a Docker container
+
+node_types:
+  tosker.docker.volume:
+    derived_from: tosca.nodes.Root
+    attributes:
+      id:
+        type: string
+    properties:
+      driver:
+        type: string
+        required: false
+      device:
+        type: string
+        required: false
+      type:
+        type: string
+        required: false
+      driver_opt:
+        type: map
+        required: false
+    capabilities:
+      volume:
+        type: tosca.capabilities.Attachment
+        valid_source_types: [tosker.container]
+
+  tosker.docker.container:
+    derived_from: tosca.nodes.Root
+    attributes:
+      id:
+        type: string
+      private_address:
+        type: string
+      public_address:
+        type: string
+      # work around
+      env_variable:
+        type: map
+        required: false
+      cmd:
+        type: string
+        required: false
+      ports:
+        type: map
+        required: false
+    properties:
+      env_variable:
+        type: map
+        required: false
+      cmd:
+        type: string
+        required: false
+      ports:
+        type: map
+        required: false
+    requirements:
+      - link:
+          node: tosker.docker.container
+          relationship: tosca.relationships.ConnectsTo
+          capability: tosca.capabilities.Attachment
+          occurrences: [0, UNBOUNDED]
+      - volume:
+          node: tosker.docker.volume
+          relationship: tosca.relationships.AttachesTo
+          capability: tosca.capabilities.Attachment
+          occurrences: [0, UNBOUNDED]
+    capabilities:
+      host:
+        type: tosca.capabilities.Attachment
+        valid_source_types: [tosker.software]
+      link:
+        type: tosca.capabilities.Attachment
+        valid_source_types: [tosker.software, tosker.docker.container]
+
+
+  tosker.software:
+    derived_from: tosca.nodes.SoftwareComponent
+    requirements:
+      - link:
+          node: tosker.software
+          relationship: tosca.relationships.ConnectsTo
+          capability: tosca.capabilities.Attachment
+          occurrences: [0, UNBOUNDED]
+      - host:
+          node: tosker.software
+          relationship: tosca.relationships.ConnectsTo
+          capability: tosca.capabilities.Attachment
+          occurrences: 1
+    capabilities:
+      host:
+        type: tosca.capabilities.Attachment
+        valid_source_types: [tosker.software]
+      link:
+        type: tosca.capabilities.Attachment
+        valid_source_types: [tosker.software, tosker.docker.container]

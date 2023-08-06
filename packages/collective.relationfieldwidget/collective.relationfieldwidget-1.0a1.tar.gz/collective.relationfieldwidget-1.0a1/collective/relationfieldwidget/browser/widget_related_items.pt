@@ -1,0 +1,48 @@
+<div
+   metal:define-macro="widget-wrapper"
+   i18n:domain="plone"
+   tal:define="widget nocall:view;
+	             related  widget/related_items;
+               hidden python:widget.mode == 'hidden';
+	             error widget/error;
+							 error_class python:error and ' error' or '';
+               empty_values python: (None, '', [], ('', '', '', '00', '00', ''), ('', '', ''));
+               empty_class python: (widget.value in empty_values) and ' empty' or '';
+               fieldname_class string:kssattr-fieldname-${widget/name};"
+   data-pat-inlinevalidation='{"type":"z3c.form"}'
+   tal:attributes="class string:field pat-inlinevalidation ${fieldname_class}${error_class}${empty_class};
+                   data-fieldname widget/name;
+                   id string:formfield-${widget/id};">
+
+   <div id="related_items_widget"
+              tal:define="plone_view nocall:context/@@plone;
+                          plone_layout nocall:context/@@plone_layout;
+                          normalizeString nocall:plone_view/normalizeString;
+                          context_state nocall:context/@@plone_context_state;
+                          use_view_action python:context.portal_registry.get('types_use_view_action_in_listings', []);"
+							tal:attributes="id string:relateditems-${widget/id};"
+							metal:define-slot="widget" >
+        <ul>
+          <li tal:repeat="item related">
+            <span tal:define="desc                item/Description;
+                              item_icon           python:plone_layout.getIcon(item);
+                              item_type           item/portal_type;
+                              item_type_class     python:'contenttype-' + normalizeString(item_type);
+                              item_wf_state       item/review_state|python: context_state.workflow_state();
+                              item_wf_state_class python: 'state-' + normalizeString(item_wf_state);
+                              item_url            item/getURL|item/absolute_url;
+                              item_url            python:(item_type in use_view_action) and item_url+'/view' or item_url"
+                  tal:attributes="class item_type_class">
+              <img tal:replace="structure item_icon/html_tag" />
+              <a href="" class=""
+                 tal:attributes="href  item_url;
+                                 title desc;
+                                 class string:$item_wf_state_class"
+                 tal:content="item/pretty_title_or_id">
+                  Related Item
+              </a>
+            </span>
+          </li>
+        </ul>
+    </div>
+</div>

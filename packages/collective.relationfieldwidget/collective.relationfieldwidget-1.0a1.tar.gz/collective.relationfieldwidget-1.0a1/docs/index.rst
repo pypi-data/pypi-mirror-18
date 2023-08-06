@@ -1,0 +1,5 @@
+====================
+collective.relationfieldwidget
+====================
+
+User documentation

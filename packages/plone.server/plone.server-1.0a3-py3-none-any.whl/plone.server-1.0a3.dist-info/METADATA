@@ -1,0 +1,141 @@
+Metadata-Version: 2.0
+Name: plone.server
+Version: 1.0a3
+Summary: UNKNOWN
+Home-page: https://pypi.python.org/pypi/plone.server
+Author: UNKNOWN
+Author-email: UNKNOWN
+License: GPL version 3
+Platform: UNKNOWN
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Framework :: ZODB
+Classifier: Framework :: Zope3
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Internet :: WWW/HTTP
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Dist: aiohttp (==1.0.5)
+Requires-Dist: python-dateutil
+Requires-Dist: BTrees
+Requires-Dist: persistent
+Requires-Dist: plone.behavior
+Requires-Dist: pycrypto
+Requires-Dist: setuptools
+Requires-Dist: six
+Requires-Dist: transaction
+Requires-Dist: ujson
+Requires-Dist: ZEO
+Requires-Dist: ZODB
+Requires-Dist: zope.authentication
+Requires-Dist: zope.component
+Requires-Dist: zope.configuration
+Requires-Dist: zope.dottedname
+Requires-Dist: zope.dublincore
+Requires-Dist: zope.event
+Requires-Dist: zope.i18n
+Requires-Dist: zope.i18nmessageid
+Requires-Dist: zope.interface
+Requires-Dist: zope.lifecycleevent
+Requires-Dist: zope.location
+Requires-Dist: zope.proxy
+Requires-Dist: zope.schema
+Requires-Dist: zope.security
+Requires-Dist: zope.securitypolicy
+Provides-Extra: test
+Requires-Dist: pytest; extra == 'test'
+Requires-Dist: requests; extra == 'test'
+Requires-Dist: zope.testing; extra == 'test'
+
+Introduction
+============
+
+This is the working project of the next generation plone server based on asyncio.
+
+* depends on python 3.5
+
+
+Getting started
+---------------
+
+We use buildout of course::
+
+    python3.5 bootstrap-buildout.py
+    ./bin/buildout
+
+The buildout installs the app itself, code analysis tools, and a test runner.
+
+Run the zeo
+-----------
+
+To run the zeo on a different terminal::
+
+	./bin/runzeo -C zeo.cfg
+
+
+Run the server
+--------------
+
+* By default it mounts a zeo server and a ZODB so you need the ZEO server running.
+
+To run the server::
+
+    ./bin/server
+
+Creating default content
+------------------------
+
+Once started, you will require to add at least a Plone site to start fiddling around::
+
+  curl -X POST -H "Accept: application/json" -H "Authorization: Basic YWRtaW4=" -H "Content-Type: application/json" -d '{
+    "@type": "Plone Site",
+    "title": "Plone 1",
+    "id": "plone",
+    "description": "Description"
+  }' "http://127.0.0.1:8080/zodb1/"
+
+and give permissions to add content to it::
+
+  curl -X POST -H "Accept: application/json" -H "Authorization: Basic YWRtaW4=" -H "Content-Type: application/json" -d '{
+    "prinrole": {
+        "Anonymous User": ["plone.Member", "plone.Reader"]
+    }
+  }' "http://127.0.0.1:8080/zodb1/plone/@sharing"
+
+and create actual content::
+
+  curl -X POST -H "Accept: application/json" -H "Authorization: Basic YWRtaW4=" -H "Content-Type: application/json" -d '{
+    "@type": "Item",
+    "title": "News",
+    "id": "news"
+  }' "http://127.0.0.1:8080/zodb1/plone/"
+
+Run tests
+---------
+
+We're using py.test::
+
+    ./bin/py.test src
+
+and for test coverage::
+
+    ./bin/py.test --cov=plone.server src/
+
+
+Default
+-------
+
+Default root access can be done with AUTHORIZATION header : Basic YWRtaW4=
+
+
+Running dependency graph
+------------------------
+
+Using buildout::
+
+    ./bin/buildout -c dependency-graph.cfg
+    ./bin/dependencies-eggdeps > docs/dependency-graph.txt
+
+1.0a3 (2016-11-18)
+------------------
+

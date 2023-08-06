@@ -1,0 +1,50 @@
+ChangeLog
+=========
+
+0.7 (2016.11.15)
+----------------
+* [FEATURE ADDED] handle_requests method added to handler package to handle requests errors
+* [FEATURE ADDED] validate_request_details method added to flask package
+* [BUG FIX] makedir error for files without path information
+
+0.6 (2016.11.12)
+----------------
+* [REFACTOR] classes compiler package renamed to objects for future clarity
+* [FEATURE ADDED] telegramBotClient class for interacting with telegram bot API **
+* [FEATURE ADDED] movesClient class for retrieving user data from moves app API
+* [FEATURE ADDED] apschedulerClient class for interacting with a flask apscheduler service
+* [FEATURE ADDED] labMagic class for retrieving metadata information about data
+* ** telegram client only covers updates, messages and photos
+
+0.5 (2016.11.01)
+----------------
+* [REFACTOR] Packages have been refactored to lowercase to avoid class syntax
+* [FEATURE ADDED] classes compiler package for generating class attributes
+* [FEATURE ADDED] flask parsing package for parsing request and response data
+* [FEATURE ADDED] settings package for handling local configuration settings
+* {WIP] Packages for interaction with moves and telegram api are included
+
+0.4 (2016.10.11)
+----------------
+* [REFACTOR] All previous methods have been refactored to sub-folders
+* [FEATURES ADDED] drep compiler package for encrypted file storage protocol
+* [FEATURES ADDED] labCrypt package for encrypted data using AES 256bit sha512
+* [FEATURES ADDED] labPerform package for running performance tests
+* [FEATURES ADDED] labRegex parsing package for mapping n-grams in strings
+* [FEATURES ADDED] appdataClient class for managing file storage on local host
+* [FEATURES ADDED] localhostClient class for negotiating os specific methods
+
+0.3 (2016.05.31)
+----------------
+* [BUG FIX] Missing python-dateutil dependency added to setup
+
+0.2 (2016.05.30)
+----------------
+* Upload of Module to PyPi
+* Creation of GitHub Repo
+* Separation of under-development methods from public methods in git
+
+0.1 (2016.03.24)
+----------------
+* Local Build of Package
+* Creation of BitBucket Repo

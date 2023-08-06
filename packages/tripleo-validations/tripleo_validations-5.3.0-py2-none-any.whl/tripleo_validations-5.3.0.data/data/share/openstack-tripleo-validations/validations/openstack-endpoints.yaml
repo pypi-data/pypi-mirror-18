@@ -1,0 +1,40 @@
+---
+- hosts: undercloud
+  vars:
+    metadata:
+      name: Check connectivity to various OpenStack services
+      # TODO: this could also check for undercloud endpoints
+      description: >
+        This validation gets the PublicVip address from the deployment and
+        tries to access Horizon and get a Keystone token.
+      groups:
+      - post-deployment
+  tasks:
+  - name: Get the path of tripleo user home directory
+    become: true
+    hiera: name="tripleo_install_user"
+
+  - name: Load the overcloud credentials
+    overcloudrc: path=~{{ tripleo_install_user }}/overcloudrc
+
+  # Check connectivity to horizon
+  - name: Check Horizon
+    # TODO(shadower): get Horizon endpoint from Keystone
+    uri: url=http://{{public_vip}}
+
+  # Check that we can obtain an auth token from horizon
+  - name: Check Keystone
+    uri:
+      url: "{{ overcloudrc.OS_AUTH_URL }}/tokens"
+      method: POST
+      body_format: json
+      body:
+        auth:
+          passwordCredentials:
+            username: "{{ overcloudrc.OS_USERNAME }}"
+            password: "{{ overcloudrc.OS_PASSWORD }}"
+          tenantName: "{{ overcloudrc.OS_TENANT_NAME }}"
+      return_content: yes
+    register: auth_token
+
+# TODO(shadower): other endpoints

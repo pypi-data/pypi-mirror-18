@@ -1,0 +1,56 @@
+---
+
+config:
+ auto_cookie: on
+
+tests:
+  - name: user profile without auth
+    url: /sk/ucet/prihlasenie/
+    method: get
+    headers:
+      - Connection: keep-alive
+    expect:
+      - scope: .
+        value: "302 Found"
+      - scope: header
+        value: "Location: /sk/ucet/prihlasenie"
+    expect_status:
+      - 404
+      - 302
+
+  - name: login page to get cookie
+    url: /sk/ucet/prihlasenie/
+    method: get
+    expect:
+      - scope: .
+        value: 200 OK
+    match:
+      - scope: header
+        pattern: "csrftoken=([^;]+)"
+        variable: csrf
+    expect_status:
+      - 404
+      - 302
+
+  - name: login page
+    url: /sk/ucet/prihlasenie/
+    method: post
+    referer: auto
+    headers:
+      - Content-Type: application/x-www-form-urlencoded
+    data:
+      - csrfmiddlewaretoken: $csrf
+      - username: eduard@adaptiware.com
+      - password: 123
+    expect:
+      - scope: .
+        value: "302 Found"
+
+  - name: user profile
+    url: /sk/ucet/
+    method: get
+    headers:
+      - Connection: keep-alive
+    expect:
+      - scope: .
+        value: 200 OK

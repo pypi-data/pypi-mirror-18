@@ -1,0 +1,97 @@
+#!python
+"""
+Main point of entry for the nearby package
+"""
+
+import argparse
+import os
+import sys
+
+from nearby import __version__ as VERSION
+from nearby.actions import mount, unmount
+from nearby.config import get_option, init_config
+
+_NOT_SET = object()
+HOME_DIR = os.path.expanduser('~')
+DEFAULT_CONFIG_PATH = os.path.join(HOME_DIR, '.nearby.conf')
+DEFAULT_BASE_LOCAL = os.path.join(HOME_DIR, 'remotes')
+SHORT_DESCRIPTION = '''
+Manage remote filesystems via sshfs
+
+For more information on a command, type:
+
+nearby <command> -h
+'''
+
+
+def display_help_and_exit(args):
+    args.this_parser.print_help()
+    sys.exit(0)
+
+
+def handle_mount(args):
+    host = args.host
+    user = get_option(host, 'user')
+    local_path = get_option(host, 'local_path')
+    remote_path = get_option(host, 'remote_path')
+    mount(host=host, user=user, local_path=local_path, remote_path=remote_path)
+
+
+def handle_unmount(args):
+    host = args.host
+    local_path = get_option(host, 'local_path')
+    unmount(host=host, local_path=local_path)
+
+
+if __name__ == '__main__':
+    # Base parser options
+    parser = argparse.ArgumentParser(
+        description=SHORT_DESCRIPTION)
+    parser.add_argument(
+        '-v', '--version', action='store_true',
+        help='Display version info and exit immediately')
+    parser.add_argument(
+        '-c', '--config', type=str,
+        default=DEFAULT_CONFIG_PATH,
+        help='Specify config file to use(default: "%(default)s")')
+    parser.set_defaults(func=display_help_and_exit)
+    parser.set_defaults(this_parser=parser)
+    sp = parser.add_subparsers()
+
+    # Shared options
+    shared = argparse.ArgumentParser(add_help=False)
+    shared.add_argument(
+        '-c', '--config', type=str,
+        default=DEFAULT_CONFIG_PATH,
+        help='Specify config file to use (default: "%(default)s")')
+
+    # Options for mounting remote fs
+    sp_mount = sp.add_parser(
+        'mount', parents=[shared], help='Mount remote file system over sshfs')
+    sp_mount.add_argument(
+        'host', type=str,
+        help='Hostname of remote to mount')
+    sp_mount.add_argument(
+        '-u', '--user', type=str, default=_NOT_SET,
+        help='Username at remote machine')
+    sp_mount.add_argument(
+        '-r', '--remote-path', type=str, default=_NOT_SET,
+        help='Remote base directory')
+    sp_mount.set_defaults(func=handle_mount)
+
+    # Options for unmounting remote fs
+    sp_unmount = sp.add_parser(
+        'unmount', parents=[shared], help='Unmount remote file system')
+    sp_unmount.add_argument('host', type=str,
+                            help='Hostname of remote to unmount')
+    sp_unmount.set_defaults(func=handle_unmount)
+
+    args = parser.parse_args()
+    args_dict = {
+        k: v for k, v in args.__dict__.items() if v is not _NOT_SET
+    }
+    init_config(args_dict)
+    if args.version:
+        print(VERSION)
+        sys.exit(0)
+    args.func(args)

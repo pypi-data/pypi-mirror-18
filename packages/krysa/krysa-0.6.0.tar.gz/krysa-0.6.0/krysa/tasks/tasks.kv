@@ -1,0 +1,469 @@
+<SingleTI@TextInput>:
+    multiline: False
+    input_filter: app.root.address_chars
+
+<FloatInput>:
+
+<GreyLabel@Label>:
+    canvas:
+        Color:
+            rgba: 0.7, 0.7, 0.7, 0.05
+
+        Rectangle:
+            size: self.size
+            pos: self.pos
+
+<FreqInput@FloatInput>:
+    width: dp(90)
+    size_hint_x: None
+    hint_text: '< number'
+
+<Task>:
+    size_hint: 0.5, None
+    pos_hint: {'center': [0.5, 0.5]}
+    BoxLayout:
+        id: taskbody
+        orientation: 'vertical'
+        Spinner:
+            id: tablesel
+            text: 'Choose data:'
+            values: [child[0] for child in app.root.tables]
+            size_hint_y: None
+            height: dp(60)
+            on_text:
+                root.tablenum = root.get_table_pos(self.text, self.values)
+
+        BoxLayout:
+            id: container
+            size_hint_y: None
+            on_children: root.recalc_height(taskbody, self)
+
+        BoxLayout:
+            id: confirms
+            size_hint_y: None
+            height: dp(60)
+            Button:
+                text: 'Cancel'
+                on_release: root.dismiss()
+
+            Button:
+                text: 'Run'
+                disabled: True if tablesel.text == '' else False
+                on_release: root.try_run()
+
+<AddressLayout>:
+    orientation: 'vertical'
+    SingleTI:
+        id: name
+
+<CountIfOption@BoxLayout>:
+    size_hint_y: None
+    height: dp(60)
+    Spinner:
+        values:
+            ['Less than',
+            'Less than or equal',
+            'Greater than',
+            'Greater than or equal',
+            'Equal to',
+            'Not equal to']
+        text: '---'
+
+    FloatInput:
+
+    Spinner:
+        values: ['---', 'AND', 'OR']
+        text: '---'
+
+    Button:
+        text: 'X'
+        on_release: root.parent.remove_widget(root)
+
+<CountIfLayout>:
+    orientation: 'vertical'
+    size_hint_y: None
+    height: dp(200)
+    BoxLayout:
+        size_hint_y: 0.2
+        Label:
+            text: 'Address'
+
+        SingleTI:
+            id: name
+
+        Button:
+            text: '+'
+            size_hint_x: None
+            width: self.height
+            on_release: conditions.add_widget(Factory.CountIfOption())
+
+    ScrollView:
+        size_hint_y: 0.8
+        GridLayout:
+            cols: 1
+            id: conditions
+            size_hint_y: None
+            height: self.minimum_height
+
+<SmallLargeLayout>:
+    orientation: 'vertical'
+    BoxLayout:
+        Label:
+            text: 'Address'
+
+        SingleTI:
+            id: name
+
+    BoxLayout:
+        Label:
+            text: 'k ='
+
+        SingleTI:
+            id: order
+
+    Label:
+        text: 'Example: k=2 for the second smallest or largest value.'
+
+<AvgsLayout>:
+    orientation: 'vertical'
+    BoxLayout:
+        Label:
+            text: 'Address'
+
+        SingleTI:
+            id: name
+
+    BoxLayout:
+        Label:
+            text: 'p ='
+
+        FloatInput:
+            id: power
+            multiline: False
+            input_filter: root.floatfilter
+
+    Label:
+        text: 'Example: p=0 for the geometric mean\\np=1 for the arithmetic.'
+
+<FreqLayout>:
+    size_hint_y: None
+    height: dp(200)
+    orientation: 'vertical'
+    BoxLayout:
+        Label:
+            text: 'Address'
+
+        SingleTI:
+            id: name
+
+        Label:
+            text: 'Precision'
+
+        SingleTI:
+            id: precision
+            input_filter: 'int'
+
+    BoxLayout:
+        GreyLabel:
+            text: 'Limits:'
+            size_hint_x: 0.1
+
+        BoxLayout:
+            size_hint_x: 0.4
+            Label:
+                text: 'Auto'
+
+            CheckBox:
+                id: limits_auto
+                size_hint_x: 0.25
+                active: True
+                on_active:
+                    lowlimit.disabled = True if self.active else False
+                    uplimit.disabled = True if self.active else False
+
+        BoxLayout:
+            size_hint_x: 0.5
+            SingleTI:
+                id: lowlimit
+                disabled: True
+                hint_text: 'Lower limit (default = min)'
+                input_filter: 'float'
+
+            SingleTI:
+                id: uplimit
+                disabled: True
+                hint_text: 'Upper limit (default = max)'
+                input_filter: 'float'
+
+    BoxLayout:
+        GreyLabel:
+            text: 'Bins:'
+            size_hint_x: 0.1
+
+        Spinner:
+            text: 'Count'
+            size_hint_x: 0.2
+            values: ['Count', 'Edges', 'Calculate']
+            on_text:
+                binmanager.transition.direction = 'up'
+                binmanager.current = self.text
+
+        ScreenManager:
+            id: binmanager
+            size_hint_x: 0.7
+            Screen:
+                name: 'Count'
+                SingleTI:
+                    id: bins
+                    hint_text: 'Number of bins'
+                    input_filter: 'int'
+
+            Screen:
+                name: 'Edges'
+                BoxLayout:
+                    ScrollView:
+                        id: binscroll
+                        size_hint_x: 0.9
+                        do_scroll_y: False
+                        GridLayout:
+                            id: bingrid
+                            rows: 1
+                            size_hint_x: None
+                            width: self.minimum_width
+                            FreqInput:
+
+                    Button:
+                        text: '+'
+                        size_hint_x: 0.1
+                        on_release:
+                            bingrid.add_widget(Factory.FreqInput())
+                            binscroll.scroll_to(bingrid.children[0])
+
+                    Button:
+                        text: 'X'
+                        size_hint_x: 0.1
+                        bgc: bingrid.children
+                        on_release:
+                            if self.bgc: bingrid.remove_widget(self.bgc[0])
+
+            Screen:
+                name: 'Calculate'
+                BoxLayout:
+                    Spinner:
+                        id: binstr
+                        text: 'auto'
+                        value: 'auto'
+                        su:
+                            ['auto', 'fd', 'doane', 'scott',
+                            'rice', 'sturges', 'sqrt']
+                        values:
+                            ['Automatic', 'Freedman Diaconis Estimator',
+                            'Doane', 'Scott', 'Rice', 'Sturges', 'Square root']
+                        on_text:
+                            self.value = self.su[self.values.index(self.text)]
+
+    BoxLayout:
+        GreyLabel:
+            text: 'Type:'
+            size_hint_x: 0.1
+
+        BoxLayout:
+            size_hint_x: 0.9
+            Label:
+                text: 'absolute'
+
+            CheckBox:
+                id: absolute
+                active: True
+
+            Label:
+                text: 'relative'
+
+            CheckBox:
+                id: relative
+                active: True
+
+            Label:
+                text: 'cumulative'
+
+            CheckBox:
+                id: cumulative
+                active: True
+
+<SortLayout>:
+    Spinner:
+        id: sort_type
+        text: 'Sort type'
+        values: ['Ascending', 'Descending']
+
+<AppendLayout>:
+    orientation: 'vertical'
+    BoxLayout:
+        Spinner:
+            id: what
+            text: 'Append type'
+            values: ['Rows', 'Columns']
+            on_text: root.change_ctx(self.text)
+
+        SingleTI:
+            id: amount
+            hint_text: 'amount'
+            input_filter: 'int'
+
+    BoxLayout:
+        id: cols_container
+        size_hint_y: None
+        height: 0
+
+    BoxLayout:
+        Label:
+            text: 'Overwrite'
+
+        CheckBox:
+            id: overwrite
+
+<AppendColsLayout>:
+    BoxLayout:
+        orientation: 'vertical'
+        Button:
+            size_hint_y: None
+            height: dp(30)
+            id: columnadd
+            size_hint_x: None
+            width: dp(30)
+            text: '+'
+            on_release: columns.add_widget(Factory.AppendCols())
+
+        ScrollView:
+            GridLayout:
+                rows: 1
+                size_hint_x: None
+                width: self.minimum_width
+                id: columns
+
+<AppendCols@BoxLayout>:
+    size_hint_x: None
+    width: dp(180)
+    orientation: 'vertical'
+    BoxLayout:
+        size_hint_y: None
+        height: dp(30)
+        TextInput:
+            id: colname
+            text: 'Data'
+            input_filter: app.root.simple_chars
+
+        Button:
+            id: colX
+            size_hint_x: None
+            width: dp(30)
+            text: 'X'
+            on_release: root.parent.remove_widget(root)
+
+    Spinner:
+        size_hint_y: None
+        height: dp(30)
+        id: coltype
+        text: 'TEXT'
+        values: ['TEXT', 'INTEGER', 'REAL']
+
+<LinePlotLayout>:
+    orientation: 'vertical'
+    size_hint_y: None
+    height: dp(370)
+    TextInput:
+        size_hint_y: 0.1
+        id: title
+        hint_text: 'Title'
+
+    BoxLayout:
+        size_hint_y: 0.3
+        BoxLayout:
+            orientation: 'vertical'
+            Label:
+                text: 'X values'
+
+            SingleTI:
+                id: xname
+                hint_text: 'address'
+
+            TextInput:
+                id: xlabel
+                hint_text: 'X axis label'
+
+        BoxLayout:
+            orientation: 'vertical'
+            Label:
+                text: 'Y values'
+
+            SingleTI:
+                id: yname
+                hint_text: 'address'
+
+            TextInput:
+                id: ylabel
+                hint_text: 'Y axis label'
+
+    BoxLayout:
+        size_hint_y: 0.05
+        Label:
+            text: 'First value as label:'
+
+        CheckBox:
+            id: labelcheck
+            on_active:
+                xlabel.disabled = self.active
+                ylabel.disabled = self.active
+
+    Label:
+        size_hint_y: 0.05
+        text: 'Axes properties'
+
+    BoxLayout:
+        size_hint_y: 0.5
+        orientation: 'vertical'
+        GridLayout:
+            cols: 2
+            FloatInput:
+                id: xmin
+                hint_text: 'X axis minimum'
+
+            FloatInput:
+                id: ymin
+                hint_text: 'Y axis minimum'
+
+            FloatInput:
+                id: xmax
+                hint_text: 'X axis maximum'
+
+            FloatInput:
+                id: ymax
+                hint_text: 'Y axis maximum'
+
+        GridLayout:
+            cols: 2
+            Label:
+                text: 'Color'
+
+            Label:
+                text: 'Line style'
+
+            Spinner:
+                id: plotcolor
+                values: ['r', 'g', 'b']
+                text: 'r'
+
+            Spinner:
+                id: plotshape
+                values: ['-', '--', 'o', 's', '^']
+                text: '-'
+
+        BoxLayout:
+            size_hint_y: 0.32
+            Label:
+                text: 'Show grid'
+
+            CheckBox:
+                id: showgrid
+
+<StandLayout>:

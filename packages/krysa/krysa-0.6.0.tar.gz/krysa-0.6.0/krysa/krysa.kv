@@ -1,0 +1,541 @@
+#:import wb webbrowser
+#:import join os.path.join
+#:import dp kivy.metrics.dp
+#:import isdir os.path.isdir
+#:import Factory kivy.factory.Factory
+#:import Clipboard kivy.core.clipboard.Clipboard
+#:import ObjectProperty kivy.properties.ObjectProperty
+
+<Body>:
+    ActionBar:
+        pos_hint: {'top': 1.0}
+        height: '37dp'
+        ActionView:
+            ActionPrevious:
+                title: ''
+                size_hint_x: None
+                with_previous: False
+                app_icon_width: 0.001
+                width: 0
+
+            ActionButton:
+                text: 'File'
+                on_release: app.drop.click(self, app.menu[self.text.lower()])
+
+            ActionButton:
+                text: 'Edit'
+                on_release: app.drop.click(self, app.menu[self.text.lower()])
+
+            ActionButton:
+                text: 'Tasks'
+                on_release: app.drop.click(self, app.menu[self.text.lower()])
+
+            ActionButton:
+                text: 'Help'
+                on_release: app.drop.click(self, app.menu[self.text.lower()])
+
+    BoxLayout:
+        Splitter:
+            size_hint: None, None
+            min_size: dp(160)
+            height: root.height - dp(37)
+            sizable_from: 'right'
+            rescale_with_parent: True
+            BoxLayout:
+                orientation: 'vertical'
+                ScrollView:
+                    TreeView:
+                        id: tree
+                        hide_root: False
+                        root_options: dict(text='Project Tree')
+                        size_hint_y: None
+                        height: self.minimum_height
+
+                Splitter:
+                    sizable_from: 'top'
+                    BoxLayout:
+                        orientation: 'vertical'
+                        BoxLayout:
+                            size_hint_y: None
+                            height: dp(26)
+                            ImgButton:
+                                source: 'data/clock.png'
+                                on_release: taskpanel.current = 'recent'
+
+                            ImgButton
+                                source: 'data/star.png'
+                                on_release: taskpanel.current = 'favorite'
+
+                        ScreenManager:
+                            id: taskpanel
+                            Screen:
+                                name: 'recent'
+                                ScrollView:
+                                    GridLayout:
+                                        id: recenttasks
+                                        size_hint_y: None
+                                        height: self.minimum_height
+                                        cols: 1
+                                        Label:
+                                            size_hint_y: None
+                                            text: 'Recent Tasks'
+                                            height: dp(30)
+
+                            Screen:
+                                name: 'favorite'
+                                ScrollView:
+                                    GridLayout:
+                                        id: favtasks
+                                        size_hint_y: None
+                                        height: self.minimum_height
+                                        cols: 1
+                                        Label:
+                                            size_hint_y: None
+                                            text: 'Favorite Tasks'
+                                            height: dp(30)
+
+        TabbedPanel:
+            id: tabpanel
+            tab_pos: 'bottom_mid'
+            on_children:
+                self.tab_width=max([t.texture_size[0] for t in self.tab_list])
+            do_default_tab: False
+            size_hint_y: None
+            height: root.height - dp(37)
+            TabbedPanelItem:
+                text: 'Process Flow'
+                ScrollView:
+                    bar_width: dp(5)
+                    ProcessFlow:
+                        id: flow
+
+        Splitter:
+            id: resultspanel
+            canvas.before:
+                Color:
+                    rgba: 0.9, 0.9, 0.9, 1
+                Rectangle:
+                    pos: self.pos[0] + dp(13), self.pos[1]
+                    size: self.size
+
+            size_hint: None, None
+            min_size: dp(12)
+            max_size: dp(650)
+            height: root.height - dp(37)
+            sizable_from: 'left'
+            rescale_with_parent: True
+            FloatLayout:
+                ScrollView:
+                    size_hint_x: None
+                    width: self.parent.width - dp(28)
+                    pos: self.parent.pos[0] + dp(28), self.pos[1]
+                    bar_width: 0
+                    bar_color: 0, 0, 0, 0
+                    bar_inactive_color: 0, 0, 0, 0
+                    GridLayout
+                        id: results
+                        cols: 1
+                        size_hint: None, None
+                        size: self.minimum_size
+                        Widget:
+                            size_hint_y: None
+                            height: dp(5)
+
+                Button:
+                    text: 'Show folder'
+                    size_hint: None, None
+                    size: dp(100), dp(37)
+                    pos: self.parent.pos
+                    on_release: wb.open(join(app.project_dir, 'results'))
+
+<MenuDrop>:
+    auto_width: False
+    canvas:
+        Color:
+            rgba: 0, 0, 0, 0
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+<SplitterStrip>:
+    background_color: 0.5, 0.5, 0.5, 1
+
+<SizedButton>:
+    size_hint: None, None
+    height: '30dp'
+    halign: 'left'
+    on_texture_size: root.correct_width()
+
+<ProcessFlow>:
+    size_hint: None, None
+    size: 2000, 1000
+    on_children: self.resize()
+    canvas:
+        Color:
+            rgba: 1, 1, 1, 0.9
+
+        Rectangle:
+            texture: root.texture
+            size: self.size
+            pos: self.pos
+            tex_coords:
+                [0, 0, self.width/10, 0, self.width/10,
+                self.height/10, 0, self.height/10]
+
+<Table>:
+    canvas.before:
+        Color:
+            rgba: 1, 1, 1, 0.9
+
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+<TableItem>:
+    size_hint: None, None
+    multiline: False
+    on_text_validate: self.update_value(self.text)
+
+<SideItem>:
+    size_hint_y: None
+    height: key.height
+    name: 'name '*5
+    value: 'value'
+    AnchorLayout:
+        size_hint_x: 0.3
+        anchor_x: 'center'
+        anchor_y: 'center'
+        Label:
+            id: key
+            size_hint_y: None
+            text_size: self.width, None
+            height: self.texture_size[1] + dp(8)
+            text: root.name
+
+    TextInput:
+        size_hint: 0.7, None
+        height: key.height
+        text: root.value
+        multiline: False
+
+<Dialog>:
+    view: view
+    BoxLayout:
+        orientation: 'vertical'
+        FileChooserListView:
+            id: view
+            on_selection: if self.selection: select.text = self.selection[0]
+            dirselect: root.dirs
+            filters:
+                [lambda d, f: isdir(join(d, f))] if root.dirs else root.filter
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(30)
+            TextInput:
+                id: select
+                disabled: True
+
+            TextInput:
+                id: name
+                disabled: not root.dirs
+                input_filter: app.root.simple_chars
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(60)
+            Button:
+                text: 'Cancel'
+                on_release: root.dismiss()
+
+            Button:
+                text: root.confirm
+                on_release:
+                    if name.text: root.run(view.selection, name.text)
+                    elif name.disabled: root.run(view.selection)
+
+<CreateWizard>:
+    BoxLayout:
+        orientation: 'vertical'
+        BoxLayout:
+            id: container
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(60)
+            Button:
+                text: 'Cancel'
+                on_release: root.dismiss()
+
+            Button:
+                text: 'Run'
+                disabled: False
+                on_release: root.run()
+
+<TabbedPanelHeader>:
+    background_down: 'atlas://data/images/defaulttheme/tab_btn'
+    background_disabled_down: 'atlas://data/images/defaulttheme/tab_btn'
+    canvas:
+        Color:
+            rgba: 0.2, 0.67, 0.85, 1
+
+        Line:
+            width: 2
+            cap: 'none'
+            points:
+                [self.pos[0] + 1,
+                self.pos[1]+self.height,
+                self.pos[0]+self.width,
+                self.pos[1]+self.height] if self.state == 'down' else []
+
+<StripLayout>:
+    canvas:
+        Color:
+            rgba: 1, 1, 1, 0.8
+
+        Rectangle:
+            size: self.size
+            pos: self.pos
+
+<ErrorPop>:
+    title: 'Warning!'
+    pos_hint: {'center': (0.5, 0.5)}
+    size_hint: 0.5, 0.5
+    BoxLayout:
+        orientation: 'vertical'
+        Label:
+            text: root.message
+
+        BoxLayout:
+            height: dp(60)
+            size_hint_y: None
+            Button:
+                text: 'Dismiss!'
+                on_release: root.dismiss()
+
+<NewDataValue>:
+    size_hint_y: None
+    height: dp(30)
+    filter: None
+    TextInput:
+        id: value
+        multiline: False
+        input_filter: root.filter
+
+    Button:
+        id: valX
+        size_hint_x: None
+        width: dp(30)
+        text: 'X'
+        on_release: root.parent.remove_widget(root)
+
+<NewDataColumn>:
+    size_hint_x: None
+    width: dp(250)
+    filter: None
+    orientation: 'vertical'
+    BoxLayout:
+        size_hint_y: None
+        height: dp(30)
+        TextInput:
+            id: colname
+            text: 'Data'
+            input_filter: app.root.simple_chars
+
+        Button:
+            id: colX
+            size_hint_x: None
+            width: dp(30)
+            text: 'X'
+            on_release: root.parent.remove_widget(root)
+
+    Spinner:
+        size_hint_y: None
+        height: dp(30)
+        id: coltype
+        text: 'TEXT'
+        values: ['TEXT', 'INTEGER', 'REAL']
+        on_text:
+            if self.text == 'REAL': root.filter = 'float'
+            elif self.text == 'INTEGER': root.filter = 'int'
+            elif self.text == 'TEXT': root.filter = ObjectProperty(None)
+
+    BoxLayout:
+        size_hint_y: None
+        height: dp(30)
+        Label:
+            text: 'Values'
+
+        Button:
+            id: valadd
+            size_hint_x: None
+            width: dp(30)
+            text: '+'
+            on_release:
+                coltype.disabled = True
+                vals.add_widget(Factory.NewDataValue(filter=root.filter))
+
+    BoxLayout:
+        size_hint_y: None
+        height: dp(30)
+        Button:
+            text: 'Clear'
+            size_hint_x: 0.35
+            on_release: vals.clear_widgets()
+
+        Button:
+            text: 'Paste'
+            size_hint_x: 0.35
+            on_release: root.paste(Clipboard.paste(), pasteval.text)
+
+        Spinner:
+            id: pasteval
+            size_hint_x: 0.3
+            text: 'Separator'
+            values: ['OS default', 'space', '\\n', '\\t']
+
+    ScrollView:
+        GridLayout:
+            size_hint_y: None
+            height: self.minimum_height
+            cols: 1
+            id: vals
+
+    BoxLayout:
+        size_hint_y: None
+        height: self.minimum_height
+        Button:
+            id: checklock
+            size_hint_y: None
+            height: dp(60)
+            text: 'Check & Lock'
+            disable: [self, colname, coltype, colX, valadd, vals.children]
+            check: (colname, vals)
+            on_release: root.checklock(self.disable, coltype, self.check)
+
+        Button:
+            size_hint_y: None
+            height: dp(60)
+            text: 'Unlock'
+            on_release: root.free(checklock.disable)
+
+<NewDataLayout>:
+    BoxLayout:
+        orientation: 'vertical'
+        BoxLayout:
+            size_hint_y: None
+            height: dp(30)
+            TextInput:
+                id: table_name
+                hint_text: 'Data name'
+                input_filter: app.root.simple_chars
+
+            Button:
+                id: columnadd
+                size_hint_x: None
+                width: dp(30)
+                text: '+'
+                on_release: columns.add_widget(Factory.NewDataColumn())
+
+        ScrollView:
+            GridLayout:
+                rows: 1
+                size_hint_x: None
+                width: self.minimum_width
+                id: columns
+
+<Page@BoxLayout>:
+    orientation: 'vertical'
+    canvas:
+        Color:
+            rgba: 0.2, 0.2, 0.2, 0.2
+
+        Rectangle:
+            size: [s + dp(4) for s in self.size]
+            pos: self.pos[0] - dp(2), self.pos[1] - dp(2)
+
+        Color:
+            rgb: 1, 1, 1
+
+        Rectangle:
+            size: self.size
+            pos: self.pos
+
+<PageBox>:
+    size_hint: None, None
+    size: dp(595), dp(914)  # A4 72dpi 595x842
+    orientation: 'vertical'
+    BoxLayout:
+        Widget:
+            size_hint_x: None
+            width: dp(2)
+
+        Page:
+            id: page
+
+    Widget:
+        size_hint_y: None
+        height: dp(42)
+
+    Button:
+        size_hint: None, None
+        size: dp(30), dp(30)
+        pos_hint: {'right':0.99}
+        pos: self.pos[0], page.pos[1] + page.height - self.height
+        text: 'X'
+        on_release: root.parent.remove_widget(root)
+
+<PaperLabel>:
+    color: 0, 0, 0, 1
+
+<ImgButton>:
+    size_hint_x: None
+    width: self.height
+    canvas:
+        Color:
+            rgb: 1, 1, 1
+
+        Rectangle:
+            source: self.source
+            size: [s - 6 for s in self.size]
+            pos: [p + 3 for p in self.pos]
+
+<Wrap>:
+    size_hint_y: None
+    text_size: self.width,None
+    height: self.texture_size[1]
+    canvas.before:
+        Color:
+            rgba: root.background_color
+
+        Rectangle:
+            size: self.size
+            pos: self.pos
+
+<ResultGrid>:
+    canvas:
+        Color:
+            rgba: 0, 0, 0, 0.8
+
+        Rectangle:
+            size: self.size
+            pos: self.pos
+
+<ProcessFlowSep>:
+    size_hint: None, None
+
+<ProcessFlowMain>:
+    orientation: 'vertical'
+    size_hint: None, None
+    width: dp(96)
+    on_children: self.height = sum([c.height for c in self.children])
+    Label:
+        size_hint_y: None
+        height: dp(30)
+        color: 0, 0, 0, 1
+        text: root.name
+
+    Image:
+        size_hint_y: None
+        height: root.width
+        source: root.source

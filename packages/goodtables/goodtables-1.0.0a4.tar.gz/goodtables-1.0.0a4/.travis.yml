@@ -1,0 +1,47 @@
+sudo:
+  required
+
+dist:
+  trusty
+
+addons:
+  apt:
+    packages:
+      - pandoc
+
+language:
+  python
+
+python:
+  - 2.7
+  - 3.3
+  - 3.4
+  - 3.5
+
+env:
+  global:
+    - TOXENV="py${PYTHON_VERSION//./}"
+
+install:
+  - make install
+  - pip install coveralls
+
+script:
+  - make test
+
+after_success:
+  - coveralls
+
+before_deploy:
+  - pandoc --version
+  - pandoc -f markdown_github -t rst -o README.rst README.md
+  - mv README.rst README.md
+
+deploy:
+  provider: pypi
+  user: roll
+  distributions: sdist bdist_wheel
+  on:
+    tags: true
+  password:
+    secure: YRFRdEgKfcifX0SrAlhAV2tT3Hgth573HV03KCve9gspXoj2cMg+95U0JVMG087ILxMfEkjXOdMXE3wa1rswBIAidnmhmhbop8LMrju4Xj3tj/EySTlMPHefAYXKKI9pCLCmfkP5GCEMSujKeE0Sc6PfClzhYXJSf1pvX8b32LM=

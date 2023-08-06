@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 col-md-offset-2">
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                {{ form.title.label_tag }}
+                {{ form.title.errors }}
+                <input type="text" id="id_title" class="form-control" maxlength="200" name="title"{% if form.title.value %} value="{{ form.title.value }}"{% endif %} />
+            </div>
+            <div class="form-group">
+                {{ form.genre.label_tag }}
+                {{ form.genre.errors }}
+                <input type="text" id="id_genre" class="form-control" maxlength="200" name="genre"{% if form.genre.value %} value="{{ form.genre.value }}"{% endif %} />
+            </div>
+            <div class="form-group">
+                {{ form.length.label_tag }}
+                {{ form.length.errors }}
+                <input type="text" id="id_length" class="form-control" maxlength="200" name="length"{% if form.length.value %} value="{{ form.length.value }}"{% endif %} />
+            </div>
+            <div class="form-group">
+                {{ form.end_date.label_tag }}
+                {{ form.end_date.errors }}
+                <input type="date" id="id_end_date" class="form-control" maxlength="10" name="end_date"{% if form.end_date.value %} value="{{ form.end_date.value|date:'Y-m-d' }}"{% endif %} />
+            </div>
+            <div class="form-group">
+                {{ form.about_raw.label_tag }}
+                {{ form.about_raw.errors }}
+                <textarea id="id_about_raw" class="form-control" name="about_raw" rows="10" />{% if form.about_raw.value %}{{ form.about_raw.value }}{% endif %}</textarea>
+                <p class="help-block">Markdown allowed</p>
+            </div>
+            <div class="form-group">
+                {{ form.reviews_per_submission.label_tag }}
+                {{ form.reviews_per_submission.errors }}
+                <input type="number" id="id_reviews_per_submission" class="form-control" maxlength="10" name="reviews_per_submission"{% if form.reviews_per_submission.value %} value="{{ form.reviews_per_submission.value }}"{% endif %} />
+            </div>
+            <div class="checkbox">
+                <label>
+                    {{ form.anonymous_submissions }} Submissions are anonymous
+                </label>
+            </div>
+            <div class="checkbox">
+                <label>
+                    {{ form.readers_can_submit }} Slush-pile readers can submit
+                </label>
+            </div>
+            <div class="checkbox">
+                <label>
+                    {{ form.paid }} Is paid
+                </label>
+            </div>
+            <div class="checkbox">
+                <label>
+                    {{ form.invite_only }} Invite only
+                </label>
+            </div>
+            <p>
+                <button class="btn btn-success add-guideline-button">Add submission guideline</button>
+            </p>
+            <div class="submission-guidelines">
+                {{ guideline_set.management_form }}
+                {% for guideline in guideline_set %}
+                    <div class="submission-guideline panel panel-default">
+                        <div class="panel-body">
+                            <div class="form-group">
+                                <div class="row form-horizontal">
+                                    <label for="id_form-{{ forloop.counter0 }}-key" class="col-sm-3 control-label">Guideline name</label>
+                                    <div class="col-sm-9">
+                                        <input type="text" id="id_form-{{ forloop.counter0 }}-key" class="form-control" name="form-{{ forloop.counter0 }}-key"{% if guideline.key.value %} value="{{ guideline.key.value }}"{% endif %} />
+                                    </div>
+                                </div>
+                                <em>Some sensible defaults:</em><br />
+                                <select class="form-control select-update" data-update="id_form-{{ forloop.counter0 }}-key">
+                                    <option value=""{% if not guideline.key.value %} checked{% endif %}>----------</option>
+                                    {% for default in guideline_defaults %}
+                                        <option value="{{default}}"{% if guideline.key.value == default %} selected{% endif %}>{{default}}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="id_form-{{ forloop.counter0 }}-value_raw">Guideline text</label>
+                                <textarea id="id_form-{{ forloop.counter0 }}-value_raw" name="form-{{ forloop.counter0 }}-value_raw" class="form-control">{% if guideline.value_raw.value %}{{ guideline.value_raw.value }}{% endif %}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+    </div>
+</div>
+<script type="text/javascript">
+$(function() {
+    window.guidelines_added = $('.submission-guideline').length;
+    window.guideline_template =
+        '<div class="submission-guideline panel panel-default">' +
+        '<div class="panel-body">' +
+        '<div class="form-group">' +
+        '<div class="row form-horizontal">' +
+        '<label for="id_form-{id}-key" class="col-sm-3 control-label">Guideline name</label>' +
+        '<div class="col-sm-9">' +
+        '<input type="text" id="id_form-{id}-key" class="form-control" name="form-{id}-key" />' +
+        '</div>' +
+        '</div>' +
+        '<em>Some sensible defaults:</em><br />' +
+        '<select class="form-control select-update" data-update="id_form-{id}-key">' +
+        '<option value=""{% if not guideline.key.value %} checked{% endif %}>----------</option>' +
+        {% for default in guideline_defaults %}
+            '<option value="{{default}}">{{default}}</option>' +
+        {% endfor %}
+        '</select>' +
+        '</div>' +
+        '<div class="form-group">' +
+        '<label for="id_form-{id}-value_raw">Guideline text</label>' +
+        '<textarea id="id_form-{id}-value_raw" name="form-{id}-value_raw" class="form-control"></textarea>' +
+        '</div>' +
+        '</div>' +
+        '</div>';
+    $('.add-guideline-button').click(function(e) {
+        e.preventDefault();
+        $('.submission-guidelines').append(window.guideline_template.replace(/\{id\}/g, window.guidelines_added));
+        window.guidelines_added++;
+        $('#id_form-TOTAL_FORMS').val(window.guidelines_added);
+        add_event();
+    });
+    add_event();
+});
+function add_event() {
+    $('.select-update').change(function(e) {
+        $('#' + $(this).data('update')).val($(this).val());
+    })
+}
+</script>
+{% endblock %}

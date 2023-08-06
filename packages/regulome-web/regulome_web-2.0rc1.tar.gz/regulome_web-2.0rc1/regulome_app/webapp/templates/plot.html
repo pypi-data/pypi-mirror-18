@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+{% block body %}
+        {% include 'jumbotron_header.html' %}
+        <script type="text/python" src="{{ url_for('static', filename='python/plot.py') }}"></script>
+
+        <!-- Loader -->
+        <div id="loader"></div>
+
+        <!-- Form -->
+        <form name="form_base" id="form_base" class="form-horizontal" role="form" action="submit" enctype="multipart/form-data" method="POST">
+            <input type="hidden" id="navbar_link" name="navbar_link">
+            <input type="hidden" id="download" name="download">
+            <!-- Restore the messages -->
+            {% for key, value in messages.items() %}
+                {%- if key == 'range_region' -%}
+                    <input type="hidden" name={{ key }} value="0">
+                {%- elif key in ('start', 'end') %}
+                    <input type="hidden" name={{ key }} id={{ key }} value="{{ value }}">
+                {%- elif key == 'gene' %}
+                    <input type="hidden" name={{ key }} id='gene_name' value="">
+                {%- elif key not in ('navbar_link', 'download') -%}
+                    <input type="hidden" name={{ key }} value="{{ value }}">
+                {%- endif -%}
+            {% endfor -%}
+            <!-- Tabs -->
+            <div id="tabs" role="tabpanel" class="tab">
+                <!-- Headers -->
+                <ul class="nav nav-tabs" role="tablist">
+                    <li role="presentation"><a href="#setting" data-toggle="tab" aria-controls="setting" role="tab"><span class="glyphicon glyphicon-cog"></span>&nbsp;Setting</a></li>
+                    <li role="presentation" class="active"><a href="#figure" data-toggle="tab" aria-controls="figure" role="tab"><span class="glyphicon glyphicon-picture"></span>&nbsp;Figure</a></li>
+                    <li role="presentation"><a href="#table" data-toggle="tab" aria-controls="table" role="tab"><span class="glyphicon glyphicon-list-alt"></span>&nbsp;Table</a></li>
+                </ul>
+                <!-- Tabs content -->
+                <div class="tab-content">
+                    <!-- Setting -->
+                    <div role="tabpanel" class="tab-pane" id="setting">
+                        <div class="panel-group" id="accordion">
+                            <div class="panel panel-default panel-background panel-basic">
+                                <!-- Header -->
+                                <div class="panel-heading panel-heading-basic text-centered">
+                                    <h4 class="panel-title -with-icon">
+                                        <a class="heading-basic-icon" data-toggle="collapse" data-parent="#accordion" href="#user_basic_panel">Current settings</a>
+                                    </h4>
+                                </div>
+                                <!-- Body -->
+                                <div id="user_basic_panel" class="panel-collapse collapse in">
+                                    <div class="panel-body">
+                                        <div class="panel-group" id="form_panel">  <!-- -->
+                                            <!-- Options -->
+                                            <div class="panel panel-default panel-submit-options">  <!-- -->
+                                                <!-- Body -->
+                                                <div id="submit_options_jobs_panel" class="panel-collapse collapse in">  <!-- -->
+                                                    <div id="options_basic_panel_body" class="panel-body">
+                                                        <!-- Build -->
+                                                        <div class="form-group">
+                                                            <label class="col-md-2 control-label" for="_build">Genome assembly</label>
+                                                            <div class="col-md-6">
+                                                                <select disabled class="form-control" id="_build" name="_build">
+                                                                    {%- for key, value in builds.items() %}
+                                                                        {%- if key == messages['build'] -%}
+                                                                            <option  value="{{ key }}" selected>{{ value }}</option>
+                                                                        {%- endif -%}
+                                                                    {% endfor -%}
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <!-- Chromosome -->
+                                                        <div class="form-group">
+                                                            <label class="col-md-2 control-label" for="_chromosome">Chromosome</label>
+                                                            <div class="col-md-6">
+                                                                <select disabled class="form-control" id="_chromosome" name="_chromosome">
+                                                                    <option selected>{{ messages['chromosome'] }}</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <!-- Start -->
+                                                        <div class="form-group">
+                                                            <label class="col-md-2 control-label" for="_start">From</label>
+                                                            <div class="col-md-6">
+                                                                <input disabled type="text" name="_start" id="_start" value="{{ messages['start'] }}" class="form-control" placeholder="28494167">
+                                                            </div>
+                                                        </div>
+                                                        <!-- End -->
+                                                        <div class="form-group">
+                                                            <label class="col-md-2 control-label" for="_end">To</label>
+                                                            <div class="col-md-6">
+                                                                <input disabled type="text" name="_end" id="_end" value="{{ messages['end'] }}" class="form-control" placeholder="28500451">
+                                                            </div>
+                                                        </div>
+                                                        <!-- Range -->
+                                                        <div class="form-group">
+                                                            <label class="col-md-2 control-label" for="_range_region">Extend to flanks</label>
+                                                            <div class="col-md-6">
+                                                                <select disabled class="form-control" id="_range_region" name="_range_region">
+                                                                    {%- for key, value in ranges.items() %}
+                                                                        {%- if key|string == messages['range_region'] -%}
+                                                                            <option  value="{{ key }}" selected>{{ value }}</option>
+                                                                        {%- endif -%}
+                                                                    {% endfor -%}
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <!-- Chromatin map -->
+                                                        <div class="form-group">
+                                                            <label class="col-md-2 control-label" for="_region">Chromatin map</label>
+                                                            <div class="col-md-6">
+                                                                <select disabled class="form-control" id="_region" name="_region">
+                                                                    {%- for key, value in regions.items() %}
+                                                                        {%- if key == messages['region'] -%}
+                                                                            <option value="{{ key }}" selected>{{ value }}</option>
+                                                                        {%- endif -%}
+                                                                    {% endfor -%}
+                                                                </select>
+                                                                <span class="help-block">Some explanation here</span>
+                                                            </div>
+                                                        </div>
+                                                        <!-- Transcription Factors -->
+                                                        <div class="form-group">
+                                                            <label class="col-md-2 control-label" for="_tfbs">Transcription factors</label>
+                                                            <div class="col-md-6">
+                                                                <select disabled class="form-control" id="_tfbs" name="_tfbs">
+                                                                    {%- for key, value in tfbs.items() %}
+                                                                        {%- if key ==messages['tfbs'] -%}
+                                                                            <option value="{{ key }}" selected>{{ value }}</option>
+                                                                        {%- endif -%}
+                                                                    {% endfor -%}
+                                                                </select>
+                                                                <span class="help-block">Some explanation here</span>
+                                                            </div>
+                                                        </div>
+                                                        <!-- Chromatin profile -->
+                                                        <div class="form-group">
+                                                            <label class="col-md-2 control-label" for="_chromatin">Chromatin profile</label>
+                                                            <div class="col-md-6">
+                                                                <select disabled class="form-control" id="_chromatin" name="_chromatin">
+                                                                    {%- for key, value in chromatin.items() %}
+                                                                        {%- if key == messages['chromatin'] -%}
+                                                                            <option value="{{ key }}" selected>{{ value }}</option>
+                                                                        {%- endif -%}
+                                                                    {% endfor -%}
+                                                                </select>
+                                                                <span class="help-block">Some explanation here</span>
+                                                            </div>
+                                                        </div>
+                                                        <!-- SNPs -->
+                                                        <div class="form-group">
+                                                            <label class="col-md-2 control-label" for="_select_snps">SNPs</label>
+                                                            <div class="col-md-6">
+                                                                <select disabled class="form-control" id="_select_snps" name="_select_snps">
+                                                                    {%- for key, value in snps.items() %}
+                                                                        {%- if key == messages['select_snps'] -%}
+                                                                            <option value="{{ key }}" selected>{{ value }}</option>
+                                                                        {%- endif -%}
+                                                                    {% endfor -%}
+                                                                </select>
+                                                                <span class="help-block">Some explanation here</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>  <!-- END OF options_basic_panel_body -->
+                                    </div>  <!-- END OF class: panel-body -->
+                                </div>  <!-- END OF user_basic_panel -->
+                            </div>
+                        </div>
+                    </div>  <!-- END tab-pane of setting -->
+
+                    <!-- Figure -->
+                    <div role="tabpanel" class="tab-pane active" id="figure">
+                        <div class="container">
+                            <!-- Buttons -->
+                            <div class="row" style="margin: 30px;">
+                                <div class="col-md-10 col-md-offset-1 text-center">
+                                    <div id="buttons_plot">
+                                        <!-- Zoom in -->
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-zoom-in"></span>&nbsp; <span class="caret"></span></button>
+                                            <ul class="dropdown-menu">
+                                                <li class="{{ messages['zoom_in_1.5x']['disabled'] }}"><a id="zoom_in_1.5x" href="#" onClick="start.value={{ messages['zoom_in_1.5x']['start'] }}; end.value={{ messages['zoom_in_1.5x']['end'] }};">1.5X</a></li>
+                                                <li class="{{ messages['zoom_in_3x']['disabled'] }}"><a id="zoom_in_3x" href="#" onClick="start.value={{ messages['zoom_in_3x']['start'] }}; end.value={{ messages['zoom_in_3x']['end'] }};">3X</a></li>
+                                                <li class="{{ messages['zoom_in_10x']['disabled'] }}"><a id="zoom_in_10x" href="#" onClick="start.value={{ messages['zoom_in_10x']['start'] }}; end.value={{ messages['zoom_in_10x']['end'] }};">10X</a></li>
+                                            </ul>
+                                        </div>
+                                        <!-- Zoom out -->
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-zoom-out"></span>&nbsp; <span class="caret"></span></button>
+                                            <ul class="dropdown-menu">
+                                                <li class="{{ messages['zoom_out_1.5x']['disabled'] }}"><a id="zoom_out_1.5x" href="#" onClick="start.value={{ messages['zoom_out_1.5x']['start'] }}; end.value={{ messages['zoom_out_1.5x']['end'] }};">1.5X</a></li>
+                                                <li class="{{ messages['zoom_out_3x']['disabled'] }}"><a id="zoom_out_3x" href="#" onClick="start.value={{ messages['zoom_out_3x']['start'] }}; end.value={{ messages['zoom_out_3x']['end'] }};">3X</a></li>
+                                                <li class="{{ messages['zoom_out_10x']['disabled'] }}"><a id="zoom_out_10x" href="#" onClick="start.value={{ messages['zoom_out_10x']['start'] }}; end.value={{ messages['zoom_out_10x']['end'] }};">10X</a></li>
+                                            </ul>
+                                        </div>
+                                        <!-- Move left -->
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-backward"></span>&nbsp; <span class="caret"></span>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li class="{{ messages['left_25']['disabled'] }}"><a id="left_25" href="#" onClick="start.value={{ messages['left_25']['start'] }}; end.value={{ messages['left_25']['end'] }};">move 25% to the left</a></li>
+                                                <li class="{{ messages['left_50']['disabled'] }}"><a id="left_50" href="#" onClick="start.value={{ messages['left_50']['start'] }}; end.value={{ messages['left_50']['end'] }};">move 50% to the left</a></li>
+                                                <li class="{{ messages['left_75']['disabled'] }}"><a id="left_75" href="#" onClick="start.value={{ messages['left_75']['start'] }}; end.value={{ messages['left_75']['end'] }};">move 75% to the left</a></li>
+                                            </ul>
+                                        </div>
+                                        <!-- Move right -->
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-forward"></span>&nbsp; <span class="caret"></span>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li class="{{ messages['right_25']['disabled'] }}"><a id="right_25" href="#" onClick="start.value={{ messages['right_25']['start'] }}; end.value={{ messages['right_25']['end'] }};">move 25% to the right</a></li>
+                                                <li class="{{ messages['right_50']['disabled'] }}"><a id="right_50" href="#" onClick="start.value={{ messages['right_50']['start'] }}; end.value={{ messages['right_50']['end'] }};">move 50% to the right</a></li>
+                                                <li class="{{ messages['right_75']['disabled'] }}"><a id="right_75" href="#" onClick="start.value={{ messages['right_75']['start'] }}; end.value={{ messages['right_75']['end'] }};">move 75% to the right</a></li>
+                                            </ul>
+                                        </div>
+                                        <!-- Download -->
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-download-alt"></span>&nbsp; <span class="caret"></span></button>
+                                            <ul class="dropdown-menu">
+                                                <li><a id="download_pdf" href="#">PDF</a></li>
+                                                <li><a id="download_png" href="#">PNG</a></li>
+                                            </ul>
+                                        </div>
+                                        <!-- UCSC link -->
+                                        <div class="btn-group">
+                                            <a href="https://genome.ucsc.edu/cgi-bin/hgTracks?hgS_doOtherUser=submit&hgS_otherUserName=mramos&hgS_otherUserSessionName=hg19_IRB" target="_blank">
+                                                <button type="button" class="btn btn-primary">UCSC</button>
+                                            </a>
+                                        </div>
+                                        <!-- Info -->
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-info-sign"></span>&nbsp; <span class="caret"></span></button>
+                                            <ul class="dropdown-menu">
+                                                <!--li>
+                                                    <a data-toggle="popover"
+                                                       data-html="true"
+                                                       title="<strong>Motifs</strong>"
+                                                       target="_blank"
+                                                       data-trigger="hover"
+                                                       class="information"
+                                                       data-content="
+                                                       Visualization of instances of sequence motifs that are enriched in human pancreatic
+                                                       islet enhancers is possible when zooming into genomic regions of 1 Kb or smaller. The
+                                                       positions of any motifs that exist in that area will be numbered and a Table will
+                                                       appear below the browser with the numbered motifs, their exact sequence and position,
+                                                       and the name of the motif.">Motifs
+                                                    </a>
+                                                </li-->
+                                                <li>
+                                                    <a data-toggle="popover"
+                                                       data-html="true"
+                                                       title="<strong>Genes</strong>"
+                                                       target="_blank"
+                                                       data-trigger="hover"
+                                                       class="information"
+                                                       data-content="
+                                                       <p>This track displays RefSeq gene locations labeled by gene symbol. Color code for gene
+                                                       annotations are as follows:</p>
+                                                       <ul>
+                                                         <li><b>dark grey:</b> top 1,000 islet-specific genes.</li>
+                                                         <li><b>light grey:</b> other genes</li>
+                                                         <li><b>black:</b> islet non coding RNAs</li>
+                                                       </ul>
+                                                       For details and methods see
+                                                       <a href='http://www.ncbi.nlm.nih.gov/pubmed/24413736' target='_blank'>Pasquali et al. 2014</a> and
+                                                       <a href='http://www.ncbi.nlm.nih.gov/pubmed/23040067' target='_blank'>Moran, Akerman et al. 2012</a>">Genes
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-10 col-md-offset-1">
+                                    <img src="{{ url_for('cache', filename=messages['file_path'] + '.png') }}" id="img_plot" alt="Islet Regulome Browser Image">
+                                </div>
+                                <div class="col-md-1"></div>
+                            </div> <!-- END row -->
+                        </div> <!-- END container -->
+                        <!-- Hack to put some space -->
+                        <p><br></p>
+                    </div> <!-- END tab-pane of figure -->
+
+                    <!-- Table -->
+                    <div role="tabpanel" class="tab-pane" id="table">
+                        {% include 'table.html' %}
+                        <!-- Hack to put some space -->
+                        <p><br></p>
+                    </div>
+                </div> <!-- END tab-content -->
+            </div> <!-- /container -->
+
+            <!-- Submit button -->
+            <div class="form-group">
+                <button type="button" id="submit_button_plot" class="col-sm-offset-5 btn btn-primary center-block">Do another plot</button>
+            </div>
+        </form>
+
+        <script>
+            $(document).ready(function() {
+                $("[data-toggle=popover]").popover({
+                    container: 'body'
+                });
+            });
+        </script>
+
+{% endblock %}
+

@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+{% block body %}
+        {% include 'jumbotron_header.html' %}
+        <script type="text/python" src="{{ url_for('static', filename='python/intro.py') }}"></script>
+
+        <!-- Loader -->
+        <div id="loader"></div>
+
+        <!-- Accordion -->
+        <div class="panel-group" id="accordion">
+
+            <!-- Form -->
+            <form name="form_base" id="form_base" class="form-horizontal" action="{{ url_for('submit') }}" enctype="multipart/form-data" method="POST">  <!-- role="form"  -->
+
+                <input type="hidden" id="navbar_link" name="navbar_link">
+
+                <!-- Basic panel -->
+                <div class="panel panel-default panel-background panel-basic">
+                    <!-- Header -->
+                    <div class="panel-heading panel-heading-basic text-centered">
+                        <h4 class="panel-title -with-icon">
+                            <a class="heading-basic-icon" data-toggle="collapse" data-parent="#accordion" href="#user_basic_panel">Create a plot</a>
+                        </h4>
+                    </div>
+                    <!-- Body -->
+                    <div id="user_basic_panel" class="panel-collapse collapse in">
+                        <div class="panel-body">
+                            <div class="panel-group" id="form_panel">  <!-- -->
+                                <!-- Gene or genome coordinates -->
+                                <div class="panel panel-default panel-submit-options">
+                                    <!-- Header -->
+                                    <div class="panel-heading panel-heading-submit-options">  <!-- -->
+                                        <h4 class="panel-title ">
+                                            <a class="heading-submit-options-icon" data-toggle="collapse" data-parent="#form_panel" href="#submit_options_jobs_panel">Gene or genome coordinates</a>
+                                        </h4>
+                                    </div>
+                                    <!-- Body -->
+                                    <div id="submit_options_jobs_panel" class="panel-collapse collapse in">
+                                        <div id="options_basic_panel_body" class="panel-body">
+                                            <!-- Gene name -->
+                                            <div class="form-group">
+                                                <label class="col-md-2 control-label" for="gene_name">Gene symbol</label>
+                                                <div class="col-md-6">
+                                                    <input type="text" name="gene" id="gene_name" value="" class="form-control" placeholder="for instance PDX1" autofocus="true" autocomplete="off" spellcheck="false" list="gene_list">
+                                                    <span class="help-block">Choose a gene name</span>
+                                                    <datalist id="gene_list"></datalist>
+                                                </div>
+                                            </div>
+                                            <!-- Chromosome -->
+                                            <div class="form-group">
+                                                <label class="col-md-2 control-label" for="chromosome">Chromosome</label>
+                                                <div class="col-md-6">
+                                                    <select class="form-control" id="chromosome" name="chromosome">
+                                                        {%- for chromosome in chromosomes %}
+                                                            {%- if chromosome == messages['chromosome'] -%}
+                                                                <option selected>{{ chromosome }}</option>
+                                                            {%- else -%}
+                                                                <option>{{ chromosome }}</option>
+                                                            {%- endif -%}
+                                                        {% endfor -%}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <!-- Start -->
+                                            <div class="form-group">
+                                                <label class="col-md-2 control-label" for="start">From</label>
+                                                <div class="col-md-6">
+                                                    <input type="text" name="start" id="start" value="{{ messages['start'] }}" class="form-control" placeholder="28494167">
+                                                </div>
+                                            </div>
+                                            <!-- End -->
+                                            <div class="form-group">
+                                                <label class="col-md-2 control-label" for="gene_name">To</label>
+                                                <div class="col-md-6">
+                                                    <input type="text" name="end" id="end" value="{{ messages['end'] }}" class="form-control" placeholder="28500451">
+                                                </div>
+                                            </div>
+                                            <!-- Range -->
+                                            <div class="form-group">
+                                                <label class="col-md-2 control-label" for="range_region">Extend coordinates</label>
+                                                <div class="col-md-6">
+                                                    <select class="form-control" id="range_region" name="range_region">
+                                                        {%- for key, value in ranges.items() %}
+                                                            {%- if key|string == messages['range_region'] -%}
+                                                                <option  value="{{ key }}" selected>{{ value }}</option>
+                                                            {%- else -%}
+                                                                <option  value="{{ key }}">{{ value }}</option>
+                                                            {%- endif -%}
+                                                        {% endfor -%}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Features -->
+                                <div class="panel panel-default panel-submit-options">
+                                    <!-- Header -->
+                                    <div class="panel-heading panel-heading-submit-options">
+                                        <h4 class="panel-title ">
+                                            <!-- a class collapsed to show the > icon correctly -->
+                                            <a class="heading-submit-options-icon collapsed" data-toggle="collapse" data-parent="#form_panel" href="#submit_advanced_jobs_panel">Features</a>
+                                        </h4>
+                                    </div>
+                                    <!-- Body -->
+                                    <div id="submit_advanced_jobs_panel" class="panel-collapse collapse">
+                                        <div id="submit_advanced_panel_body" class="panel-body">
+                                            <!-- Build -->
+                                            <div class="form-group">
+                                                <label class="col-md-2 control-label" for="build">Genome assembly</label>
+                                                <div class="col-md-6">
+                                                    <select class="form-control" id="build" name="build">
+                                                        {%- for key, value in builds.items() %}
+                                                            {%- if key == messages['build'] -%}
+                                                                <option  value="{{ key }}" selected>{{ value }}</option>
+                                                            {%- else -%}
+                                                                <option  value="{{ key }}">{{ value }}</option>
+                                                            {%- endif -%}
+                                                        {% endfor -%}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <!-- Region map -->
+                                            <div class="form-group">
+                                                <label class="col-md-2 control-label" for="region">Chromatin map</label>
+                                                <div class="col-md-6">
+                                                    <select class="form-control" id="region" name="region">
+                                                        {%- for key, value in regions.items() %}
+                                                            {%- if key == messages['region'] -%}
+                                                                <option value="{{ key }}" selected>{{ value }}</option>
+                                                            {%- else -%}
+                                                                <option  value="{{ key }}">{{ value }}</option>
+                                                            {%- endif -%}
+                                                        {% endfor -%}
+                                                    </select>
+                                                    <span class="help-block">Additional information <a href="{{ url_for('data') }}#data_open_chromatin">here</a></span>
+                                                </div>
+                                            </div>
+                                            <!-- Transcription Factors -->
+                                            <div class="form-group">
+                                                <label class="col-md-2 control-label" for="tfbs">Transcription factors</label>
+                                                <div class="col-md-6">
+                                                    <select class="form-control" id="tfbs" name="tfbs">
+                                                        {%- for key, value in tfbs.items() %}
+                                                            {%- if key == messages['tfbs'] -%}
+                                                                <option value="{{ key }}" selected>{{ value }}</option>
+                                                            {%- else -%}
+                                                                <option  value="{{ key }}">{{ value }}</option>
+                                                            {%- endif -%}
+                                                        {% endfor -%}
+                                                    </select>
+                                                    <span class="help-block">Additional information <a href="{{ url_for('data') }}#data_pancreatic_islet_enhancers">here</a></span>                                                </div>
+                                                </div>
+                                            <!-- Chromatin map -->
+                                            <div class="form-group">
+                                                <label class="col-md-2 control-label" for="chromatin">Chromatin profile</label>
+                                                <div class="col-md-6">
+                                                    <select class="form-control" id="chromatin" name="chromatin">
+                                                        {%- for key, value in chromatin.items() %}
+                                                            {%- if key == messages['chromatin'] -%}
+                                                                <option value="{{ key }}" selected>{{ value }}</option>
+                                                            {%- else -%}
+                                                                <option  value="{{ key }}">{{ value }}</option>
+                                                            {%- endif -%}
+                                                        {% endfor -%}
+                                                    </select>
+                                                    <span class="help-block">Only available for regions up to 500Kb. Additional information <a href="{{ url_for('data') }}#data_human_alpha_cell">here</a></span>
+                                                </div>
+                                            </div>
+                                            <!-- SNPs -->
+                                            <div class="form-group">
+                                                <label class="col-md-2 control-label" for="select_snps">SNPs</label>
+                                                <div class="col-md-6">
+                                                    <select class="form-control" id="select_snps" name="select_snps">
+                                                        {%- for key, value in snps.items() %}
+                                                            {%- if key == messages['select_snps'] -%}
+                                                                <option value="{{ key }}" selected>{{ value }}</option>
+                                                            {%- else -%}
+                                                                <option value="{{ key }}">{{ value }}</option>
+                                                            {%- endif -%}
+                                                        {% endfor -%}
+                                                    </select>
+                                                    <span class="help-block">Additional information <a href="{{ url_for('data') }}#data_gwas">here</a></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>  <!-- END OF options_basic_panel_body -->
+                        </div>  <!-- END OF class: panel-body -->
+                    </div>  <!-- END OF user_basic_panel -->
+                </div>  <!-- END OF the Basic panel -->
+
+                <!-- Advanced panel -->
+                <div class="panel panel-default panel-background panel-advanced">
+
+                    <!-- Header -->
+                    <div class="panel-heading panel-heading-advanced text-centered">
+                        <h4 class="panel-title -with-icon">
+                            <a class="heading-advanced-icon collapsed" data-toggle="collapse" data-parent="#accordion" href="#user_advanced_panel">Advanced options</a>
+                        </h4>
+                        <a style="font-size: small;" data-toggle="tooltip" title="Visit info page to learn about the accepted file formats">
+                            <span style="color: white;" class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>
+                        </a>
+                    </div>
+
+                    <!-- Body -->
+                    <div id="user_advanced_panel" class="panel-collapse collapse">
+                        <div class="panel-body">
+                            <div id="options_basic_panel_body" class="panel-body">
+                                <!-- Chromatin maps-->
+                                <div class="form-group">
+                                    <label class="col-md-2 control-label" for="region_upload">Upload chromatin map</label>
+                                    <div>
+                                        <input type="hidden" id="region_upload" name="region_upload" value="None">
+                                    </div>
+                                    <div class="col-md-6">
+                                        {% if messages['upload_regions'] != 'None' %}
+                                            <input id="reg_file_name" type="text" disabled="disabled" class="form-control" value="{{ messages['upload_regions'] }}">
+                                            <input type="hidden" id="upload_regions" name="upload_regions" value="{{ messages['upload_regions'] }}">
+                                        {% else %}
+                                            <input id="reg_file_name" type="text" disabled="disabled" class="form-control">
+                                            <input type="hidden" id="upload_regions" name="upload_regions" value="None">
+                                        {% endif %}
+                                        <span class="help-block">Read about chromatin map file format <a href="{{ url_for('info') }}#info_upload_your_data" target="_tab">here</a></span>
+                                        <input id="region_file" type="file" name="region_file" size="40" style="display: none;">  <!-- required='required' -->
+                                    </div>
+                                    <div class="col-md-1">
+                                        <a id="_region_upload" class="btn btn-default">Load ...</a>
+                                    </div>
+                                    {% if messages['upload_regions'] != 'None' %}
+                                        <div class="col-md-1">
+                                            <a id="clear_region_upload" class="btn btn-default">Remove</a>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <!-- SNPs -->
+                                <div class="form-group">
+                                    <label class="col-md-2 control-label" for="snp_upload">Upload SNPs</label>
+                                    <div>
+                                        <input type="hidden" id="snp_upload" name="snp_upload" value="None">
+                                    </div>
+                                    <div class="col-md-6" >
+                                        {% if messages['upload_snps'] != 'None' %}
+                                            <input id="snps_file_name" type="text" disabled="disabled" class="form-control" value="{{ messages['upload_snps'] }}">
+                                            <input type="hidden" id="upload_snps" name="upload_snps" value="{{ messages['upload_snps'] }}">
+                                        {% else %}
+                                            <input id="snps_file_name" type="text" disabled="disabled" class="form-control">
+                                            <input type="hidden" id="upload_snps" name="upload_snps" value="None">
+                                        {% endif %}
+                                        <span class="help-block">Read about SNPs file format <a href="{{ url_for('info') }}#info_upload_your_data" target="_tab">here</a></span>
+                                        <input id="snps_file" type="file" name="snps_file" size="40" style="display: none;">  <!-- required='required' -->
+                                    </div>
+                                    <div class="col-md-1">
+                                        <a id="_snp_upload" class="btn btn-default">Load ...</a>
+                                    </div>
+                                    {% if messages['upload_snps'] != 'None' %}
+                                        <div class="col-md-1">
+                                            <a id="clear_snp_upload" class="btn btn-default">Remove</a>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>  <!-- END OF options_basic_panel_body -->
+                        </div>  <!-- END OF class: panel-body -->
+                    </div>
+
+                </div>  <!-- END OF the Advanced panel -->
+
+                <!-- Submit button panel -->
+                <div class="form-group">
+                    <button type="submit" id="submit_button" class="col-sm-offset-5 btn btn-default center-block">Submit</button>
+                </div>
+
+            </form>
+        </div>  <!-- END OF accordion -->
+
+        <script>
+        $(document).ready(function(){
+            $('[data-toggle="tooltip"]').tooltip();
+        });
+        </script>
+{% endblock %}
+

@@ -1,0 +1,72 @@
+{% extends "layout.html" %}
+
+{% from "macros/filter_form.html" import sidefilter %}
+
+{% block content %}
+<div class="content itemlist">
+  {% if not is_popup %}
+  <div class="header">
+    <h1 class="stream_title nowrap">
+      {{- title }}
+    </h1>
+    {% block after_title %}{% endblock %}
+    {% block buttons %}
+        <div class="stream_buttons">
+          {% if allow_add %}
+          <a href="{{ item_url() }}" class="button js-button-add icon-add">
+            Создать
+          </a>
+          {% endif %}
+          {%- for action in stream.actions %}
+            {%- if action.display and not action.for_item and action.action %}
+              <a href="{{ stream.url_for(env, action.action) }}"
+                {%- if action.js_block %} data-block-name="{{ action.js_block }}" {% endif %}
+                 class="button{%- if action.cls %} icon-{{ action.cls }}{% endif %}
+                              {%- if action.js_block %} init-block{% endif %}
+                              {% if action.classname %} {{ action.classname }}{% endif %}">
+                {{- action.title -}}
+              </a>
+            {%- endif %}
+          {%- endfor %}
+        </div>
+    {% endblock %}
+  </div>
+  {% endif %}
+
+  <div class="filtr">
+    {% block before_tabs %}{% endblock %}
+    <div class="list_tabs">
+      <!-- TabSelect buttons will be injected here-->
+    </div>
+
+    <div class="fieldset_tabs">
+     <!-- ButtonSelect buttons will be injected here -->
+    </div>
+  </div>
+
+  <div>
+    <div class="stream" data-name="{{ stream.module_name }}">
+      {%- if live_search -%}
+        <div class="livesearch-wrap">
+          <label class="livesearch">
+            {% set search_input_id = filter_form.id + '-livesearch' -%}
+            <i>Поиск:</i>
+            <span></span>
+            <input type="text" class="init-block" id="{{ search_input_id }}" data-block-name="live-search"/>
+          </label>
+        </div>
+      {%- endif %}
+
+      <div class="line"></div>
+
+      {{ sidefilter(filter_form, stream.url_for(env)) }}
+
+      <div class="stream-items{% if filter_form %} with-sidefilter{% endif %}">
+        {% block stream_items %}{% endblock %}
+      </div>
+      <div class="line"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

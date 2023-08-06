@@ -1,0 +1,116 @@
+Putlocker
+==============
+
+.. image:: https://img.shields.io/pypi/v/putlocker.svg?style=flat-square&label=version
+   :target: https://pypi.python.org/pypi/putlocker
+
+.. image:: https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square
+   :target: https://raw.githubusercontent.com/agusmakmun/putlocker/master/LICENSE.txt
+
+.. image:: https://img.shields.io/pypi/pyversions/putlocker.svg?style=flat-square
+   :target: https://github.com/agusmakmun/putlocker
+
+.. image:: https://img.shields.io/pypi/dm/putlocker.svg?style=flat-square
+   :target: https://pypi.python.org/pypi/putlocker
+
+Grabber app to get meta-data or download the movie from Putlockers (http://putlockers.ch). I just hope this tool isn't illegal.
+
+    If you are owner of http://putlockers.ch and if you hate with this tool, please `contact us`_.
+
+Installing
+----------------------------
+
+::
+
+    $ sudo pip install putlocker
+
+
+Usage
+----------------------------
+
+::
+
+    usage: putlocker.py [-h] [-d] [-m] [-l LINK] [-f FOLDER]
+
+    Grabber app to get meta-data or download the movie from Putlocker.
+    Website Putlocker: http://putlockers.ch
+
+    optional arguments:
+     -h, --help            show this help message and exit
+     -d, --download        to direct download multiple videos.
+     -m, --meta            to get print out meta data from movie.
+     -l LINK, --link LINK  link detail movie from putlocker to be download/get meta data.
+     -f FOLDER, --folder FOLDER
+                           optional path/folder to save the movie.
+
+
+Example
+----------------------------
+
+**Download**
+
+::
+
+    $ sudo putlocker -d -l=http://putlockers.ch/watch-alcoholist-online-free-putlocker.html -f=alcoholist
+    # OR
+    $ sudo putlocker --download --link=http://putlockers.ch/watch-alcoholist-online-free-putlocker.html --folder=alcoholist
+
+
+**Get Meta Data**
+
+::
+
+    $ sudo putlocker -m -l=http://putlockers.ch/watch-alcoholist-online-free-putlocker.html
+    # OR
+    $ sudo putlocker --meta --link=http://putlockers.ch/watch-alcoholist-online-free-putlocker.html
+
+
+Demo
+----------------------------
+
+**Download**
+
+::
+
+    [+] Downloading the cover of movie...
+    [+] Downloading... http://185.45.15.210/i/01/00096/ozgurkbjg0mp.jpg
+    [==================================================] 16812 of 16812
+    [+] Downloading the tracks(srt) file...
+    [+] Downloading... http://thevideos.tv/srt/00096/6dw6cxtw7por_English.srt
+    [==================================================] 103 of 103
+    [+] Writing meta-data of movie...
+    [+] Downloading 1 / 3 videos....
+    [+] Downloading... http://185.45.15.210/4rugfadnwdc4aksautummkq/v.mp4
+    [==================================================] 223088833 of 223088833
+    [+] Downloading 2 / 3 videos....
+    [+] Downloading... http://185.45.15.210/4rugm4dnwdc4ak7g4fbp6sa/v.mp4
+    [=========================                         ] 228249600 of 440121604
+
+
+**Meta Data**
+
+::
+
+    {
+      'duration': '6432',
+      'sources': [
+        {'file': 'http://185.45.15.210/4rugfadnwdc4aksautummkq/v.mp4', 'label': '240p'},
+        {'file': 'http://185.45.15.210/4rugm4dnwdc4ak7g4fbp6sa/v.mp4', 'label': '360p'},
+        {'file': 'http://185.45.15.210/4rugxzdnwdc4akumtmdspca/v.mp4', 'label': '720p'}],
+      'image': 'http://185.45.15.210/i/01/00096/ozgurkbjg0mp.jpg',
+      'tracks':
+        {
+          'kind': 'captions',
+          'file': 'http://thevideos.tv/srt/00096/6dw6cxtw7por_English.srt',
+          'label': 'English'
+        }
+    }
+
+
+License
+----------------------------
+
+* `MIT LICENSE`_
+
+.. _contact us: agus@python.web.id
+.. _MIT LICENSE: https://github.com/agusmakmun/putlocker/blob/master/LICENSE.txt

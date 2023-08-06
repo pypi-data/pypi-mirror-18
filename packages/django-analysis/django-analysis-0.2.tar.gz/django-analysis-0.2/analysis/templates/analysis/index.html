@@ -1,0 +1,84 @@
+<link href="//cdn.bootcss.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+<script src="//cdn.bootcss.com/jquery/2.2.4/jquery.min.js"></script>
+<style>
+    .entry-container {
+        margin-bottom: 10px;
+        font-size: 13px;
+        font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+        color: #333333;
+        word-break: break-all;
+        word-wrap: break-word;
+        background-color: #f5f5f5;
+        border: 1px solid #cccccc;
+        border-radius: 4px;
+        overflow: auto;
+    }
+    .entry-heading {
+        padding: 10px;
+    }
+    .enter-body {
+        padding: 0 10px 10px 10px;
+    }
+    .table {
+        margin-bottom: 0;
+        font-size: 13px;
+    }
+</style>
+<div class="container">
+    <ul class="nav nav-pills">
+        <li><a href="/analysis/sql/clean/">清除数据</a></li>
+    </ul>
+    {% for req in requests %}
+        <div class="entry-container">
+            <div class="entry-heading" onclick="detail_info({{ req.id }})">
+                {{ req.date | date:'Y年m月d日 H:i:s' }} {{ req.method }} {{ req.url }}
+            </div>
+            <div class="enter-body" id="{{ req.id }}_info" style="display: none">
+                <table class="table">
+                    <tr>
+                        <td>调用的视图函数</td>
+                        <td>{{ req.view_func_path }}</td>
+                    </tr>
+                    <tr>
+                        <td>sql执行总次数</td>
+                        <td>{{ req.sql_times }}次</td>
+                    </tr>
+                    <tr>
+                        <td>sql执行总耗时</td>
+                        <td>{{ req.sql_used }}s</td>
+                    </tr>
+                    <tr>
+                        <td>请求处理总耗时</td>
+                        <td>{{ req.request_used }}s</td>
+                    </tr>
+                </table>
+                <pre id="{{ req.id }}_sql" class="bg-info"></pre>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+<script>
+    function detail_info(id) {
+        var el_info = $('#' + id + '_info');
+        var el_sql = $('#' + id + '_sql');
+        if (el_info.css('display') == 'block') {
+            el_info.css('display', 'none');
+            return
+        } else {
+            el_info.css('display', 'block')
+        }
+        $.ajax({
+            url: '/analysis/sql/' + id + '/',
+            success: function (data) {
+                var text = '';
+                for (var i = 0; i < data.length; i++) {
+                    text += data[i].time + '  ' + data[i].sql + '\n'
+                }
+                el_sql.text(text)
+            },
+            error: function (err) {
+                alert('load detail failed: ' + err)
+            }
+        })
+    }
+</script>

@@ -1,0 +1,122 @@
+---
+#   Copyright Red Hat, Inc. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License"); you may
+#   not use this file except in compliance with the License. You may obtain
+#   a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#   License for the specific language governing permissions and limitations
+#   under the License.
+#
+
+# ARA record and read modules specific tests
+- name: Record data with no type
+  ara_record:
+    key: "notype"
+    value: "text"
+
+- name: Read notype key
+  ara_read:
+    key: "notype"
+  register: notype
+
+- name: Validate notype key
+  assert:
+    that:
+      - notype.key == "notype"
+      - notype.value == "text"
+      - notype.type == "text"
+
+- name: Record data with text type
+  ara_record:
+    key: "foo"
+    value: "bar"
+    type: "text"
+
+- name: Update existing key's value and type
+  ara_record:
+    key: "foo"
+    value: "http://barfoo"
+    type: "url"
+
+- name: Read foo key
+  ara_read:
+    key: "foo"
+  register: foo
+
+- name: Validate foo key
+  assert:
+    that:
+      - foo.key == "foo"
+      - foo.value == "http://barfoo"
+      - foo.type == "url"
+
+- name: Add another k/v pair with ara_record
+  ara_record:
+    key: "bar"
+    value: '{ "foo": "bar" }'
+    type: "json"
+
+- name: Read bar key
+  ara_read:
+    key: "bar"
+  register: bar
+
+- name: Validate bar key
+  assert:
+    that:
+      - bar.key == "bar"
+      - "bar.value == '{ \"foo\": \"bar\" }'"
+      - bar.type == "json"
+
+# Things that should fail
+- name: Record with no key
+  ara_record:
+    value: "value"
+  ignore_errors: "yes"
+  register: nokey
+
+- name: Validate nokey failure
+  assert:
+    that:
+      - nokey.failed
+
+- name: Record with no value
+  ara_record:
+    key: "key"
+  ignore_errors: "yes"
+  register: novalue
+
+- name: Validate novalue failure
+  assert:
+    that:
+      - novalue.failed
+
+- name: Record with invalid type
+  ara_record:
+    key: "key"
+    value: "value"
+    type: "hadoop"
+  ignore_errors: "yes"
+  register: invalid
+
+- name: Validate invalid failure
+  assert:
+    that:
+      - invalid.failed
+
+- name: Read key that does not exist
+  ara_read:
+    key: "wrongkey"
+  ignore_errors: "yes"
+  register: wrongkey
+
+- name: Validate wrongkey failure
+  assert:
+    that:
+      - wrongkey.failed

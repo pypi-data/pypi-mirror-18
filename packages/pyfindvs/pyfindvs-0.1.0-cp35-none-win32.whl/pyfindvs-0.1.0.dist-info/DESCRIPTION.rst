@@ -1,0 +1,6 @@
+pyfindvs
+========
+
+Python client library for locating Visual Studio 2017.
+
+

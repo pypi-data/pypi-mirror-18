@@ -1,0 +1,214 @@
+#!/bin/bash
+
+# Copyright 2015 VMware, Inc.
+#
+# All Rights Reserved
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+
+# Neutron VMware NSX plugin
+# -------------------------
+
+# Settings
+
+# The interface which has connectivity to the NSX Gateway uplink
+NSX_GATEWAY_NETWORK_INTERFACE=${NSX_GATEWAY_NETWORK_INTERFACE:-}
+
+
+# Save trace setting
+NSX_XTRACE=$(set +o | grep xtrace)
+set +o xtrace
+
+source $TOP_DIR/lib/neutron_plugins/ovs_base
+
+
+function _version { echo "$@" | awk -F. '{ printf("%d%03d%03d%03d\n", $1,$2,$3,$4); }'; }
+
+function _ovsdb_connection {
+    die_if_not_set $LINENO NSX_MANAGER "NSX_MANAGER has not been set!"
+    die_if_not_set $LINENO NSX_USER "NSX_USER has not been set!"
+    die_if_not_set $LINENO NSX_PASSWORD "NSX_PASSWORD has not been set!"
+    managers=(${NSX_MANAGER//,/ })
+    NSX_MGR_IP=${managers[0]}
+    NSX_VER=$(curl -s -k -u "$NSX_USER:$NSX_PASSWORD" -H 'Accept: application/json' https://$NSX_MGR_IP/api/v1/node | python -c  'import sys, json; print json.load(sys.stdin)["node_version"][:5]')
+    if [ $(_version $NSX_VER) -ge $(_version 1.1.0) ]; then
+        echo "unix:/var/run/vmware/nsx-agent/nsxagent_ovsdb.sock"
+    else
+        echo "tcp:127.0.0.1:6632"
+    fi
+}
+
+function setup_integration_bridge {
+    _neutron_ovs_base_setup_bridge $OVS_BRIDGE
+    sudo ovs-vsctl set bridge $OVS_BRIDGE external_ids:bridge-id=nsx-managed
+    sudo ovs-vsctl set-manager $(_ovsdb_connection)
+}
+
+function is_neutron_ovs_base_plugin {
+    # NSX uses OVS, but not the l3-agent
+    return 0
+}
+
+function neutron_plugin_create_nova_conf {
+    # if n-cpu is enabled, then setup integration bridge
+    if is_service_enabled n-cpu; then
+        setup_integration_bridge
+        iniset $NOVA_CONF neutron ovs_bridge $OVS_BRIDGE
+    fi
+}
+
+function neutron_plugin_install_agent_packages {
+    # VMware NSX Plugin does not run q-agt, but it currently needs dhcp and metadata agents
+    _neutron_ovs_base_install_agent_packages
+}
+
+function neutron_plugin_configure_common {
+    Q_PLUGIN_CONF_PATH=etc/neutron/plugins/vmware
+    Q_PLUGIN_CONF_FILENAME=nsx.ini
+    Q_PLUGIN_SRC_CONF_PATH=vmware-nsx/etc
+    mkdir -p /$Q_PLUGIN_CONF_PATH
+    cp $DEST/$Q_PLUGIN_SRC_CONF_PATH/$Q_PLUGIN_CONF_FILENAME /$Q_PLUGIN_CONF_PATH/$Q_PLUGIN_CONF_FILENAME
+    Q_PLUGIN_CLASS="vmware_nsx.plugin.NsxV3Plugin"
+}
+
+function neutron_plugin_configure_debug_command {
+    sudo ovs-vsctl --no-wait -- --may-exist add-br $PUBLIC_BRIDGE
+    iniset $NEUTRON_TEST_CONFIG_FILE DEFAULT external_network_bridge "$PUBLIC_BRIDGE"
+}
+
+function neutron_plugin_configure_dhcp_agent {
+    setup_integration_bridge
+    iniset $Q_DHCP_CONF_FILE DEFAULT enable_isolated_metadata True
+    iniset $Q_DHCP_CONF_FILE DEFAULT enable_metadata_network True
+    iniset $Q_DHCP_CONF_FILE DEFAULT ovs_use_veth True
+    iniset $Q_DHCP_CONF_FILE DEFAULT ovs_integration_bridge $OVS_BRIDGE
+    iniset $Q_DHCP_CONF_FILE OVS ovsdb_connection $(_ovsdb_connection)
+    iniset $Q_DHCP_CONF_FILE OVS ovsdb_interface vsctl
+}
+
+function neutron_plugin_configure_l3_agent {
+    # VMware NSX plugin does not run L3 agent
+    die $LINENO "q-l3 should not be executed with VMware NSX plugin!"
+}
+
+function neutron_plugin_configure_plugin_agent {
+    # VMware NSX plugin does not run L2 agent
+    die $LINENO "q-agt must not be executed with VMware NSX plugin!"
+}
+
+function _nsxv3_ini_set {
+    if [[ $2 != "" ]]; then
+        iniset /$Q_PLUGIN_CONF_FILE nsx_v3 $1 $2
+    elif [[ $3 != "" ]]; then
+        die $LINENO $3
+    fi
+}
+
+function neutron_plugin_configure_service {
+    _nsxv3_ini_set default_overlay_tz_uuid $DEFAULT_OVERLAY_TZ_UUID "The VMware NSX plugin won't work without a default transport zone."
+    _nsxv3_ini_set default_vlan_tz_uuid $DEFAULT_VLAN_TZ_UUID
+    if [[ "$DEFAULT_EDGE_CLUSTER_UUID" != "" ]]; then
+        iniset /$Q_PLUGIN_CONF_FILE nsx_v3 default_edge_cluster_uuid $DEFAULT_EDGE_CLUSTER_UUID
+        Q_L3_ENABLED=True
+        Q_L3_ROUTER_PER_TENANT=True
+    fi
+    # NSX_MANAGER must be a comma separated string
+    if [[ "$NSX_MANAGERS" != "" ]]; then
+        _nsxv3_ini_set nsx_api_managers $NSX_MANAGERS
+    elif [[ "$NSX_MANAGER" != "" ]]; then
+        _nsxv3_ini_set nsx_api_managers $NSX_MANAGER
+    else
+        die $LINENO "The VMware NSX plugin needs at least one NSX manager."
+    fi
+    if [[ "$NSX_L2GW_DRIVER" != "" ]]; then
+        iniset /$Q_PLUGIN_CONF_FILE DEFAULT nsx_l2gw_driver $NSX_L2GW_DRIVER
+    fi
+    _nsxv3_ini_set default_tier0_router_uuid $DEFAULT_TIER0_ROUTER_UUID
+    _nsxv3_ini_set nsx_api_user $NSX_USER
+    _nsxv3_ini_set nsx_api_password $NSX_PASSWORD
+    _nsxv3_ini_set retries $NSX_RETRIES
+    _nsxv3_ini_set insecure $NSX_INSECURE
+    _nsxv3_ini_set ca_file $NSX_CA_FILE
+    _nsxv3_ini_set default_bridge_cluster_uuid $DEFAULT_BRIDGE_CLUSTER_UUID
+}
+
+function neutron_plugin_setup_interface_driver {
+    local conf_file=$1
+    iniset $conf_file DEFAULT interface_driver neutron.agent.linux.interface.OVSInterfaceDriver
+}
+
+function neutron_plugin_check_adv_test_requirements {
+    is_service_enabled q-dhcp && return 0
+}
+
+
+function init_vmware_nsx_v3 {
+    if ! is_set NSX_GATEWAY_NETWORK_INTERFACE; then
+        echo "NSX_GATEWAY_NETWORK_INTERFACE not set not configuring routes"
+        return
+    fi
+
+    if ! is_set NSX_GATEWAY_NETWORK_CIDR; then
+        NSX_GATEWAY_NETWORK_CIDR=$PUBLIC_NETWORK_GATEWAY/${FLOATING_RANGE#*/}
+        echo "The IP address to set on $PUBLIC_BRIDGE was not specified. "
+        echo "Defaulting to $NSX_GATEWAY_NETWORK_CIDR"
+    fi
+    # Make sure the interface is up, but not configured
+    sudo ip link set $NSX_GATEWAY_NETWORK_INTERFACE up
+    # Save and then flush the IP addresses on the interface
+    addresses=$(ip addr show dev $NSX_GATEWAY_NETWORK_INTERFACE | grep inet | awk {'print $2'})
+    sudo ip addr flush $NSX_GATEWAY_NETWORK_INTERFACE
+    # Use the PUBLIC Bridge to route traffic to the NSX gateway
+    # NOTE(armando-migliaccio): if running in a nested environment this will work
+    # only with mac learning enabled, portsecurity and security profiles disabled
+    # The public bridge might not exist for the NSX plugin if Q_USE_DEBUG_COMMAND is off
+    # Try to create it anyway
+    sudo ovs-vsctl --may-exist add-br $PUBLIC_BRIDGE
+    sudo ovs-vsctl --may-exist add-port $PUBLIC_BRIDGE $NSX_GATEWAY_NETWORK_INTERFACE
+    # Flush all existing addresses on public bridge
+    sudo ip addr flush dev $PUBLIC_BRIDGE
+    nsx_gw_net_if_mac=$(ip link show $NSX_GATEWAY_NETWORK_INTERFACE | awk '/ether/ {print $2}')
+    sudo ip link set address $nsx_gw_net_if_mac dev $PUBLIC_BRIDGE
+    for address in $addresses; do
+        sudo ip addr add dev $PUBLIC_BRIDGE $address
+    done
+    sudo ip addr add dev $PUBLIC_BRIDGE $NSX_GATEWAY_NETWORK_CIDR
+    sudo ip link set $PUBLIC_BRIDGE up
+}
+
+function stop_vmware_nsx_v3 {
+    if ! is_set NSX_GATEWAY_NETWORK_INTERFACE; then
+        echo "NSX_GATEWAY_NETWORK_INTERFACE was not configured."
+        return
+    fi
+
+    if ! is_set NSX_GATEWAY_NETWORK_CIDR; then
+        NSX_GATEWAY_NETWORK_CIDR=$PUBLIC_NETWORK_GATEWAY/${FLOATING_RANGE#*/}
+        echo "The IP address expected on $PUBLIC_BRIDGE was not specified. "
+        echo "Defaulting to "$NSX_GATEWAY_NETWORK_CIDR
+    fi
+    sudo ip addr del $NSX_GATEWAY_NETWORK_CIDR dev $PUBLIC_BRIDGE
+    # Save and then flush remaining addresses on the interface
+    addresses=$(ip addr show dev $PUBLIC_BRIDGE | grep inet | awk {'print $2'})
+    sudo ip addr flush $PUBLIC_BRIDGE
+    # Try to detach physical interface from PUBLIC_BRIDGE
+    sudo ovs-vsctl del-port $NSX_GATEWAY_NETWORK_INTERFACE
+    # Restore addresses on NSX_GATEWAY_NETWORK_INTERFACE
+    for address in $addresses; do
+        sudo ip addr add dev $NSX_GATEWAY_NETWORK_INTERFACE $address
+    done
+}
+
+# Restore xtrace
+$NSX_XTRACE

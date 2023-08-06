@@ -1,0 +1,718 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.manual &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../index.html" />
+    <link rel="up" title="stem" href="../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.manual</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../index.html">Home</a></li>
+          <li><a href="../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../api.html">API</a>
+            <ul>
+              <li><a href="../../api/control.html">stem.control</a></li>
+              <li><a href="../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../api/process.html">stem.process</a></li>
+              <li><a href="../../api/response.html">stem.response</a></li>
+              <li><a href="../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../api/version.html">stem.version</a></li>
+              <li><a href="../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../faq.html">FAQ</a></li>
+              <li><a href="../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.manual</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2015-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Information available about Tor from `its manual</span>
+<span class="sd">&lt;https://www.torproject.org/docs/tor-manual.html.en&gt;`_. This provides three</span>
+<span class="sd">methods of getting this information...</span>
+
+<span class="sd">* :func:`~stem.manual.Manual.from_cache` provides manual content bundled with</span>
+<span class="sd">  Stem. This is the fastest and most reliable method but only as up-to-date as</span>
+<span class="sd">  Stem&#39;s release.</span>
+
+<span class="sd">* :func:`~stem.manual.Manual.from_man` reads Tor&#39;s local man page for</span>
+<span class="sd">  information about it.</span>
+
+<span class="sd">* :func:`~stem.manual.Manual.from_remote` fetches the latest manual information</span>
+<span class="sd">  remotely. This is the slowest and least reliable method but provides the most</span>
+<span class="sd">  recent information about Tor.</span>
+
+<span class="sd">Manual information includes arguments, signals, and probably most usefully the</span>
+<span class="sd">torrc configuration options. For example, say we want a little script that told</span>
+<span class="sd">us what our torrc options do...</span>
+
+<span class="sd">.. literalinclude::  /_static/example/manual_config_options.py</span>
+<span class="sd">   :language: python</span>
+
+<span class="sd">|</span>
+
+<span class="sd">.. image:: /_static/manual_output.png</span>
+
+<span class="sd">|</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  is_important - Indicates if a configuration option is of particularly common importance.</span>
+<span class="sd">  download_man_page - Downloads tor&#39;s latest man page.</span>
+
+<span class="sd">  Manual - Information about Tor available from its manual.</span>
+<span class="sd">   | |- from_cache - Provides manual information cached with Stem.</span>
+<span class="sd">   | |- from_man - Retrieves manual information from its man page.</span>
+<span class="sd">   | +- from_remote - Retrieves manual information remotely from tor&#39;s latest manual.</span>
+<span class="sd">   |</span>
+<span class="sd">   +- save - writes the manual contents to a given location</span>
+
+<span class="sd">.. versionadded:: 1.5.0</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+
+<span class="kn">import</span> <span class="nn">stem.prereq</span>
+<span class="kn">import</span> <span class="nn">stem.util.conf</span>
+<span class="kn">import</span> <span class="nn">stem.util.enum</span>
+<span class="kn">import</span> <span class="nn">stem.util.log</span>
+<span class="kn">import</span> <span class="nn">stem.util.system</span>
+
+<span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">_hash_attr</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="c"># added in python 2.7</span>
+  <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+  <span class="kn">from</span> <span class="nn">stem.util.ordereddict</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="c"># added in python 3.2</span>
+  <span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">lru_cache</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+  <span class="kn">from</span> <span class="nn">stem.util.lru_cache</span> <span class="kn">import</span> <span class="n">lru_cache</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="c"># account for urllib&#39;s change between python 2.x and 3.x</span>
+  <span class="kn">import</span> <span class="nn">urllib.request</span> <span class="kn">as</span> <span class="nn">urllib</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+  <span class="kn">import</span> <span class="nn">urllib2</span> <span class="kn">as</span> <span class="nn">urllib</span>
+
+<span class="n">Category</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">(</span><span class="s">&#39;GENERAL&#39;</span><span class="p">,</span> <span class="s">&#39;CLIENT&#39;</span><span class="p">,</span> <span class="s">&#39;RELAY&#39;</span><span class="p">,</span> <span class="s">&#39;DIRECTORY&#39;</span><span class="p">,</span> <span class="s">&#39;AUTHORITY&#39;</span><span class="p">,</span> <span class="s">&#39;HIDDEN_SERVICE&#39;</span><span class="p">,</span> <span class="s">&#39;TESTING&#39;</span><span class="p">,</span> <span class="s">&#39;UNKNOWN&#39;</span><span class="p">)</span>
+<span class="n">GITWEB_MANUAL_URL</span> <span class="o">=</span> <span class="s">&#39;https://gitweb.torproject.org/tor.git/plain/doc/tor.1.txt&#39;</span>
+<span class="n">CACHE_PATH</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">),</span> <span class="s">&#39;cached_tor_manual.cfg&#39;</span><span class="p">)</span>
+
+<span class="n">CATEGORY_SECTIONS</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="s">&#39;GENERAL OPTIONS&#39;</span><span class="p">:</span> <span class="n">Category</span><span class="o">.</span><span class="n">GENERAL</span><span class="p">,</span>
+  <span class="s">&#39;CLIENT OPTIONS&#39;</span><span class="p">:</span> <span class="n">Category</span><span class="o">.</span><span class="n">CLIENT</span><span class="p">,</span>
+  <span class="s">&#39;SERVER OPTIONS&#39;</span><span class="p">:</span> <span class="n">Category</span><span class="o">.</span><span class="n">RELAY</span><span class="p">,</span>
+  <span class="s">&#39;DIRECTORY SERVER OPTIONS&#39;</span><span class="p">:</span> <span class="n">Category</span><span class="o">.</span><span class="n">DIRECTORY</span><span class="p">,</span>
+  <span class="s">&#39;DIRECTORY AUTHORITY SERVER OPTIONS&#39;</span><span class="p">:</span> <span class="n">Category</span><span class="o">.</span><span class="n">AUTHORITY</span><span class="p">,</span>
+  <span class="s">&#39;HIDDEN SERVICE OPTIONS&#39;</span><span class="p">:</span> <span class="n">Category</span><span class="o">.</span><span class="n">HIDDEN_SERVICE</span><span class="p">,</span>
+  <span class="s">&#39;TESTING NETWORK OPTIONS&#39;</span><span class="p">:</span> <span class="n">Category</span><span class="o">.</span><span class="n">TESTING</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="ConfigOption"><a class="viewcode-back" href="../../api/manual.html#stem.manual.ConfigOption">[docs]</a><span class="k">class</span> <span class="nc">ConfigOption</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Tor configuration attribute found in its torrc.</span>
+
+<span class="sd">  :var str name: name of the configuration option</span>
+<span class="sd">  :var stem.manual.Category category: category the config option was listed</span>
+<span class="sd">    under, this is Category.UNKNOWN if we didn&#39;t recognize the category</span>
+<span class="sd">  :var str usage: arguments accepted by the option</span>
+<span class="sd">  :var str summary: brief description of what the option does</span>
+<span class="sd">  :var str description: longer manual description with details</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">category</span> <span class="o">=</span> <span class="n">Category</span><span class="o">.</span><span class="n">UNKNOWN</span><span class="p">,</span> <span class="n">usage</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">summary</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">description</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">category</span> <span class="o">=</span> <span class="n">category</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">usage</span> <span class="o">=</span> <span class="n">usage</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">summary</span> <span class="o">=</span> <span class="n">summary</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="n">description</span>
+
+  <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">_hash_attr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;name&#39;</span><span class="p">,</span> <span class="s">&#39;category&#39;</span><span class="p">,</span> <span class="s">&#39;usage&#39;</span><span class="p">,</span> <span class="s">&#39;summary&#39;</span><span class="p">,</span> <span class="s">&#39;description&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">==</span> <span class="nb">hash</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">ConfigOption</span><span class="p">)</span> <span class="k">else</span> <span class="bp">False</span>
+
+  <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span>
+
+</div>
+<span class="nd">@lru_cache</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">_config</span><span class="p">(</span><span class="n">lowercase</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides a dictionary for our settings.cfg. This has a couple categories...</span>
+
+<span class="sd">    * manual.important (list) - configuration options considered to be important</span>
+<span class="sd">    * manual.summary.* (str) - summary descriptions of config options</span>
+
+<span class="sd">  :param bool lowercase: uses lowercase keys if **True** to allow for case</span>
+<span class="sd">    insensitive lookups</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">config</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">conf</span><span class="o">.</span><span class="n">Config</span><span class="p">()</span>
+  <span class="n">config_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">),</span> <span class="s">&#39;settings.cfg&#39;</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">config</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">config_path</span><span class="p">)</span>
+    <span class="n">config_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">key</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">if</span> <span class="n">lowercase</span> <span class="k">else</span> <span class="n">key</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">key</span><span class="p">))</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;manual.summary.&#39;</span><span class="p">)])</span>
+    <span class="n">config_dict</span><span class="p">[</span><span class="s">&#39;manual.important&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">if</span> <span class="n">lowercase</span> <span class="k">else</span> <span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="s">&#39;manual.important&#39;</span><span class="p">,</span> <span class="p">[],</span> <span class="n">multiple</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="n">config_dict</span>
+  <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;BUG: stem failed to load its internal manual information from &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
+    <span class="k">return</span> <span class="p">{}</span>
+
+
+<span class="k">def</span> <span class="nf">_manual_differences</span><span class="p">(</span><span class="n">previous_manual</span><span class="p">,</span> <span class="n">new_manual</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides a description of how two manuals differ.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+
+  <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;name&#39;</span><span class="p">,</span> <span class="s">&#39;synopsis&#39;</span><span class="p">,</span> <span class="s">&#39;description&#39;</span><span class="p">,</span> <span class="s">&#39;commandline_options&#39;</span><span class="p">,</span> <span class="s">&#39;signals&#39;</span><span class="p">,</span> <span class="s">&#39;files&#39;</span><span class="p">,</span> <span class="s">&#39;config_options&#39;</span><span class="p">):</span>
+    <span class="n">previous_attr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">previous_manual</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+    <span class="n">new_attr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">new_manual</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">previous_attr</span> <span class="o">!=</span> <span class="n">new_attr</span><span class="p">:</span>
+      <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;* Manual&#39;s </span><span class="si">%s</span><span class="s"> attribute changed</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">attr</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">attr</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;name&#39;</span><span class="p">,</span> <span class="s">&#39;synopsis&#39;</span><span class="p">,</span> <span class="s">&#39;description&#39;</span><span class="p">):</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;  Previously...</span><span class="se">\n\n</span><span class="si">%s</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">previous_attr</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;  Updating to...</span><span class="se">\n\n</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">new_attr</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="n">attr</span> <span class="o">==</span> <span class="s">&#39;config_options&#39;</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">config_name</span><span class="p">,</span> <span class="n">config_attr</span> <span class="ow">in</span> <span class="n">new_attr</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+          <span class="n">previous</span> <span class="o">=</span> <span class="n">previous_attr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">config_name</span><span class="p">)</span>
+
+          <span class="k">if</span> <span class="n">previous</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;  adding new config option =&gt; </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">config_name</span><span class="p">)</span>
+          <span class="k">elif</span> <span class="n">config_attr</span> <span class="o">!=</span> <span class="n">previous</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;name&#39;</span><span class="p">,</span> <span class="s">&#39;category&#39;</span><span class="p">,</span> <span class="s">&#39;usage&#39;</span><span class="p">,</span> <span class="s">&#39;summary&#39;</span><span class="p">,</span> <span class="s">&#39;description&#39;</span><span class="p">):</span>
+              <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">config_attr</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">previous</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;  modified </span><span class="si">%s</span><span class="s"> (</span><span class="si">%s</span><span class="s">) =&gt; </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">config_name</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">config_attr</span><span class="p">,</span> <span class="n">attr</span><span class="p">)))</span>
+
+        <span class="k">for</span> <span class="n">config_name</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">previous_attr</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">new_attr</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+          <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;  removing config option =&gt; </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">config_name</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">added_items</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">new_attr</span><span class="o">.</span><span class="n">items</span><span class="p">())</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">previous_attr</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+        <span class="n">removed_items</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">previous_attr</span><span class="o">.</span><span class="n">items</span><span class="p">())</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">new_attr</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+
+        <span class="k">for</span> <span class="n">added_item</span> <span class="ow">in</span> <span class="n">added_items</span><span class="p">:</span>
+          <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;  adding </span><span class="si">%s</span><span class="s"> =&gt; </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">added_item</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">removed_item</span> <span class="ow">in</span> <span class="n">removed_items</span><span class="p">:</span>
+          <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;  removing </span><span class="si">%s</span><span class="s"> =&gt; </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">removed_item</span><span class="p">)</span>
+
+      <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="is_important"><a class="viewcode-back" href="../../api/manual.html#stem.manual.is_important">[docs]</a><span class="k">def</span> <span class="nf">is_important</span><span class="p">(</span><span class="n">option</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Indicates if a configuration option of particularly common importance or not.</span>
+
+<span class="sd">  :param str option: tor configuration option to check</span>
+
+<span class="sd">  :returns: **bool** that&#39;s **True** if this is an important option and</span>
+<span class="sd">    **False** otherwise</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">return</span> <span class="n">option</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">_config</span><span class="p">()[</span><span class="s">&#39;manual.important&#39;</span><span class="p">]</span>
+
+</div>
+<div class="viewcode-block" id="download_man_page"><a class="viewcode-back" href="../../api/manual.html#stem.manual.download_man_page">[docs]</a><span class="k">def</span> <span class="nf">download_man_page</span><span class="p">(</span><span class="n">path</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">file_handle</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">url</span> <span class="o">=</span> <span class="n">GITWEB_MANUAL_URL</span><span class="p">,</span> <span class="n">timeout</span> <span class="o">=</span> <span class="mi">20</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Downloads tor&#39;s latest man page from `gitweb.torproject.org</span>
+<span class="sd">  &lt;https://gitweb.torproject.org/tor.git/plain/doc/tor.1.txt&gt;`_. This method is</span>
+<span class="sd">  both slow and unreliable - please see the warnings on</span>
+<span class="sd">  :func:`~stem.manual.Manual.from_remote`.</span>
+
+<span class="sd">  :param str path: path to save tor&#39;s man page to</span>
+<span class="sd">  :param file file_handle: file handler to save tor&#39;s man page to</span>
+<span class="sd">  :param str url: url to download tor&#39;s asciidoc manual from</span>
+<span class="sd">  :param int timeout: seconds to wait before timing out the request</span>
+
+<span class="sd">  :raises: **IOError** if unable to retrieve the manual</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">file_handle</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Either the path or file_handle we&#39;re saving to must be provided&quot;</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">is_available</span><span class="p">(</span><span class="s">&#39;a2x&#39;</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;We require a2x from asciidoc to provide a man page&#39;</span><span class="p">)</span>
+
+  <span class="n">dirpath</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">()</span>
+  <span class="n">asciidoc_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">dirpath</span><span class="p">,</span> <span class="s">&#39;tor.1.txt&#39;</span><span class="p">)</span>
+  <span class="n">manual_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">dirpath</span><span class="p">,</span> <span class="s">&#39;tor.1&#39;</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">asciidoc_path</span><span class="p">,</span> <span class="s">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">asciidoc_file</span><span class="p">:</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="n">urllib</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">timeout</span> <span class="o">=</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copyfileobj</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">asciidoc_file</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+      <span class="n">exc</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">exc_info</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span>
+      <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;Unable to download tor&#39;s manual from </span><span class="si">%s</span><span class="s"> to </span><span class="si">%s</span><span class="s">: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">asciidoc_path</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="s">&#39;a2x -f manpage </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">asciidoc_path</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">manual_path</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s">&#39;no man page was generated&#39;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">CallError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;Unable to run &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">exc</span><span class="o">.</span><span class="n">command</span><span class="p">,</span> <span class="n">exc</span><span class="o">.</span><span class="n">stderr</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">path_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path_dir</span><span class="p">):</span>
+          <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">path_dir</span><span class="p">)</span>
+
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="n">manual_path</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+      <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">file_handle</span><span class="p">:</span>
+      <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">manual_path</span><span class="p">,</span> <span class="s">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">manual_file</span><span class="p">:</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copyfileobj</span><span class="p">(</span><span class="n">manual_file</span><span class="p">,</span> <span class="n">file_handle</span><span class="p">)</span>
+        <span class="n">file_handle</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+  <span class="k">finally</span><span class="p">:</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">dirpath</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="Manual"><a class="viewcode-back" href="../../api/manual.html#stem.manual.Manual">[docs]</a><span class="k">class</span> <span class="nc">Manual</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Parsed tor man page. Tor makes no guarantees about its man page format so</span>
+<span class="sd">  this may not always be compatible. If not you can use the cached manual</span>
+<span class="sd">  information stored with Stem.</span>
+
+<span class="sd">  This does not include every bit of information from the tor manual. For</span>
+<span class="sd">  instance, I&#39;ve excluded the &#39;THE CONFIGURATION FILE FORMAT&#39; section. If</span>
+<span class="sd">  there&#39;s a part you&#39;d find useful then `file an issue</span>
+<span class="sd">  &lt;https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs&gt;`_ and we can</span>
+<span class="sd">  add it.</span>
+
+<span class="sd">  :var str name: brief description of the tor command</span>
+<span class="sd">  :var str synopsis: brief tor command usage</span>
+<span class="sd">  :var str description: general description of what tor does</span>
+
+<span class="sd">  :var dict commandline_options: mapping of commandline arguments to their descripton</span>
+<span class="sd">  :var dict signals: mapping of signals tor accepts to their description</span>
+<span class="sd">  :var dict files: mapping of file paths to their description</span>
+
+<span class="sd">  :var dict config_options: :class:`~stem.manual.ConfigOption` tuples for tor configuration options</span>
+
+<span class="sd">  :var str man_commit: latest tor commit editing the man page when this</span>
+<span class="sd">    information was cached</span>
+<span class="sd">  :var str stem_commit: stem commit to cache this manual information</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">synopsis</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">commandline_options</span><span class="p">,</span> <span class="n">signals</span><span class="p">,</span> <span class="n">files</span><span class="p">,</span> <span class="n">config_options</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">synopsis</span> <span class="o">=</span> <span class="n">synopsis</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="n">description</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">commandline_options</span> <span class="o">=</span> <span class="n">commandline_options</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">signals</span> <span class="o">=</span> <span class="n">signals</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">files</span> <span class="o">=</span> <span class="n">files</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">config_options</span> <span class="o">=</span> <span class="n">config_options</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">man_commit</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">stem_commit</span> <span class="o">=</span> <span class="bp">None</span>
+
+  <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="Manual.from_cache"><a class="viewcode-back" href="../../api/manual.html#stem.manual.Manual.from_cache">[docs]</a>  <span class="k">def</span> <span class="nf">from_cache</span><span class="p">(</span><span class="n">path</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides manual information cached with Stem. Unlike</span>
+<span class="sd">    :func:`~stem.manual.Manual.from_man` and</span>
+<span class="sd">    :func:`~stem.manual.Manual.from_remote` this doesn&#39;t have any system</span>
+<span class="sd">    requirements, and is faster too. Only drawback is that this manual</span>
+<span class="sd">    content is only as up to date as the Stem release we&#39;re using.</span>
+
+<span class="sd">    :param str path: cached manual content to read, if not provided this uses</span>
+<span class="sd">      the bundled manual information</span>
+
+<span class="sd">    :returns: :class:`~stem.manual.Manual` with our bundled manual information</span>
+
+<span class="sd">    :raises: **IOError** if a **path** was provided and we were unable to read it</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">conf</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">conf</span><span class="o">.</span><span class="n">Config</span><span class="p">()</span>
+    <span class="n">conf</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span> <span class="k">if</span> <span class="n">path</span> <span class="k">else</span> <span class="n">CACHE_PATH</span><span class="p">,</span> <span class="n">commenting</span> <span class="o">=</span> <span class="bp">False</span><span class="p">)</span>
+
+    <span class="n">config_options</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">conf</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+      <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;config_options.&#39;</span><span class="p">):</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config_options</span><span class="p">:</span>
+          <span class="n">config_options</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span>
+            <span class="n">conf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;config_options.</span><span class="si">%s</span><span class="s">.name&#39;</span> <span class="o">%</span> <span class="n">key</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">),</span>
+            <span class="n">conf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;config_options.</span><span class="si">%s</span><span class="s">.category&#39;</span> <span class="o">%</span> <span class="n">key</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">),</span>
+            <span class="n">conf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;config_options.</span><span class="si">%s</span><span class="s">.usage&#39;</span> <span class="o">%</span> <span class="n">key</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">),</span>
+            <span class="n">conf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;config_options.</span><span class="si">%s</span><span class="s">.summary&#39;</span> <span class="o">%</span> <span class="n">key</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">),</span>
+            <span class="n">conf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;config_options.</span><span class="si">%s</span><span class="s">.description&#39;</span> <span class="o">%</span> <span class="n">key</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">)</span>
+          <span class="p">)</span>
+
+    <span class="n">manual</span> <span class="o">=</span> <span class="n">Manual</span><span class="p">(</span>
+      <span class="n">conf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;name&#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">),</span>
+      <span class="n">conf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;synopsis&#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">),</span>
+      <span class="n">conf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;description&#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">),</span>
+      <span class="n">conf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;commandline_options&#39;</span><span class="p">,</span> <span class="p">{}),</span>
+      <span class="n">conf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;signals&#39;</span><span class="p">,</span> <span class="p">{}),</span>
+      <span class="n">conf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;files&#39;</span><span class="p">,</span> <span class="p">{}),</span>
+      <span class="n">config_options</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">manual</span><span class="o">.</span><span class="n">man_commit</span> <span class="o">=</span> <span class="n">conf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;man_commit&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+    <span class="n">manual</span><span class="o">.</span><span class="n">stem_commit</span> <span class="o">=</span> <span class="n">conf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;stem_commit&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">manual</span>
+</div>
+  <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="Manual.from_man"><a class="viewcode-back" href="../../api/manual.html#stem.manual.Manual.from_man">[docs]</a>  <span class="k">def</span> <span class="nf">from_man</span><span class="p">(</span><span class="n">man_path</span> <span class="o">=</span> <span class="s">&#39;tor&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Reads and parses a given man page.</span>
+
+<span class="sd">    On OSX the man command doesn&#39;t have an &#39;--encoding&#39; argument so its results</span>
+<span class="sd">    may not quite match other platforms. For instance, it normalizes long</span>
+<span class="sd">    dashes into &#39;--&#39;.</span>
+
+<span class="sd">    :param str man_path: path argument for &#39;man&#39;, for example you might want</span>
+<span class="sd">      &#39;/path/to/tor/doc/tor.1&#39; to read from tor&#39;s git repository</span>
+
+<span class="sd">    :returns: :class:`~stem.manual.Manual` for the system&#39;s man page</span>
+
+<span class="sd">    :raises: **IOError** if unable to retrieve the manual</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">man_cmd</span> <span class="o">=</span> <span class="s">&#39;man </span><span class="si">%s</span><span class="s"> -P cat </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="s">&#39;&#39;</span> <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">is_mac</span><span class="p">()</span> <span class="k">else</span> <span class="s">&#39;--encoding=ascii&#39;</span><span class="p">,</span> <span class="n">man_path</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">man_output</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">man_cmd</span><span class="p">,</span> <span class="n">env</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;MANWIDTH&#39;</span><span class="p">:</span> <span class="s">&#39;10000000&#39;</span><span class="p">})</span>
+    <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;Unable to run &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">man_cmd</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
+
+    <span class="n">categories</span><span class="p">,</span> <span class="n">config_options</span> <span class="o">=</span> <span class="n">_get_categories</span><span class="p">(</span><span class="n">man_output</span><span class="p">),</span> <span class="n">OrderedDict</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">category_header</span><span class="p">,</span> <span class="n">category_enum</span> <span class="ow">in</span> <span class="n">CATEGORY_SECTIONS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+      <span class="n">_add_config_options</span><span class="p">(</span><span class="n">config_options</span><span class="p">,</span> <span class="n">category_enum</span><span class="p">,</span> <span class="n">categories</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">category_header</span><span class="p">,</span> <span class="p">[]))</span>
+
+    <span class="k">for</span> <span class="n">category</span> <span class="ow">in</span> <span class="n">categories</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">category</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39; OPTIONS&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">category</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">CATEGORY_SECTIONS</span> <span class="ow">and</span> <span class="n">category</span> <span class="o">!=</span> <span class="s">&#39;COMMAND-LINE OPTIONS&#39;</span><span class="p">:</span>
+        <span class="n">_add_config_options</span><span class="p">(</span><span class="n">config_options</span><span class="p">,</span> <span class="n">Category</span><span class="o">.</span><span class="n">UNKNOWN</span><span class="p">,</span> <span class="n">categories</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">category</span><span class="p">,</span> <span class="p">[]))</span>
+
+    <span class="k">return</span> <span class="n">Manual</span><span class="p">(</span>
+      <span class="n">_join_lines</span><span class="p">(</span><span class="n">categories</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;NAME&#39;</span><span class="p">,</span> <span class="p">[])),</span>
+      <span class="n">_join_lines</span><span class="p">(</span><span class="n">categories</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;SYNOPSIS&#39;</span><span class="p">,</span> <span class="p">[])),</span>
+      <span class="n">_join_lines</span><span class="p">(</span><span class="n">categories</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;DESCRIPTION&#39;</span><span class="p">,</span> <span class="p">[])),</span>
+      <span class="n">_get_indented_descriptions</span><span class="p">(</span><span class="n">categories</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;COMMAND-LINE OPTIONS&#39;</span><span class="p">,</span> <span class="p">[])),</span>
+      <span class="n">_get_indented_descriptions</span><span class="p">(</span><span class="n">categories</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;SIGNALS&#39;</span><span class="p">,</span> <span class="p">[])),</span>
+      <span class="n">_get_indented_descriptions</span><span class="p">(</span><span class="n">categories</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;FILES&#39;</span><span class="p">,</span> <span class="p">[])),</span>
+      <span class="n">config_options</span><span class="p">,</span>
+    <span class="p">)</span>
+</div>
+  <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="Manual.from_remote"><a class="viewcode-back" href="../../api/manual.html#stem.manual.Manual.from_remote">[docs]</a>  <span class="k">def</span> <span class="nf">from_remote</span><span class="p">(</span><span class="n">timeout</span> <span class="o">=</span> <span class="mi">60</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Reads and parses the latest tor man page `from gitweb.torproject.org</span>
+<span class="sd">    &lt;https://gitweb.torproject.org/tor.git/plain/doc/tor.1.txt&gt;`_. Note that</span>
+<span class="sd">    while convenient, this reliance on GitWeb means you should alway call with</span>
+<span class="sd">    a fallback, such as...</span>
+
+<span class="sd">    ::</span>
+
+<span class="sd">      try:</span>
+<span class="sd">        manual = stem.manual.from_remote()</span>
+<span class="sd">      except IOError:</span>
+<span class="sd">        manual = stem.manual.from_cache()</span>
+
+<span class="sd">    In addition to our GitWeb dependency this requires &#39;a2x&#39; which is part of</span>
+<span class="sd">    `asciidoc &lt;http://asciidoc.org/INSTALL.html&gt;`_ and... isn&#39;t quick.</span>
+<span class="sd">    Personally this takes ~7.41s, breaking down for me as follows...</span>
+
+<span class="sd">      * 1.67s to download tor.1.txt</span>
+<span class="sd">      * 5.57s to convert the asciidoc to a man page</span>
+<span class="sd">      * 0.17s for stem to read and parse the manual</span>
+
+<span class="sd">    :param int timeout: seconds to wait before timing out the request</span>
+
+<span class="sd">    :returns: latest :class:`~stem.manual.Manual` available for tor</span>
+
+<span class="sd">    :raises: **IOError** if unable to retrieve the manual</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">()</span> <span class="k">as</span> <span class="n">tmp</span><span class="p">:</span>
+      <span class="n">download_man_page</span><span class="p">(</span><span class="n">file_handle</span> <span class="o">=</span> <span class="n">tmp</span><span class="p">,</span> <span class="n">timeout</span> <span class="o">=</span> <span class="n">timeout</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">Manual</span><span class="o">.</span><span class="n">from_man</span><span class="p">(</span><span class="n">tmp</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Manual.save"><a class="viewcode-back" href="../../api/manual.html#stem.manual.Manual.save">[docs]</a>  <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Persists the manual content to a given location.</span>
+
+<span class="sd">    :param str path: path to save our manual content to</span>
+
+<span class="sd">    :raises: **IOError** if unsuccessful</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">conf</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">conf</span><span class="o">.</span><span class="n">Config</span><span class="p">()</span>
+    <span class="n">conf</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;name&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+    <span class="n">conf</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;synopsis&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">synopsis</span><span class="p">)</span>
+    <span class="n">conf</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;description&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">description</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">man_commit</span><span class="p">:</span>
+      <span class="n">conf</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;man_commit&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">man_commit</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stem_commit</span><span class="p">:</span>
+      <span class="n">conf</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;stem_commit&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">stem_commit</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandline_options</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+      <span class="n">conf</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;commandline_options&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s"> =&gt; </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">),</span> <span class="n">overwrite</span> <span class="o">=</span> <span class="bp">False</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">signals</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+      <span class="n">conf</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;signals&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s"> =&gt; </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">),</span> <span class="n">overwrite</span> <span class="o">=</span> <span class="bp">False</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">files</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+      <span class="n">conf</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;files&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s"> =&gt; </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">),</span> <span class="n">overwrite</span> <span class="o">=</span> <span class="bp">False</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_options</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+      <span class="n">conf</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;config_options.</span><span class="si">%s</span><span class="s">.category&#39;</span> <span class="o">%</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">category</span><span class="p">)</span>
+      <span class="n">conf</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;config_options.</span><span class="si">%s</span><span class="s">.name&#39;</span> <span class="o">%</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+      <span class="n">conf</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;config_options.</span><span class="si">%s</span><span class="s">.usage&#39;</span> <span class="o">%</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">usage</span><span class="p">)</span>
+      <span class="n">conf</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;config_options.</span><span class="si">%s</span><span class="s">.summary&#39;</span> <span class="o">%</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">summary</span><span class="p">)</span>
+      <span class="n">conf</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;config_options.</span><span class="si">%s</span><span class="s">.description&#39;</span> <span class="o">%</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">description</span><span class="p">)</span>
+
+    <span class="n">conf</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</div>
+  <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">_hash_attr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;name&#39;</span><span class="p">,</span> <span class="s">&#39;synopsis&#39;</span><span class="p">,</span> <span class="s">&#39;description&#39;</span><span class="p">,</span> <span class="s">&#39;commandline_options&#39;</span><span class="p">,</span> <span class="s">&#39;signals&#39;</span><span class="p">,</span> <span class="s">&#39;files&#39;</span><span class="p">,</span> <span class="s">&#39;config_options&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">==</span> <span class="nb">hash</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">Manual</span><span class="p">)</span> <span class="k">else</span> <span class="bp">False</span>
+
+  <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_get_categories</span><span class="p">(</span><span class="n">content</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  The man page is headers followed by an indented section. First pass gets</span>
+<span class="sd">  the mapping of category titles to their lines.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># skip header and footer lines</span>
+
+  <span class="k">if</span> <span class="n">content</span> <span class="ow">and</span> <span class="s">&#39;TOR(1)&#39;</span> <span class="ow">in</span> <span class="n">content</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="n">content</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+  <span class="k">if</span> <span class="n">content</span> <span class="ow">and</span> <span class="n">content</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;Tor&#39;</span><span class="p">):</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="n">content</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+  <span class="n">categories</span> <span class="o">=</span> <span class="p">{}</span>
+  <span class="n">category</span><span class="p">,</span> <span class="n">lines</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="p">[]</span>
+
+  <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+    <span class="c"># replace non-ascii characters</span>
+    <span class="c">#</span>
+    <span class="c">#   \u2019 - smart single quote</span>
+    <span class="c">#   \u2014 - extra long dash</span>
+    <span class="c">#   \xb7 - centered dot</span>
+
+    <span class="n">char_for</span> <span class="o">=</span> <span class="nb">chr</span> <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">prereq</span><span class="o">.</span><span class="n">is_python_3</span><span class="p">()</span> <span class="k">else</span> <span class="nb">unichr</span>
+    <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">char_for</span><span class="p">(</span><span class="mh">0x2019</span><span class="p">),</span> <span class="s">&quot;&#39;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">char_for</span><span class="p">(</span><span class="mh">0x2014</span><span class="p">),</span> <span class="s">&#39;-&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">char_for</span><span class="p">(</span><span class="mh">0xb7</span><span class="p">),</span> <span class="s">&#39;*&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">line</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">):</span>
+      <span class="k">if</span> <span class="n">category</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">lines</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+          <span class="n">lines</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c"># sections end with an extra empty line</span>
+
+        <span class="n">categories</span><span class="p">[</span><span class="n">category</span><span class="p">]</span> <span class="o">=</span> <span class="n">lines</span>
+
+      <span class="n">category</span><span class="p">,</span> <span class="n">lines</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="p">[]</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;       &#39;</span><span class="p">):</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="mi">7</span><span class="p">:]</span>  <span class="c"># contents of a section have a seven space indentation</span>
+
+      <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">category</span><span class="p">:</span>
+    <span class="n">categories</span><span class="p">[</span><span class="n">category</span><span class="p">]</span> <span class="o">=</span> <span class="n">lines</span>
+
+  <span class="k">return</span> <span class="n">categories</span>
+
+
+<span class="k">def</span> <span class="nf">_get_indented_descriptions</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Parses the commandline argument and signal sections. These are options</span>
+<span class="sd">  followed by an indented description. For example...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    -f FILE</span>
+<span class="sd">        Specify a new configuration file to contain further Tor configuration</span>
+<span class="sd">        options OR pass - to make Tor read its configuration from standard</span>
+<span class="sd">        input. (Default: /usr/local/etc/tor/torrc, or $HOME/.torrc if that file</span>
+<span class="sd">        is not found)</span>
+
+<span class="sd">  There can be additional paragraphs not related to any particular argument but</span>
+<span class="sd">  ignoring those.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">options</span><span class="p">,</span> <span class="n">last_arg</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">(),</span> <span class="bp">None</span>
+
+  <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">line</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">):</span>
+      <span class="n">options</span><span class="p">[</span><span class="n">line</span><span class="p">],</span> <span class="n">last_arg</span> <span class="o">=</span> <span class="p">[],</span> <span class="n">line</span>
+    <span class="k">elif</span> <span class="n">last_arg</span> <span class="ow">and</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;    &#39;</span><span class="p">):</span>
+      <span class="n">options</span><span class="p">[</span><span class="n">last_arg</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="mi">4</span><span class="p">:])</span>
+
+  <span class="k">return</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">arg</span><span class="p">,</span> <span class="s">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">desc_lines</span><span class="p">))</span> <span class="k">for</span> <span class="n">arg</span><span class="p">,</span> <span class="n">desc_lines</span> <span class="ow">in</span> <span class="n">options</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">desc_lines</span><span class="p">])</span>
+
+
+<span class="k">def</span> <span class="nf">_add_config_options</span><span class="p">(</span><span class="n">config_options</span><span class="p">,</span> <span class="n">category</span><span class="p">,</span> <span class="n">lines</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Parses a section of tor configuration options. These have usage information,</span>
+<span class="sd">  followed by an indented description. For instance...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    ConnLimit NUM</span>
+<span class="sd">        The minimum number of file descriptors that must be available to the</span>
+<span class="sd">        Tor process before it will start. Tor will ask the OS for as many file</span>
+<span class="sd">        descriptors as the OS will allow (you can find this by &quot;ulimit -H -n&quot;).</span>
+<span class="sd">        If this number is less than ConnLimit, then Tor will refuse to start.</span>
+
+
+<span class="sd">        You probably don&#39;t need to adjust this. It has no effect on Windows</span>
+<span class="sd">        since that platform lacks getrlimit(). (Default: 1000)</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">last_option</span><span class="p">,</span> <span class="n">usage</span><span class="p">,</span> <span class="n">description</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="p">[]</span>
+
+  <span class="k">if</span> <span class="n">lines</span> <span class="ow">and</span> <span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;The following options&#39;</span><span class="p">):</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="n">lines</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">):]</span>  <span class="c"># drop the initial description</span>
+
+  <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">line</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">):</span>
+      <span class="k">if</span> <span class="n">last_option</span><span class="p">:</span>
+        <span class="n">summary</span> <span class="o">=</span> <span class="n">_config</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;manual.summary.</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">last_option</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="s">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">config_options</span><span class="p">[</span><span class="n">last_option</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">last_option</span><span class="p">,</span> <span class="n">category</span><span class="p">,</span> <span class="n">usage</span><span class="p">,</span> <span class="n">summary</span><span class="p">,</span> <span class="n">_join_lines</span><span class="p">(</span><span class="n">description</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+      <span class="k">if</span> <span class="s">&#39; &#39;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+        <span class="n">last_option</span><span class="p">,</span> <span class="n">usage</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">last_option</span><span class="p">,</span> <span class="n">usage</span> <span class="o">=</span> <span class="n">line</span><span class="p">,</span> <span class="s">&#39;&#39;</span>
+
+      <span class="n">description</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;    &#39;</span><span class="p">):</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="mi">4</span><span class="p">:]</span>
+
+      <span class="n">description</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">last_option</span><span class="p">:</span>
+    <span class="n">summary</span> <span class="o">=</span> <span class="n">_config</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;manual.summary.</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">last_option</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="s">&#39;&#39;</span><span class="p">)</span>
+    <span class="n">config_options</span><span class="p">[</span><span class="n">last_option</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConfigOption</span><span class="p">(</span><span class="n">last_option</span><span class="p">,</span> <span class="n">category</span><span class="p">,</span> <span class="n">usage</span><span class="p">,</span> <span class="n">summary</span><span class="p">,</span> <span class="n">_join_lines</span><span class="p">(</span><span class="n">description</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+
+<span class="k">def</span> <span class="nf">_join_lines</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Simple join, except we want empty lines to still provide a newline.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+
+  <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">result</span> <span class="ow">and</span> <span class="n">result</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">:</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">result</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

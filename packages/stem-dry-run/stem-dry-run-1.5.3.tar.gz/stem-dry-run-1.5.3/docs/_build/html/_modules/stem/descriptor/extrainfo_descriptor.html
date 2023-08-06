@@ -1,0 +1,1066 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.descriptor.extrainfo_descriptor &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem" href="../../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.descriptor.extrainfo_descriptor</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.descriptor.extrainfo_descriptor</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2012-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Parsing for Tor extra-info descriptors. These are published by relays whenever</span>
+<span class="sd">their server descriptor is published and have a similar format. However, unlike</span>
+<span class="sd">server descriptors these don&#39;t contain information that Tor clients require to</span>
+<span class="sd">function and as such aren&#39;t fetched by default.</span>
+
+<span class="sd">Defined in section 2.1.2 of the `dir-spec</span>
+<span class="sd">&lt;https://gitweb.torproject.org/torspec.git/tree/dir-spec.txt&gt;`_,</span>
+<span class="sd">extra-info descriptors contain interesting but non-vital information such as</span>
+<span class="sd">usage statistics. Tor clients cannot request these documents for bridges.</span>
+
+<span class="sd">Extra-info descriptors are available from a few sources...</span>
+
+<span class="sd">* If you have &#39;DownloadExtraInfo 1&#39; in your torrc...</span>
+
+<span class="sd"> * control port via &#39;GETINFO extra-info/digest/\*&#39; queries</span>
+<span class="sd"> * the &#39;cached-extrainfo&#39; file in tor&#39;s data directory</span>
+
+<span class="sd">* Archived descriptors provided by CollecTor</span>
+<span class="sd">  (https://collector.torproject.org/).</span>
+
+<span class="sd">* Directory authorities and mirrors via their DirPort.</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  ExtraInfoDescriptor - Tor extra-info descriptor.</span>
+<span class="sd">    |- RelayExtraInfoDescriptor - Extra-info descriptor for a relay.</span>
+<span class="sd">    |- BridgeExtraInfoDescriptor - Extra-info descriptor for a bridge.</span>
+<span class="sd">    |</span>
+<span class="sd">    +- digest - calculates the upper-case hex digest value for our content</span>
+
+<span class="sd">.. data:: DirResponse (enum)</span>
+
+<span class="sd">  Enumeration for known statuses for ExtraInfoDescriptor&#39;s dir_*_responses.</span>
+
+<span class="sd">  =================== ===========</span>
+<span class="sd">  DirResponse         Description</span>
+<span class="sd">  =================== ===========</span>
+<span class="sd">  **OK**              network status requests that were answered</span>
+<span class="sd">  **NOT_ENOUGH_SIGS** network status wasn&#39;t signed by enough authorities</span>
+<span class="sd">  **UNAVAILABLE**     requested network status was unavailable</span>
+<span class="sd">  **NOT_FOUND**       requested network status was not found</span>
+<span class="sd">  **NOT_MODIFIED**    network status unmodified since If-Modified-Since time</span>
+<span class="sd">  **BUSY**            directory was busy</span>
+<span class="sd">  =================== ===========</span>
+
+<span class="sd">.. data:: DirStat (enum)</span>
+
+<span class="sd">  Enumeration for known stats for ExtraInfoDescriptor&#39;s dir_*_direct_dl and</span>
+<span class="sd">  dir_*_tunneled_dl.</span>
+
+<span class="sd">  ===================== ===========</span>
+<span class="sd">  DirStat               Description</span>
+<span class="sd">  ===================== ===========</span>
+<span class="sd">  **COMPLETE**          requests that completed successfully</span>
+<span class="sd">  **TIMEOUT**           requests that didn&#39;t complete within a ten minute timeout</span>
+<span class="sd">  **RUNNING**           requests still in process when measurement&#39;s taken</span>
+<span class="sd">  **MIN**               smallest rate at which a descriptor was downloaded in B/s</span>
+<span class="sd">  **MAX**               largest rate at which a descriptor was downloaded in B/s</span>
+<span class="sd">  **D1-4** and **D6-9** rate of the slowest x/10 download rates in B/s</span>
+<span class="sd">  **Q1** and **Q3**     rate of the slowest and fastest quarter download rates in B/s</span>
+<span class="sd">  **MD**                median download rate in B/s</span>
+<span class="sd">  ===================== ===========</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">hashlib</span>
+<span class="kn">import</span> <span class="nn">re</span>
+
+<span class="kn">import</span> <span class="nn">stem.util.connection</span>
+<span class="kn">import</span> <span class="nn">stem.util.enum</span>
+<span class="kn">import</span> <span class="nn">stem.util.str_tools</span>
+
+<span class="kn">from</span> <span class="nn">stem.descriptor</span> <span class="kn">import</span> <span class="p">(</span>
+  <span class="n">PGP_BLOCK_END</span><span class="p">,</span>
+  <span class="n">Descriptor</span><span class="p">,</span>
+  <span class="n">_read_until_keywords</span><span class="p">,</span>
+  <span class="n">_get_descriptor_components</span><span class="p">,</span>
+  <span class="n">_value</span><span class="p">,</span>
+  <span class="n">_values</span><span class="p">,</span>
+  <span class="n">_parse_simple_line</span><span class="p">,</span>
+  <span class="n">_parse_timestamp_line</span><span class="p">,</span>
+  <span class="n">_parse_forty_character_hex</span><span class="p">,</span>
+  <span class="n">_parse_key_block</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="c"># added in python 3.2</span>
+  <span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">lru_cache</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+  <span class="kn">from</span> <span class="nn">stem.util.lru_cache</span> <span class="kn">import</span> <span class="n">lru_cache</span>
+
+<span class="c"># known statuses for dirreq-v2-resp and dirreq-v3-resp...</span>
+<span class="n">DirResponse</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">(</span>
+  <span class="p">(</span><span class="s">&#39;OK&#39;</span><span class="p">,</span> <span class="s">&#39;ok&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;NOT_ENOUGH_SIGS&#39;</span><span class="p">,</span> <span class="s">&#39;not-enough-sigs&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;UNAVAILABLE&#39;</span><span class="p">,</span> <span class="s">&#39;unavailable&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;NOT_FOUND&#39;</span><span class="p">,</span> <span class="s">&#39;not-found&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;NOT_MODIFIED&#39;</span><span class="p">,</span> <span class="s">&#39;not-modified&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;BUSY&#39;</span><span class="p">,</span> <span class="s">&#39;busy&#39;</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="c"># known stats for dirreq-v2/3-direct-dl and dirreq-v2/3-tunneled-dl...</span>
+<span class="n">dir_stats</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;complete&#39;</span><span class="p">,</span> <span class="s">&#39;timeout&#39;</span><span class="p">,</span> <span class="s">&#39;running&#39;</span><span class="p">,</span> <span class="s">&#39;min&#39;</span><span class="p">,</span> <span class="s">&#39;max&#39;</span><span class="p">,</span> <span class="s">&#39;q1&#39;</span><span class="p">,</span> <span class="s">&#39;q3&#39;</span><span class="p">,</span> <span class="s">&#39;md&#39;</span><span class="p">]</span>
+<span class="n">dir_stats</span> <span class="o">+=</span> <span class="p">[</span><span class="s">&#39;d</span><span class="si">%i</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">)]</span>
+<span class="n">dir_stats</span> <span class="o">+=</span> <span class="p">[</span><span class="s">&#39;d</span><span class="si">%i</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">10</span><span class="p">)]</span>
+<span class="n">DirStat</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">(</span><span class="o">*</span><span class="p">[(</span><span class="n">stat</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span> <span class="n">stat</span><span class="p">)</span> <span class="k">for</span> <span class="n">stat</span> <span class="ow">in</span> <span class="n">dir_stats</span><span class="p">])</span>
+
+<span class="c"># relay descriptors must have exactly one of the following</span>
+<span class="n">REQUIRED_FIELDS</span> <span class="o">=</span> <span class="p">(</span>
+  <span class="s">&#39;extra-info&#39;</span><span class="p">,</span>
+  <span class="s">&#39;published&#39;</span><span class="p">,</span>
+  <span class="s">&#39;router-signature&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c"># optional entries that can appear at most once</span>
+<span class="n">SINGLE_FIELDS</span> <span class="o">=</span> <span class="p">(</span>
+  <span class="s">&#39;read-history&#39;</span><span class="p">,</span>
+  <span class="s">&#39;write-history&#39;</span><span class="p">,</span>
+  <span class="s">&#39;geoip-db-digest&#39;</span><span class="p">,</span>
+  <span class="s">&#39;geoip6-db-digest&#39;</span><span class="p">,</span>
+  <span class="s">&#39;bridge-stats-end&#39;</span><span class="p">,</span>
+  <span class="s">&#39;bridge-ips&#39;</span><span class="p">,</span>
+  <span class="s">&#39;dirreq-stats-end&#39;</span><span class="p">,</span>
+  <span class="s">&#39;dirreq-v2-ips&#39;</span><span class="p">,</span>
+  <span class="s">&#39;dirreq-v3-ips&#39;</span><span class="p">,</span>
+  <span class="s">&#39;dirreq-v2-reqs&#39;</span><span class="p">,</span>
+  <span class="s">&#39;dirreq-v3-reqs&#39;</span><span class="p">,</span>
+  <span class="s">&#39;dirreq-v2-share&#39;</span><span class="p">,</span>
+  <span class="s">&#39;dirreq-v3-share&#39;</span><span class="p">,</span>
+  <span class="s">&#39;dirreq-v2-resp&#39;</span><span class="p">,</span>
+  <span class="s">&#39;dirreq-v3-resp&#39;</span><span class="p">,</span>
+  <span class="s">&#39;dirreq-v2-direct-dl&#39;</span><span class="p">,</span>
+  <span class="s">&#39;dirreq-v3-direct-dl&#39;</span><span class="p">,</span>
+  <span class="s">&#39;dirreq-v2-tunneled-dl&#39;</span><span class="p">,</span>
+  <span class="s">&#39;dirreq-v3-tunneled-dl&#39;</span><span class="p">,</span>
+  <span class="s">&#39;dirreq-read-history&#39;</span><span class="p">,</span>
+  <span class="s">&#39;dirreq-write-history&#39;</span><span class="p">,</span>
+  <span class="s">&#39;entry-stats-end&#39;</span><span class="p">,</span>
+  <span class="s">&#39;entry-ips&#39;</span><span class="p">,</span>
+  <span class="s">&#39;cell-stats-end&#39;</span><span class="p">,</span>
+  <span class="s">&#39;cell-processed-cells&#39;</span><span class="p">,</span>
+  <span class="s">&#39;cell-queued-cells&#39;</span><span class="p">,</span>
+  <span class="s">&#39;cell-time-in-queue&#39;</span><span class="p">,</span>
+  <span class="s">&#39;cell-circuits-per-decile&#39;</span><span class="p">,</span>
+  <span class="s">&#39;conn-bi-direct&#39;</span><span class="p">,</span>
+  <span class="s">&#39;exit-stats-end&#39;</span><span class="p">,</span>
+  <span class="s">&#39;exit-kibibytes-written&#39;</span><span class="p">,</span>
+  <span class="s">&#39;exit-kibibytes-read&#39;</span><span class="p">,</span>
+  <span class="s">&#39;exit-streams-opened&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="n">_timestamp_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^(.*) \(([0-9]+) s\)( .*)?$&#39;</span><span class="p">)</span>
+<span class="n">_locale_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^[a-zA-Z0-9\?]{2}$&#39;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">is_bridge</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Iterates over the extra-info descriptors in a file.</span>
+
+<span class="sd">  :param file descriptor_file: file with descriptor content</span>
+<span class="sd">  :param bool is_bridge: parses the file as being a bridge descriptor</span>
+<span class="sd">  :param bool validate: checks the validity of the descriptor&#39;s content if</span>
+<span class="sd">    **True**, skips these checks otherwise</span>
+<span class="sd">  :param dict kwargs: additional arguments for the descriptor constructor</span>
+
+<span class="sd">  :returns: iterator for :class:`~stem.descriptor.extrainfo_descriptor.ExtraInfoDescriptor`</span>
+<span class="sd">    instances in the file</span>
+
+<span class="sd">  :raises:</span>
+<span class="sd">    * **ValueError** if the contents is malformed and validate is **True**</span>
+<span class="sd">    * **IOError** if the file can&#39;t be read</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_bridge</span><span class="p">:</span>
+      <span class="n">extrainfo_content</span> <span class="o">=</span> <span class="n">_read_until_keywords</span><span class="p">(</span><span class="s">&#39;router-signature&#39;</span><span class="p">,</span> <span class="n">descriptor_file</span><span class="p">)</span>
+
+      <span class="c"># we&#39;ve reached the &#39;router-signature&#39;, now include the pgp style block</span>
+
+      <span class="n">block_end_prefix</span> <span class="o">=</span> <span class="n">PGP_BLOCK_END</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+      <span class="n">extrainfo_content</span> <span class="o">+=</span> <span class="n">_read_until_keywords</span><span class="p">(</span><span class="n">block_end_prefix</span><span class="p">,</span> <span class="n">descriptor_file</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">extrainfo_content</span> <span class="o">=</span> <span class="n">_read_until_keywords</span><span class="p">(</span><span class="s">&#39;router-digest&#39;</span><span class="p">,</span> <span class="n">descriptor_file</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">extrainfo_content</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">extrainfo_content</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;@type&#39;</span><span class="p">):</span>
+        <span class="n">extrainfo_content</span> <span class="o">=</span> <span class="n">extrainfo_content</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+      <span class="k">if</span> <span class="n">is_bridge</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">BridgeExtraInfoDescriptor</span><span class="p">(</span><span class="nb">bytes</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">extrainfo_content</span><span class="p">),</span> <span class="n">validate</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">RelayExtraInfoDescriptor</span><span class="p">(</span><span class="nb">bytes</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">extrainfo_content</span><span class="p">),</span> <span class="n">validate</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">break</span>  <span class="c"># done parsing file</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_timestamp_and_interval</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">content</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Parses a &#39;YYYY-MM-DD HH:MM:SS (NSEC s) *&#39; entry.</span>
+
+<span class="sd">  :param str keyword: line&#39;s keyword</span>
+<span class="sd">  :param str content: line content to be parsed</span>
+
+<span class="sd">  :returns: **tuple** of the form (timestamp (**datetime**), interval</span>
+<span class="sd">    (**int**), remaining content (**str**))</span>
+
+<span class="sd">  :raises: **ValueError** if the content is malformed</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">line</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">content</span><span class="p">)</span>
+  <span class="n">content_match</span> <span class="o">=</span> <span class="n">_timestamp_re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">content_match</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Malformed </span><span class="si">%s</span><span class="s"> line: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">line</span><span class="p">))</span>
+
+  <span class="n">timestamp_str</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">remainder</span> <span class="o">=</span> <span class="n">content_match</span><span class="o">.</span><span class="n">groups</span><span class="p">()</span>
+
+  <span class="k">if</span> <span class="n">remainder</span><span class="p">:</span>
+    <span class="n">remainder</span> <span class="o">=</span> <span class="n">remainder</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>  <span class="c"># remove leading space</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">interval</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> line&#39;s interval wasn&#39;t a number: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">line</span><span class="p">))</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_parse_timestamp</span><span class="p">(</span><span class="n">timestamp_str</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">timestamp</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">interval</span><span class="p">),</span> <span class="n">remainder</span>
+  <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> line&#39;s timestamp wasn&#39;t parsable: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">line</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_extra_info_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;extra-info&quot; Nickname Fingerprint</span>
+
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;extra-info&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+  <span class="n">extra_info_comp</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+  <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">extra_info_comp</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Extra-info line must have two values: extra-info </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">tor_tools</span><span class="o">.</span><span class="n">is_valid_nickname</span><span class="p">(</span><span class="n">extra_info_comp</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Extra-info line entry isn&#39;t a valid nickname: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">extra_info_comp</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+  <span class="k">elif</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">tor_tools</span><span class="o">.</span><span class="n">is_valid_fingerprint</span><span class="p">(</span><span class="n">extra_info_comp</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Tor relay fingerprints consist of forty hex digits: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">extra_info_comp</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">nickname</span> <span class="o">=</span> <span class="n">extra_info_comp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">fingerprint</span> <span class="o">=</span> <span class="n">extra_info_comp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_transport_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;transport&quot; transportname address:port [arglist]</span>
+  <span class="c"># Everything after the transportname is scrubbed in published bridge</span>
+  <span class="c"># descriptors, so we&#39;ll never see it in practice.</span>
+  <span class="c">#</span>
+  <span class="c"># These entries really only make sense for bridges, but have been seen</span>
+  <span class="c"># on non-bridges in the wild when the relay operator configured it this</span>
+  <span class="c"># way.</span>
+
+  <span class="n">transports</span> <span class="o">=</span> <span class="p">{}</span>
+
+  <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">_values</span><span class="p">(</span><span class="s">&#39;transport&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">,</span> <span class="n">address</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span>
+
+    <span class="k">if</span> <span class="s">&#39; &#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+      <span class="c"># scrubbed</span>
+      <span class="n">name</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="c"># not scrubbed</span>
+      <span class="n">value_comp</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+      <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">value_comp</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Transport line is missing its transport name: transport </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">value_comp</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Transport line is missing its address:port value: transport </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="s">&#39;:&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">value_comp</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Transport line&#39;s address:port entry is missing a colon: transport </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+
+      <span class="n">name</span> <span class="o">=</span> <span class="n">value_comp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+      <span class="n">address</span><span class="p">,</span> <span class="n">port_str</span> <span class="o">=</span> <span class="n">value_comp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="n">address</span><span class="p">)</span> <span class="ow">or</span> \
+             <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv6_address</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">allow_brackets</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Transport line has a malformed address: transport </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">port_str</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Transport line has a malformed port: transport </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+
+      <span class="n">address</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s">&#39;[&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s">&#39;]&#39;</span><span class="p">)</span>
+      <span class="n">port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">port_str</span><span class="p">)</span>
+      <span class="n">args</span> <span class="o">=</span> <span class="n">value_comp</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">value_comp</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span> <span class="k">else</span> <span class="p">[]</span>
+
+    <span class="n">transports</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">transport</span> <span class="o">=</span> <span class="n">transports</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_cell_circuits_per_decline_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;cell-circuits-per-decile&quot; num</span>
+
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;cell-circuits-per-decile&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">value</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Non-numeric cell-circuits-per-decile value: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Negative cell-circuits-per-decile value: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">cell_circuits_per_decile</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_dirreq_line</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">recognized_counts_attr</span><span class="p">,</span> <span class="n">unrecognized_counts_attr</span><span class="p">,</span> <span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+
+  <span class="n">recognized_counts</span> <span class="o">=</span> <span class="p">{}</span>
+  <span class="n">unrecognized_counts</span> <span class="o">=</span> <span class="p">{}</span>
+
+  <span class="n">is_response_stats</span> <span class="o">=</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;dirreq-v2-resp&#39;</span><span class="p">,</span> <span class="s">&#39;dirreq-v3-resp&#39;</span><span class="p">)</span>
+  <span class="n">key_set</span> <span class="o">=</span> <span class="n">DirResponse</span> <span class="k">if</span> <span class="n">is_response_stats</span> <span class="k">else</span> <span class="n">DirStat</span>
+
+  <span class="n">key_type</span> <span class="o">=</span> <span class="s">&#39;STATUS&#39;</span> <span class="k">if</span> <span class="n">is_response_stats</span> <span class="k">else</span> <span class="s">&#39;STAT&#39;</span>
+  <span class="n">error_msg</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s"> lines should contain </span><span class="si">%s</span><span class="s">=COUNT mappings: </span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">key_type</span><span class="p">,</span> <span class="n">keyword</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">value</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">):</span>
+      <span class="k">if</span> <span class="s">&#39;=&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">error_msg</span><span class="p">)</span>
+
+      <span class="n">status</span><span class="p">,</span> <span class="n">count</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">count</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">status</span> <span class="ow">in</span> <span class="n">key_set</span><span class="p">:</span>
+          <span class="n">recognized_counts</span><span class="p">[</span><span class="n">status</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">count</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="n">unrecognized_counts</span><span class="p">[</span><span class="n">status</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">count</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">error_msg</span><span class="p">)</span>
+
+  <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">recognized_counts_attr</span><span class="p">,</span> <span class="n">recognized_counts</span><span class="p">)</span>
+  <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">unrecognized_counts_attr</span><span class="p">,</span> <span class="n">unrecognized_counts</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_dirreq_share_line</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">value</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;%&#39;</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> lines should be a percentage: </span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">keyword</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+  <span class="k">elif</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Negative percentage value: </span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+  <span class="c"># bug means it might be above 100%: https://lists.torproject.org/pipermail/tor-dev/2012-June/003679.html</span>
+
+  <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="mi">100</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_cell_line</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;&lt;keyword&gt;&quot; num,...,num</span>
+
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+  <span class="n">entries</span><span class="p">,</span> <span class="n">exc</span> <span class="o">=</span> <span class="p">[],</span> <span class="bp">None</span>
+
+  <span class="k">if</span> <span class="n">value</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">):</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="c"># Values should be positive but as discussed in ticket #5849</span>
+        <span class="c"># there was a bug around this. It was fixed in tor 0.2.2.1.</span>
+
+        <span class="n">entries</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">entry</span><span class="p">))</span>
+      <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="n">exc</span> <span class="o">=</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Non-numeric entry in </span><span class="si">%s</span><span class="s"> listing: </span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">keyword</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+  <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="n">exc</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_timestamp_and_interval_line</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">end_attribute</span><span class="p">,</span> <span class="n">interval_attribute</span><span class="p">,</span> <span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;&lt;keyword&gt;&quot; YYYY-MM-DD HH:MM:SS (NSEC s)</span>
+
+  <span class="n">timestamp</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_parse_timestamp_and_interval</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">_value</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">entries</span><span class="p">))</span>
+  <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">end_attribute</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">)</span>
+  <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">interval_attribute</span><span class="p">,</span> <span class="n">interval</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_conn_bi_direct_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;conn-bi-direct&quot; YYYY-MM-DD HH:MM:SS (NSEC s) BELOW,READ,WRITE,BOTH</span>
+
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;conn-bi-direct&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+  <span class="n">timestamp</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">remainder</span> <span class="o">=</span> <span class="n">_parse_timestamp_and_interval</span><span class="p">(</span><span class="s">&#39;conn-bi-direct&#39;</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+  <span class="n">stats</span> <span class="o">=</span> <span class="n">remainder</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">stats</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span> <span class="ow">or</span> <span class="ow">not</span> <span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span> <span class="ow">and</span> <span class="n">stats</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span> <span class="ow">and</span> <span class="n">stats</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span> <span class="ow">and</span> <span class="n">stats</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;conn-bi-direct line should end with four numeric values: conn-bi-direct </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">conn_bi_direct_end</span> <span class="o">=</span> <span class="n">timestamp</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">conn_bi_direct_interval</span> <span class="o">=</span> <span class="n">interval</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">conn_bi_direct_below</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">conn_bi_direct_read</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">conn_bi_direct_write</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">conn_bi_direct_both</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_history_line</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">end_attribute</span><span class="p">,</span> <span class="n">interval_attribute</span><span class="p">,</span> <span class="n">values_attribute</span><span class="p">,</span> <span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;&lt;keyword&gt;&quot; YYYY-MM-DD HH:MM:SS (NSEC s) NUM,NUM,NUM,NUM,NUM...</span>
+
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+  <span class="n">timestamp</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">remainder</span> <span class="o">=</span> <span class="n">_parse_timestamp_and_interval</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+  <span class="n">history_values</span> <span class="o">=</span> <span class="p">[]</span>
+
+  <span class="k">if</span> <span class="n">remainder</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">history_values</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">remainder</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">)]</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> line has non-numeric values: </span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">keyword</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+  <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">end_attribute</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">)</span>
+  <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">interval_attribute</span><span class="p">,</span> <span class="n">interval</span><span class="p">)</span>
+  <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">values_attribute</span><span class="p">,</span> <span class="n">history_values</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_port_count_line</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;&lt;keyword&gt;&quot; port=N,port=N,...</span>
+
+  <span class="n">value</span><span class="p">,</span> <span class="n">port_mappings</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">entries</span><span class="p">),</span> <span class="p">{}</span>
+  <span class="n">error_msg</span> <span class="o">=</span> <span class="s">&#39;Entries in </span><span class="si">%s</span><span class="s"> line should only be PORT=N entries: </span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">keyword</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">value</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">):</span>
+      <span class="k">if</span> <span class="s">&#39;=&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">error_msg</span><span class="p">)</span>
+
+      <span class="n">port</span><span class="p">,</span> <span class="n">stat</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="p">(</span><span class="n">port</span> <span class="o">==</span> <span class="s">&#39;other&#39;</span> <span class="ow">or</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">port</span><span class="p">))</span> <span class="ow">and</span> <span class="n">stat</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">port</span> <span class="o">!=</span> <span class="s">&#39;other&#39;</span><span class="p">:</span>
+          <span class="n">port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+
+        <span class="n">port_mappings</span><span class="p">[</span><span class="n">port</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">stat</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">error_msg</span><span class="p">)</span>
+
+  <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">port_mappings</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_geoip_to_count_line</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;&lt;keyword&gt;&quot; CC=N,CC=N,...</span>
+  <span class="c">#</span>
+  <span class="c"># The maxmind geoip (https://www.maxmind.com/app/iso3166) has numeric</span>
+  <span class="c"># locale codes for some special values, for instance...</span>
+  <span class="c">#   A1,&quot;Anonymous Proxy&quot;</span>
+  <span class="c">#   A2,&quot;Satellite Provider&quot;</span>
+  <span class="c">#   ??,&quot;Unknown&quot;</span>
+
+  <span class="n">value</span><span class="p">,</span> <span class="n">locale_usage</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">entries</span><span class="p">),</span> <span class="p">{}</span>
+  <span class="n">error_msg</span> <span class="o">=</span> <span class="s">&#39;Entries in </span><span class="si">%s</span><span class="s"> line should only be CC=N entries: </span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">keyword</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">value</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">):</span>
+      <span class="k">if</span> <span class="s">&#39;=&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">error_msg</span><span class="p">)</span>
+
+      <span class="n">locale</span><span class="p">,</span> <span class="n">count</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">_locale_re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">locale</span><span class="p">)</span> <span class="ow">and</span> <span class="n">count</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+        <span class="n">locale_usage</span><span class="p">[</span><span class="n">locale</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">count</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">error_msg</span><span class="p">)</span>
+
+  <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">locale_usage</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_bridge_ip_versions_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="n">value</span><span class="p">,</span> <span class="n">ip_versions</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;bridge-ip-versions&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">),</span> <span class="p">{}</span>
+
+  <span class="k">if</span> <span class="n">value</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">):</span>
+      <span class="k">if</span> <span class="s">&#39;=&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;The bridge-ip-versions should be a comma separated listing of &#39;&lt;protocol&gt;=&lt;count&gt;&#39; mappings: bridge-ip-versions </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+
+      <span class="n">protocol</span><span class="p">,</span> <span class="n">count</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">count</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;IP protocol count was non-numeric (</span><span class="si">%s</span><span class="s">): bridge-ip-versions </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+      <span class="n">ip_versions</span><span class="p">[</span><span class="n">protocol</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">count</span><span class="p">)</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">ip_versions</span> <span class="o">=</span> <span class="n">ip_versions</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_bridge_ip_transports_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="n">value</span><span class="p">,</span> <span class="n">ip_transports</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;bridge-ip-transports&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">),</span> <span class="p">{}</span>
+
+  <span class="k">if</span> <span class="n">value</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">):</span>
+      <span class="k">if</span> <span class="s">&#39;=&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;The bridge-ip-transports should be a comma separated listing of &#39;&lt;protocol&gt;=&lt;count&gt;&#39; mappings: bridge-ip-transports </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+
+      <span class="n">protocol</span><span class="p">,</span> <span class="n">count</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">count</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;Transport count was non-numeric (</span><span class="si">%s</span><span class="s">): bridge-ip-transports </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+      <span class="n">ip_transports</span><span class="p">[</span><span class="n">protocol</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">count</span><span class="p">)</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">ip_transports</span> <span class="o">=</span> <span class="n">ip_transports</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_hs_stats</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">stat_attribute</span><span class="p">,</span> <span class="n">extra_attribute</span><span class="p">,</span> <span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;&lt;keyword&gt;&quot; num key=val key=val...</span>
+
+  <span class="n">value</span><span class="p">,</span> <span class="n">stat</span><span class="p">,</span> <span class="n">extra</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">entries</span><span class="p">),</span> <span class="bp">None</span><span class="p">,</span> <span class="p">{}</span>
+
+  <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="n">value_comp</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">value_comp</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; line was blank&quot;</span> <span class="o">%</span> <span class="n">keyword</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">stat</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">value_comp</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; stat was non-numeric (</span><span class="si">%s</span><span class="s">): </span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">value_comp</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">keyword</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">value_comp</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+      <span class="k">if</span> <span class="s">&#39;=&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Entries after the stat in </span><span class="si">%s</span><span class="s"> lines should only be key=val entries: </span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">keyword</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+      <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">extra</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+
+  <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">stat_attribute</span><span class="p">,</span> <span class="n">stat</span><span class="p">)</span>
+  <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">extra_attribute</span><span class="p">,</span> <span class="n">extra</span><span class="p">)</span>
+
+
+<span class="n">_parse_identity_ed25519_line</span> <span class="o">=</span> <span class="n">_parse_key_block</span><span class="p">(</span><span class="s">&#39;identity-ed25519&#39;</span><span class="p">,</span> <span class="s">&#39;ed25519_certificate&#39;</span><span class="p">,</span> <span class="s">&#39;ED25519 CERT&#39;</span><span class="p">)</span>
+<span class="n">_parse_master_key_ed25519_line</span> <span class="o">=</span> <span class="n">_parse_simple_line</span><span class="p">(</span><span class="s">&#39;master-key-ed25519&#39;</span><span class="p">,</span> <span class="s">&#39;ed25519_certificate_hash&#39;</span><span class="p">)</span>
+<span class="n">_parse_geoip_db_digest_line</span> <span class="o">=</span> <span class="n">_parse_forty_character_hex</span><span class="p">(</span><span class="s">&#39;geoip-db-digest&#39;</span><span class="p">,</span> <span class="s">&#39;geoip_db_digest&#39;</span><span class="p">)</span>
+<span class="n">_parse_geoip6_db_digest_line</span> <span class="o">=</span> <span class="n">_parse_forty_character_hex</span><span class="p">(</span><span class="s">&#39;geoip6-db-digest&#39;</span><span class="p">,</span> <span class="s">&#39;geoip6_db_digest&#39;</span><span class="p">)</span>
+<span class="n">_parse_dirreq_v2_resp_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_dirreq_line</span><span class="p">,</span> <span class="s">&#39;dirreq-v2-resp&#39;</span><span class="p">,</span> <span class="s">&#39;dir_v2_responses&#39;</span><span class="p">,</span> <span class="s">&#39;dir_v2_responses_unknown&#39;</span><span class="p">)</span>
+<span class="n">_parse_dirreq_v3_resp_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_dirreq_line</span><span class="p">,</span> <span class="s">&#39;dirreq-v3-resp&#39;</span><span class="p">,</span> <span class="s">&#39;dir_v3_responses&#39;</span><span class="p">,</span> <span class="s">&#39;dir_v3_responses_unknown&#39;</span><span class="p">)</span>
+<span class="n">_parse_dirreq_v2_direct_dl_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_dirreq_line</span><span class="p">,</span> <span class="s">&#39;dirreq-v2-direct-dl&#39;</span><span class="p">,</span> <span class="s">&#39;dir_v2_direct_dl&#39;</span><span class="p">,</span> <span class="s">&#39;dir_v2_direct_dl_unknown&#39;</span><span class="p">)</span>
+<span class="n">_parse_dirreq_v3_direct_dl_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_dirreq_line</span><span class="p">,</span> <span class="s">&#39;dirreq-v3-direct-dl&#39;</span><span class="p">,</span> <span class="s">&#39;dir_v3_direct_dl&#39;</span><span class="p">,</span> <span class="s">&#39;dir_v3_direct_dl_unknown&#39;</span><span class="p">)</span>
+<span class="n">_parse_dirreq_v2_tunneled_dl_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_dirreq_line</span><span class="p">,</span> <span class="s">&#39;dirreq-v2-tunneled-dl&#39;</span><span class="p">,</span> <span class="s">&#39;dir_v2_tunneled_dl&#39;</span><span class="p">,</span> <span class="s">&#39;dir_v2_tunneled_dl_unknown&#39;</span><span class="p">)</span>
+<span class="n">_parse_dirreq_v3_tunneled_dl_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_dirreq_line</span><span class="p">,</span> <span class="s">&#39;dirreq-v3-tunneled-dl&#39;</span><span class="p">,</span> <span class="s">&#39;dir_v3_tunneled_dl&#39;</span><span class="p">,</span> <span class="s">&#39;dir_v3_tunneled_dl_unknown&#39;</span><span class="p">)</span>
+<span class="n">_parse_dirreq_v2_share_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_dirreq_share_line</span><span class="p">,</span> <span class="s">&#39;dirreq-v2-share&#39;</span><span class="p">,</span> <span class="s">&#39;dir_v2_share&#39;</span><span class="p">)</span>
+<span class="n">_parse_dirreq_v3_share_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_dirreq_share_line</span><span class="p">,</span> <span class="s">&#39;dirreq-v3-share&#39;</span><span class="p">,</span> <span class="s">&#39;dir_v3_share&#39;</span><span class="p">)</span>
+<span class="n">_parse_cell_processed_cells_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_cell_line</span><span class="p">,</span> <span class="s">&#39;cell-processed-cells&#39;</span><span class="p">,</span> <span class="s">&#39;cell_processed_cells&#39;</span><span class="p">)</span>
+<span class="n">_parse_cell_queued_cells_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_cell_line</span><span class="p">,</span> <span class="s">&#39;cell-queued-cells&#39;</span><span class="p">,</span> <span class="s">&#39;cell_queued_cells&#39;</span><span class="p">)</span>
+<span class="n">_parse_cell_time_in_queue_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_cell_line</span><span class="p">,</span> <span class="s">&#39;cell-time-in-queue&#39;</span><span class="p">,</span> <span class="s">&#39;cell_time_in_queue&#39;</span><span class="p">)</span>
+<span class="n">_parse_published_line</span> <span class="o">=</span> <span class="n">_parse_timestamp_line</span><span class="p">(</span><span class="s">&#39;published&#39;</span><span class="p">,</span> <span class="s">&#39;published&#39;</span><span class="p">)</span>
+<span class="n">_parse_geoip_start_time_line</span> <span class="o">=</span> <span class="n">_parse_timestamp_line</span><span class="p">(</span><span class="s">&#39;geoip-start-time&#39;</span><span class="p">,</span> <span class="s">&#39;geoip_start_time&#39;</span><span class="p">)</span>
+<span class="n">_parse_cell_stats_end_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_timestamp_and_interval_line</span><span class="p">,</span> <span class="s">&#39;cell-stats-end&#39;</span><span class="p">,</span> <span class="s">&#39;cell_stats_end&#39;</span><span class="p">,</span> <span class="s">&#39;cell_stats_interval&#39;</span><span class="p">)</span>
+<span class="n">_parse_entry_stats_end_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_timestamp_and_interval_line</span><span class="p">,</span> <span class="s">&#39;entry-stats-end&#39;</span><span class="p">,</span> <span class="s">&#39;entry_stats_end&#39;</span><span class="p">,</span> <span class="s">&#39;entry_stats_interval&#39;</span><span class="p">)</span>
+<span class="n">_parse_exit_stats_end_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_timestamp_and_interval_line</span><span class="p">,</span> <span class="s">&#39;exit-stats-end&#39;</span><span class="p">,</span> <span class="s">&#39;exit_stats_end&#39;</span><span class="p">,</span> <span class="s">&#39;exit_stats_interval&#39;</span><span class="p">)</span>
+<span class="n">_parse_bridge_stats_end_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_timestamp_and_interval_line</span><span class="p">,</span> <span class="s">&#39;bridge-stats-end&#39;</span><span class="p">,</span> <span class="s">&#39;bridge_stats_end&#39;</span><span class="p">,</span> <span class="s">&#39;bridge_stats_interval&#39;</span><span class="p">)</span>
+<span class="n">_parse_dirreq_stats_end_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_timestamp_and_interval_line</span><span class="p">,</span> <span class="s">&#39;dirreq-stats-end&#39;</span><span class="p">,</span> <span class="s">&#39;dir_stats_end&#39;</span><span class="p">,</span> <span class="s">&#39;dir_stats_interval&#39;</span><span class="p">)</span>
+<span class="n">_parse_read_history_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_history_line</span><span class="p">,</span> <span class="s">&#39;read-history&#39;</span><span class="p">,</span> <span class="s">&#39;read_history_end&#39;</span><span class="p">,</span> <span class="s">&#39;read_history_interval&#39;</span><span class="p">,</span> <span class="s">&#39;read_history_values&#39;</span><span class="p">)</span>
+<span class="n">_parse_write_history_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_history_line</span><span class="p">,</span> <span class="s">&#39;write-history&#39;</span><span class="p">,</span> <span class="s">&#39;write_history_end&#39;</span><span class="p">,</span> <span class="s">&#39;write_history_interval&#39;</span><span class="p">,</span> <span class="s">&#39;write_history_values&#39;</span><span class="p">)</span>
+<span class="n">_parse_dirreq_read_history_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_history_line</span><span class="p">,</span> <span class="s">&#39;dirreq-read-history&#39;</span><span class="p">,</span> <span class="s">&#39;dir_read_history_end&#39;</span><span class="p">,</span> <span class="s">&#39;dir_read_history_interval&#39;</span><span class="p">,</span> <span class="s">&#39;dir_read_history_values&#39;</span><span class="p">)</span>
+<span class="n">_parse_dirreq_write_history_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_history_line</span><span class="p">,</span> <span class="s">&#39;dirreq-write-history&#39;</span><span class="p">,</span> <span class="s">&#39;dir_write_history_end&#39;</span><span class="p">,</span> <span class="s">&#39;dir_write_history_interval&#39;</span><span class="p">,</span> <span class="s">&#39;dir_write_history_values&#39;</span><span class="p">)</span>
+<span class="n">_parse_exit_kibibytes_written_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_port_count_line</span><span class="p">,</span> <span class="s">&#39;exit-kibibytes-written&#39;</span><span class="p">,</span> <span class="s">&#39;exit_kibibytes_written&#39;</span><span class="p">)</span>
+<span class="n">_parse_exit_kibibytes_read_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_port_count_line</span><span class="p">,</span> <span class="s">&#39;exit-kibibytes-read&#39;</span><span class="p">,</span> <span class="s">&#39;exit_kibibytes_read&#39;</span><span class="p">)</span>
+<span class="n">_parse_exit_streams_opened_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_port_count_line</span><span class="p">,</span> <span class="s">&#39;exit-streams-opened&#39;</span><span class="p">,</span> <span class="s">&#39;exit_streams_opened&#39;</span><span class="p">)</span>
+<span class="n">_parse_hidden_service_stats_end_line</span> <span class="o">=</span> <span class="n">_parse_timestamp_line</span><span class="p">(</span><span class="s">&#39;hidserv-stats-end&#39;</span><span class="p">,</span> <span class="s">&#39;hs_stats_end&#39;</span><span class="p">)</span>
+<span class="n">_parse_hidden_service_rend_relayed_cells_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_hs_stats</span><span class="p">,</span> <span class="s">&#39;hidserv-rend-relayed-cells&#39;</span><span class="p">,</span> <span class="s">&#39;hs_rend_cells&#39;</span><span class="p">,</span> <span class="s">&#39;hs_rend_cells_attr&#39;</span><span class="p">)</span>
+<span class="n">_parse_hidden_service_dir_onions_seen_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_hs_stats</span><span class="p">,</span> <span class="s">&#39;hidserv-dir-onions-seen&#39;</span><span class="p">,</span> <span class="s">&#39;hs_dir_onions_seen&#39;</span><span class="p">,</span> <span class="s">&#39;hs_dir_onions_seen_attr&#39;</span><span class="p">)</span>
+<span class="n">_parse_dirreq_v2_ips_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_geoip_to_count_line</span><span class="p">,</span> <span class="s">&#39;dirreq-v2-ips&#39;</span><span class="p">,</span> <span class="s">&#39;dir_v2_ips&#39;</span><span class="p">)</span>
+<span class="n">_parse_dirreq_v3_ips_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_geoip_to_count_line</span><span class="p">,</span> <span class="s">&#39;dirreq-v3-ips&#39;</span><span class="p">,</span> <span class="s">&#39;dir_v3_ips&#39;</span><span class="p">)</span>
+<span class="n">_parse_dirreq_v2_reqs_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_geoip_to_count_line</span><span class="p">,</span> <span class="s">&#39;dirreq-v2-reqs&#39;</span><span class="p">,</span> <span class="s">&#39;dir_v2_requests&#39;</span><span class="p">)</span>
+<span class="n">_parse_dirreq_v3_reqs_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_geoip_to_count_line</span><span class="p">,</span> <span class="s">&#39;dirreq-v3-reqs&#39;</span><span class="p">,</span> <span class="s">&#39;dir_v3_requests&#39;</span><span class="p">)</span>
+<span class="n">_parse_geoip_client_origins_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_geoip_to_count_line</span><span class="p">,</span> <span class="s">&#39;geoip-client-origins&#39;</span><span class="p">,</span> <span class="s">&#39;geoip_client_origins&#39;</span><span class="p">)</span>
+<span class="n">_parse_entry_ips_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_geoip_to_count_line</span><span class="p">,</span> <span class="s">&#39;entry-ips&#39;</span><span class="p">,</span> <span class="s">&#39;entry_ips&#39;</span><span class="p">)</span>
+<span class="n">_parse_bridge_ips_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_geoip_to_count_line</span><span class="p">,</span> <span class="s">&#39;bridge-ips&#39;</span><span class="p">,</span> <span class="s">&#39;bridge_ips&#39;</span><span class="p">)</span>
+<span class="n">_parse_router_sig_ed25519_line</span> <span class="o">=</span> <span class="n">_parse_simple_line</span><span class="p">(</span><span class="s">&#39;router-sig-ed25519&#39;</span><span class="p">,</span> <span class="s">&#39;ed25519_signature&#39;</span><span class="p">)</span>
+<span class="n">_parse_router_digest_sha256_line</span> <span class="o">=</span> <span class="n">_parse_simple_line</span><span class="p">(</span><span class="s">&#39;router-digest-sha256&#39;</span><span class="p">,</span> <span class="s">&#39;router_digest_sha256&#39;</span><span class="p">)</span>
+<span class="n">_parse_router_digest_line</span> <span class="o">=</span> <span class="n">_parse_forty_character_hex</span><span class="p">(</span><span class="s">&#39;router-digest&#39;</span><span class="p">,</span> <span class="s">&#39;_digest&#39;</span><span class="p">)</span>
+<span class="n">_parse_router_signature_line</span> <span class="o">=</span> <span class="n">_parse_key_block</span><span class="p">(</span><span class="s">&#39;router-signature&#39;</span><span class="p">,</span> <span class="s">&#39;signature&#39;</span><span class="p">,</span> <span class="s">&#39;SIGNATURE&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="ExtraInfoDescriptor"><a class="viewcode-back" href="../../../api/descriptor/extrainfo_descriptor.html#stem.descriptor.extrainfo_descriptor.ExtraInfoDescriptor">[docs]</a><span class="k">class</span> <span class="nc">ExtraInfoDescriptor</span><span class="p">(</span><span class="n">Descriptor</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Extra-info descriptor document.</span>
+
+<span class="sd">  :var str nickname: **\*** relay&#39;s nickname</span>
+<span class="sd">  :var str fingerprint: **\*** identity key fingerprint</span>
+<span class="sd">  :var datetime published: **\*** time in UTC when this descriptor was made</span>
+<span class="sd">  :var str geoip_db_digest: sha1 of the geoIP database file for IPv4 addresses</span>
+<span class="sd">  :var str geoip6_db_digest: sha1 of the geoIP database file for IPv6 addresses</span>
+<span class="sd">  :var dict transport: **\*** mapping of transport methods to their (address,</span>
+<span class="sd">    port, args) tuple, these usually appear on bridges in which case all of</span>
+<span class="sd">    those are **None**</span>
+
+<span class="sd">  **Bi-directional connection usage:**</span>
+
+<span class="sd">  :var datetime conn_bi_direct_end: end of the sampling interval</span>
+<span class="sd">  :var int conn_bi_direct_interval: seconds per interval</span>
+<span class="sd">  :var int conn_bi_direct_below: connections that read/wrote less than 20 KiB</span>
+<span class="sd">  :var int conn_bi_direct_read: connections that read at least 10x more than wrote</span>
+<span class="sd">  :var int conn_bi_direct_write: connections that wrote at least 10x more than read</span>
+<span class="sd">  :var int conn_bi_direct_both: remaining connections</span>
+
+<span class="sd">  **Bytes read/written for relayed traffic:**</span>
+
+<span class="sd">  :var datetime read_history_end: end of the sampling interval</span>
+<span class="sd">  :var int read_history_interval: seconds per interval</span>
+<span class="sd">  :var list read_history_values: bytes read during each interval</span>
+
+<span class="sd">  :var datetime write_history_end: end of the sampling interval</span>
+<span class="sd">  :var int write_history_interval: seconds per interval</span>
+<span class="sd">  :var list write_history_values: bytes written during each interval</span>
+
+<span class="sd">  **Cell relaying statistics:**</span>
+
+<span class="sd">  :var datetime cell_stats_end: end of the period when stats were gathered</span>
+<span class="sd">  :var int cell_stats_interval: length in seconds of the interval</span>
+<span class="sd">  :var list cell_processed_cells: measurement of processed cells per circuit</span>
+<span class="sd">  :var list cell_queued_cells: measurement of queued cells per circuit</span>
+<span class="sd">  :var list cell_time_in_queue: mean enqueued time in milliseconds for cells</span>
+<span class="sd">  :var int cell_circuits_per_decile: mean number of circuits in a decile</span>
+
+<span class="sd">  **Directory Mirror Attributes:**</span>
+
+<span class="sd">  :var datetime dir_stats_end: end of the period when stats were gathered</span>
+<span class="sd">  :var int dir_stats_interval: length in seconds of the interval</span>
+<span class="sd">  :var dict dir_v2_ips: mapping of locales to rounded count of requester ips</span>
+<span class="sd">  :var dict dir_v3_ips: mapping of locales to rounded count of requester ips</span>
+<span class="sd">  :var float dir_v2_share: percent of total directory traffic it expects to serve</span>
+<span class="sd">  :var float dir_v3_share: percent of total directory traffic it expects to serve</span>
+<span class="sd">  :var dict dir_v2_requests: mapping of locales to rounded count of requests</span>
+<span class="sd">  :var dict dir_v3_requests: mapping of locales to rounded count of requests</span>
+
+<span class="sd">  :var dict dir_v2_responses: mapping of :data:`~stem.descriptor.extrainfo_descriptor.DirResponse` to their rounded count</span>
+<span class="sd">  :var dict dir_v3_responses: mapping of :data:`~stem.descriptor.extrainfo_descriptor.DirResponse` to their rounded count</span>
+<span class="sd">  :var dict dir_v2_responses_unknown: mapping of unrecognized statuses to their count</span>
+<span class="sd">  :var dict dir_v3_responses_unknown: mapping of unrecognized statuses to their count</span>
+
+<span class="sd">  :var dict dir_v2_direct_dl: mapping of :data:`~stem.descriptor.extrainfo_descriptor.DirStat` to measurement over DirPort</span>
+<span class="sd">  :var dict dir_v3_direct_dl: mapping of :data:`~stem.descriptor.extrainfo_descriptor.DirStat` to measurement over DirPort</span>
+<span class="sd">  :var dict dir_v2_direct_dl_unknown: mapping of unrecognized stats to their measurement</span>
+<span class="sd">  :var dict dir_v3_direct_dl_unknown: mapping of unrecognized stats to their measurement</span>
+
+<span class="sd">  :var dict dir_v2_tunneled_dl: mapping of :data:`~stem.descriptor.extrainfo_descriptor.DirStat` to measurement over ORPort</span>
+<span class="sd">  :var dict dir_v3_tunneled_dl: mapping of :data:`~stem.descriptor.extrainfo_descriptor.DirStat` to measurement over ORPort</span>
+<span class="sd">  :var dict dir_v2_tunneled_dl_unknown: mapping of unrecognized stats to their measurement</span>
+<span class="sd">  :var dict dir_v3_tunneled_dl_unknown: mapping of unrecognized stats to their measurement</span>
+
+<span class="sd">  **Bytes read/written for directory mirroring:**</span>
+
+<span class="sd">  :var datetime dir_read_history_end: end of the sampling interval</span>
+<span class="sd">  :var int dir_read_history_interval: seconds per interval</span>
+<span class="sd">  :var list dir_read_history_values: bytes read during each interval</span>
+
+<span class="sd">  :var datetime dir_write_history_end: end of the sampling interval</span>
+<span class="sd">  :var int dir_write_history_interval: seconds per interval</span>
+<span class="sd">  :var list dir_write_history_values: bytes read during each interval</span>
+
+<span class="sd">  **Guard Attributes:**</span>
+
+<span class="sd">  :var datetime entry_stats_end: end of the period when stats were gathered</span>
+<span class="sd">  :var int entry_stats_interval: length in seconds of the interval</span>
+<span class="sd">  :var dict entry_ips: mapping of locales to rounded count of unique user ips</span>
+
+<span class="sd">  **Exit Attributes:**</span>
+
+<span class="sd">  :var datetime exit_stats_end: end of the period when stats were gathered</span>
+<span class="sd">  :var int exit_stats_interval: length in seconds of the interval</span>
+<span class="sd">  :var dict exit_kibibytes_written: traffic per port (keys are ints or &#39;other&#39;)</span>
+<span class="sd">  :var dict exit_kibibytes_read: traffic per port (keys are ints or &#39;other&#39;)</span>
+<span class="sd">  :var dict exit_streams_opened: streams per port (keys are ints or &#39;other&#39;)</span>
+
+<span class="sd">  **Hidden Service Attributes:**</span>
+
+<span class="sd">  :var datetime hs_stats_end: end of the sampling interval</span>
+<span class="sd">  :var int hs_rend_cells: rounded count of the RENDEZVOUS1 cells seen</span>
+<span class="sd">  :var int hs_rend_cells_attr: **\*** attributes provided for the hs_rend_cells</span>
+<span class="sd">  :var int hs_dir_onions_seen: rounded count of the identities seen</span>
+<span class="sd">  :var int hs_dir_onions_seen_attr: **\*** attributes provided for the hs_dir_onions_seen</span>
+
+<span class="sd">  **Bridge Attributes:**</span>
+
+<span class="sd">  :var datetime bridge_stats_end: end of the period when stats were gathered</span>
+<span class="sd">  :var int bridge_stats_interval: length in seconds of the interval</span>
+<span class="sd">  :var dict bridge_ips: mapping of locales to rounded count of unique user ips</span>
+<span class="sd">  :var datetime geoip_start_time: replaced by bridge_stats_end (deprecated)</span>
+<span class="sd">  :var dict geoip_client_origins: replaced by bridge_ips (deprecated)</span>
+<span class="sd">  :var dict ip_versions: mapping of ip protocols to a rounded count for the number of users</span>
+<span class="sd">  :var dict ip_versions: mapping of ip transports to a count for the number of users</span>
+
+<span class="sd">  **\*** attribute is either required when we&#39;re parsed with validation or has</span>
+<span class="sd">  a default value, others are left as **None** if undefined</span>
+
+<span class="sd">  .. versionchanged:: 1.4.0</span>
+<span class="sd">     Added the hs_stats_end, hs_rend_cells, hs_rend_cells_attr,</span>
+<span class="sd">     hs_dir_onions_seen, and hs_dir_onions_seen_attr attributes.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">ATTRIBUTES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;nickname&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_extra_info_line</span><span class="p">),</span>
+    <span class="s">&#39;fingerprint&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_extra_info_line</span><span class="p">),</span>
+    <span class="s">&#39;published&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_published_line</span><span class="p">),</span>
+    <span class="s">&#39;geoip_db_digest&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_geoip_db_digest_line</span><span class="p">),</span>
+    <span class="s">&#39;geoip6_db_digest&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_geoip6_db_digest_line</span><span class="p">),</span>
+    <span class="s">&#39;transport&#39;</span><span class="p">:</span> <span class="p">({},</span> <span class="n">_parse_transport_line</span><span class="p">),</span>
+
+    <span class="s">&#39;conn_bi_direct_end&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_conn_bi_direct_line</span><span class="p">),</span>
+    <span class="s">&#39;conn_bi_direct_interval&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_conn_bi_direct_line</span><span class="p">),</span>
+    <span class="s">&#39;conn_bi_direct_below&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_conn_bi_direct_line</span><span class="p">),</span>
+    <span class="s">&#39;conn_bi_direct_read&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_conn_bi_direct_line</span><span class="p">),</span>
+    <span class="s">&#39;conn_bi_direct_write&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_conn_bi_direct_line</span><span class="p">),</span>
+    <span class="s">&#39;conn_bi_direct_both&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_conn_bi_direct_line</span><span class="p">),</span>
+
+    <span class="s">&#39;read_history_end&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_read_history_line</span><span class="p">),</span>
+    <span class="s">&#39;read_history_interval&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_read_history_line</span><span class="p">),</span>
+    <span class="s">&#39;read_history_values&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_read_history_line</span><span class="p">),</span>
+
+    <span class="s">&#39;write_history_end&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_write_history_line</span><span class="p">),</span>
+    <span class="s">&#39;write_history_interval&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_write_history_line</span><span class="p">),</span>
+    <span class="s">&#39;write_history_values&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_write_history_line</span><span class="p">),</span>
+
+    <span class="s">&#39;cell_stats_end&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_cell_stats_end_line</span><span class="p">),</span>
+    <span class="s">&#39;cell_stats_interval&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_cell_stats_end_line</span><span class="p">),</span>
+    <span class="s">&#39;cell_processed_cells&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_cell_processed_cells_line</span><span class="p">),</span>
+    <span class="s">&#39;cell_queued_cells&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_cell_queued_cells_line</span><span class="p">),</span>
+    <span class="s">&#39;cell_time_in_queue&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_cell_time_in_queue_line</span><span class="p">),</span>
+    <span class="s">&#39;cell_circuits_per_decile&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_cell_circuits_per_decline_line</span><span class="p">),</span>
+
+    <span class="s">&#39;dir_stats_end&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_stats_end_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_stats_interval&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_stats_end_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_v2_ips&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_v2_ips_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_v3_ips&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_v3_ips_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_v2_share&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_v2_share_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_v3_share&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_v3_share_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_v2_requests&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_v2_reqs_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_v3_requests&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_v3_reqs_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_v2_responses&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_v2_resp_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_v3_responses&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_v3_resp_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_v2_responses_unknown&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_v2_resp_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_v3_responses_unknown&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_v3_resp_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_v2_direct_dl&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_v2_direct_dl_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_v3_direct_dl&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_v3_direct_dl_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_v2_direct_dl_unknown&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_v2_direct_dl_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_v3_direct_dl_unknown&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_v3_direct_dl_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_v2_tunneled_dl&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_v2_tunneled_dl_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_v3_tunneled_dl&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_v3_tunneled_dl_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_v2_tunneled_dl_unknown&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_v2_tunneled_dl_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_v3_tunneled_dl_unknown&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_v3_tunneled_dl_line</span><span class="p">),</span>
+
+    <span class="s">&#39;dir_read_history_end&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_read_history_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_read_history_interval&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_read_history_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_read_history_values&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_read_history_line</span><span class="p">),</span>
+
+    <span class="s">&#39;dir_write_history_end&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_write_history_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_write_history_interval&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_write_history_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_write_history_values&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_dirreq_write_history_line</span><span class="p">),</span>
+
+    <span class="s">&#39;entry_stats_end&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_entry_stats_end_line</span><span class="p">),</span>
+    <span class="s">&#39;entry_stats_interval&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_entry_stats_end_line</span><span class="p">),</span>
+    <span class="s">&#39;entry_ips&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_entry_ips_line</span><span class="p">),</span>
+
+    <span class="s">&#39;exit_stats_end&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_exit_stats_end_line</span><span class="p">),</span>
+    <span class="s">&#39;exit_stats_interval&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_exit_stats_end_line</span><span class="p">),</span>
+    <span class="s">&#39;exit_kibibytes_written&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_exit_kibibytes_written_line</span><span class="p">),</span>
+    <span class="s">&#39;exit_kibibytes_read&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_exit_kibibytes_read_line</span><span class="p">),</span>
+    <span class="s">&#39;exit_streams_opened&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_exit_streams_opened_line</span><span class="p">),</span>
+
+    <span class="s">&#39;hs_stats_end&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_hidden_service_stats_end_line</span><span class="p">),</span>
+    <span class="s">&#39;hs_rend_cells&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_hidden_service_rend_relayed_cells_line</span><span class="p">),</span>
+    <span class="s">&#39;hs_rend_cells_attr&#39;</span><span class="p">:</span> <span class="p">({},</span> <span class="n">_parse_hidden_service_rend_relayed_cells_line</span><span class="p">),</span>
+    <span class="s">&#39;hs_dir_onions_seen&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_hidden_service_dir_onions_seen_line</span><span class="p">),</span>
+    <span class="s">&#39;hs_dir_onions_seen_attr&#39;</span><span class="p">:</span> <span class="p">({},</span> <span class="n">_parse_hidden_service_dir_onions_seen_line</span><span class="p">),</span>
+
+    <span class="s">&#39;bridge_stats_end&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_bridge_stats_end_line</span><span class="p">),</span>
+    <span class="s">&#39;bridge_stats_interval&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_bridge_stats_end_line</span><span class="p">),</span>
+    <span class="s">&#39;bridge_ips&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_bridge_ips_line</span><span class="p">),</span>
+    <span class="s">&#39;geoip_start_time&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_geoip_start_time_line</span><span class="p">),</span>
+    <span class="s">&#39;geoip_client_origins&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_geoip_client_origins_line</span><span class="p">),</span>
+
+    <span class="s">&#39;ip_versions&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_bridge_ip_versions_line</span><span class="p">),</span>
+    <span class="s">&#39;ip_transports&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_bridge_ip_transports_line</span><span class="p">),</span>
+  <span class="p">}</span>
+
+  <span class="n">PARSER_FOR_LINE</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;extra-info&#39;</span><span class="p">:</span> <span class="n">_parse_extra_info_line</span><span class="p">,</span>
+    <span class="s">&#39;geoip-db-digest&#39;</span><span class="p">:</span> <span class="n">_parse_geoip_db_digest_line</span><span class="p">,</span>
+    <span class="s">&#39;geoip6-db-digest&#39;</span><span class="p">:</span> <span class="n">_parse_geoip6_db_digest_line</span><span class="p">,</span>
+    <span class="s">&#39;transport&#39;</span><span class="p">:</span> <span class="n">_parse_transport_line</span><span class="p">,</span>
+    <span class="s">&#39;cell-circuits-per-decile&#39;</span><span class="p">:</span> <span class="n">_parse_cell_circuits_per_decline_line</span><span class="p">,</span>
+    <span class="s">&#39;dirreq-v2-resp&#39;</span><span class="p">:</span> <span class="n">_parse_dirreq_v2_resp_line</span><span class="p">,</span>
+    <span class="s">&#39;dirreq-v3-resp&#39;</span><span class="p">:</span> <span class="n">_parse_dirreq_v3_resp_line</span><span class="p">,</span>
+    <span class="s">&#39;dirreq-v2-direct-dl&#39;</span><span class="p">:</span> <span class="n">_parse_dirreq_v2_direct_dl_line</span><span class="p">,</span>
+    <span class="s">&#39;dirreq-v3-direct-dl&#39;</span><span class="p">:</span> <span class="n">_parse_dirreq_v3_direct_dl_line</span><span class="p">,</span>
+    <span class="s">&#39;dirreq-v2-tunneled-dl&#39;</span><span class="p">:</span> <span class="n">_parse_dirreq_v2_tunneled_dl_line</span><span class="p">,</span>
+    <span class="s">&#39;dirreq-v3-tunneled-dl&#39;</span><span class="p">:</span> <span class="n">_parse_dirreq_v3_tunneled_dl_line</span><span class="p">,</span>
+    <span class="s">&#39;dirreq-v2-share&#39;</span><span class="p">:</span> <span class="n">_parse_dirreq_v2_share_line</span><span class="p">,</span>
+    <span class="s">&#39;dirreq-v3-share&#39;</span><span class="p">:</span> <span class="n">_parse_dirreq_v3_share_line</span><span class="p">,</span>
+    <span class="s">&#39;cell-processed-cells&#39;</span><span class="p">:</span> <span class="n">_parse_cell_processed_cells_line</span><span class="p">,</span>
+    <span class="s">&#39;cell-queued-cells&#39;</span><span class="p">:</span> <span class="n">_parse_cell_queued_cells_line</span><span class="p">,</span>
+    <span class="s">&#39;cell-time-in-queue&#39;</span><span class="p">:</span> <span class="n">_parse_cell_time_in_queue_line</span><span class="p">,</span>
+    <span class="s">&#39;published&#39;</span><span class="p">:</span> <span class="n">_parse_published_line</span><span class="p">,</span>
+    <span class="s">&#39;geoip-start-time&#39;</span><span class="p">:</span> <span class="n">_parse_geoip_start_time_line</span><span class="p">,</span>
+    <span class="s">&#39;cell-stats-end&#39;</span><span class="p">:</span> <span class="n">_parse_cell_stats_end_line</span><span class="p">,</span>
+    <span class="s">&#39;entry-stats-end&#39;</span><span class="p">:</span> <span class="n">_parse_entry_stats_end_line</span><span class="p">,</span>
+    <span class="s">&#39;exit-stats-end&#39;</span><span class="p">:</span> <span class="n">_parse_exit_stats_end_line</span><span class="p">,</span>
+    <span class="s">&#39;bridge-stats-end&#39;</span><span class="p">:</span> <span class="n">_parse_bridge_stats_end_line</span><span class="p">,</span>
+    <span class="s">&#39;dirreq-stats-end&#39;</span><span class="p">:</span> <span class="n">_parse_dirreq_stats_end_line</span><span class="p">,</span>
+    <span class="s">&#39;conn-bi-direct&#39;</span><span class="p">:</span> <span class="n">_parse_conn_bi_direct_line</span><span class="p">,</span>
+    <span class="s">&#39;read-history&#39;</span><span class="p">:</span> <span class="n">_parse_read_history_line</span><span class="p">,</span>
+    <span class="s">&#39;write-history&#39;</span><span class="p">:</span> <span class="n">_parse_write_history_line</span><span class="p">,</span>
+    <span class="s">&#39;dirreq-read-history&#39;</span><span class="p">:</span> <span class="n">_parse_dirreq_read_history_line</span><span class="p">,</span>
+    <span class="s">&#39;dirreq-write-history&#39;</span><span class="p">:</span> <span class="n">_parse_dirreq_write_history_line</span><span class="p">,</span>
+    <span class="s">&#39;exit-kibibytes-written&#39;</span><span class="p">:</span> <span class="n">_parse_exit_kibibytes_written_line</span><span class="p">,</span>
+    <span class="s">&#39;exit-kibibytes-read&#39;</span><span class="p">:</span> <span class="n">_parse_exit_kibibytes_read_line</span><span class="p">,</span>
+    <span class="s">&#39;exit-streams-opened&#39;</span><span class="p">:</span> <span class="n">_parse_exit_streams_opened_line</span><span class="p">,</span>
+    <span class="s">&#39;hidserv-stats-end&#39;</span><span class="p">:</span> <span class="n">_parse_hidden_service_stats_end_line</span><span class="p">,</span>
+    <span class="s">&#39;hidserv-rend-relayed-cells&#39;</span><span class="p">:</span> <span class="n">_parse_hidden_service_rend_relayed_cells_line</span><span class="p">,</span>
+    <span class="s">&#39;hidserv-dir-onions-seen&#39;</span><span class="p">:</span> <span class="n">_parse_hidden_service_dir_onions_seen_line</span><span class="p">,</span>
+    <span class="s">&#39;dirreq-v2-ips&#39;</span><span class="p">:</span> <span class="n">_parse_dirreq_v2_ips_line</span><span class="p">,</span>
+    <span class="s">&#39;dirreq-v3-ips&#39;</span><span class="p">:</span> <span class="n">_parse_dirreq_v3_ips_line</span><span class="p">,</span>
+    <span class="s">&#39;dirreq-v2-reqs&#39;</span><span class="p">:</span> <span class="n">_parse_dirreq_v2_reqs_line</span><span class="p">,</span>
+    <span class="s">&#39;dirreq-v3-reqs&#39;</span><span class="p">:</span> <span class="n">_parse_dirreq_v3_reqs_line</span><span class="p">,</span>
+    <span class="s">&#39;geoip-client-origins&#39;</span><span class="p">:</span> <span class="n">_parse_geoip_client_origins_line</span><span class="p">,</span>
+    <span class="s">&#39;entry-ips&#39;</span><span class="p">:</span> <span class="n">_parse_entry_ips_line</span><span class="p">,</span>
+    <span class="s">&#39;bridge-ips&#39;</span><span class="p">:</span> <span class="n">_parse_bridge_ips_line</span><span class="p">,</span>
+    <span class="s">&#39;bridge-ip-versions&#39;</span><span class="p">:</span> <span class="n">_parse_bridge_ip_versions_line</span><span class="p">,</span>
+    <span class="s">&#39;bridge-ip-transports&#39;</span><span class="p">:</span> <span class="n">_parse_bridge_ip_transports_line</span><span class="p">,</span>
+  <span class="p">}</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_contents</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Extra-info descriptor constructor. By default this validates the</span>
+<span class="sd">    descriptor&#39;s content as it&#39;s parsed. This validation can be disabled to</span>
+<span class="sd">    either improve performance or be accepting of malformed data.</span>
+
+<span class="sd">    :param str raw_contents: extra-info content provided by the relay</span>
+<span class="sd">    :param bool validate: checks the validity of the extra-info descriptor if</span>
+<span class="sd">      **True**, skips these checks otherwise</span>
+
+<span class="sd">    :raises: **ValueError** if the contents is malformed and validate is True</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nb">super</span><span class="p">(</span><span class="n">ExtraInfoDescriptor</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">raw_contents</span><span class="p">,</span> <span class="n">lazy_load</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">validate</span><span class="p">)</span>
+    <span class="n">entries</span> <span class="o">=</span> <span class="n">_get_descriptor_components</span><span class="p">(</span><span class="n">raw_contents</span><span class="p">,</span> <span class="n">validate</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
+      <span class="k">for</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_required_fields</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">keyword</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Extra-info descriptor must have a &#39;</span><span class="si">%s</span><span class="s">&#39; entry&quot;</span> <span class="o">%</span> <span class="n">keyword</span><span class="p">)</span>
+
+      <span class="k">for</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_required_fields</span><span class="p">()</span> <span class="o">+</span> <span class="n">SINGLE_FIELDS</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">entries</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">entries</span><span class="p">[</span><span class="n">keyword</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;The &#39;</span><span class="si">%s</span><span class="s">&#39; entry can only appear once in an extra-info descriptor&quot;</span> <span class="o">%</span> <span class="n">keyword</span><span class="p">)</span>
+
+      <span class="n">expected_first_keyword</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_first_keyword</span><span class="p">()</span>
+      <span class="k">if</span> <span class="n">expected_first_keyword</span> <span class="ow">and</span> <span class="n">expected_first_keyword</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">(</span><span class="n">entries</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Extra-info descriptor must start with a &#39;</span><span class="si">%s</span><span class="s">&#39; entry&quot;</span> <span class="o">%</span> <span class="n">expected_first_keyword</span><span class="p">)</span>
+
+      <span class="n">expected_last_keyword</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_keyword</span><span class="p">()</span>
+      <span class="k">if</span> <span class="n">expected_last_keyword</span> <span class="ow">and</span> <span class="n">expected_last_keyword</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">(</span><span class="n">entries</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Descriptor must end with a &#39;</span><span class="si">%s</span><span class="s">&#39; entry&quot;</span> <span class="o">%</span> <span class="n">expected_last_keyword</span><span class="p">)</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">validate</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span> <span class="o">=</span> <span class="n">entries</span>
+
+<div class="viewcode-block" id="ExtraInfoDescriptor.digest"><a class="viewcode-back" href="../../../api/descriptor/extrainfo_descriptor.html#stem.descriptor.extrainfo_descriptor.ExtraInfoDescriptor.digest">[docs]</a>  <span class="k">def</span> <span class="nf">digest</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the upper-case hex encoded sha1 of our content. This value is part</span>
+<span class="sd">    of the server descriptor entry for this relay.</span>
+
+<span class="sd">    :returns: **str** with the upper-case hex digest value for this server</span>
+<span class="sd">      descriptor</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Unsupported Operation: this should be implemented by the ExtraInfoDescriptor subclass&#39;</span><span class="p">)</span>
+</div>
+  <span class="k">def</span> <span class="nf">_required_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">REQUIRED_FIELDS</span>
+
+  <span class="k">def</span> <span class="nf">_first_keyword</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&#39;extra-info&#39;</span>
+
+  <span class="k">def</span> <span class="nf">_last_keyword</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&#39;router-signature&#39;</span>
+
+</div>
+<div class="viewcode-block" id="RelayExtraInfoDescriptor"><a class="viewcode-back" href="../../../api/descriptor/extrainfo_descriptor.html#stem.descriptor.extrainfo_descriptor.RelayExtraInfoDescriptor">[docs]</a><span class="k">class</span> <span class="nc">RelayExtraInfoDescriptor</span><span class="p">(</span><span class="n">ExtraInfoDescriptor</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Relay extra-info descriptor, constructed from data such as that provided by</span>
+<span class="sd">  &#39;GETINFO extra-info/digest/\*&#39;, cached descriptors, and metrics</span>
+<span class="sd">  (`specification &lt;https://gitweb.torproject.org/torspec.git/tree/dir-spec.txt&gt;`_).</span>
+
+<span class="sd">  :var ed25519_certificate str: base64 encoded ed25519 certificate</span>
+<span class="sd">  :var ed25519_signature str: signature of this document using ed25519</span>
+<span class="sd">  :var str signature: **\*** signature for this extrainfo descriptor</span>
+
+<span class="sd">  **\*** attribute is required when we&#39;re parsed with validation</span>
+
+<span class="sd">  .. versionchanged:: 1.5.0</span>
+<span class="sd">     Added the ed25519_certificate and ed25519_signature attributes.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">ATTRIBUTES</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ExtraInfoDescriptor</span><span class="o">.</span><span class="n">ATTRIBUTES</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span>
+    <span class="s">&#39;ed25519_certificate&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_identity_ed25519_line</span><span class="p">),</span>
+    <span class="s">&#39;ed25519_signature&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_router_sig_ed25519_line</span><span class="p">),</span>
+    <span class="s">&#39;signature&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_router_signature_line</span><span class="p">),</span>
+  <span class="p">})</span>
+
+  <span class="n">PARSER_FOR_LINE</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ExtraInfoDescriptor</span><span class="o">.</span><span class="n">PARSER_FOR_LINE</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span>
+    <span class="s">&#39;identity-ed25519&#39;</span><span class="p">:</span> <span class="n">_parse_identity_ed25519_line</span><span class="p">,</span>
+    <span class="s">&#39;router-sig-ed25519&#39;</span><span class="p">:</span> <span class="n">_parse_router_sig_ed25519_line</span><span class="p">,</span>
+    <span class="s">&#39;router-signature&#39;</span><span class="p">:</span> <span class="n">_parse_router_signature_line</span><span class="p">,</span>
+  <span class="p">})</span>
+
+  <span class="nd">@lru_cache</span><span class="p">()</span>
+<div class="viewcode-block" id="RelayExtraInfoDescriptor.digest"><a class="viewcode-back" href="../../../api/descriptor/extrainfo_descriptor.html#stem.descriptor.extrainfo_descriptor.RelayExtraInfoDescriptor.digest">[docs]</a>  <span class="k">def</span> <span class="nf">digest</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="c"># our digest is calculated from everything except our signature</span>
+    <span class="n">raw_content</span><span class="p">,</span> <span class="n">ending</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">router-signature</span><span class="se">\n</span><span class="s">&#39;</span>
+    <span class="n">raw_content</span> <span class="o">=</span> <span class="n">raw_content</span><span class="p">[:</span><span class="n">raw_content</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">ending</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">ending</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha1</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_bytes</span><span class="p">(</span><span class="n">raw_content</span><span class="p">))</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+
+</div></div>
+<div class="viewcode-block" id="BridgeExtraInfoDescriptor"><a class="viewcode-back" href="../../../api/descriptor/extrainfo_descriptor.html#stem.descriptor.extrainfo_descriptor.BridgeExtraInfoDescriptor">[docs]</a><span class="k">class</span> <span class="nc">BridgeExtraInfoDescriptor</span><span class="p">(</span><span class="n">ExtraInfoDescriptor</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Bridge extra-info descriptor (`bridge descriptor specification</span>
+<span class="sd">  &lt;https://collector.torproject.org/formats.html#bridge-descriptors&gt;`_)</span>
+
+<span class="sd">  :var str ed25519_certificate_hash: sha256 hash of the original identity-ed25519</span>
+<span class="sd">  :var str router_digest_sha256: sha256 digest of this document</span>
+
+<span class="sd">  .. versionchanged:: 1.5.0</span>
+<span class="sd">     Added the ed25519_certificate_hash and router_digest_sha256 attributes.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">ATTRIBUTES</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ExtraInfoDescriptor</span><span class="o">.</span><span class="n">ATTRIBUTES</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span>
+    <span class="s">&#39;ed25519_certificate_hash&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_master_key_ed25519_line</span><span class="p">),</span>
+    <span class="s">&#39;router_digest_sha256&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_router_digest_sha256_line</span><span class="p">),</span>
+    <span class="s">&#39;_digest&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_router_digest_line</span><span class="p">),</span>
+  <span class="p">})</span>
+
+  <span class="n">PARSER_FOR_LINE</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ExtraInfoDescriptor</span><span class="o">.</span><span class="n">PARSER_FOR_LINE</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span>
+    <span class="s">&#39;master-key-ed25519&#39;</span><span class="p">:</span> <span class="n">_parse_master_key_ed25519_line</span><span class="p">,</span>
+    <span class="s">&#39;router-digest-sha256&#39;</span><span class="p">:</span> <span class="n">_parse_router_digest_sha256_line</span><span class="p">,</span>
+    <span class="s">&#39;router-digest&#39;</span><span class="p">:</span> <span class="n">_parse_router_digest_line</span><span class="p">,</span>
+  <span class="p">})</span>
+
+<div class="viewcode-block" id="BridgeExtraInfoDescriptor.digest"><a class="viewcode-back" href="../../../api/descriptor/extrainfo_descriptor.html#stem.descriptor.extrainfo_descriptor.BridgeExtraInfoDescriptor.digest">[docs]</a>  <span class="k">def</span> <span class="nf">digest</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_digest</span>
+</div>
+  <span class="k">def</span> <span class="nf">_required_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="n">excluded_fields</span> <span class="o">=</span> <span class="p">[</span>
+      <span class="s">&#39;router-signature&#39;</span><span class="p">,</span>
+    <span class="p">]</span>
+
+    <span class="n">included_fields</span> <span class="o">=</span> <span class="p">[</span>
+      <span class="s">&#39;router-digest&#39;</span><span class="p">,</span>
+    <span class="p">]</span>
+
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">included_fields</span> <span class="o">+</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">REQUIRED_FIELDS</span> <span class="k">if</span> <span class="n">f</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">excluded_fields</span><span class="p">])</span>
+
+  <span class="k">def</span> <span class="nf">_last_keyword</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">None</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

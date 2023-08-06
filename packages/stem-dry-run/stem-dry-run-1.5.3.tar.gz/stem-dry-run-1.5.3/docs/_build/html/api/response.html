@@ -1,0 +1,1340 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Controller Responses &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>Controller Responses</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../api.html">API</a>
+            <ul>
+              <li><a href="control.html">stem.control</a></li>
+              <li><a href="connection.html">stem.connection</a></li>
+              <li><a href="socket.html">stem.socket</a></li>
+              <li><a href="process.html">stem.process</a></li>
+              <li><a href="#">stem.response</a></li>
+              <li><a href="exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="version.html">stem.version</a></li>
+              <li><a href="../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../faq.html">FAQ</a></li>
+              <li><a href="../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="controller-responses">
+<h1>Controller Responses<a class="headerlink" href="#controller-responses" title="Permalink to this headline">¶</a></h1>
+<span class="target" id="module-stem.response"></span><p>Parses replies from the control socket.</p>
+<p><strong>Module Overview:</strong></p>
+<div class="highlight-python"><pre>convert - translates a ControlMessage into a particular response subclass
+
+ControlMessage - Message that's read from the control socket.
+  |- SingleLineResponse - Simple tor response only including a single line of information.
+  |
+  |- from_str - provides a ControlMessage for the given string
+  |- is_ok - response had a 250 status
+  |- content - provides the parsed message content
+  |- raw_content - unparsed socket data
+  |- __str__ - content stripped of protocol formatting
+  +- __iter__ - ControlLine entries for the content of the message
+
+ControlLine - String subclass with methods for parsing controller responses.
+  |- remainder - provides the unparsed content
+  |- is_empty - checks if the remaining content is empty
+  |- is_next_quoted - checks if the next entry is a quoted value
+  |- is_next_mapping - checks if the next entry is a KEY=VALUE mapping
+  |- peek_key - provides the key of the next entry
+  |- pop - removes and returns the next entry
+  +- pop_mapping - removes and returns the next entry as a KEY=VALUE mapping</pre>
+</div>
+<dl class="function">
+<dt id="stem.response.convert">
+<tt class="descclassname">stem.response.</tt><tt class="descname">convert</tt><big>(</big><em>response_type</em>, <em>message</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/stem/response.html#convert"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.convert" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts a <a class="reference internal" href="#stem.response.ControlMessage" title="stem.response.ControlMessage"><tt class="xref py py-class docutils literal"><span class="pre">ControlMessage</span></tt></a> into a particular kind of
+tor response. This does an in-place conversion of the message from being a
+<a class="reference internal" href="#stem.response.ControlMessage" title="stem.response.ControlMessage"><tt class="xref py py-class docutils literal"><span class="pre">ControlMessage</span></tt></a> to a subclass for its response type.
+Recognized types include...</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="25%" />
+<col width="75%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">response_type</th>
+<th class="head">Class</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><strong>ADD_ONION</strong></td>
+<td><a class="reference internal" href="#stem.response.add_onion.AddOnionResponse" title="stem.response.add_onion.AddOnionResponse"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.add_onion.AddOnionResponse</span></tt></a></td>
+</tr>
+<tr class="row-odd"><td><strong>AUTHCHALLENGE</strong></td>
+<td><a class="reference internal" href="#stem.response.authchallenge.AuthChallengeResponse" title="stem.response.authchallenge.AuthChallengeResponse"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.authchallenge.AuthChallengeResponse</span></tt></a></td>
+</tr>
+<tr class="row-even"><td><strong>EVENT</strong></td>
+<td><a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a> subclass</td>
+</tr>
+<tr class="row-odd"><td><strong>GETCONF</strong></td>
+<td><a class="reference internal" href="#stem.response.getconf.GetConfResponse" title="stem.response.getconf.GetConfResponse"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.getconf.GetConfResponse</span></tt></a></td>
+</tr>
+<tr class="row-even"><td><strong>GETINFO</strong></td>
+<td><a class="reference internal" href="#stem.response.getinfo.GetInfoResponse" title="stem.response.getinfo.GetInfoResponse"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.getinfo.GetInfoResponse</span></tt></a></td>
+</tr>
+<tr class="row-odd"><td><strong>MAPADDRESS</strong></td>
+<td><a class="reference internal" href="#stem.response.mapaddress.MapAddressResponse" title="stem.response.mapaddress.MapAddressResponse"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.mapaddress.MapAddressResponse</span></tt></a></td>
+</tr>
+<tr class="row-even"><td><strong>PROTOCOLINFO</strong></td>
+<td><a class="reference internal" href="#stem.response.protocolinfo.ProtocolInfoResponse" title="stem.response.protocolinfo.ProtocolInfoResponse"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.protocolinfo.ProtocolInfoResponse</span></tt></a></td>
+</tr>
+<tr class="row-odd"><td><strong>SINGLELINE</strong></td>
+<td><a class="reference internal" href="#stem.response.SingleLineResponse" title="stem.response.SingleLineResponse"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.SingleLineResponse</span></tt></a></td>
+</tr>
+</tbody>
+</table>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>response_type</strong> (<em>str</em>) -- type of tor response to convert to</li>
+<li><strong>message</strong> (<a class="reference internal" href="#stem.response.ControlMessage" title="stem.response.ControlMessage"><em>stem.response.ControlMessage</em></a>) -- message to be converted</li>
+<li><strong>kwargs</strong> -- optional keyword arguments to be passed to the parser method</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference internal" href="control.html#stem.ProtocolError" title="stem.ProtocolError"><tt class="xref py py-class docutils literal"><span class="pre">stem.ProtocolError</span></tt></a> the message isn't a proper response of
+that type</li>
+<li><a class="reference internal" href="control.html#stem.InvalidArguments" title="stem.InvalidArguments"><tt class="xref py py-class docutils literal"><span class="pre">stem.InvalidArguments</span></tt></a> the arguments given as input are
+invalid, this is can only be raised if the response_type is: <strong>GETINFO</strong>,
+<strong>GETCONF</strong></li>
+<li><a class="reference internal" href="control.html#stem.InvalidRequest" title="stem.InvalidRequest"><tt class="xref py py-class docutils literal"><span class="pre">stem.InvalidRequest</span></tt></a> the arguments given as input are
+invalid, this is can only be raised if the response_type is:
+<strong>MAPADDRESS</strong></li>
+<li><a class="reference internal" href="control.html#stem.OperationFailed" title="stem.OperationFailed"><tt class="xref py py-class docutils literal"><span class="pre">stem.OperationFailed</span></tt></a> if the action the event represents failed,
+this is can only be raised if the response_type is: <strong>MAPADDRESS</strong></li>
+<li><strong>TypeError</strong> if argument isn't a <a class="reference internal" href="#stem.response.ControlMessage" title="stem.response.ControlMessage"><tt class="xref py py-class docutils literal"><span class="pre">ControlMessage</span></tt></a>
+or response_type isn't supported</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.ControlMessage">
+<em class="property">class </em><tt class="descclassname">stem.response.</tt><tt class="descname">ControlMessage</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response.html#ControlMessage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.ControlMessage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Message from the control socket. This is iterable and can be stringified for
+individual message components stripped of protocol formatting. Messages are
+never empty.</p>
+<dl class="staticmethod">
+<dt id="stem.response.ControlMessage.from_str">
+<em class="property">static </em><tt class="descname">from_str</tt><big>(</big><em>content</em>, <em>msg_type=None</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/stem/response.html#ControlMessage.from_str"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.ControlMessage.from_str" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides a ControlMessage for the given content.</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.1.0.</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>content</strong> (<em>str</em>) -- message to construct the message from</li>
+<li><strong>msg_type</strong> (<em>str</em>) -- type of tor reply to parse the content as</li>
+<li><strong>kwargs</strong> -- optional keyword arguments to be passed to the parser method</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">stem.response.ControlMessage instance</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.response.ControlMessage.is_ok">
+<tt class="descname">is_ok</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/response.html#ControlMessage.is_ok"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.ControlMessage.is_ok" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if any of our lines have a 250 response.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>True</strong> if any lines have a 250 response code, <strong>False</strong> otherwise</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.response.ControlMessage.content">
+<tt class="descname">content</tt><big>(</big><em>get_bytes=False</em><big>)</big><a class="reference internal" href="../_modules/stem/response.html#ControlMessage.content"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.ControlMessage.content" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the parsed message content. These are entries of the form...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">(</span><span class="n">status_code</span><span class="p">,</span> <span class="n">divider</span><span class="p">,</span> <span class="n">content</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="docutils">
+<dt><strong>status_code</strong></dt>
+<dd>Three character code for the type of response (defined in section 4 of
+the control-spec).</dd>
+<dt><strong>divider</strong></dt>
+<dd>Single character to indicate if this is mid-reply, data, or an end to the
+message (defined in section 2.3 of the control-spec).</dd>
+<dt><strong>content</strong></dt>
+<dd>The following content is the actual payload of the line.</dd>
+</dl>
+<p>For data entries the content is the full multi-line payload with newline
+linebreaks and leading periods unescaped.</p>
+<p>The <strong>status_code</strong> and <strong>divider</strong> are both strings (<strong>bytes</strong> in python
+2.x and <strong>unicode</strong> in python 3.x). The <strong>content</strong> however is <strong>bytes</strong> if
+<strong>get_bytes</strong> is <strong>True</strong>.</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.1.0: </span>Added the get_bytes argument.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>get_bytes</strong> (<em>bool</em>) -- provides <strong>bytes</strong> for the <strong>content</strong> rather than a <strong>str</strong></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>list</strong> of (str, str, str) tuples for the components of this message</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.response.ControlMessage.raw_content">
+<tt class="descname">raw_content</tt><big>(</big><em>get_bytes=False</em><big>)</big><a class="reference internal" href="../_modules/stem/response.html#ControlMessage.raw_content"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.ControlMessage.raw_content" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the unparsed content read from the control socket.</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.1.0: </span>Added the get_bytes argument.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>get_bytes</strong> (<em>bool</em>) -- if <strong>True</strong> then this provides <strong>bytes</strong> rather than a <strong>str</strong></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>str</strong> of the socket data used to generate this message</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.ControlLine">
+<em class="property">class </em><tt class="descclassname">stem.response.</tt><tt class="descname">ControlLine</tt><big>(</big><em>value</em><big>)</big><a class="reference internal" href="../_modules/stem/response.html#ControlLine"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.ControlLine" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">str</span></tt></p>
+<p>String subclass that represents a line of controller output. This behaves as
+a normal string with additional methods for parsing and popping entries from
+a space delimited series of elements like a stack.</p>
+<p>None of these additional methods effect ourselves as a string (which is still
+immutable). All methods are thread safe.</p>
+<dl class="method">
+<dt id="stem.response.ControlLine.remainder">
+<tt class="descname">remainder</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/response.html#ControlLine.remainder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.ControlLine.remainder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides our unparsed content. This is an empty string after we've popped
+all entries.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>str</strong> of the unparsed content</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.response.ControlLine.is_empty">
+<tt class="descname">is_empty</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/response.html#ControlLine.is_empty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.ControlLine.is_empty" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if we have further content to pop or not.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>True</strong> if we have additional content, <strong>False</strong> otherwise</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.response.ControlLine.is_next_quoted">
+<tt class="descname">is_next_quoted</tt><big>(</big><em>escaped=False</em><big>)</big><a class="reference internal" href="../_modules/stem/response.html#ControlLine.is_next_quoted"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.ControlLine.is_next_quoted" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if our next entry is a quoted value or not.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>escaped</strong> (<em>bool</em>) -- unescapes the CONTROL_ESCAPES escape sequences</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>True</strong> if the next entry can be parsed as a quoted value, <strong>False</strong> otherwise</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.response.ControlLine.is_next_mapping">
+<tt class="descname">is_next_mapping</tt><big>(</big><em>key=None</em>, <em>quoted=False</em>, <em>escaped=False</em><big>)</big><a class="reference internal" href="../_modules/stem/response.html#ControlLine.is_next_mapping"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.ControlLine.is_next_mapping" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if our next entry is a KEY=VALUE mapping or not.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>key</strong> (<em>str</em>) -- checks that the key matches this value, skipping the check if <strong>None</strong></li>
+<li><strong>quoted</strong> (<em>bool</em>) -- checks that the mapping is to a quoted value</li>
+<li><strong>escaped</strong> (<em>bool</em>) -- unescapes the CONTROL_ESCAPES escape sequences</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><strong>True</strong> if the next entry can be parsed as a key=value mapping,
+<strong>False</strong> otherwise</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.response.ControlLine.peek_key">
+<tt class="descname">peek_key</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/response.html#ControlLine.peek_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.ControlLine.peek_key" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the key of the next entry, providing <strong>None</strong> if it isn't a
+key/value mapping.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>str</strong> with the next entry's key</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.response.ControlLine.pop">
+<tt class="descname">pop</tt><big>(</big><em>quoted=False</em>, <em>escaped=False</em><big>)</big><a class="reference internal" href="../_modules/stem/response.html#ControlLine.pop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.ControlLine.pop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parses the next space separated entry, removing it and the space from our
+remaining content. Examples...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">line</span> <span class="o">=</span> <span class="n">ControlLine</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\&quot;</span><span class="s">We&#39;re all mad here.</span><span class="se">\&quot;</span><span class="s"> says the grinning cat.&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span> <span class="n">line</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+<span class="go">  &quot;We&#39;re all mad here.&quot;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span> <span class="n">line</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+<span class="go">  &quot;says&quot;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span> <span class="n">line</span><span class="o">.</span><span class="n">remainder</span><span class="p">()</span>
+<span class="go">  &quot;the grinning cat.&quot;</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">line</span> <span class="o">=</span> <span class="n">ControlLine</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\&quot;</span><span class="s">this has a </span><span class="se">\\\&quot;</span><span class="s"> and </span><span class="se">\\\\</span><span class="s"> in it</span><span class="se">\&quot;</span><span class="s"> foo=bar more_data&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span> <span class="n">line</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="bp">True</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+<span class="go">  &quot;this has a \&quot; and \\ in it&quot;</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>quoted</strong> (<em>bool</em>) -- parses the next entry as a quoted value, removing the quotes</li>
+<li><strong>escaped</strong> (<em>bool</em>) -- unescapes the CONTROL_ESCAPES escape sequences</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>str</strong> of the next space separated entry</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><ul class="first last simple">
+<li><strong>ValueError</strong> if quoted is True without the value being quoted</li>
+<li><strong>IndexError</strong> if we don't have any remaining content left to parse</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.response.ControlLine.pop_mapping">
+<tt class="descname">pop_mapping</tt><big>(</big><em>quoted=False</em>, <em>escaped=False</em><big>)</big><a class="reference internal" href="../_modules/stem/response.html#ControlLine.pop_mapping"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.ControlLine.pop_mapping" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parses the next space separated entry as a KEY=VALUE mapping, removing it
+and the space from our remaining content.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>quoted</strong> (<em>bool</em>) -- parses the value as being quoted, removing the quotes</li>
+<li><strong>escaped</strong> (<em>bool</em>) -- unescapes the CONTROL_ESCAPES escape sequences</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>tuple</strong> of the form (key, value)</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first"><strong>ValueError</strong> if this isn't a KEY=VALUE mapping or if quoted is
+<strong>True</strong> without the value being quoted</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last"><strong>IndexError</strong> if there's nothing to parse from the line</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.SingleLineResponse">
+<em class="property">class </em><tt class="descclassname">stem.response.</tt><tt class="descname">SingleLineResponse</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response.html#SingleLineResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.SingleLineResponse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.ControlMessage" title="stem.response.ControlMessage"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.ControlMessage</span></tt></a></p>
+<p>Reply to a request that performs an action rather than querying data. These
+requests only contain a single line, which is 'OK' if successful, and a
+description of the problem if not.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>code</strong> (<em>str</em>) -- status code for our line</li>
+<li><strong>message</strong> (<em>str</em>) -- content of the line</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="stem.response.SingleLineResponse.is_ok">
+<tt class="descname">is_ok</tt><big>(</big><em>strict=False</em><big>)</big><a class="reference internal" href="../_modules/stem/response.html#SingleLineResponse.is_ok"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.SingleLineResponse.is_ok" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if the response code is &quot;250&quot;. If strict is <strong>True</strong> then this
+checks if the response is &quot;250 OK&quot;</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>strict</strong> (<em>bool</em>) -- checks for a &quot;250 OK&quot; message if <strong>True</strong></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><ul class="simple">
+<li>If strict is <strong>False</strong>: <strong>True</strong> if the response code is &quot;250&quot;, <strong>False</strong> otherwise</li>
+<li>If strict is <strong>True</strong>: <strong>True</strong> if the response is &quot;250 OK&quot;, <strong>False</strong> otherwise</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<div class="section" id="responses">
+<h2>Responses<a class="headerlink" href="#responses" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="stem.response.add_onion.AddOnionResponse">
+<em class="property">class </em><tt class="descclassname">stem.response.add_onion.</tt><tt class="descname">AddOnionResponse</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/add_onion.html#AddOnionResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.add_onion.AddOnionResponse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.ControlMessage" title="stem.response.ControlMessage"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.ControlMessage</span></tt></a></p>
+<p>ADD_ONION response.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>service_id</strong> (<em>str</em>) -- hidden service address without the '.onion' suffix</li>
+<li><strong>private_key</strong> (<em>str</em>) -- base64 encoded hidden service private key</li>
+<li><strong>private_key_type</strong> (<em>str</em>) -- crypto used to generate the hidden service private
+key (such as RSA1024)</li>
+<li><strong>client_auth</strong> (<em>dict</em>) -- newly generated client credentials the service accepts</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.authchallenge.AuthChallengeResponse">
+<em class="property">class </em><tt class="descclassname">stem.response.authchallenge.</tt><tt class="descname">AuthChallengeResponse</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/authchallenge.html#AuthChallengeResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.authchallenge.AuthChallengeResponse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.ControlMessage" title="stem.response.ControlMessage"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.ControlMessage</span></tt></a></p>
+<p>AUTHCHALLENGE query response.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>server_hash</strong> (<em>str</em>) -- server hash provided by tor</li>
+<li><strong>server_nonce</strong> (<em>str</em>) -- server nonce provided by tor</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.getconf.GetConfResponse">
+<em class="property">class </em><tt class="descclassname">stem.response.getconf.</tt><tt class="descname">GetConfResponse</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/getconf.html#GetConfResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.getconf.GetConfResponse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.ControlMessage" title="stem.response.ControlMessage"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.ControlMessage</span></tt></a></p>
+<p>Reply for a GETCONF query.</p>
+<p>Note that configuration parameters won't match what we queried for if it's one
+of the special mapping options (ex. 'HiddenServiceOptions').</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>entries</strong> (<em>dict</em>) -- mapping between the config parameter (<strong>str</strong>) and their
+values (<strong>list</strong> of <strong>str</strong>)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.getinfo.GetInfoResponse">
+<em class="property">class </em><tt class="descclassname">stem.response.getinfo.</tt><tt class="descname">GetInfoResponse</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/getinfo.html#GetInfoResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.getinfo.GetInfoResponse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.ControlMessage" title="stem.response.ControlMessage"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.ControlMessage</span></tt></a></p>
+<p>Reply for a GETINFO query.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>entries</strong> (<em>dict</em>) -- mapping between the queried options and their bytes values</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.mapaddress.MapAddressResponse">
+<em class="property">class </em><tt class="descclassname">stem.response.mapaddress.</tt><tt class="descname">MapAddressResponse</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/mapaddress.html#MapAddressResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.mapaddress.MapAddressResponse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.ControlMessage" title="stem.response.ControlMessage"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.ControlMessage</span></tt></a></p>
+<p>Reply for a MAPADDRESS query.
+Doesn't raise an exception unless no addresses were mapped successfully.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><p class="first"><strong>entries</strong> (<em>dict</em>) -- mapping between the original and replacement addresses</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference internal" href="control.html#stem.OperationFailed" title="stem.OperationFailed"><tt class="xref py py-class docutils literal"><span class="pre">stem.OperationFailed</span></tt></a> if Tor was unable to satisfy the request</li>
+<li><a class="reference internal" href="control.html#stem.InvalidRequest" title="stem.InvalidRequest"><tt class="xref py py-class docutils literal"><span class="pre">stem.InvalidRequest</span></tt></a> if the addresses provided were invalid</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.protocolinfo.ProtocolInfoResponse">
+<em class="property">class </em><tt class="descclassname">stem.response.protocolinfo.</tt><tt class="descname">ProtocolInfoResponse</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/protocolinfo.html#ProtocolInfoResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.protocolinfo.ProtocolInfoResponse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.ControlMessage" title="stem.response.ControlMessage"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.ControlMessage</span></tt></a></p>
+<p>Version one PROTOCOLINFO query response.</p>
+<p>The protocol_version is the only mandatory data for a valid PROTOCOLINFO
+response, so all other values are None if undefined or empty if a collection.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>protocol_version</strong> (<em>int</em>) -- protocol version of the response</li>
+<li><strong>tor_version</strong> (<a class="reference internal" href="version.html#stem.version.Version" title="stem.version.Version"><em>stem.version.Version</em></a>) -- version of the tor process</li>
+<li><strong>auth_methods</strong> (<em>tuple</em>) -- <a class="reference internal" href="connection.html#stem.connection.AuthMethod" title="stem.connection.AuthMethod"><tt class="xref py py-data docutils literal"><span class="pre">stem.connection.AuthMethod</span></tt></a> types that tor will accept</li>
+<li><strong>unknown_auth_methods</strong> (<em>tuple</em>) -- strings of unrecognized auth methods</li>
+<li><strong>cookie_path</strong> (<em>str</em>) -- path of tor's authentication cookie</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-stem.response.events">
+<span id="events"></span><h2>Events<a class="headerlink" href="#module-stem.response.events" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="stem.response.events.Event">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">Event</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#Event"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.Event" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.ControlMessage" title="stem.response.ControlMessage"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.ControlMessage</span></tt></a></p>
+<p>Base for events we receive asynchronously, as described in section 4.1 of the
+<a class="reference external" href="https://gitweb.torproject.org/torspec.git/tree/control-spec.txt">control-spec</a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>type</strong> (<em>str</em>) -- event type</li>
+<li><strong>arrived_at</strong> (<em>int</em>) -- unix timestamp for when the message arrived</li>
+<li><strong>positional_args</strong> (<em>list</em>) -- positional arguments of the event</li>
+<li><strong>keyword_args</strong> (<em>dict</em>) -- key/value arguments of the event</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.AddrMapEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">AddrMapEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#AddrMapEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.AddrMapEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event that indicates a new address mapping.</p>
+<p>The ADDRMAP event was one of the first Control Protocol V1 events and was
+introduced in tor version 0.1.1.1-alpha.</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.1.0: </span>Added the cached attribute.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>hostname</strong> (<em>str</em>) -- address being resolved</li>
+<li><strong>destination</strong> (<em>str</em>) -- destination of the resolution, this is usually an ip,
+but could be a hostname if TrackHostExits is enabled or <strong>NONE</strong> if the
+resolution failed</li>
+<li><strong>expiry</strong> (<em>datetime</em>) -- expiration time of the resolution in local time</li>
+<li><strong>error</strong> (<em>str</em>) -- error code if the resolution failed</li>
+<li><strong>utc_expiry</strong> (<em>datetime</em>) -- expiration time of the resolution in UTC</li>
+<li><strong>cached</strong> (<em>bool</em>) -- <strong>True</strong> if the resolution will be kept until it expires,
+<strong>False</strong> otherwise or <strong>None</strong> if undefined</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.AuthDirNewDescEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">AuthDirNewDescEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#AuthDirNewDescEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.AuthDirNewDescEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event specific to directory authorities, indicating that we just received new
+descriptors. The descriptor type contained within this event is unspecified
+so the descriptor contents are left unparsed.</p>
+<p>The AUTHDIR_NEWDESCS event was introduced in tor version 0.1.1.10-alpha.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>action</strong> (<a class="reference internal" href="control.html#stem.AuthDescriptorAction" title="stem.AuthDescriptorAction"><em>stem.AuthDescriptorAction</em></a>) -- what is being done with the descriptor</li>
+<li><strong>message</strong> (<em>str</em>) -- explanation of why we chose this action</li>
+<li><strong>descriptor</strong> (<em>str</em>) -- content of the descriptor</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.BandwidthEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">BandwidthEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#BandwidthEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.BandwidthEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event emitted every second with the bytes sent and received by tor.</p>
+<p>The BW event was one of the first Control Protocol V1 events and was
+introduced in tor version 0.1.1.1-alpha.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>read</strong> (<em>long</em>) -- bytes received by tor that second</li>
+<li><strong>written</strong> (<em>long</em>) -- bytes sent by tor that second</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.BuildTimeoutSetEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">BuildTimeoutSetEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#BuildTimeoutSetEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.BuildTimeoutSetEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event indicating that the timeout value for a circuit has changed. This was
+first added in tor version 0.2.2.7.</p>
+<p>The BUILDTIMEOUT_SET event was introduced in tor version 0.2.2.7-alpha.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>set_type</strong> (<a class="reference internal" href="control.html#stem.TimeoutSetType" title="stem.TimeoutSetType"><em>stem.TimeoutSetType</em></a>) -- way in which the timeout is changing</li>
+<li><strong>total_times</strong> (<em>int</em>) -- circuit build times tor used to determine the timeout</li>
+<li><strong>timeout</strong> (<em>int</em>) -- circuit timeout value in milliseconds</li>
+<li><strong>xm</strong> (<em>int</em>) -- Pareto parameter Xm in milliseconds</li>
+<li><strong>alpha</strong> (<em>float</em>) -- Pareto parameter alpha</li>
+<li><strong>quantile</strong> (<em>float</em>) -- CDF quantile cutoff point</li>
+<li><strong>timeout_rate</strong> (<em>float</em>) -- ratio of circuits that have time out</li>
+<li><strong>close_timeout</strong> (<em>int</em>) -- duration to keep measurement circuits in milliseconds</li>
+<li><strong>close_rate</strong> (<em>float</em>) -- ratio of measurement circuits that are closed</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.CircuitEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">CircuitEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#CircuitEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.CircuitEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event that indicates that a circuit has changed.</p>
+<p>The fingerprint or nickname values in our 'path' may be <strong>None</strong> if the
+VERBOSE_NAMES feature isn't enabled. The option was first introduced in tor
+version 0.1.2.2, and on by default after 0.2.2.1.</p>
+<p>The CIRC event was one of the first Control Protocol V1 events and was
+introduced in tor version 0.1.1.1-alpha.</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.4.0: </span>Added the socks_username and socks_password attributes which is used for
+<a class="reference external" href="https://gitweb.torproject.org/torspec.git/tree/proposals/171-separate-streams.txt">stream isolation</a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>id</strong> (<em>str</em>) -- circuit identifier</li>
+<li><strong>status</strong> (<a class="reference internal" href="control.html#stem.CircStatus" title="stem.CircStatus"><em>stem.CircStatus</em></a>) -- reported status for the circuit</li>
+<li><strong>path</strong> (<em>tuple</em>) -- relays involved in the circuit, these are
+<strong>(fingerprint, nickname)</strong> tuples</li>
+<li><strong>build_flags</strong> (<em>tuple</em>) -- <a class="reference internal" href="control.html#stem.CircBuildFlag" title="stem.CircBuildFlag"><tt class="xref py py-data docutils literal"><span class="pre">CircBuildFlag</span></tt></a> attributes
+governing how the circuit is built</li>
+<li><strong>purpose</strong> (<a class="reference internal" href="control.html#stem.CircPurpose" title="stem.CircPurpose"><em>stem.CircPurpose</em></a>) -- purpose that the circuit is intended for</li>
+<li><strong>hs_state</strong> (<a class="reference internal" href="control.html#stem.HiddenServiceState" title="stem.HiddenServiceState"><em>stem.HiddenServiceState</em></a>) -- status if this is a hidden service circuit</li>
+<li><strong>rend_query</strong> (<em>str</em>) -- circuit's rendezvous-point if this is hidden service related</li>
+<li><strong>created</strong> (<em>datetime</em>) -- time when the circuit was created or cannibalized</li>
+<li><strong>reason</strong> (<a class="reference internal" href="control.html#stem.CircClosureReason" title="stem.CircClosureReason"><em>stem.CircClosureReason</em></a>) -- reason for the circuit to be closed</li>
+<li><strong>remote_reason</strong> (<a class="reference internal" href="control.html#stem.CircClosureReason" title="stem.CircClosureReason"><em>stem.CircClosureReason</em></a>) -- remote side's reason for the circuit to be closed</li>
+<li><strong>socks_username</strong> (<em>str</em>) -- username for using this circuit</li>
+<li><strong>socks_password</strong> (<em>str</em>) -- password for using this circuit</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.CircMinorEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">CircMinorEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#CircMinorEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.CircMinorEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event providing information about minor changes in our circuits. This was
+first added in tor version 0.2.3.11.</p>
+<p>The CIRC_MINOR event was introduced in tor version 0.2.3.11-alpha.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>id</strong> (<em>str</em>) -- circuit identifier</li>
+<li><strong>event</strong> (<a class="reference internal" href="control.html#stem.CircEvent" title="stem.CircEvent"><em>stem.CircEvent</em></a>) -- type of change in the circuit</li>
+<li><strong>path</strong> (<em>tuple</em>) -- relays involved in the circuit, these are
+<strong>(fingerprint, nickname)</strong> tuples</li>
+<li><strong>build_flags</strong> (<em>tuple</em>) -- <a class="reference internal" href="control.html#stem.CircBuildFlag" title="stem.CircBuildFlag"><tt class="xref py py-data docutils literal"><span class="pre">CircBuildFlag</span></tt></a> attributes
+governing how the circuit is built</li>
+<li><strong>purpose</strong> (<a class="reference internal" href="control.html#stem.CircPurpose" title="stem.CircPurpose"><em>stem.CircPurpose</em></a>) -- purpose that the circuit is intended for</li>
+<li><strong>hs_state</strong> (<a class="reference internal" href="control.html#stem.HiddenServiceState" title="stem.HiddenServiceState"><em>stem.HiddenServiceState</em></a>) -- status if this is a hidden service circuit</li>
+<li><strong>rend_query</strong> (<em>str</em>) -- circuit's rendezvous-point if this is hidden service related</li>
+<li><strong>created</strong> (<em>datetime</em>) -- time when the circuit was created or cannibalized</li>
+<li><strong>old_purpose</strong> (<a class="reference internal" href="control.html#stem.CircPurpose" title="stem.CircPurpose"><em>stem.CircPurpose</em></a>) -- prior purpose for the circuit</li>
+<li><strong>old_hs_state</strong> (<a class="reference internal" href="control.html#stem.HiddenServiceState" title="stem.HiddenServiceState"><em>stem.HiddenServiceState</em></a>) -- prior status as a hidden service circuit</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.ClientsSeenEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">ClientsSeenEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#ClientsSeenEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.ClientsSeenEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Periodic event on bridge relays that provides a summary of our users.</p>
+<p>The CLIENTS_SEEN event was introduced in tor version 0.2.1.10-alpha.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>start_time</strong> (<em>datetime</em>) -- time in UTC that we started collecting these stats</li>
+<li><strong>locales</strong> (<em>dict</em>) -- mapping of country codes to a rounded count for the number of users</li>
+<li><strong>ip_versions</strong> (<em>dict</em>) -- mapping of ip protocols to a rounded count for the number of users</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.ConfChangedEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">ConfChangedEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#ConfChangedEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.ConfChangedEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event that indicates that our configuration changed, either in response to a
+SETCONF or RELOAD signal.</p>
+<p>The CONF_CHANGED event was introduced in tor version 0.2.3.3-alpha.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>config</strong> (<em>dict</em>) -- mapping of configuration options to their new values
+(<strong>None</strong> if the option is being unset)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.DescChangedEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">DescChangedEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#DescChangedEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.DescChangedEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event that indicates that our descriptor has changed.</p>
+<p>The DESCCHANGED event was introduced in tor version 0.1.2.2-alpha.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.GuardEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">GuardEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#GuardEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.GuardEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event that indicates that our guard relays have changed. The 'endpoint' could
+be either a...</p>
+<ul class="simple">
+<li>fingerprint</li>
+<li>'fingerprint=nickname' pair</li>
+</ul>
+<p>The derived 'endpoint_*' attributes are generally more useful.</p>
+<p>The GUARD event was introduced in tor version 0.1.2.5-alpha.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>guard_type</strong> (<a class="reference internal" href="control.html#stem.GuardType" title="stem.GuardType"><em>stem.GuardType</em></a>) -- purpose the guard relay is for</li>
+<li><strong>endpoint</strong> (<em>str</em>) -- relay that the event concerns</li>
+<li><strong>endpoint_fingerprint</strong> (<em>str</em>) -- endpoint's finterprint</li>
+<li><strong>endpoint_nickname</strong> (<em>str</em>) -- endpoint's nickname if it was provided</li>
+<li><strong>status</strong> (<a class="reference internal" href="control.html#stem.GuardStatus" title="stem.GuardStatus"><em>stem.GuardStatus</em></a>) -- status of the guard relay</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.HSDescEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">HSDescEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#HSDescEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.HSDescEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event triggered when we fetch a hidden service descriptor that currently isn't in our cache.</p>
+<p>The HS_DESC event was introduced in tor version 0.2.5.2-alpha.</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.2.0.</span></p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.3.0: </span>Added the reason attribute.</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.5.0: </span>Added the replica attribute.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>action</strong> (<a class="reference internal" href="control.html#stem.HSDescAction" title="stem.HSDescAction"><em>stem.HSDescAction</em></a>) -- what is happening with the descriptor</li>
+<li><strong>address</strong> (<em>str</em>) -- hidden service address</li>
+<li><strong>authentication</strong> (<a class="reference internal" href="control.html#stem.HSAuth" title="stem.HSAuth"><em>stem.HSAuth</em></a>) -- service's authentication method</li>
+<li><strong>directory</strong> (<em>str</em>) -- hidden service directory servicing the request</li>
+<li><strong>directory_fingerprint</strong> (<em>str</em>) -- hidden service directory's finterprint</li>
+<li><strong>directory_nickname</strong> (<em>str</em>) -- hidden service directory's nickname if it was provided</li>
+<li><strong>descriptor_id</strong> (<em>str</em>) -- descriptor identifier</li>
+<li><strong>reason</strong> (<a class="reference internal" href="control.html#stem.HSDescReason" title="stem.HSDescReason"><em>stem.HSDescReason</em></a>) -- reason the descriptor failed to be fetched</li>
+<li><strong>replica</strong> (<em>int</em>) -- replica number the descriptor involves</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.HSDescContentEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">HSDescContentEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#HSDescContentEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.HSDescContentEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Provides the content of hidden service descriptors we fetch.</p>
+<p>The HS_DESC_CONTENT event was introduced in tor version 0.2.7.1-alpha.</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.4.0.</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>address</strong> (<em>str</em>) -- hidden service address</li>
+<li><strong>descriptor_id</strong> (<em>str</em>) -- descriptor identifier</li>
+<li><strong>directory</strong> (<em>str</em>) -- hidden service directory servicing the request</li>
+<li><strong>directory_fingerprint</strong> (<em>str</em>) -- hidden service directory's finterprint</li>
+<li><strong>directory_nickname</strong> (<em>str</em>) -- hidden service directory's nickname if it was provided</li>
+<li><strong>descriptor</strong> (<a class="reference internal" href="descriptor/hidden_service_descriptor.html#stem.descriptor.hidden_service_descriptor.HiddenServiceDescriptor" title="stem.descriptor.hidden_service_descriptor.HiddenServiceDescriptor"><em>stem.descriptor.hidden_service_descriptor.HiddenServiceDescriptor</em></a>) -- descriptor that was retrieved</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.LogEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">LogEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#LogEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.LogEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Tor logging event. These are the most visible kind of event since, by
+default, tor logs at the NOTICE <a class="reference internal" href="control.html#stem.Runlevel" title="stem.Runlevel"><tt class="xref py py-data docutils literal"><span class="pre">Runlevel</span></tt></a> to stdout.</p>
+<p>The logging events were some of the first Control Protocol V1 events
+and were introduced in tor version 0.1.1.1-alpha.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>runlevel</strong> (<a class="reference internal" href="control.html#stem.Runlevel" title="stem.Runlevel"><em>stem.Runlevel</em></a>) -- runlevel of the logged message</li>
+<li><strong>message</strong> (<em>str</em>) -- logged message</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.NetworkStatusEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">NetworkStatusEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#NetworkStatusEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.NetworkStatusEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event for when our copy of the consensus has changed. This was introduced in
+tor version 0.1.2.3.</p>
+<p>The NS event was introduced in tor version 0.1.2.3-alpha.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>desc</strong> (<em>list</em>) -- <a class="reference internal" href="descriptor/router_status_entry.html#stem.descriptor.router_status_entry.RouterStatusEntryV3" title="stem.descriptor.router_status_entry.RouterStatusEntryV3"><tt class="xref py py-class docutils literal"><span class="pre">RouterStatusEntryV3</span></tt></a> for the changed descriptors</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.NetworkLivenessEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">NetworkLivenessEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#NetworkLivenessEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.NetworkLivenessEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event for when the network becomes reachable or unreachable.</p>
+<p>The NETWORK_LIVENESS event was introduced in tor version 0.2.7.2-alpha.</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.5.0.</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>status</strong> (<em>str</em>) -- status of the network ('UP', 'DOWN', or possibly other
+statuses in the future)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.NewConsensusEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">NewConsensusEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#NewConsensusEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.NewConsensusEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event for when we have a new consensus. This is similar to
+<a class="reference internal" href="#stem.response.events.NetworkStatusEvent" title="stem.response.events.NetworkStatusEvent"><tt class="xref py py-class docutils literal"><span class="pre">NetworkStatusEvent</span></tt></a>, except that it contains
+the whole consensus so anything not listed is implicitly no longer
+recommended.</p>
+<p>The NEWCONSENSUS event was introduced in tor version 0.2.1.13-alpha.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>desc</strong> (<em>list</em>) -- <a class="reference internal" href="descriptor/router_status_entry.html#stem.descriptor.router_status_entry.RouterStatusEntryV3" title="stem.descriptor.router_status_entry.RouterStatusEntryV3"><tt class="xref py py-class docutils literal"><span class="pre">RouterStatusEntryV3</span></tt></a> for the changed descriptors</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.NewDescEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">NewDescEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#NewDescEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.NewDescEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event that indicates that a new descriptor is available.</p>
+<p>The fingerprint or nickname values in our 'relays' may be <strong>None</strong> if the
+VERBOSE_NAMES feature isn't enabled. The option was first introduced in tor
+version 0.1.2.2, and on by default after 0.2.2.1.</p>
+<p>The NEWDESC event was one of the first Control Protocol V1 events and was
+introduced in tor version 0.1.1.1-alpha.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>relays</strong> (<em>tuple</em>) -- <strong>(fingerprint, nickname)</strong> tuples for the relays with
+new descriptors</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.ORConnEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">ORConnEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#ORConnEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.ORConnEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event that indicates a change in a relay connection. The 'endpoint' could be
+any of several things including a...</p>
+<ul class="simple">
+<li>fingerprint</li>
+<li>nickname</li>
+<li>'fingerprint=nickname' pair</li>
+<li>address:port</li>
+</ul>
+<p>The derived 'endpoint_*' attributes are generally more useful.</p>
+<p>The ORCONN event was one of the first Control Protocol V1 events and was
+introduced in tor version 0.1.1.1-alpha. Its id attribute was added in
+version 0.2.5.2-alpha.</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.2.0: </span>Added the id attribute.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>id</strong> (<em>str</em>) -- connection identifier</li>
+<li><strong>endpoint</strong> (<em>str</em>) -- relay that the event concerns</li>
+<li><strong>endpoint_fingerprint</strong> (<em>str</em>) -- endpoint's finterprint if it was provided</li>
+<li><strong>endpoint_nickname</strong> (<em>str</em>) -- endpoint's nickname if it was provided</li>
+<li><strong>endpoint_address</strong> (<em>str</em>) -- endpoint's address if it was provided</li>
+<li><strong>endpoint_port</strong> (<em>int</em>) -- endpoint's port if it was provided</li>
+<li><strong>status</strong> (<a class="reference internal" href="control.html#stem.ORStatus" title="stem.ORStatus"><em>stem.ORStatus</em></a>) -- state of the connection</li>
+<li><strong>reason</strong> (<a class="reference internal" href="control.html#stem.ORClosureReason" title="stem.ORClosureReason"><em>stem.ORClosureReason</em></a>) -- reason for the connection to be closed</li>
+<li><strong>circ_count</strong> (<em>int</em>) -- number of established and pending circuits</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.SignalEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">SignalEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#SignalEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.SignalEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event that indicates that tor has received and acted upon a signal being sent
+to the process. As of tor version 0.2.4.6 the only signals conveyed by this
+event are...</p>
+<ul class="simple">
+<li>RELOAD</li>
+<li>DUMP</li>
+<li>DEBUG</li>
+<li>NEWNYM</li>
+<li>CLEARDNSCACHE</li>
+</ul>
+<p>The SIGNAL event was introduced in tor version 0.2.3.1-alpha.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>signal</strong> (<a class="reference internal" href="control.html#stem.Signal" title="stem.Signal"><em>stem.Signal</em></a>) -- signal that tor received</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.StatusEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">StatusEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#StatusEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.StatusEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Notification of a change in tor's state. These are generally triggered for
+the same sort of things as log messages of the NOTICE level or higher.
+However, unlike <a class="reference internal" href="#stem.response.events.LogEvent" title="stem.response.events.LogEvent"><tt class="xref py py-class docutils literal"><span class="pre">LogEvent</span></tt></a> these contain well
+formed data.</p>
+<p>The STATUS_GENERAL, STATUS_CLIENT, STATUS_SERVER events were introduced
+in tor version 0.1.2.3-alpha.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>status_type</strong> (<a class="reference internal" href="control.html#stem.StatusType" title="stem.StatusType"><em>stem.StatusType</em></a>) -- category of the status event</li>
+<li><strong>runlevel</strong> (<a class="reference internal" href="control.html#stem.Runlevel" title="stem.Runlevel"><em>stem.Runlevel</em></a>) -- runlevel of the logged message</li>
+<li><strong>action</strong> (<em>str</em>) -- activity that caused this message</li>
+<li><strong>arguments</strong> (<em>dict</em>) -- attributes about the event</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.StreamEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">StreamEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#StreamEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.StreamEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event that indicates that a stream has changed.</p>
+<p>The STREAM event was one of the first Control Protocol V1 events and was
+introduced in tor version 0.1.1.1-alpha.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>id</strong> (<em>str</em>) -- stream identifier</li>
+<li><strong>status</strong> (<a class="reference internal" href="control.html#stem.StreamStatus" title="stem.StreamStatus"><em>stem.StreamStatus</em></a>) -- reported status for the stream</li>
+<li><strong>circ_id</strong> (<em>str</em>) -- circuit that the stream is attached to, this is <strong>None</strong> of
+the stream is unattached</li>
+<li><strong>target</strong> (<em>str</em>) -- destination of the stream</li>
+<li><strong>target_address</strong> (<em>str</em>) -- destination address (ip, hostname, or '(Tor_internal)')</li>
+<li><strong>target_port</strong> (<em>int</em>) -- destination port</li>
+<li><strong>reason</strong> (<a class="reference internal" href="control.html#stem.StreamClosureReason" title="stem.StreamClosureReason"><em>stem.StreamClosureReason</em></a>) -- reason for the stream to be closed</li>
+<li><strong>remote_reason</strong> (<a class="reference internal" href="control.html#stem.StreamClosureReason" title="stem.StreamClosureReason"><em>stem.StreamClosureReason</em></a>) -- remote side's reason for the stream to be closed</li>
+<li><strong>source</strong> (<a class="reference internal" href="control.html#stem.StreamSource" title="stem.StreamSource"><em>stem.StreamSource</em></a>) -- origin of the REMAP request</li>
+<li><strong>source_addr</strong> (<em>str</em>) -- requester of the connection</li>
+<li><strong>source_address</strong> (<em>str</em>) -- requester address (ip or hostname)</li>
+<li><strong>source_port</strong> (<em>int</em>) -- requester port</li>
+<li><strong>purpose</strong> (<a class="reference internal" href="control.html#stem.StreamPurpose" title="stem.StreamPurpose"><em>stem.StreamPurpose</em></a>) -- purpose for the stream</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.StreamBwEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">StreamBwEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#StreamBwEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.StreamBwEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event (emitted approximately every second) with the bytes sent and received
+by the application since the last such event on this stream.</p>
+<p>The STREAM_BW event was introduced in tor version 0.1.2.8-beta.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>id</strong> (<em>str</em>) -- stream identifier</li>
+<li><strong>written</strong> (<em>long</em>) -- bytes sent by the application</li>
+<li><strong>read</strong> (<em>long</em>) -- bytes received by the application</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.TransportLaunchedEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">TransportLaunchedEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#TransportLaunchedEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.TransportLaunchedEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event triggered when a pluggable transport is launched.</p>
+<p>The TRANSPORT_LAUNCHED event was introduced in tor version 0.2.5.0-alpha.</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.1.0.</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>type</strong> (<em>str</em>) -- 'server' or 'client'</li>
+<li><strong>name</strong> (<em>str</em>) -- name of the pluggable transport</li>
+<li><strong>address</strong> (<em>str</em>) -- IPv4 or IPv6 address where the transport is listening for
+connections</li>
+<li><strong>port</strong> (<em>int</em>) -- port where the transport is listening for connections</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.ConnectionBandwidthEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">ConnectionBandwidthEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#ConnectionBandwidthEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.ConnectionBandwidthEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event emitted every second with the bytes sent and received by tor on a
+per-connection basis.</p>
+<p>The CONN_BW event was introduced in tor version 0.2.5.2-alpha.</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.2.0.</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>id</strong> (<em>str</em>) -- connection identifier</li>
+<li><strong>type</strong> (<a class="reference internal" href="control.html#stem.ConnectionType" title="stem.ConnectionType"><em>stem.ConnectionType</em></a>) -- connection type</li>
+<li><strong>read</strong> (<em>long</em>) -- bytes received by tor that second</li>
+<li><strong>written</strong> (<em>long</em>) -- bytes sent by tor that second</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.CircuitBandwidthEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">CircuitBandwidthEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#CircuitBandwidthEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.CircuitBandwidthEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event emitted every second with the bytes sent and received by tor on a
+per-circuit basis.</p>
+<p>The CIRC_BW event was introduced in tor version 0.2.5.2-alpha.</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.2.0.</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>id</strong> (<em>str</em>) -- circuit identifier</li>
+<li><strong>read</strong> (<em>long</em>) -- bytes received by tor that second</li>
+<li><strong>written</strong> (<em>long</em>) -- bytes sent by tor that second</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.CellStatsEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">CellStatsEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#CellStatsEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.CellStatsEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event emitted every second with a count of the number of cells types broken
+down by the circuit. <strong>These events are only emitted if TestingTorNetwork is
+set.</strong></p>
+<p>The CELL_STATS event was introduced in tor version 0.2.5.2-alpha.</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.2.0.</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>id</strong> (<em>str</em>) -- circuit identifier</li>
+<li><strong>inbound_queue</strong> (<em>str</em>) -- inbound queue identifier</li>
+<li><strong>inbound_connection</strong> (<em>str</em>) -- inbound connection identifier</li>
+<li><strong>inbound_added</strong> (<em>dict</em>) -- mapping of added inbound cell types to their count</li>
+<li><strong>inbound_removed</strong> (<em>dict</em>) -- mapping of removed inbound cell types to their count</li>
+<li><strong>inbound_time</strong> (<em>dict</em>) -- mapping of inbound cell types to the time they took to write in milliseconds</li>
+<li><strong>outbound_queue</strong> (<em>str</em>) -- outbound queue identifier</li>
+<li><strong>outbound_connection</strong> (<em>str</em>) -- outbound connection identifier</li>
+<li><strong>outbound_added</strong> (<em>dict</em>) -- mapping of added outbound cell types to their count</li>
+<li><strong>outbound_removed</strong> (<em>dict</em>) -- mapping of removed outbound cell types to their count</li>
+<li><strong>outbound_time</strong> (<em>dict</em>) -- mapping of outbound cell types to the time they took to write in milliseconds</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.response.events.TokenBucketEmptyEvent">
+<em class="property">class </em><tt class="descclassname">stem.response.events.</tt><tt class="descname">TokenBucketEmptyEvent</tt><big>(</big><em>parsed_content</em>, <em>raw_content</em><big>)</big><a class="reference internal" href="../_modules/stem/response/events.html#TokenBucketEmptyEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.response.events.TokenBucketEmptyEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.response.events.Event" title="stem.response.events.Event"><tt class="xref py py-class docutils literal"><span class="pre">stem.response.events.Event</span></tt></a></p>
+<p>Event emitted when refilling an empty token bucket. <strong>These events are only
+emitted if TestingTorNetwork is set.</strong></p>
+<p>The TB_EMPTY event was introduced in tor version 0.2.5.2-alpha.</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.2.0.</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>bucket</strong> (<a class="reference internal" href="control.html#stem.TokenBucket" title="stem.TokenBucket"><em>stem.TokenBucket</em></a>) -- bucket being refilled</li>
+<li><strong>id</strong> (<em>str</em>) -- connection identifier</li>
+<li><strong>read</strong> (<em>int</em>) -- time in milliseconds since the read bucket was last refilled</li>
+<li><strong>written</strong> (<em>int</em>) -- time in milliseconds since the write bucket was last refilled</li>
+<li><strong>last_refill</strong> (<em>int</em>) -- time in milliseconds the bucket has been empty since last refilled</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

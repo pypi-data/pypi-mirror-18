@@ -1,0 +1,154 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Votes by Bandwidth Authorities &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>Votes by Bandwidth Authorities</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../index.html">Home</a></li>
+          <li><a href="../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../over_the_river.html">Hidden Services</a></li>
+              <li><a href="../mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../api.html">API</a>
+            <ul>
+              <li><a href="../../api/control.html">stem.control</a></li>
+              <li><a href="../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../api/process.html">stem.process</a></li>
+              <li><a href="../../api/response.html">stem.response</a></li>
+              <li><a href="../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../api/version.html">stem.version</a></li>
+              <li><a href="../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../faq.html">FAQ</a></li>
+              <li><a href="../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="votes-by-bandwidth-authorities">
+<h1>Votes by Bandwidth Authorities<a class="headerlink" href="#votes-by-bandwidth-authorities" title="Permalink to this headline">¶</a></h1>
+<a class="reference external image-reference" href="../double_double_toil_and_trouble.html"><img alt="../../_images/back.png" src="../../_images/back.png" /></a>
+<p>Tor takes into account a relay's throughput when picking a route through the
+Tor network for its circuits. That is to say large, fast relays receive more
+traffic than small ones since they can better service the load.</p>
+<p>To determine a relay's throughput special authorities, called <strong>bandwidth
+authorities</strong>, take periodic measurements using them. The <a class="reference external" href="https://blog.torproject.org/blog/lifecycle-of-a-new-relay">lifecycle of new Tor
+relays</a> is a bit
+more complicated than that, but that's the general idea.</p>
+<p>Bandwidth authorities include their measurements in their votes. The following
+gets their current votes then prints how many relays it had a measurement for.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">stem.descriptor</span> <span class="kn">import</span> <span class="n">remote</span>
+
+<span class="c"># request votes from all the bandwidth authorities</span>
+
+<span class="n">queries</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">downloader</span> <span class="o">=</span> <span class="n">remote</span><span class="o">.</span><span class="n">DescriptorDownloader</span><span class="p">()</span>
+
+<span class="k">for</span> <span class="n">authority</span> <span class="ow">in</span> <span class="n">remote</span><span class="o">.</span><span class="n">get_authorities</span><span class="p">()</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+  <span class="k">if</span> <span class="n">authority</span><span class="o">.</span><span class="n">is_bandwidth_authority</span><span class="p">:</span>
+    <span class="n">queries</span><span class="p">[</span><span class="n">authority</span><span class="o">.</span><span class="n">nickname</span><span class="p">]</span> <span class="o">=</span> <span class="n">downloader</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
+      <span class="s">&#39;/tor/status-vote/current/authority&#39;</span><span class="p">,</span>
+      <span class="n">endpoints</span> <span class="o">=</span> <span class="p">[(</span><span class="n">authority</span><span class="o">.</span><span class="n">address</span><span class="p">,</span> <span class="n">authority</span><span class="o">.</span><span class="n">dir_port</span><span class="p">)],</span>
+    <span class="p">)</span>
+
+<span class="k">for</span> <span class="n">authority_name</span><span class="p">,</span> <span class="n">query</span> <span class="ow">in</span> <span class="n">queries</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+  <span class="k">try</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;Getting </span><span class="si">%s</span><span class="s">&#39;s vote from </span><span class="si">%s</span><span class="s">:&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">authority_name</span><span class="p">,</span> <span class="n">query</span><span class="o">.</span><span class="n">download_url</span><span class="p">))</span>
+
+    <span class="n">measured</span><span class="p">,</span> <span class="n">unmeasured</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+
+    <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">query</span><span class="o">.</span><span class="n">run</span><span class="p">():</span>
+      <span class="k">if</span> <span class="n">desc</span><span class="o">.</span><span class="n">measured</span><span class="p">:</span>
+        <span class="n">measured</span> <span class="o">+=</span> <span class="mi">1</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">unmeasured</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="s">&#39;  </span><span class="si">%i</span><span class="s"> measured entries and </span><span class="si">%i</span><span class="s"> unmeasured&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">measured</span><span class="p">,</span> <span class="n">unmeasured</span><span class="p">))</span>
+  <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;  failed to get the vote (</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="n">exc</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-python"><pre>% python bandwidth_auth_measured_counts.py
+Getting gabelmoo's vote from http://131.188.40.189:80/tor/status-vote/current/authority:
+  5935 measured entries and 1332 unmeasured
+Getting tor26's vote from http://86.59.21.38:80/tor/status-vote/current/authority:
+  5735 measured entries and 1690 unmeasured
+Getting moria1's vote from http://128.31.0.39:9131/tor/status-vote/current/authority:
+  6647 measured entries and 625 unmeasured
+Getting maatuska's vote from http://171.25.193.9:443/tor/status-vote/current/authority:
+  6313 measured entries and 1112 unmeasured</pre>
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

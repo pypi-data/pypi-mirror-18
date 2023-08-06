@@ -1,0 +1,488 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Network Status Documents &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>Network Status Documents</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../index.html">Home</a></li>
+          <li><a href="../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../api.html">API</a>
+            <ul>
+              <li><a href="../control.html">stem.control</a></li>
+              <li><a href="../connection.html">stem.connection</a></li>
+              <li><a href="../socket.html">stem.socket</a></li>
+              <li><a href="../process.html">stem.process</a></li>
+              <li><a href="../response.html">stem.response</a></li>
+              <li><a href="../exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../version.html">stem.version</a></li>
+              <li><a href="../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../faq.html">FAQ</a></li>
+              <li><a href="../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="module-stem.descriptor.networkstatus">
+<span id="network-status-documents"></span><h1>Network Status Documents<a class="headerlink" href="#module-stem.descriptor.networkstatus" title="Permalink to this headline">¶</a></h1>
+<p>Parsing for Tor network status documents. This supports both the v2 and v3
+<a class="reference external" href="https://gitweb.torproject.org/torspec.git/tree/dir-spec.txt">dir-spec</a>.
+Documents can be obtained from a few sources...</p>
+<ul class="simple">
+<li>The 'cached-consensus' file in Tor's data directory.</li>
+<li>Archived descriptors provided by <a class="reference external" href="https://collector.torproject.org/">CollecTor</a>.</li>
+<li>Directory authorities and mirrors via their DirPort.</li>
+</ul>
+<p>... and contain the following sections...</p>
+<ul class="simple">
+<li>document header</li>
+<li>list of <a class="reference internal" href="#stem.descriptor.networkstatus.DirectoryAuthority" title="stem.descriptor.networkstatus.DirectoryAuthority"><tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.networkstatus.DirectoryAuthority</span></tt></a></li>
+<li>list of <a class="reference internal" href="router_status_entry.html#stem.descriptor.router_status_entry.RouterStatusEntry" title="stem.descriptor.router_status_entry.RouterStatusEntry"><tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.router_status_entry.RouterStatusEntry</span></tt></a></li>
+<li>document footer</li>
+</ul>
+<p><strong>For a great graphical overview see</strong> <a class="reference external" href="https://jordan-wright.github.io/images/blog/how_tor_works/consensus.png">Jordan Wright's chart describing the
+anatomy of the consensus</a>.</p>
+<p>Of these, the router status entry section can be quite large (on the order of
+hundreds of kilobytes). As such we provide a couple of methods for reading
+network status documents through <a class="reference internal" href="descriptor.html#stem.descriptor.__init__.parse_file" title="stem.descriptor.__init__.parse_file"><tt class="xref py py-func docutils literal"><span class="pre">parse_file()</span></tt></a>.
+For more information see <a class="reference internal" href="descriptor.html#stem.descriptor.__init__.DocumentHandler" title="stem.descriptor.__init__.DocumentHandler"><tt class="xref py py-func docutils literal"><span class="pre">DocumentHandler()</span></tt></a>...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">stem.descriptor</span> <span class="kn">import</span> <span class="n">parse_file</span><span class="p">,</span> <span class="n">DocumentHandler</span>
+
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;.tor/cached-consensus&#39;</span><span class="p">,</span> <span class="s">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">consensus_file</span><span class="p">:</span>
+  <span class="c"># Processes the routers as we read them in. The routers refer to a document</span>
+  <span class="c"># with an unset &#39;routers&#39; attribute.</span>
+
+  <span class="k">for</span> <span class="n">router</span> <span class="ow">in</span> <span class="n">parse_file</span><span class="p">(</span><span class="n">consensus_file</span><span class="p">,</span> <span class="s">&#39;network-status-consensus-3 1.0&#39;</span><span class="p">,</span> <span class="n">document_handler</span> <span class="o">=</span> <span class="n">DocumentHandler</span><span class="o">.</span><span class="n">ENTRIES</span><span class="p">):</span>
+    <span class="k">print</span> <span class="n">router</span><span class="o">.</span><span class="n">nickname</span>
+</pre></div>
+</div>
+<p><strong>Module Overview:</strong></p>
+<div class="highlight-python"><pre>NetworkStatusDocument - Network status document
+  |- NetworkStatusDocumentV2 - Version 2 network status document
+  |- NetworkStatusDocumentV3 - Version 3 network status document
+  +- BridgeNetworkStatusDocument - Version 3 network status document for bridges
+
+KeyCertificate - Certificate used to authenticate an authority
+DocumentSignature - Signature of a document by a directory authority
+DirectoryAuthority - Directory authority as defined in a v3 network status document</pre>
+</div>
+<dl class="class">
+<dt id="stem.descriptor.networkstatus.PackageVersion">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.networkstatus.</tt><tt class="descname">PackageVersion</tt><a class="reference internal" href="../../_modules/stem/descriptor/networkstatus.html#PackageVersion"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.networkstatus.PackageVersion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.descriptor.networkstatus.PackageVersion" title="stem.descriptor.networkstatus.PackageVersion"><tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.networkstatus.PackageVersion</span></tt></a></p>
+<p>Latest recommended version of a package that's available.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> (<em>str</em>) -- name of the package</li>
+<li><strong>version</strong> (<em>str</em>) -- latest recommended version</li>
+<li><strong>url</strong> (<em>str</em>) -- package's url</li>
+<li><strong>digests</strong> (<em>dict</em>) -- mapping of digest types to their value</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.descriptor.networkstatus.SharedRandomnessCommitment">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.networkstatus.</tt><tt class="descname">SharedRandomnessCommitment</tt><a class="reference internal" href="../../_modules/stem/descriptor/networkstatus.html#SharedRandomnessCommitment"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.networkstatus.SharedRandomnessCommitment" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.descriptor.networkstatus.SharedRandomnessCommitment" title="stem.descriptor.networkstatus.SharedRandomnessCommitment"><tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.networkstatus.SharedRandomnessCommitment</span></tt></a></p>
+<p>Directory authority's commitment for generating the next shared random value.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>version</strong> (<em>int</em>) -- shared randomness protocol version</li>
+<li><strong>algorithm</strong> (<em>str</em>) -- hash algorithm used to make the commitment</li>
+<li><strong>identity</strong> (<em>str</em>) -- authority's sha1 identity fingerprint</li>
+<li><strong>commit</strong> (<em>str</em>) -- base64 encoded commitment hash to the shared random value</li>
+<li><strong>reveal</strong> (<em>str</em>) -- base64 encoded commitment to the shared random value,
+<strong>None</strong> of not provided</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.descriptor.networkstatus.NetworkStatusDocument">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.networkstatus.</tt><tt class="descname">NetworkStatusDocument</tt><big>(</big><em>contents</em>, <em>lazy_load=False</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/networkstatus.html#NetworkStatusDocument"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.networkstatus.NetworkStatusDocument" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.Descriptor</span></tt></p>
+<p>Common parent for network status documents.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.descriptor.networkstatus.NetworkStatusDocumentV2">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.networkstatus.</tt><tt class="descname">NetworkStatusDocumentV2</tt><big>(</big><em>raw_content</em>, <em>validate=False</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/networkstatus.html#NetworkStatusDocumentV2"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.networkstatus.NetworkStatusDocumentV2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.descriptor.networkstatus.NetworkStatusDocument" title="stem.descriptor.networkstatus.NetworkStatusDocument"><tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.networkstatus.NetworkStatusDocument</span></tt></a></p>
+<p>Version 2 network status document. These have been deprecated and are no
+longer generated by Tor.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>routers</strong> (<em>dict</em>) -- fingerprints to <a class="reference internal" href="router_status_entry.html#stem.descriptor.router_status_entry.RouterStatusEntryV2" title="stem.descriptor.router_status_entry.RouterStatusEntryV2"><tt class="xref py py-class docutils literal"><span class="pre">RouterStatusEntryV2</span></tt></a>
+contained in the document</li>
+<li><strong>version</strong> (<em>int</em>) -- <strong>*</strong> document version</li>
+<li><strong>hostname</strong> (<em>str</em>) -- <strong>*</strong> hostname of the authority</li>
+<li><strong>address</strong> (<em>str</em>) -- <strong>*</strong> authority's IP address</li>
+<li><strong>dir_port</strong> (<em>int</em>) -- <strong>*</strong> authority's DirPort</li>
+<li><strong>fingerprint</strong> (<em>str</em>) -- <strong>*</strong> authority's fingerprint</li>
+<li><strong>contact</strong> (<em>str</em>) -- <strong>*</strong> authority's contact information</li>
+<li><strong>signing_key</strong> (<em>str</em>) -- <strong>*</strong> authority's public signing key</li>
+<li><strong>client_versions</strong> (<em>list</em>) -- list of recommended client tor version strings</li>
+<li><strong>server_versions</strong> (<em>list</em>) -- list of recommended server tor version strings</li>
+<li><strong>published</strong> (<em>datetime</em>) -- <strong>*</strong> time when the document was published</li>
+<li><strong>options</strong> (<em>list</em>) -- <strong>*</strong> list of things that this authority decides</li>
+<li><strong>signing_authority</strong> (<em>str</em>) -- <strong>*</strong> name of the authority signing the document</li>
+<li><strong>signature</strong> (<em>str</em>) -- <strong>*</strong> authority's signature for the document</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>*</strong> attribute is either required when we're parsed with validation or has
+a default value, others are left as <strong>None</strong> if undefined</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.descriptor.networkstatus.NetworkStatusDocumentV3">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.networkstatus.</tt><tt class="descname">NetworkStatusDocumentV3</tt><big>(</big><em>raw_content</em>, <em>validate=False</em>, <em>default_params=True</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/networkstatus.html#NetworkStatusDocumentV3"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.networkstatus.NetworkStatusDocumentV3" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.descriptor.networkstatus.NetworkStatusDocument" title="stem.descriptor.networkstatus.NetworkStatusDocument"><tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.networkstatus.NetworkStatusDocument</span></tt></a></p>
+<p>Version 3 network status document. This could be either a vote or consensus.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>routers</strong> (<em>dict</em>) -- fingerprint to <a class="reference internal" href="router_status_entry.html#stem.descriptor.router_status_entry.RouterStatusEntryV3" title="stem.descriptor.router_status_entry.RouterStatusEntryV3"><tt class="xref py py-class docutils literal"><span class="pre">RouterStatusEntryV3</span></tt></a>
+mapping for relays contained in the document</li>
+<li><strong>version</strong> (<em>int</em>) -- <strong>*</strong> document version</li>
+<li><strong>version_flavor</strong> (<em>str</em>) -- <strong>*</strong> flavor associated with the document (such as 'microdesc')</li>
+<li><strong>is_consensus</strong> (<em>bool</em>) -- <strong>*</strong> <strong>True</strong> if the document is a consensus</li>
+<li><strong>is_vote</strong> (<em>bool</em>) -- <strong>*</strong> <strong>True</strong> if the document is a vote</li>
+<li><strong>is_microdescriptor</strong> (<em>bool</em>) -- <strong>*</strong> <strong>True</strong> if this is a microdescriptor
+flavored document, <strong>False</strong> otherwise</li>
+<li><strong>valid_after</strong> (<em>datetime</em>) -- <strong>*</strong> time when the consensus became valid</li>
+<li><strong>fresh_until</strong> (<em>datetime</em>) -- <strong>*</strong> time when the next consensus should be produced</li>
+<li><strong>valid_until</strong> (<em>datetime</em>) -- <strong>*</strong> time when this consensus becomes obsolete</li>
+<li><strong>vote_delay</strong> (<em>int</em>) -- <strong>*</strong> number of seconds allowed for collecting votes
+from all authorities</li>
+<li><strong>dist_delay</strong> (<em>int</em>) -- <strong>*</strong> number of seconds allowed for collecting
+signatures from all authorities</li>
+<li><strong>client_versions</strong> (<em>list</em>) -- list of recommended client tor versions</li>
+<li><strong>server_versions</strong> (<em>list</em>) -- list of recommended server tor versions</li>
+<li><strong>packages</strong> (<em>list</em>) -- <strong>*</strong> list of <a class="reference internal" href="#stem.descriptor.networkstatus.PackageVersion" title="stem.descriptor.networkstatus.PackageVersion"><tt class="xref py py-data docutils literal"><span class="pre">PackageVersion</span></tt></a> entries</li>
+<li><strong>known_flags</strong> (<em>list</em>) -- <strong>*</strong> list of <a class="reference internal" href="../control.html#stem.Flag" title="stem.Flag"><tt class="xref py py-data docutils literal"><span class="pre">Flag</span></tt></a> for the router's flags</li>
+<li><strong>params</strong> (<em>dict</em>) -- <strong>*</strong> dict of parameter(<strong>str</strong>) =&gt; value(<strong>int</strong>) mappings</li>
+<li><strong>directory_authorities</strong> (<em>list</em>) -- <strong>*</strong> list of <a class="reference internal" href="#stem.descriptor.networkstatus.DirectoryAuthority" title="stem.descriptor.networkstatus.DirectoryAuthority"><tt class="xref py py-class docutils literal"><span class="pre">DirectoryAuthority</span></tt></a>
+objects that have generated this document</li>
+<li><strong>signatures</strong> (<em>list</em>) -- <strong>*</strong> <a class="reference internal" href="#stem.descriptor.networkstatus.DocumentSignature" title="stem.descriptor.networkstatus.DocumentSignature"><tt class="xref py py-class docutils literal"><span class="pre">DocumentSignature</span></tt></a>
+of the authorities that have signed the document</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Consensus Attributes:</strong></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>consensus_method</strong> (<em>int</em>) -- method version used to generate this consensus</li>
+<li><strong>bandwidth_weights</strong> (<em>dict</em>) -- dict of weight(str) =&gt; value(int) mappings</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Vote Attributes:</strong></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>consensus_methods</strong> (<em>list</em>) -- list of ints for the supported method versions</li>
+<li><strong>published</strong> (<em>datetime</em>) -- time when the document was published</li>
+<li><strong>flag_thresholds</strong> (<em>dict</em>) -- <strong>*</strong> mapping of internal performance thresholds used while making the vote, values are <strong>ints</strong> or <strong>floats</strong></li>
+<li><strong>is_shared_randomness_participate</strong> (<em>bool</em>) -- <strong>*</strong> <strong>True</strong> if this authority
+participates in establishing a shared random value, <strong>False</strong> otherwise</li>
+<li><strong>shared_randomness_commitments</strong> (<em>list</em>) -- <strong>*</strong> list of
+<a class="reference internal" href="#stem.descriptor.networkstatus.SharedRandomnessCommitment" title="stem.descriptor.networkstatus.SharedRandomnessCommitment"><tt class="xref py py-data docutils literal"><span class="pre">SharedRandomnessCommitment</span></tt></a> entries</li>
+<li><strong>shared_randomness_previous_reveal_count</strong> (<em>int</em>) -- number of commitments
+used to generate the last shared random value</li>
+<li><strong>shared_randomness_previous_value</strong> (<em>str</em>) -- base64 encoded last shared random
+value</li>
+<li><strong>shared_randomness_current_reveal_count</strong> (<em>int</em>) -- number of commitments
+used to generate the current shared random value</li>
+<li><strong>shared_randomness_current_value</strong> (<em>str</em>) -- base64 encoded current shared
+random value</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>*</strong> attribute is either required when we're parsed with validation or has
+a default value, others are left as None if undefined</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.4.0: </span>Added the packages attribute.</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.5.0: </span>Added the is_shared_randomness_participate, shared_randomness_commitments,
+shared_randomness_previous_reveal_count,
+shared_randomness_previous_value,
+shared_randomness_current_reveal_count, and
+shared_randomness_current_value attributes.</p>
+<dl class="attribute">
+<dt id="stem.descriptor.networkstatus.NetworkStatusDocumentV3.HEADER_PARSER_FOR_LINE">
+<tt class="descname">HEADER_PARSER_FOR_LINE</tt><em class="property"> = {'valid-after': &lt;function _parse at 0x95fae64&gt;, 'server-versions': &lt;function _parse at 0x95faf44&gt;, 'shared-rand-previous-value': &lt;function _parse_shared_rand_previous_value at 0x95fadf4&gt;, 'network-status-version': &lt;function _parse_header_network_status_version_line at 0x95faae4&gt;, 'consensus-method': &lt;function _parse_header_consensus_method_line at 0x95fabfc&gt;, 'client-versions': &lt;function _parse at 0x95faf0c&gt;, 'known-flags': &lt;function _parse at 0x95fafb4&gt;, 'voting-delay': &lt;function _parse_header_voting_delay_line at 0x95fac34&gt;, 'shared-rand-participate': &lt;function &lt;lambda&gt; at 0x960809c&gt;, 'package': &lt;function _parse_package_line at 0x95fad84&gt;, 'params': &lt;function _parse_header_parameters_line at 0x95facdc&gt;, 'shared-rand-commit': &lt;function _parsed_shared_rand_commit at 0x95fadbc&gt;, 'fresh-until': &lt;function _parse at 0x95fae9c&gt;, 'valid-until': &lt;function _parse at 0x95faed4&gt;, 'published': &lt;function _parse at 0x95faa04&gt;, 'vote-status': &lt;function _parse_header_vote_status_line at 0x95fab8c&gt;, 'shared-rand-current-value': &lt;function _parse_shared_rand_current_value at 0x95fae2c&gt;, 'flag-thresholds': &lt;function _parse_header_flag_thresholds_line at 0x95faca4&gt;, 'consensus-methods': &lt;function _parse_header_consensus_methods_line at 0x95fabc4&gt;}</em><a class="headerlink" href="#stem.descriptor.networkstatus.NetworkStatusDocumentV3.HEADER_PARSER_FOR_LINE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="stem.descriptor.networkstatus.NetworkStatusDocumentV3.FOOTER_PARSER_FOR_LINE">
+<tt class="descname">FOOTER_PARSER_FOR_LINE</tt><em class="property"> = {'directory-signature': &lt;function _parse_footer_directory_signature_line at 0x95fad4c&gt;, 'bandwidth-weights': &lt;function _parse at 0x9608064&gt;, 'directory-footer': &lt;function _parse_directory_footer_line at 0x95fad14&gt;}</em><a class="headerlink" href="#stem.descriptor.networkstatus.NetworkStatusDocumentV3.FOOTER_PARSER_FOR_LINE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.networkstatus.NetworkStatusDocumentV3.get_unrecognized_lines">
+<tt class="descname">get_unrecognized_lines</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/networkstatus.html#NetworkStatusDocumentV3.get_unrecognized_lines"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.networkstatus.NetworkStatusDocumentV3.get_unrecognized_lines" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.networkstatus.NetworkStatusDocumentV3.meets_consensus_method">
+<tt class="descname">meets_consensus_method</tt><big>(</big><em>method</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/networkstatus.html#NetworkStatusDocumentV3.meets_consensus_method"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.networkstatus.NetworkStatusDocumentV3.meets_consensus_method" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if we meet the given consensus-method. This works for both votes and
+consensuses, checking our 'consensus-method' and 'consensus-methods'
+entries.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>method</strong> (<em>int</em>) -- consensus-method to check for</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>True</strong> if we meet the given consensus-method, and <strong>False</strong> otherwise</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.descriptor.networkstatus.DirectoryAuthority">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.networkstatus.</tt><tt class="descname">DirectoryAuthority</tt><big>(</big><em>raw_content</em>, <em>validate=False</em>, <em>is_vote=False</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/networkstatus.html#DirectoryAuthority"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.networkstatus.DirectoryAuthority" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.Descriptor</span></tt></p>
+<p>Directory authority information obtained from a v3 network status document.</p>
+<p>Authorities can optionally use a legacy format. These are no longer found in
+practice, but have the following differences...</p>
+<ul class="simple">
+<li>The authority's nickname ends with '-legacy'.</li>
+<li>There's no <strong>contact</strong> or <strong>vote_digest</strong> attribute.</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>nickname</strong> (<em>str</em>) -- <strong>*</strong> authority's nickname</li>
+<li><strong>v3ident</strong> (<em>str</em>) -- <strong>*</strong> identity key fingerprint used to sign votes and consensus</li>
+<li><strong>hostname</strong> (<em>str</em>) -- <strong>*</strong> hostname of the authority</li>
+<li><strong>address</strong> (<em>str</em>) -- <strong>*</strong> authority's IP address</li>
+<li><strong>dir_port</strong> (<em>int</em>) -- <strong>*</strong> authority's DirPort</li>
+<li><strong>or_port</strong> (<em>int</em>) -- <strong>*</strong> authority's ORPort</li>
+<li><strong>is_legacy</strong> (<em>bool</em>) -- <strong>*</strong> if the authority's using the legacy format</li>
+<li><strong>contact</strong> (<em>str</em>) -- contact information, this is included if is_legacy is <strong>False</strong></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Consensus Attributes:</strong></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>vote_digest</strong> (<em>str</em>) -- digest of the authority that contributed to the consensus, this is included if is_legacy is <strong>False</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Vote Attributes:</strong></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>legacy_dir_key</strong> (<em>str</em>) -- fingerprint of and obsolete identity key</li>
+<li><strong>key_certificate</strong> (<a class="reference internal" href="#stem.descriptor.networkstatus.KeyCertificate" title="stem.descriptor.networkstatus.KeyCertificate"><em>stem.descriptor.networkstatus.KeyCertificate</em></a>) -- <strong>*</strong>
+authority's key certificate</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>*</strong> mandatory attribute</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.4.0: </span>Renamed our 'fingerprint' attribute to 'v3ident' (prior attribute exists
+for backward compatability, but is deprecated).</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.descriptor.networkstatus.KeyCertificate">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.networkstatus.</tt><tt class="descname">KeyCertificate</tt><big>(</big><em>raw_content</em>, <em>validate=False</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/networkstatus.html#KeyCertificate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.networkstatus.KeyCertificate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.Descriptor</span></tt></p>
+<p>Directory key certificate for a v3 network status document.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>version</strong> (<em>int</em>) -- <strong>*</strong> version of the key certificate</li>
+<li><strong>address</strong> (<em>str</em>) -- authority's IP address</li>
+<li><strong>dir_port</strong> (<em>int</em>) -- authority's DirPort</li>
+<li><strong>fingerprint</strong> (<em>str</em>) -- <strong>*</strong> authority's fingerprint</li>
+<li><strong>identity_key</strong> (<em>str</em>) -- <strong>*</strong> long term authority identity key</li>
+<li><strong>published</strong> (<em>datetime</em>) -- <strong>*</strong> time when this key was generated</li>
+<li><strong>expires</strong> (<em>datetime</em>) -- <strong>*</strong> time after which this key becomes invalid</li>
+<li><strong>signing_key</strong> (<em>str</em>) -- <strong>*</strong> directory server's public signing key</li>
+<li><strong>crosscert</strong> (<em>str</em>) -- signature made using certificate's signing key</li>
+<li><strong>certification</strong> (<em>str</em>) -- <strong>*</strong> signature of this key certificate signed with
+the identity key</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>*</strong> mandatory attribute</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.descriptor.networkstatus.DocumentSignature">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.networkstatus.</tt><tt class="descname">DocumentSignature</tt><big>(</big><em>method</em>, <em>identity</em>, <em>key_digest</em>, <em>signature</em>, <em>validate=False</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/networkstatus.html#DocumentSignature"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.networkstatus.DocumentSignature" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Directory signature of a v3 network status document.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first simple">
+<li><strong>method</strong> (<em>str</em>) -- algorithm used to make the signature</li>
+<li><strong>identity</strong> (<em>str</em>) -- fingerprint of the authority that made the signature</li>
+<li><strong>key_digest</strong> (<em>str</em>) -- digest of the signing key</li>
+<li><strong>signature</strong> (<em>str</em>) -- document signature</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>validate</strong> (<em>bool</em>) -- checks validity if <strong>True</strong></p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last"><strong>ValueError</strong> if a validity check fails</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.descriptor.networkstatus.BridgeNetworkStatusDocument">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.networkstatus.</tt><tt class="descname">BridgeNetworkStatusDocument</tt><big>(</big><em>raw_content</em>, <em>validate=False</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/networkstatus.html#BridgeNetworkStatusDocument"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.networkstatus.BridgeNetworkStatusDocument" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.descriptor.networkstatus.NetworkStatusDocument" title="stem.descriptor.networkstatus.NetworkStatusDocument"><tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.networkstatus.NetworkStatusDocument</span></tt></a></p>
+<p>Network status document containing bridges. This is only available through
+the metrics site.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>routers</strong> (<em>dict</em>) -- fingerprint to <a class="reference internal" href="router_status_entry.html#stem.descriptor.router_status_entry.RouterStatusEntryV3" title="stem.descriptor.router_status_entry.RouterStatusEntryV3"><tt class="xref py py-class docutils literal"><span class="pre">RouterStatusEntryV3</span></tt></a>
+mapping for relays contained in the document</li>
+<li><strong>published</strong> (<em>datetime</em>) -- time when the document was published</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

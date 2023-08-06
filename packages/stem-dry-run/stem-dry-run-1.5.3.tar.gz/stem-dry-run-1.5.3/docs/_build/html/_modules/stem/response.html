@@ -1,0 +1,687 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.response &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../index.html" />
+    <link rel="up" title="stem" href="../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.response</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../index.html">Home</a></li>
+          <li><a href="../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../api.html">API</a>
+            <ul>
+              <li><a href="../../api/control.html">stem.control</a></li>
+              <li><a href="../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../api/process.html">stem.process</a></li>
+              <li><a href="../../api/response.html">stem.response</a></li>
+              <li><a href="../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../api/version.html">stem.version</a></li>
+              <li><a href="../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../faq.html">FAQ</a></li>
+              <li><a href="../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.response</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2012-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Parses replies from the control socket.</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  convert - translates a ControlMessage into a particular response subclass</span>
+
+<span class="sd">  ControlMessage - Message that&#39;s read from the control socket.</span>
+<span class="sd">    |- SingleLineResponse - Simple tor response only including a single line of information.</span>
+<span class="sd">    |</span>
+<span class="sd">    |- from_str - provides a ControlMessage for the given string</span>
+<span class="sd">    |- is_ok - response had a 250 status</span>
+<span class="sd">    |- content - provides the parsed message content</span>
+<span class="sd">    |- raw_content - unparsed socket data</span>
+<span class="sd">    |- __str__ - content stripped of protocol formatting</span>
+<span class="sd">    +- __iter__ - ControlLine entries for the content of the message</span>
+
+<span class="sd">  ControlLine - String subclass with methods for parsing controller responses.</span>
+<span class="sd">    |- remainder - provides the unparsed content</span>
+<span class="sd">    |- is_empty - checks if the remaining content is empty</span>
+<span class="sd">    |- is_next_quoted - checks if the next entry is a quoted value</span>
+<span class="sd">    |- is_next_mapping - checks if the next entry is a KEY=VALUE mapping</span>
+<span class="sd">    |- peek_key - provides the key of the next entry</span>
+<span class="sd">    |- pop - removes and returns the next entry</span>
+<span class="sd">    +- pop_mapping - removes and returns the next entry as a KEY=VALUE mapping</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">io</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+
+<span class="kn">import</span> <span class="nn">stem.socket</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+  <span class="s">&#39;add_onion&#39;</span><span class="p">,</span>
+  <span class="s">&#39;events&#39;</span><span class="p">,</span>
+  <span class="s">&#39;getinfo&#39;</span><span class="p">,</span>
+  <span class="s">&#39;getconf&#39;</span><span class="p">,</span>
+  <span class="s">&#39;protocolinfo&#39;</span><span class="p">,</span>
+  <span class="s">&#39;authchallenge&#39;</span><span class="p">,</span>
+  <span class="s">&#39;convert&#39;</span><span class="p">,</span>
+  <span class="s">&#39;ControlMessage&#39;</span><span class="p">,</span>
+  <span class="s">&#39;ControlLine&#39;</span><span class="p">,</span>
+  <span class="s">&#39;SingleLineResponse&#39;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="n">KEY_ARG</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^(\S+)=&#39;</span><span class="p">)</span>
+
+<span class="c"># Escape sequences from the &#39;esc_for_log&#39; function of tor&#39;s &#39;common/util.c&#39;.</span>
+<span class="c"># It&#39;s hard to tell what controller functions use this in practice, but direct</span>
+<span class="c"># users are...</span>
+<span class="c"># - &#39;COOKIEFILE&#39; field of PROTOCOLINFO responses</span>
+<span class="c"># - logged messages about bugs</span>
+<span class="c"># - the &#39;getinfo_helper_listeners&#39; function of control.c</span>
+
+<span class="n">CONTROL_ESCAPES</span> <span class="o">=</span> <span class="p">{</span><span class="s">r&#39;</span><span class="se">\\</span><span class="s">&#39;</span><span class="p">:</span> <span class="s">&#39;</span><span class="se">\\</span><span class="s">&#39;</span><span class="p">,</span> <span class="s">r&#39;\&quot;&#39;</span><span class="p">:</span> <span class="s">&#39;</span><span class="se">\&quot;</span><span class="s">&#39;</span><span class="p">,</span> <span class="s">r&#39;</span><span class="se">\&#39;</span><span class="s">&#39;</span><span class="p">:</span> <span class="s">&#39;</span><span class="se">\&#39;</span><span class="s">&#39;</span><span class="p">,</span>
+                   <span class="s">r&#39;\r&#39;</span><span class="p">:</span> <span class="s">&#39;</span><span class="se">\r</span><span class="s">&#39;</span><span class="p">,</span> <span class="s">r&#39;\n&#39;</span><span class="p">:</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">,</span> <span class="s">r&#39;\t&#39;</span><span class="p">:</span> <span class="s">&#39;</span><span class="se">\t</span><span class="s">&#39;</span><span class="p">}</span>
+
+
+<div class="viewcode-block" id="convert"><a class="viewcode-back" href="../../api/response.html#stem.response.convert">[docs]</a><span class="k">def</span> <span class="nf">convert</span><span class="p">(</span><span class="n">response_type</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Converts a :class:`~stem.response.ControlMessage` into a particular kind of</span>
+<span class="sd">  tor response. This does an in-place conversion of the message from being a</span>
+<span class="sd">  :class:`~stem.response.ControlMessage` to a subclass for its response type.</span>
+<span class="sd">  Recognized types include...</span>
+
+<span class="sd">  =================== =====</span>
+<span class="sd">  response_type       Class</span>
+<span class="sd">  =================== =====</span>
+<span class="sd">  **ADD_ONION**       :class:`stem.response.add_onion.AddOnionResponse`</span>
+<span class="sd">  **AUTHCHALLENGE**   :class:`stem.response.authchallenge.AuthChallengeResponse`</span>
+<span class="sd">  **EVENT**           :class:`stem.response.events.Event` subclass</span>
+<span class="sd">  **GETCONF**         :class:`stem.response.getconf.GetConfResponse`</span>
+<span class="sd">  **GETINFO**         :class:`stem.response.getinfo.GetInfoResponse`</span>
+<span class="sd">  **MAPADDRESS**      :class:`stem.response.mapaddress.MapAddressResponse`</span>
+<span class="sd">  **PROTOCOLINFO**    :class:`stem.response.protocolinfo.ProtocolInfoResponse`</span>
+<span class="sd">  **SINGLELINE**      :class:`stem.response.SingleLineResponse`</span>
+<span class="sd">  =================== =====</span>
+
+<span class="sd">  :param str response_type: type of tor response to convert to</span>
+<span class="sd">  :param stem.response.ControlMessage message: message to be converted</span>
+<span class="sd">  :param kwargs: optional keyword arguments to be passed to the parser method</span>
+
+<span class="sd">  :raises:</span>
+<span class="sd">    * :class:`stem.ProtocolError` the message isn&#39;t a proper response of</span>
+<span class="sd">      that type</span>
+<span class="sd">    * :class:`stem.InvalidArguments` the arguments given as input are</span>
+<span class="sd">      invalid, this is can only be raised if the response_type is: **GETINFO**,</span>
+<span class="sd">      **GETCONF**</span>
+<span class="sd">    * :class:`stem.InvalidRequest` the arguments given as input are</span>
+<span class="sd">      invalid, this is can only be raised if the response_type is:</span>
+<span class="sd">      **MAPADDRESS**</span>
+<span class="sd">    * :class:`stem.OperationFailed` if the action the event represents failed,</span>
+<span class="sd">      this is can only be raised if the response_type is: **MAPADDRESS**</span>
+<span class="sd">    * **TypeError** if argument isn&#39;t a :class:`~stem.response.ControlMessage`</span>
+<span class="sd">      or response_type isn&#39;t supported</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="kn">import</span> <span class="nn">stem.response.add_onion</span>
+  <span class="kn">import</span> <span class="nn">stem.response.authchallenge</span>
+  <span class="kn">import</span> <span class="nn">stem.response.events</span>
+  <span class="kn">import</span> <span class="nn">stem.response.getinfo</span>
+  <span class="kn">import</span> <span class="nn">stem.response.getconf</span>
+  <span class="kn">import</span> <span class="nn">stem.response.mapaddress</span>
+  <span class="kn">import</span> <span class="nn">stem.response.protocolinfo</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">ControlMessage</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;Only able to convert stem.response.ControlMessage instances&#39;</span><span class="p">)</span>
+
+  <span class="n">response_types</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;ADD_ONION&#39;</span><span class="p">:</span> <span class="n">stem</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">add_onion</span><span class="o">.</span><span class="n">AddOnionResponse</span><span class="p">,</span>
+    <span class="s">&#39;AUTHCHALLENGE&#39;</span><span class="p">:</span> <span class="n">stem</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">authchallenge</span><span class="o">.</span><span class="n">AuthChallengeResponse</span><span class="p">,</span>
+    <span class="s">&#39;EVENT&#39;</span><span class="p">:</span> <span class="n">stem</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">Event</span><span class="p">,</span>
+    <span class="s">&#39;GETCONF&#39;</span><span class="p">:</span> <span class="n">stem</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">getconf</span><span class="o">.</span><span class="n">GetConfResponse</span><span class="p">,</span>
+    <span class="s">&#39;GETINFO&#39;</span><span class="p">:</span> <span class="n">stem</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">getinfo</span><span class="o">.</span><span class="n">GetInfoResponse</span><span class="p">,</span>
+    <span class="s">&#39;MAPADDRESS&#39;</span><span class="p">:</span> <span class="n">stem</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">mapaddress</span><span class="o">.</span><span class="n">MapAddressResponse</span><span class="p">,</span>
+    <span class="s">&#39;PROTOCOLINFO&#39;</span><span class="p">:</span> <span class="n">stem</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">protocolinfo</span><span class="o">.</span><span class="n">ProtocolInfoResponse</span><span class="p">,</span>
+    <span class="s">&#39;SINGLELINE&#39;</span><span class="p">:</span> <span class="n">SingleLineResponse</span><span class="p">,</span>
+  <span class="p">}</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">response_class</span> <span class="o">=</span> <span class="n">response_types</span><span class="p">[</span><span class="n">response_type</span><span class="p">]</span>
+  <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;Unsupported response type: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">response_type</span><span class="p">)</span>
+
+  <span class="n">message</span><span class="o">.</span><span class="n">__class__</span> <span class="o">=</span> <span class="n">response_class</span>
+  <span class="n">message</span><span class="o">.</span><span class="n">_parse_message</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="ControlMessage"><a class="viewcode-back" href="../../api/response.html#stem.response.ControlMessage">[docs]</a><span class="k">class</span> <span class="nc">ControlMessage</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Message from the control socket. This is iterable and can be stringified for</span>
+<span class="sd">  individual message components stripped of protocol formatting. Messages are</span>
+<span class="sd">  never empty.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="ControlMessage.from_str"><a class="viewcode-back" href="../../api/response.html#stem.response.ControlMessage.from_str">[docs]</a>  <span class="k">def</span> <span class="nf">from_str</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">msg_type</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides a ControlMessage for the given content.</span>
+
+<span class="sd">    .. versionadded:: 1.1.0</span>
+
+<span class="sd">    :param str content: message to construct the message from</span>
+<span class="sd">    :param str msg_type: type of tor reply to parse the content as</span>
+<span class="sd">    :param kwargs: optional keyword arguments to be passed to the parser method</span>
+
+<span class="sd">    :returns: stem.response.ControlMessage instance</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">msg</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">recv_message</span><span class="p">(</span><span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">content</span><span class="p">)))</span>
+
+    <span class="k">if</span> <span class="n">msg_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="n">convert</span><span class="p">(</span><span class="n">msg_type</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">msg</span>
+</div>
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parsed_content</span><span class="p">,</span> <span class="n">raw_content</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">parsed_content</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;ControlMessages can&#39;t be empty&quot;</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_parsed_content</span> <span class="o">=</span> <span class="n">parsed_content</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_raw_content</span> <span class="o">=</span> <span class="n">raw_content</span>
+
+<div class="viewcode-block" id="ControlMessage.is_ok"><a class="viewcode-back" href="../../api/response.html#stem.response.ControlMessage.is_ok">[docs]</a>  <span class="k">def</span> <span class="nf">is_ok</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks if any of our lines have a 250 response.</span>
+
+<span class="sd">    :returns: **True** if any lines have a 250 response code, **False** otherwise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">for</span> <span class="n">code</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parsed_content</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">code</span> <span class="o">==</span> <span class="s">&#39;250&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="k">return</span> <span class="bp">False</span>
+</div>
+<div class="viewcode-block" id="ControlMessage.content"><a class="viewcode-back" href="../../api/response.html#stem.response.ControlMessage.content">[docs]</a>  <span class="k">def</span> <span class="nf">content</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">get_bytes</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the parsed message content. These are entries of the form...</span>
+
+<span class="sd">    ::</span>
+
+<span class="sd">      (status_code, divider, content)</span>
+
+<span class="sd">    **status_code**</span>
+<span class="sd">      Three character code for the type of response (defined in section 4 of</span>
+<span class="sd">      the control-spec).</span>
+
+<span class="sd">    **divider**</span>
+<span class="sd">      Single character to indicate if this is mid-reply, data, or an end to the</span>
+<span class="sd">      message (defined in section 2.3 of the control-spec).</span>
+
+<span class="sd">    **content**</span>
+<span class="sd">      The following content is the actual payload of the line.</span>
+
+<span class="sd">    For data entries the content is the full multi-line payload with newline</span>
+<span class="sd">    linebreaks and leading periods unescaped.</span>
+
+<span class="sd">    The **status_code** and **divider** are both strings (**bytes** in python</span>
+<span class="sd">    2.x and **unicode** in python 3.x). The **content** however is **bytes** if</span>
+<span class="sd">    **get_bytes** is **True**.</span>
+
+<span class="sd">    .. versionchanged:: 1.1.0</span>
+<span class="sd">       Added the get_bytes argument.</span>
+
+<span class="sd">    :param bool get_bytes: provides **bytes** for the **content** rather than a **str**</span>
+
+<span class="sd">    :returns: **list** of (str, str, str) tuples for the components of this message</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">prereq</span><span class="o">.</span><span class="n">is_python_3</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">get_bytes</span><span class="p">:</span>
+      <span class="k">return</span> <span class="p">[(</span><span class="n">code</span><span class="p">,</span> <span class="n">div</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">content</span><span class="p">))</span> <span class="k">for</span> <span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="n">div</span><span class="p">,</span> <span class="n">content</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parsed_content</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parsed_content</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ControlMessage.raw_content"><a class="viewcode-back" href="../../api/response.html#stem.response.ControlMessage.raw_content">[docs]</a>  <span class="k">def</span> <span class="nf">raw_content</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">get_bytes</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the unparsed content read from the control socket.</span>
+
+<span class="sd">    .. versionchanged:: 1.1.0</span>
+<span class="sd">       Added the get_bytes argument.</span>
+
+<span class="sd">    :param bool get_bytes: if **True** then this provides **bytes** rather than a **str**</span>
+
+<span class="sd">    :returns: **str** of the socket data used to generate this message</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">prereq</span><span class="o">.</span><span class="n">is_python_3</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">get_bytes</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_raw_content</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_raw_content</span>
+</div>
+  <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Content of the message, stripped of status code and divider protocol</span>
+<span class="sd">    formatting.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+
+  <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides :class:`~stem.response.ControlLine` instances for the content of</span>
+<span class="sd">    the message. This is stripped of status codes and dividers, for instance...</span>
+
+<span class="sd">    ::</span>
+
+<span class="sd">      250+info/names=</span>
+<span class="sd">      desc/id/* -- Router descriptors by ID.</span>
+<span class="sd">      desc/name/* -- Router descriptors by nickname.</span>
+<span class="sd">      .</span>
+<span class="sd">      250 OK</span>
+
+<span class="sd">    Would provide two entries...</span>
+
+<span class="sd">    ::</span>
+
+<span class="sd">      1st - &quot;info/names=</span>
+<span class="sd">             desc/id/* -- Router descriptors by ID.</span>
+<span class="sd">             desc/name/* -- Router descriptors by nickname.&quot;</span>
+<span class="sd">      2nd - &quot;OK&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">content</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parsed_content</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">prereq</span><span class="o">.</span><span class="n">is_python_3</span><span class="p">():</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+
+      <span class="k">yield</span> <span class="n">ControlLine</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :returns: number of ControlLines</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parsed_content</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :returns: :class:`~stem.response.ControlLine` at the index</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parsed_content</span><span class="p">[</span><span class="n">index</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">prereq</span><span class="o">.</span><span class="n">is_python_3</span><span class="p">():</span>
+      <span class="n">content</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ControlLine</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="ControlLine"><a class="viewcode-back" href="../../api/response.html#stem.response.ControlLine">[docs]</a><span class="k">class</span> <span class="nc">ControlLine</span><span class="p">(</span><span class="nb">str</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  String subclass that represents a line of controller output. This behaves as</span>
+<span class="sd">  a normal string with additional methods for parsing and popping entries from</span>
+<span class="sd">  a space delimited series of elements like a stack.</span>
+
+<span class="sd">  None of these additional methods effect ourselves as a string (which is still</span>
+<span class="sd">  immutable). All methods are thread safe.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_remainder</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_remainder_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">()</span>
+
+<div class="viewcode-block" id="ControlLine.remainder"><a class="viewcode-back" href="../../api/response.html#stem.response.ControlLine.remainder">[docs]</a>  <span class="k">def</span> <span class="nf">remainder</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides our unparsed content. This is an empty string after we&#39;ve popped</span>
+<span class="sd">    all entries.</span>
+
+<span class="sd">    :returns: **str** of the unparsed content</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_remainder</span>
+</div>
+<div class="viewcode-block" id="ControlLine.is_empty"><a class="viewcode-back" href="../../api/response.html#stem.response.ControlLine.is_empty">[docs]</a>  <span class="k">def</span> <span class="nf">is_empty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks if we have further content to pop or not.</span>
+
+<span class="sd">    :returns: **True** if we have additional content, **False** otherwise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_remainder</span> <span class="o">==</span> <span class="s">&#39;&#39;</span>
+</div>
+<div class="viewcode-block" id="ControlLine.is_next_quoted"><a class="viewcode-back" href="../../api/response.html#stem.response.ControlLine.is_next_quoted">[docs]</a>  <span class="k">def</span> <span class="nf">is_next_quoted</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">escaped</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks if our next entry is a quoted value or not.</span>
+
+<span class="sd">    :param bool escaped: unescapes the CONTROL_ESCAPES escape sequences</span>
+
+<span class="sd">    :returns: **True** if the next entry can be parsed as a quoted value, **False** otherwise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">start_quote</span><span class="p">,</span> <span class="n">end_quote</span> <span class="o">=</span> <span class="n">_get_quote_indices</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_remainder</span><span class="p">,</span> <span class="n">escaped</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">start_quote</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">end_quote</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span>
+</div>
+<div class="viewcode-block" id="ControlLine.is_next_mapping"><a class="viewcode-back" href="../../api/response.html#stem.response.ControlLine.is_next_mapping">[docs]</a>  <span class="k">def</span> <span class="nf">is_next_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">quoted</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">escaped</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks if our next entry is a KEY=VALUE mapping or not.</span>
+
+<span class="sd">    :param str key: checks that the key matches this value, skipping the check if **None**</span>
+<span class="sd">    :param bool quoted: checks that the mapping is to a quoted value</span>
+<span class="sd">    :param bool escaped: unescapes the CONTROL_ESCAPES escape sequences</span>
+
+<span class="sd">    :returns: **True** if the next entry can be parsed as a key=value mapping,</span>
+<span class="sd">      **False** otherwise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">remainder</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_remainder</span>  <span class="c"># temp copy to avoid locking</span>
+    <span class="n">key_match</span> <span class="o">=</span> <span class="n">KEY_ARG</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">remainder</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">key_match</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">key</span> <span class="ow">and</span> <span class="n">key</span> <span class="o">!=</span> <span class="n">key_match</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">0</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+      <span class="k">if</span> <span class="n">quoted</span><span class="p">:</span>
+        <span class="c"># checks that we have a quoted value and that it comes after the &#39;key=&#39;</span>
+        <span class="n">start_quote</span><span class="p">,</span> <span class="n">end_quote</span> <span class="o">=</span> <span class="n">_get_quote_indices</span><span class="p">(</span><span class="n">remainder</span><span class="p">,</span> <span class="n">escaped</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">start_quote</span> <span class="o">==</span> <span class="n">key_match</span><span class="o">.</span><span class="n">end</span><span class="p">()</span> <span class="ow">and</span> <span class="n">end_quote</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">True</span>  <span class="c"># we just needed to check for the key</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">return</span> <span class="bp">False</span>  <span class="c"># doesn&#39;t start with a key</span>
+</div>
+<div class="viewcode-block" id="ControlLine.peek_key"><a class="viewcode-back" href="../../api/response.html#stem.response.ControlLine.peek_key">[docs]</a>  <span class="k">def</span> <span class="nf">peek_key</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the key of the next entry, providing **None** if it isn&#39;t a</span>
+<span class="sd">    key/value mapping.</span>
+
+<span class="sd">    :returns: **str** with the next entry&#39;s key</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">remainder</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_remainder</span>
+    <span class="n">key_match</span> <span class="o">=</span> <span class="n">KEY_ARG</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">remainder</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">key_match</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">key_match</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">return</span> <span class="bp">None</span>
+</div>
+<div class="viewcode-block" id="ControlLine.pop"><a class="viewcode-back" href="../../api/response.html#stem.response.ControlLine.pop">[docs]</a>  <span class="k">def</span> <span class="nf">pop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">quoted</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">escaped</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parses the next space separated entry, removing it and the space from our</span>
+<span class="sd">    remaining content. Examples...</span>
+
+<span class="sd">    ::</span>
+
+<span class="sd">      &gt;&gt;&gt; line = ControlLine(&quot;\\&quot;We&#39;re all mad here.\\&quot; says the grinning cat.&quot;)</span>
+<span class="sd">      &gt;&gt;&gt; print line.pop(True)</span>
+<span class="sd">        &quot;We&#39;re all mad here.&quot;</span>
+<span class="sd">      &gt;&gt;&gt; print line.pop()</span>
+<span class="sd">        &quot;says&quot;</span>
+<span class="sd">      &gt;&gt;&gt; print line.remainder()</span>
+<span class="sd">        &quot;the grinning cat.&quot;</span>
+
+<span class="sd">      &gt;&gt;&gt; line = ControlLine(&quot;\\&quot;this has a \\\\\\&quot; and \\\\\\\\ in it\\&quot; foo=bar more_data&quot;)</span>
+<span class="sd">      &gt;&gt;&gt; print line.pop(True, True)</span>
+<span class="sd">        &quot;this has a \\&quot; and \\\\ in it&quot;</span>
+
+<span class="sd">    :param bool quoted: parses the next entry as a quoted value, removing the quotes</span>
+<span class="sd">    :param bool escaped: unescapes the CONTROL_ESCAPES escape sequences</span>
+
+<span class="sd">    :returns: **str** of the next space separated entry</span>
+
+<span class="sd">    :raises:</span>
+<span class="sd">      * **ValueError** if quoted is True without the value being quoted</span>
+<span class="sd">      * **IndexError** if we don&#39;t have any remaining content left to parse</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_remainder_lock</span><span class="p">:</span>
+      <span class="n">next_entry</span><span class="p">,</span> <span class="n">remainder</span> <span class="o">=</span> <span class="n">_parse_entry</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_remainder</span><span class="p">,</span> <span class="n">quoted</span><span class="p">,</span> <span class="n">escaped</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_remainder</span> <span class="o">=</span> <span class="n">remainder</span>
+      <span class="k">return</span> <span class="n">next_entry</span>
+</div>
+<div class="viewcode-block" id="ControlLine.pop_mapping"><a class="viewcode-back" href="../../api/response.html#stem.response.ControlLine.pop_mapping">[docs]</a>  <span class="k">def</span> <span class="nf">pop_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">quoted</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">escaped</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parses the next space separated entry as a KEY=VALUE mapping, removing it</span>
+<span class="sd">    and the space from our remaining content.</span>
+
+<span class="sd">    :param bool quoted: parses the value as being quoted, removing the quotes</span>
+<span class="sd">    :param bool escaped: unescapes the CONTROL_ESCAPES escape sequences</span>
+
+<span class="sd">    :returns: **tuple** of the form (key, value)</span>
+
+<span class="sd">    :raises: **ValueError** if this isn&#39;t a KEY=VALUE mapping or if quoted is</span>
+<span class="sd">      **True** without the value being quoted</span>
+<span class="sd">    :raises: **IndexError** if there&#39;s nothing to parse from the line</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_remainder_lock</span><span class="p">:</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_empty</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="s">&#39;no remaining content to parse&#39;</span><span class="p">)</span>
+
+      <span class="n">key_match</span> <span class="o">=</span> <span class="n">KEY_ARG</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_remainder</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">key_match</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;the next entry isn&#39;t a KEY=VALUE mapping: &quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_remainder</span><span class="p">)</span>
+
+      <span class="c"># parse off the key</span>
+      <span class="n">key</span> <span class="o">=</span> <span class="n">key_match</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+      <span class="n">remainder</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_remainder</span><span class="p">[</span><span class="n">key_match</span><span class="o">.</span><span class="n">end</span><span class="p">():]</span>
+
+      <span class="n">next_entry</span><span class="p">,</span> <span class="n">remainder</span> <span class="o">=</span> <span class="n">_parse_entry</span><span class="p">(</span><span class="n">remainder</span><span class="p">,</span> <span class="n">quoted</span><span class="p">,</span> <span class="n">escaped</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_remainder</span> <span class="o">=</span> <span class="n">remainder</span>
+      <span class="k">return</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">next_entry</span><span class="p">)</span>
+
+</div></div>
+<span class="k">def</span> <span class="nf">_parse_entry</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">quoted</span><span class="p">,</span> <span class="n">escaped</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Parses the next entry from the given space separated content.</span>
+
+<span class="sd">  :param str line: content to be parsed</span>
+<span class="sd">  :param bool quoted: parses the next entry as a quoted value, removing the quotes</span>
+<span class="sd">  :param bool escaped: unescapes the CONTROL_ESCAPES escape sequences</span>
+
+<span class="sd">  :returns: **tuple** of the form (entry, remainder)</span>
+
+<span class="sd">  :raises:</span>
+<span class="sd">    * **ValueError** if quoted is True without the next value being quoted</span>
+<span class="sd">    * **IndexError** if there&#39;s nothing to parse from the line</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">line</span> <span class="o">==</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="s">&#39;no remaining content to parse&#39;</span><span class="p">)</span>
+
+  <span class="n">next_entry</span><span class="p">,</span> <span class="n">remainder</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">line</span>
+
+  <span class="k">if</span> <span class="n">quoted</span><span class="p">:</span>
+    <span class="c"># validate and parse the quoted value</span>
+    <span class="n">start_quote</span><span class="p">,</span> <span class="n">end_quote</span> <span class="o">=</span> <span class="n">_get_quote_indices</span><span class="p">(</span><span class="n">remainder</span><span class="p">,</span> <span class="n">escaped</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">start_quote</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">end_quote</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;the next entry isn&#39;t a quoted value: &quot;</span> <span class="o">+</span> <span class="n">line</span><span class="p">)</span>
+
+    <span class="n">next_entry</span><span class="p">,</span> <span class="n">remainder</span> <span class="o">=</span> <span class="n">remainder</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="n">end_quote</span><span class="p">],</span> <span class="n">remainder</span><span class="p">[</span><span class="n">end_quote</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:]</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="c"># non-quoted value, just need to check if there&#39;s more data afterward</span>
+    <span class="k">if</span> <span class="s">&#39; &#39;</span> <span class="ow">in</span> <span class="n">remainder</span><span class="p">:</span>
+      <span class="n">next_entry</span><span class="p">,</span> <span class="n">remainder</span> <span class="o">=</span> <span class="n">remainder</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">next_entry</span><span class="p">,</span> <span class="n">remainder</span> <span class="o">=</span> <span class="n">remainder</span><span class="p">,</span> <span class="s">&#39;&#39;</span>
+
+  <span class="k">if</span> <span class="n">escaped</span><span class="p">:</span>
+    <span class="n">next_entry</span> <span class="o">=</span> <span class="n">_unescape</span><span class="p">(</span><span class="n">next_entry</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="p">(</span><span class="n">next_entry</span><span class="p">,</span> <span class="n">remainder</span><span class="o">.</span><span class="n">lstrip</span><span class="p">())</span>
+
+
+<span class="k">def</span> <span class="nf">_get_quote_indices</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">escaped</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the indices of the next two quotes in the given content.</span>
+
+<span class="sd">  :param str line: content to be parsed</span>
+<span class="sd">  :param bool escaped: unescapes the CONTROL_ESCAPES escape sequences</span>
+
+<span class="sd">  :returns: **tuple** of two ints, indices being -1 if a quote doesn&#39;t exist</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">indices</span><span class="p">,</span> <span class="n">quote_index</span> <span class="o">=</span> <span class="p">[],</span> <span class="o">-</span><span class="mi">1</span>
+
+  <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
+    <span class="n">quote_index</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;&quot;&#39;</span><span class="p">,</span> <span class="n">quote_index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="c"># if we have escapes then we need to skip any r&#39;\&quot;&#39; entries</span>
+    <span class="k">if</span> <span class="n">escaped</span><span class="p">:</span>
+      <span class="c"># skip check if index is -1 (no match) or 0 (first character)</span>
+      <span class="k">while</span> <span class="n">quote_index</span> <span class="o">&gt;=</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">line</span><span class="p">[</span><span class="n">quote_index</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;</span><span class="se">\\</span><span class="s">&#39;</span><span class="p">:</span>
+        <span class="n">quote_index</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;&quot;&#39;</span><span class="p">,</span> <span class="n">quote_index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">quote_index</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_unescape</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+  <span class="c"># Unescapes the given string with the mappings in CONTROL_ESCAPES.</span>
+  <span class="c">#</span>
+  <span class="c"># This can&#39;t be a simple series of str.replace() calls because replacements</span>
+  <span class="c"># need to be excluded from consideration for further unescaping. For</span>
+  <span class="c"># instance, &#39;\\t&#39; should be converted to &#39;\t&#39; rather than a tab.</span>
+
+  <span class="k">def</span> <span class="nf">_pop_with_unescape</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+    <span class="c"># Pop either the first character or the escape sequence conversion the</span>
+    <span class="c"># entry starts with. This provides a tuple of...</span>
+    <span class="c">#</span>
+    <span class="c">#   (unescaped prefix, remaining entry)</span>
+
+    <span class="k">for</span> <span class="n">esc_sequence</span><span class="p">,</span> <span class="n">replacement</span> <span class="ow">in</span> <span class="n">CONTROL_ESCAPES</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+      <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">esc_sequence</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">replacement</span><span class="p">,</span> <span class="n">entry</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">esc_sequence</span><span class="p">):])</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">entry</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+
+  <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+
+  <span class="k">while</span> <span class="n">entry</span><span class="p">:</span>
+    <span class="n">prefix</span><span class="p">,</span> <span class="n">entry</span> <span class="o">=</span> <span class="n">_pop_with_unescape</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+    <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="SingleLineResponse"><a class="viewcode-back" href="../../api/response.html#stem.response.SingleLineResponse">[docs]</a><span class="k">class</span> <span class="nc">SingleLineResponse</span><span class="p">(</span><span class="n">ControlMessage</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Reply to a request that performs an action rather than querying data. These</span>
+<span class="sd">  requests only contain a single line, which is &#39;OK&#39; if successful, and a</span>
+<span class="sd">  description of the problem if not.</span>
+
+<span class="sd">  :var str code: status code for our line</span>
+<span class="sd">  :var str message: content of the line</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SingleLineResponse.is_ok"><a class="viewcode-back" href="../../api/response.html#stem.response.SingleLineResponse.is_ok">[docs]</a>  <span class="k">def</span> <span class="nf">is_ok</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strict</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks if the response code is &quot;250&quot;. If strict is **True** then this</span>
+<span class="sd">    checks if the response is &quot;250 OK&quot;</span>
+
+<span class="sd">    :param bool strict: checks for a &quot;250 OK&quot; message if **True**</span>
+
+<span class="sd">    :returns:</span>
+<span class="sd">      * If strict is **False**: **True** if the response code is &quot;250&quot;, **False** otherwise</span>
+<span class="sd">      * If strict is **True**: **True** if the response is &quot;250 OK&quot;, **False** otherwise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">strict</span><span class="p">:</span>
+      <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="p">(</span><span class="s">&#39;250&#39;</span><span class="p">,</span> <span class="s">&#39; &#39;</span><span class="p">,</span> <span class="s">&#39;OK&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span><span class="p">()[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;250&#39;</span>
+</div>
+  <span class="k">def</span> <span class="nf">_parse_message</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;Received multi-line response&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;Received empty response&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">code</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">content</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

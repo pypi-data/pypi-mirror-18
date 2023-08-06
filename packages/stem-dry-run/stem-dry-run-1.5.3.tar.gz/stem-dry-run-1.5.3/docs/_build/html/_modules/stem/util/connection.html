@@ -1,0 +1,849 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.util.connection &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem" href="../../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.util.connection</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.util.connection</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2012-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Connection and networking based utility functions.</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  get_connections - quieries the connections belonging to a given process</span>
+<span class="sd">  system_resolvers - provides connection resolution methods that are likely to be available</span>
+<span class="sd">  port_usage - brief description of the common usage for a port</span>
+
+<span class="sd">  is_valid_ipv4_address - checks if a string is a valid IPv4 address</span>
+<span class="sd">  is_valid_ipv6_address - checks if a string is a valid IPv6 address</span>
+<span class="sd">  is_valid_port - checks if something is a valid representation for a port</span>
+<span class="sd">  is_private_address - checks if an IPv4 address belongs to a private range or not</span>
+
+<span class="sd">  address_to_int - provides an integer representation of an IP address</span>
+
+<span class="sd">  expand_ipv6_address - provides an IPv6 address with its collapsed portions expanded</span>
+<span class="sd">  get_mask_ipv4 - provides the mask representation for a given number of bits</span>
+<span class="sd">  get_mask_ipv6 - provides the IPv6 mask representation for a given number of bits</span>
+
+<span class="sd">.. data:: Resolver (enum)</span>
+
+<span class="sd">  Method for resolving a process&#39; connections.</span>
+
+<span class="sd">  .. versionadded:: 1.1.0</span>
+<span class="sd">  .. versionchanged:: 1.4.0</span>
+<span class="sd">     Added **NETSTAT_WINDOWS**.</span>
+
+<span class="sd">  ====================  ===========</span>
+<span class="sd">  Resolver              Description</span>
+<span class="sd">  ====================  ===========</span>
+<span class="sd">  **PROC**              /proc contents</span>
+<span class="sd">  **NETSTAT**           netstat</span>
+<span class="sd">  **NETSTAT_WINDOWS**   netstat command under Windows</span>
+<span class="sd">  **SS**                ss command</span>
+<span class="sd">  **LSOF**              lsof command</span>
+<span class="sd">  **SOCKSTAT**          sockstat command under \*nix</span>
+<span class="sd">  **BSD_SOCKSTAT**      sockstat command under FreeBSD</span>
+<span class="sd">  **BSD_PROCSTAT**      procstat command under FreeBSD</span>
+<span class="sd">  ====================  ===========</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">hashlib</span>
+<span class="kn">import</span> <span class="nn">hmac</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">platform</span>
+<span class="kn">import</span> <span class="nn">re</span>
+
+<span class="kn">import</span> <span class="nn">stem.util.proc</span>
+<span class="kn">import</span> <span class="nn">stem.util.system</span>
+
+<span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">str_type</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span> <span class="n">enum</span><span class="p">,</span> <span class="n">log</span>
+
+<span class="c"># Connection resolution is risky to log about since it&#39;s highly likely to</span>
+<span class="c"># contain sensitive information. That said, it&#39;s also difficult to get right in</span>
+<span class="c"># a platform independent fashion. To opt into the logging requried to</span>
+<span class="c"># troubleshoot connection resolution set the following...</span>
+
+<span class="n">LOG_CONNECTION_RESOLUTION</span> <span class="o">=</span> <span class="bp">False</span>
+
+<span class="n">Resolver</span> <span class="o">=</span> <span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">(</span>
+  <span class="p">(</span><span class="s">&#39;PROC&#39;</span><span class="p">,</span> <span class="s">&#39;proc&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;NETSTAT&#39;</span><span class="p">,</span> <span class="s">&#39;netstat&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;NETSTAT_WINDOWS&#39;</span><span class="p">,</span> <span class="s">&#39;netstat (windows)&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;SS&#39;</span><span class="p">,</span> <span class="s">&#39;ss&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;LSOF&#39;</span><span class="p">,</span> <span class="s">&#39;lsof&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;SOCKSTAT&#39;</span><span class="p">,</span> <span class="s">&#39;sockstat&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;BSD_SOCKSTAT&#39;</span><span class="p">,</span> <span class="s">&#39;sockstat (bsd)&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;BSD_PROCSTAT&#39;</span><span class="p">,</span> <span class="s">&#39;procstat (bsd)&#39;</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">FULL_IPv4_MASK</span> <span class="o">=</span> <span class="s">&#39;255.255.255.255&#39;</span>
+<span class="n">FULL_IPv6_MASK</span> <span class="o">=</span> <span class="s">&#39;FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF&#39;</span>
+
+<span class="n">CRYPTOVARIABLE_EQUALITY_COMPARISON_NONCE</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">urandom</span><span class="p">(</span><span class="mi">32</span><span class="p">)</span>
+
+<span class="n">PORT_USES</span> <span class="o">=</span> <span class="bp">None</span>  <span class="c"># port number =&gt; description</span>
+
+<span class="n">RESOLVER_COMMAND</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="n">Resolver</span><span class="o">.</span><span class="n">PROC</span><span class="p">:</span> <span class="s">&#39;&#39;</span><span class="p">,</span>
+
+  <span class="c"># -n = prevents dns lookups, -p = include process, -W = don&#39;t crop addresses (needed for ipv6)</span>
+  <span class="n">Resolver</span><span class="o">.</span><span class="n">NETSTAT</span><span class="p">:</span> <span class="s">&#39;netstat -npW&#39;</span><span class="p">,</span>
+
+  <span class="c"># -a = show all TCP/UDP connections, -n = numeric addresses and ports, -o = include pid</span>
+  <span class="n">Resolver</span><span class="o">.</span><span class="n">NETSTAT_WINDOWS</span><span class="p">:</span> <span class="s">&#39;netstat -ano&#39;</span><span class="p">,</span>
+
+  <span class="c"># -n = numeric ports, -p = include process, -t = tcp sockets, -u = udp sockets</span>
+  <span class="n">Resolver</span><span class="o">.</span><span class="n">SS</span><span class="p">:</span> <span class="s">&#39;ss -nptu&#39;</span><span class="p">,</span>
+
+  <span class="c"># -n = prevent dns lookups, -P = show port numbers (not names), -i = ip only, -w = no warnings</span>
+  <span class="c"># (lsof provides a &#39;-p &lt;pid&gt;&#39; but oddly in practice it seems to be ~11-28% slower)</span>
+  <span class="n">Resolver</span><span class="o">.</span><span class="n">LSOF</span><span class="p">:</span> <span class="s">&#39;lsof -wnPi&#39;</span><span class="p">,</span>
+
+  <span class="n">Resolver</span><span class="o">.</span><span class="n">SOCKSTAT</span><span class="p">:</span> <span class="s">&#39;sockstat&#39;</span><span class="p">,</span>
+
+  <span class="c"># -4 = IPv4, -c = connected sockets</span>
+  <span class="n">Resolver</span><span class="o">.</span><span class="n">BSD_SOCKSTAT</span><span class="p">:</span> <span class="s">&#39;sockstat -4c&#39;</span><span class="p">,</span>
+
+  <span class="c"># -f &lt;pid&gt; = process pid</span>
+  <span class="n">Resolver</span><span class="o">.</span><span class="n">BSD_PROCSTAT</span><span class="p">:</span> <span class="s">&#39;procstat -f {pid}&#39;</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">RESOLVER_FILTER</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="n">Resolver</span><span class="o">.</span><span class="n">PROC</span><span class="p">:</span> <span class="s">&#39;&#39;</span><span class="p">,</span>
+
+  <span class="c"># tcp        0    586 192.168.0.1:44284       38.229.79.2:443         ESTABLISHED 15843/tor</span>
+  <span class="n">Resolver</span><span class="o">.</span><span class="n">NETSTAT</span><span class="p">:</span> <span class="s">&#39;^{protocol}\s+.*\s+{local}\s+{remote}\s+ESTABLISHED\s+{pid}/{name}\s*$&#39;</span><span class="p">,</span>
+
+  <span class="c"># tcp        586 192.168.0.1:44284       38.229.79.2:443         ESTABLISHED 15843</span>
+  <span class="n">Resolver</span><span class="o">.</span><span class="n">NETSTAT_WINDOWS</span><span class="p">:</span> <span class="s">&#39;^\s*{protocol}\s+{local}\s+{remote}\s+ESTABLISHED\s+{pid}\s*$&#39;</span><span class="p">,</span>
+
+  <span class="c"># tcp    ESTAB      0      0           192.168.0.20:44415       38.229.79.2:443    users:((&quot;tor&quot;,15843,9))</span>
+  <span class="n">Resolver</span><span class="o">.</span><span class="n">SS</span><span class="p">:</span> <span class="s">&#39;^{protocol}\s+ESTAB\s+.*\s+{local}\s+{remote}\s+users:\(\(&quot;{name}&quot;,(?:pid=)?{pid},(?:fd=)?[0-9]+\)\)$&#39;</span><span class="p">,</span>
+
+  <span class="c"># tor  3873  atagar  45u  IPv4  40994  0t0  TCP 10.243.55.20:45724-&gt;194.154.227.109:9001 (ESTABLISHED)</span>
+  <span class="n">Resolver</span><span class="o">.</span><span class="n">LSOF</span><span class="p">:</span> <span class="s">&#39;^{name}\s+{pid}\s+.*\s+{protocol}\s+{local}-&gt;{remote} \(ESTABLISHED\)$&#39;</span><span class="p">,</span>
+
+  <span class="c"># atagar   tor                  15843    tcp4   192.168.0.20:44092        68.169.35.102:443         ESTABLISHED</span>
+  <span class="n">Resolver</span><span class="o">.</span><span class="n">SOCKSTAT</span><span class="p">:</span> <span class="s">&#39;^\S+\s+{name}\s+{pid}\s+{protocol}4\s+{local}\s+{remote}\s+ESTABLISHED$&#39;</span><span class="p">,</span>
+
+  <span class="c"># _tor     tor        4397  12 tcp4   172.27.72.202:54011   127.0.0.1:9001</span>
+  <span class="n">Resolver</span><span class="o">.</span><span class="n">BSD_SOCKSTAT</span><span class="p">:</span> <span class="s">&#39;^\S+\s+{name}\s+{pid}\s+\S+\s+{protocol}4\s+{local}\s+{remote}$&#39;</span><span class="p">,</span>
+
+  <span class="c"># 3561 tor                 4 s - rw---n--   2       0 TCP 10.0.0.2:9050 10.0.0.1:22370</span>
+  <span class="n">Resolver</span><span class="o">.</span><span class="n">BSD_PROCSTAT</span><span class="p">:</span> <span class="s">&#39;^\s*{pid}\s+{name}\s+.*\s+{protocol}\s+{local}\s+{remote}$&#39;</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="Connection"><a class="viewcode-back" href="../../../api/util/connection.html#stem.util.connection.Connection">[docs]</a><span class="k">class</span> <span class="nc">Connection</span><span class="p">(</span><span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s">&#39;Connection&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;local_address&#39;</span><span class="p">,</span> <span class="s">&#39;local_port&#39;</span><span class="p">,</span> <span class="s">&#39;remote_address&#39;</span><span class="p">,</span> <span class="s">&#39;remote_port&#39;</span><span class="p">,</span> <span class="s">&#39;protocol&#39;</span><span class="p">,</span> <span class="s">&#39;is_ipv6&#39;</span><span class="p">])):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Network connection information.</span>
+
+<span class="sd">  .. versionchanged:: 1.5.0</span>
+<span class="sd">     Added the **is_ipv6** attribute.</span>
+
+<span class="sd">  :var str local_address: ip address the connection originates from</span>
+<span class="sd">  :var int local_port: port the connection originates from</span>
+<span class="sd">  :var str remote_address: destionation ip address</span>
+<span class="sd">  :var int remote_port: destination port</span>
+<span class="sd">  :var str protocol: protocol of the connection (&#39;tcp&#39;, &#39;udp&#39;, etc)</span>
+<span class="sd">  :var bool is_ipv6: addresses are ipv6 if true, and ipv4 otherwise</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+</div>
+<div class="viewcode-block" id="get_connections"><a class="viewcode-back" href="../../../api/util/connection.html#stem.util.connection.get_connections">[docs]</a><span class="k">def</span> <span class="nf">get_connections</span><span class="p">(</span><span class="n">resolver</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">process_pid</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">process_name</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Retrieves a list of the current connections for a given process. This</span>
+<span class="sd">  provides a list of :class:`~stem.util.connection.Connection`. Note that</span>
+<span class="sd">  addresses may be IPv4 *or* IPv6 depending on what the platform supports.</span>
+
+<span class="sd">  .. versionadded:: 1.1.0</span>
+
+<span class="sd">  .. versionchanged:: 1.5.0</span>
+<span class="sd">     Made our resolver argument optional.</span>
+
+<span class="sd">  .. versionchanged:: 1.5.0</span>
+<span class="sd">     IPv6 support when resolving via proc, netstat, lsof, or ss.</span>
+
+<span class="sd">  :param Resolver resolver: method of connection resolution to use, if not</span>
+<span class="sd">    provided then one is picked from among those that should likely be</span>
+<span class="sd">    available for the system</span>
+<span class="sd">  :param int process_pid: pid of the process to retrieve</span>
+<span class="sd">  :param str process_name: name of the process to retrieve</span>
+
+<span class="sd">  :returns: **list** of :class:`~stem.util.connection.Connection` instances</span>
+
+<span class="sd">  :raises:</span>
+<span class="sd">    * **ValueError** if neither a process_pid nor process_name is provided</span>
+
+<span class="sd">    * **IOError** if no connections are available or resolution fails</span>
+<span class="sd">      (generally they&#39;re indistinguishable). The common causes are the</span>
+<span class="sd">      command being unavailable or permissions.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">resolver</span><span class="p">:</span>
+    <span class="n">available_resolvers</span> <span class="o">=</span> <span class="n">system_resolvers</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">available_resolvers</span><span class="p">:</span>
+      <span class="n">resolver</span> <span class="o">=</span> <span class="n">available_resolvers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;Unable to determine a connection resolver&#39;</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">process_pid</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">process_name</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;You must provide a pid or process name to provide connections for&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_log</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">LOG_CONNECTION_RESOLUTION</span><span class="p">:</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+  <span class="n">_log</span><span class="p">(</span><span class="s">&#39;=&#39;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
+  <span class="n">_log</span><span class="p">(</span><span class="s">&#39;Querying connections for resolver: </span><span class="si">%s</span><span class="s">, pid: </span><span class="si">%s</span><span class="s">, name: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">resolver</span><span class="p">,</span> <span class="n">process_pid</span><span class="p">,</span> <span class="n">process_name</span><span class="p">))</span>
+
+  <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">process_pid</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">process_pid</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">process_pid</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Process pid was non-numeric: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">process_pid</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">process_pid</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="n">all_pids</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">pid_by_name</span><span class="p">(</span><span class="n">process_name</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_pids</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">resolver</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Resolver</span><span class="o">.</span><span class="n">NETSTAT_WINDOWS</span><span class="p">,</span> <span class="n">Resolver</span><span class="o">.</span><span class="n">PROC</span><span class="p">,</span> <span class="n">Resolver</span><span class="o">.</span><span class="n">BSD_PROCSTAT</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;Unable to determine the pid of &#39;</span><span class="si">%s</span><span class="s">&#39;. </span><span class="si">%s</span><span class="s"> requires the pid to provide the connections.&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">process_name</span><span class="p">,</span> <span class="n">resolver</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_pids</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+      <span class="n">process_pid</span> <span class="o">=</span> <span class="n">all_pids</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">resolver</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Resolver</span><span class="o">.</span><span class="n">NETSTAT_WINDOWS</span><span class="p">,</span> <span class="n">Resolver</span><span class="o">.</span><span class="n">PROC</span><span class="p">,</span> <span class="n">Resolver</span><span class="o">.</span><span class="n">BSD_PROCSTAT</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;There&#39;s multiple processes named &#39;</span><span class="si">%s</span><span class="s">&#39;. </span><span class="si">%s</span><span class="s"> requires a single pid to provide the connections.&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">process_name</span><span class="p">,</span> <span class="n">resolver</span><span class="p">))</span>
+
+  <span class="k">if</span> <span class="n">resolver</span> <span class="o">==</span> <span class="n">Resolver</span><span class="o">.</span><span class="n">PROC</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">proc</span><span class="o">.</span><span class="n">connections</span><span class="p">(</span><span class="n">pid</span> <span class="o">=</span> <span class="n">process_pid</span><span class="p">)</span>
+
+  <span class="n">resolver_command</span> <span class="o">=</span> <span class="n">RESOLVER_COMMAND</span><span class="p">[</span><span class="n">resolver</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">pid</span> <span class="o">=</span> <span class="n">process_pid</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">resolver_command</span><span class="p">)</span>
+  <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;Unable to query &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">resolver_command</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
+
+  <span class="n">resolver_regex_str</span> <span class="o">=</span> <span class="n">RESOLVER_FILTER</span><span class="p">[</span><span class="n">resolver</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+    <span class="n">protocol</span> <span class="o">=</span> <span class="s">&#39;(?P&lt;protocol&gt;\S+)&#39;</span><span class="p">,</span>
+    <span class="n">local</span> <span class="o">=</span> <span class="s">&#39;(?P&lt;local&gt;[\[\]0-9a-f.:]+)&#39;</span><span class="p">,</span>
+    <span class="n">remote</span> <span class="o">=</span> <span class="s">&#39;(?P&lt;remote&gt;[\[\]0-9a-f.:]+)&#39;</span><span class="p">,</span>
+    <span class="n">pid</span> <span class="o">=</span> <span class="n">process_pid</span> <span class="k">if</span> <span class="n">process_pid</span> <span class="k">else</span> <span class="s">&#39;[0-9]*&#39;</span><span class="p">,</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">process_name</span> <span class="k">if</span> <span class="n">process_name</span> <span class="k">else</span> <span class="s">&#39;\S*&#39;</span><span class="p">,</span>
+  <span class="p">)</span>
+
+  <span class="n">_log</span><span class="p">(</span><span class="s">&#39;Resolver regex: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">resolver_regex_str</span><span class="p">)</span>
+  <span class="n">_log</span><span class="p">(</span><span class="s">&#39;Resolver results:</span><span class="se">\n</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">results</span><span class="p">))</span>
+
+  <span class="n">connections</span> <span class="o">=</span> <span class="p">[]</span>
+  <span class="n">resolver_regex</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">resolver_regex_str</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_parse_address_str</span><span class="p">(</span><span class="n">addr_type</span><span class="p">,</span> <span class="n">addr_str</span><span class="p">,</span> <span class="n">line</span><span class="p">):</span>
+    <span class="n">addr</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="n">addr_str</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="n">addr</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_valid_ipv6_address</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">allow_brackets</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+      <span class="n">_log</span><span class="p">(</span><span class="s">&#39;Invalid </span><span class="si">%s</span><span class="s"> address (</span><span class="si">%s</span><span class="s">): </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">addr_type</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="n">line</span><span class="p">))</span>
+      <span class="k">return</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">is_valid_port</span><span class="p">(</span><span class="n">port</span><span class="p">):</span>
+      <span class="n">_log</span><span class="p">(</span><span class="s">&#39;Invalid </span><span class="si">%s</span><span class="s"> port (</span><span class="si">%s</span><span class="s">): </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">addr_type</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">line</span><span class="p">))</span>
+      <span class="k">return</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">_log</span><span class="p">(</span><span class="s">&#39;Valid </span><span class="si">%s</span><span class="s">:</span><span class="si">%s</span><span class="s">: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">line</span><span class="p">))</span>
+      <span class="k">return</span> <span class="n">addr</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s">&#39;[&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s">&#39;]&#39;</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+
+  <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+    <span class="n">match</span> <span class="o">=</span> <span class="n">resolver_regex</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+      <span class="n">attr</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">groupdict</span><span class="p">()</span>
+
+      <span class="n">local_addr</span><span class="p">,</span> <span class="n">local_port</span> <span class="o">=</span> <span class="n">_parse_address_str</span><span class="p">(</span><span class="s">&#39;local&#39;</span><span class="p">,</span> <span class="n">attr</span><span class="p">[</span><span class="s">&#39;local&#39;</span><span class="p">],</span> <span class="n">line</span><span class="p">)</span>
+      <span class="n">remote_addr</span><span class="p">,</span> <span class="n">remote_port</span> <span class="o">=</span> <span class="n">_parse_address_str</span><span class="p">(</span><span class="s">&#39;remote&#39;</span><span class="p">,</span> <span class="n">attr</span><span class="p">[</span><span class="s">&#39;remote&#39;</span><span class="p">],</span> <span class="n">line</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">local_addr</span> <span class="ow">and</span> <span class="n">local_port</span> <span class="ow">and</span> <span class="n">remote_addr</span> <span class="ow">and</span> <span class="n">remote_port</span><span class="p">):</span>
+        <span class="k">continue</span>  <span class="c"># missing or malformed field</span>
+
+      <span class="n">protocol</span> <span class="o">=</span> <span class="n">attr</span><span class="p">[</span><span class="s">&#39;protocol&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+
+      <span class="k">if</span> <span class="n">protocol</span> <span class="o">==</span> <span class="s">&#39;tcp6&#39;</span><span class="p">:</span>
+        <span class="n">protocol</span> <span class="o">=</span> <span class="s">&#39;tcp&#39;</span>
+
+      <span class="k">if</span> <span class="n">protocol</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;tcp&#39;</span><span class="p">,</span> <span class="s">&#39;udp&#39;</span><span class="p">):</span>
+        <span class="n">_log</span><span class="p">(</span><span class="s">&#39;Unrecognized protocol (</span><span class="si">%s</span><span class="s">): </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">protocol</span><span class="p">,</span> <span class="n">line</span><span class="p">))</span>
+        <span class="k">continue</span>
+
+      <span class="n">conn</span> <span class="o">=</span> <span class="n">Connection</span><span class="p">(</span><span class="n">local_addr</span><span class="p">,</span> <span class="n">local_port</span><span class="p">,</span> <span class="n">remote_addr</span><span class="p">,</span> <span class="n">remote_port</span><span class="p">,</span> <span class="n">protocol</span><span class="p">,</span> <span class="n">is_valid_ipv6_address</span><span class="p">(</span><span class="n">local_addr</span><span class="p">))</span>
+      <span class="n">connections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span>
+      <span class="n">_log</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">conn</span><span class="p">))</span>
+
+  <span class="n">_log</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%i</span><span class="s"> connections found&#39;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">connections</span><span class="p">))</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">connections</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;No results found using: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">resolver_command</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">connections</span>
+
+</div>
+<div class="viewcode-block" id="system_resolvers"><a class="viewcode-back" href="../../../api/util/connection.html#stem.util.connection.system_resolvers">[docs]</a><span class="k">def</span> <span class="nf">system_resolvers</span><span class="p">(</span><span class="n">system</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the types of connection resolvers likely to be available on this platform.</span>
+
+<span class="sd">  .. versionadded:: 1.1.0</span>
+
+<span class="sd">  .. versionchanged:: 1.3.0</span>
+<span class="sd">     Renamed from get_system_resolvers() to system_resolvers(). The old name</span>
+<span class="sd">     still works as an alias, but will be dropped in Stem version 2.0.0.</span>
+
+<span class="sd">  :param str system: system to get resolvers for, this is determined by</span>
+<span class="sd">    platform.system() if not provided</span>
+
+<span class="sd">  :returns: **list** of :data:`~stem.util.connection.Resolver` instances available on this platform</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">system</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">is_gentoo</span><span class="p">():</span>
+      <span class="n">system</span> <span class="o">=</span> <span class="s">&#39;Gentoo&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">system</span> <span class="o">=</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span>
+
+  <span class="k">if</span> <span class="n">system</span> <span class="o">==</span> <span class="s">&#39;Windows&#39;</span><span class="p">:</span>
+    <span class="n">resolvers</span> <span class="o">=</span> <span class="p">[</span><span class="n">Resolver</span><span class="o">.</span><span class="n">NETSTAT_WINDOWS</span><span class="p">]</span>
+  <span class="k">elif</span> <span class="n">system</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;Darwin&#39;</span><span class="p">,</span> <span class="s">&#39;OpenBSD&#39;</span><span class="p">):</span>
+    <span class="n">resolvers</span> <span class="o">=</span> <span class="p">[</span><span class="n">Resolver</span><span class="o">.</span><span class="n">LSOF</span><span class="p">]</span>
+  <span class="k">elif</span> <span class="n">system</span> <span class="o">==</span> <span class="s">&#39;FreeBSD&#39;</span><span class="p">:</span>
+    <span class="c"># Netstat is available, but lacks a &#39;-p&#39; equivalent so we can&#39;t associate</span>
+    <span class="c"># the results to processes. The platform also has a ss command, but it</span>
+    <span class="c"># belongs to a spreadsheet application.</span>
+
+    <span class="n">resolvers</span> <span class="o">=</span> <span class="p">[</span><span class="n">Resolver</span><span class="o">.</span><span class="n">BSD_SOCKSTAT</span><span class="p">,</span> <span class="n">Resolver</span><span class="o">.</span><span class="n">BSD_PROCSTAT</span><span class="p">,</span> <span class="n">Resolver</span><span class="o">.</span><span class="n">LSOF</span><span class="p">]</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="c"># Sockstat isn&#39;t available by default on ubuntu.</span>
+
+    <span class="n">resolvers</span> <span class="o">=</span> <span class="p">[</span><span class="n">Resolver</span><span class="o">.</span><span class="n">NETSTAT</span><span class="p">,</span> <span class="n">Resolver</span><span class="o">.</span><span class="n">SOCKSTAT</span><span class="p">,</span> <span class="n">Resolver</span><span class="o">.</span><span class="n">LSOF</span><span class="p">,</span> <span class="n">Resolver</span><span class="o">.</span><span class="n">SS</span><span class="p">]</span>
+
+  <span class="c"># remove any that aren&#39;t in the user&#39;s PATH</span>
+
+  <span class="n">resolvers</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">resolvers</span> <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">is_available</span><span class="p">(</span><span class="n">RESOLVER_COMMAND</span><span class="p">[</span><span class="n">r</span><span class="p">])]</span>
+
+  <span class="c"># proc resolution, by far, outperforms the others so defaults to this is able</span>
+
+  <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">proc</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">access</span><span class="p">(</span><span class="s">&#39;/proc/net/tcp&#39;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">R_OK</span><span class="p">)</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">access</span><span class="p">(</span><span class="s">&#39;/proc/net/udp&#39;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">R_OK</span><span class="p">):</span>
+    <span class="n">resolvers</span> <span class="o">=</span> <span class="p">[</span><span class="n">Resolver</span><span class="o">.</span><span class="n">PROC</span><span class="p">]</span> <span class="o">+</span> <span class="n">resolvers</span>
+
+  <span class="k">return</span> <span class="n">resolvers</span>
+
+</div>
+<div class="viewcode-block" id="port_usage"><a class="viewcode-back" href="../../../api/util/connection.html#stem.util.connection.port_usage">[docs]</a><span class="k">def</span> <span class="nf">port_usage</span><span class="p">(</span><span class="n">port</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the common use of a given port. For example, &#39;HTTP&#39; for port 80 or</span>
+<span class="sd">  &#39;SSH&#39; for 22.</span>
+
+<span class="sd">  .. versionadded:: 1.2.0</span>
+
+<span class="sd">  :param int port: port number to look up</span>
+
+<span class="sd">  :returns: **str** with a description for the port, **None** if none is known</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">global</span> <span class="n">PORT_USES</span>
+
+  <span class="k">if</span> <span class="n">PORT_USES</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">conf</span><span class="o">.</span><span class="n">Config</span><span class="p">()</span>
+    <span class="n">config_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">),</span> <span class="s">&#39;ports.cfg&#39;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">config</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">config_path</span><span class="p">)</span>
+      <span class="n">port_uses</span> <span class="o">=</span> <span class="p">{}</span>
+
+      <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;port&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+         <span class="n">port_uses</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">key</span><span class="p">)]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">elif</span> <span class="s">&#39;-&#39;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
+          <span class="n">min_port</span><span class="p">,</span> <span class="n">max_port</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;-&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+          <span class="k">for</span> <span class="n">port_entry</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">min_port</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">max_port</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">port_uses</span><span class="p">[</span><span class="n">port_entry</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; is an invalid key&quot;</span> <span class="o">%</span> <span class="n">key</span><span class="p">)</span>
+
+      <span class="n">PORT_USES</span> <span class="o">=</span> <span class="n">port_uses</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;BUG: stem failed to load its internal port descriptions from &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">PORT_USES</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">None</span>
+
+  <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">port</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">port</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+    <span class="n">port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">PORT_USES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="is_valid_ipv4_address"><a class="viewcode-back" href="../../../api/util/connection.html#stem.util.connection.is_valid_ipv4_address">[docs]</a><span class="k">def</span> <span class="nf">is_valid_ipv4_address</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks if a string is a valid IPv4 address.</span>
+
+<span class="sd">  :param str address: string to be checked</span>
+
+<span class="sd">  :returns: **True** if input is a valid IPv4 address, **False** otherwise</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="p">(</span><span class="nb">bytes</span><span class="p">,</span> <span class="n">str_type</span><span class="p">)):</span>
+    <span class="k">return</span> <span class="bp">False</span>
+
+  <span class="c"># checks if theres four period separated values</span>
+
+  <span class="k">if</span> <span class="n">address</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+     <span class="k">return</span> <span class="bp">False</span>
+
+  <span class="c"># checks that each value in the octet are decimal values between 0-255</span>
+  <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">address</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">entry</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span> <span class="ow">or</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">255</span><span class="p">:</span>
+      <span class="k">return</span> <span class="bp">False</span>
+    <span class="k">elif</span> <span class="n">entry</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;0&#39;</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+      <span class="k">return</span> <span class="bp">False</span>  <span class="c"># leading zeros, for instance in &#39;1.2.3.001&#39;</span>
+
+  <span class="k">return</span> <span class="bp">True</span>
+
+</div>
+<div class="viewcode-block" id="is_valid_ipv6_address"><a class="viewcode-back" href="../../../api/util/connection.html#stem.util.connection.is_valid_ipv6_address">[docs]</a><span class="k">def</span> <span class="nf">is_valid_ipv6_address</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">allow_brackets</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks if a string is a valid IPv6 address.</span>
+
+<span class="sd">  :param str address: string to be checked</span>
+<span class="sd">  :param bool allow_brackets: ignore brackets which form &#39;[address]&#39;</span>
+
+<span class="sd">  :returns: **True** if input is a valid IPv6 address, **False** otherwise</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">allow_brackets</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">address</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;[&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">address</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;]&#39;</span><span class="p">):</span>
+      <span class="n">address</span> <span class="o">=</span> <span class="n">address</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+  <span class="k">if</span> <span class="n">address</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+    <span class="c"># Likely an ipv4-mapped portion. Check that its vaild, then replace with a</span>
+    <span class="c"># filler.</span>
+
+    <span class="n">ipv4_start</span> <span class="o">=</span> <span class="n">address</span><span class="o">.</span><span class="n">rfind</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">address</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">ipv4_end</span> <span class="o">=</span> <span class="n">address</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">,</span> <span class="n">ipv4_start</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">ipv4_end</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+      <span class="n">ipv4_end</span> <span class="o">=</span> <span class="bp">None</span>  <span class="c"># don&#39;t crop the last character</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="n">address</span><span class="p">[</span><span class="n">ipv4_start</span><span class="p">:</span><span class="n">ipv4_end</span><span class="p">]):</span>
+      <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="n">addr_comp</span> <span class="o">=</span> <span class="p">[</span><span class="n">address</span><span class="p">[:</span><span class="n">ipv4_start</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">ipv4_start</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">else</span> <span class="bp">None</span><span class="p">,</span> <span class="s">&#39;ff:ff&#39;</span><span class="p">,</span> <span class="n">address</span><span class="p">[</span><span class="n">ipv4_end</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:]</span> <span class="k">if</span> <span class="n">ipv4_end</span> <span class="k">else</span> <span class="bp">None</span><span class="p">]</span>
+    <span class="n">address</span> <span class="o">=</span> <span class="s">&#39;:&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">addr_comp</span><span class="p">))</span>
+
+  <span class="c"># addresses are made up of eight colon separated groups of four hex digits</span>
+  <span class="c"># with leading zeros being optional</span>
+  <span class="c"># https://en.wikipedia.org/wiki/IPv6#Address_format</span>
+
+  <span class="n">colon_count</span> <span class="o">=</span> <span class="n">address</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">colon_count</span> <span class="o">&gt;</span> <span class="mi">7</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">False</span>  <span class="c"># too many groups</span>
+  <span class="k">elif</span> <span class="n">colon_count</span> <span class="o">!=</span> <span class="mi">7</span> <span class="ow">and</span> <span class="s">&#39;::&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">address</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">False</span>  <span class="c"># not enough groups and none are collapsed</span>
+  <span class="k">elif</span> <span class="n">address</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s">&#39;::&#39;</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">or</span> <span class="s">&#39;:::&#39;</span> <span class="ow">in</span> <span class="n">address</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">False</span>  <span class="c"># multiple groupings of zeros can&#39;t be collapsed</span>
+
+  <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">address</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-f]{0,4}$&#39;</span><span class="p">,</span> <span class="n">entry</span><span class="p">):</span>
+      <span class="k">return</span> <span class="bp">False</span>
+
+  <span class="k">return</span> <span class="bp">True</span>
+
+</div>
+<div class="viewcode-block" id="is_valid_port"><a class="viewcode-back" href="../../../api/util/connection.html#stem.util.connection.is_valid_port">[docs]</a><span class="k">def</span> <span class="nf">is_valid_port</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">allow_zero</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks if a string or int is a valid port number.</span>
+
+<span class="sd">  :param list,str,int entry: string, integer or list to be checked</span>
+<span class="sd">  :param bool allow_zero: accept port number of zero (reserved by definition)</span>
+
+<span class="sd">  :returns: **True** if input is an integer and within the valid port range, **False** otherwise</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">str</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+      <span class="k">return</span> <span class="bp">False</span>  <span class="c"># invalid leading char, e.g. space or zero</span>
+    <span class="k">elif</span> <span class="n">allow_zero</span> <span class="ow">and</span> <span class="n">value</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+      <span class="k">return</span> <span class="bp">True</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="mi">65536</span>
+  <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="p">(</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">list</span><span class="p">)):</span>
+      <span class="k">for</span> <span class="n">port</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_valid_port</span><span class="p">(</span><span class="n">port</span><span class="p">,</span> <span class="n">allow_zero</span><span class="p">):</span>
+          <span class="k">return</span> <span class="bp">False</span>
+
+      <span class="k">return</span> <span class="bp">True</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">return</span> <span class="bp">False</span>
+  <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">False</span>
+
+</div>
+<div class="viewcode-block" id="is_private_address"><a class="viewcode-back" href="../../../api/util/connection.html#stem.util.connection.is_private_address">[docs]</a><span class="k">def</span> <span class="nf">is_private_address</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks if the IPv4 address is in a range belonging to the local network or</span>
+<span class="sd">  loopback. These include:</span>
+
+<span class="sd">    * Private ranges: 10.*, 172.16.* - 172.31.*, 192.168.*</span>
+<span class="sd">    * Loopback: 127.*</span>
+
+<span class="sd">  .. versionadded:: 1.1.0</span>
+
+<span class="sd">  :param str address: string to be checked</span>
+
+<span class="sd">  :returns: **True** if input is in a private range, **False** otherwise</span>
+
+<span class="sd">  :raises: **ValueError** if the address isn&#39;t a valid IPv4 address</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; isn&#39;t a valid IPv4 address&quot;</span> <span class="o">%</span> <span class="n">address</span><span class="p">)</span>
+
+  <span class="c"># checks for any of the simple wildcard ranges</span>
+
+  <span class="k">if</span> <span class="n">address</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;10.&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">address</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;192.168.&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">address</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;127.&#39;</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">True</span>
+
+  <span class="c"># checks for the 172.16.* - 172.31.* range</span>
+
+  <span class="k">if</span> <span class="n">address</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;172.&#39;</span><span class="p">):</span>
+    <span class="n">second_octet</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">address</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">second_octet</span> <span class="o">&gt;=</span> <span class="mi">16</span> <span class="ow">and</span> <span class="n">second_octet</span> <span class="o">&lt;=</span> <span class="mi">31</span><span class="p">:</span>
+      <span class="k">return</span> <span class="bp">True</span>
+
+  <span class="k">return</span> <span class="bp">False</span>
+
+</div>
+<div class="viewcode-block" id="address_to_int"><a class="viewcode-back" href="../../../api/util/connection.html#stem.util.connection.address_to_int">[docs]</a><span class="k">def</span> <span class="nf">address_to_int</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides an integer representation of a IPv4 or IPv6 address that can be used</span>
+<span class="sd">  for sorting.</span>
+
+<span class="sd">  .. versionadded:: 1.5.0</span>
+
+<span class="sd">  :param str address: IPv4 or IPv6 address</span>
+
+<span class="sd">  :returns: **int** representation of the address</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># TODO: Could be neat to also use this for serialization if we also had an</span>
+  <span class="c"># int_to_address() function.</span>
+
+  <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">_get_address_binary</span><span class="p">(</span><span class="n">address</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="expand_ipv6_address"><a class="viewcode-back" href="../../../api/util/connection.html#stem.util.connection.expand_ipv6_address">[docs]</a><span class="k">def</span> <span class="nf">expand_ipv6_address</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Expands abbreviated IPv6 addresses to their full colon separated hex format.</span>
+<span class="sd">  For instance...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    &gt;&gt;&gt; expand_ipv6_address(&#39;2001:db8::ff00:42:8329&#39;)</span>
+<span class="sd">    &#39;2001:0db8:0000:0000:0000:ff00:0042:8329&#39;</span>
+
+<span class="sd">    &gt;&gt;&gt; expand_ipv6_address(&#39;::&#39;)</span>
+<span class="sd">    &#39;0000:0000:0000:0000:0000:0000:0000:0000&#39;</span>
+
+<span class="sd">    &gt;&gt;&gt; expand_ipv6_address(&#39;::ffff:5.9.158.75&#39;)</span>
+<span class="sd">    &#39;0000:0000:0000:0000:0000:ffff:0509:9e4b&#39;</span>
+
+<span class="sd">  :param str address: IPv6 address to be expanded</span>
+
+<span class="sd">  :raises: **ValueError** if the address can&#39;t be expanded due to being malformed</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">is_valid_ipv6_address</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; isn&#39;t a valid IPv6 address&quot;</span> <span class="o">%</span> <span class="n">address</span><span class="p">)</span>
+
+  <span class="c"># expand ipv4-mapped portions of addresses</span>
+  <span class="k">if</span> <span class="n">address</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+    <span class="n">ipv4_start</span> <span class="o">=</span> <span class="n">address</span><span class="o">.</span><span class="n">rfind</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">address</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">ipv4_end</span> <span class="o">=</span> <span class="n">address</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">,</span> <span class="n">ipv4_start</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">ipv4_end</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+      <span class="n">ipv4_end</span> <span class="o">=</span> <span class="bp">None</span>  <span class="c"># don&#39;t crop the last character</span>
+
+    <span class="c"># Converts ipv4 address to its hex ipv6 representation. For instance...</span>
+    <span class="c">#</span>
+    <span class="c">#   &#39;5.9.158.75&#39; =&gt; &#39;0509:9e4b&#39;</span>
+
+    <span class="n">ipv4_bin</span> <span class="o">=</span> <span class="n">_get_address_binary</span><span class="p">(</span><span class="n">address</span><span class="p">[</span><span class="n">ipv4_start</span><span class="p">:</span><span class="n">ipv4_end</span><span class="p">])</span>
+    <span class="n">groupings</span> <span class="o">=</span> <span class="p">[</span><span class="n">ipv4_bin</span><span class="p">[</span><span class="mi">16</span> <span class="o">*</span> <span class="n">i</span><span class="p">:</span><span class="mi">16</span> <span class="o">*</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">)]</span>
+    <span class="n">ipv6_snippet</span> <span class="o">=</span> <span class="s">&#39;:&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s">&#39;</span><span class="si">%04x</span><span class="s">&#39;</span> <span class="o">%</span> <span class="nb">int</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">groupings</span><span class="p">])</span>
+
+    <span class="n">addr_comp</span> <span class="o">=</span> <span class="p">[</span><span class="n">address</span><span class="p">[:</span><span class="n">ipv4_start</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">ipv4_start</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">else</span> <span class="bp">None</span><span class="p">,</span> <span class="n">ipv6_snippet</span><span class="p">,</span> <span class="n">address</span><span class="p">[</span><span class="n">ipv4_end</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:]</span> <span class="k">if</span> <span class="n">ipv4_end</span> <span class="k">else</span> <span class="bp">None</span><span class="p">]</span>
+    <span class="n">address</span> <span class="o">=</span> <span class="s">&#39;:&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">addr_comp</span><span class="p">))</span>
+
+  <span class="c"># expands collapsed groupings, there can only be a single &#39;::&#39; in a valid</span>
+  <span class="c"># address</span>
+  <span class="k">if</span> <span class="s">&#39;::&#39;</span> <span class="ow">in</span> <span class="n">address</span><span class="p">:</span>
+    <span class="n">missing_groups</span> <span class="o">=</span> <span class="mi">7</span> <span class="o">-</span> <span class="n">address</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">)</span>
+    <span class="n">address</span> <span class="o">=</span> <span class="n">address</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;::&#39;</span><span class="p">,</span> <span class="s">&#39;::&#39;</span> <span class="o">+</span> <span class="s">&#39;:&#39;</span> <span class="o">*</span> <span class="n">missing_groups</span><span class="p">)</span>
+
+  <span class="c"># inserts missing zeros</span>
+  <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">):</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">index</span> <span class="o">*</span> <span class="mi">5</span>
+    <span class="n">end</span> <span class="o">=</span> <span class="n">address</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">,</span> <span class="n">start</span><span class="p">)</span> <span class="k">if</span> <span class="n">index</span> <span class="o">!=</span> <span class="mi">7</span> <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">address</span><span class="p">)</span>
+    <span class="n">missing_zeros</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">-</span> <span class="p">(</span><span class="n">end</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">missing_zeros</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+      <span class="n">address</span> <span class="o">=</span> <span class="n">address</span><span class="p">[:</span><span class="n">start</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;0&#39;</span> <span class="o">*</span> <span class="n">missing_zeros</span> <span class="o">+</span> <span class="n">address</span><span class="p">[</span><span class="n">start</span><span class="p">:]</span>
+
+  <span class="k">return</span> <span class="n">address</span>
+
+</div>
+<div class="viewcode-block" id="get_mask_ipv4"><a class="viewcode-back" href="../../../api/util/connection.html#stem.util.connection.get_mask_ipv4">[docs]</a><span class="k">def</span> <span class="nf">get_mask_ipv4</span><span class="p">(</span><span class="n">bits</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the IPv4 mask for a given number of bits, in the dotted-quad format.</span>
+
+<span class="sd">  :param int bits: number of bits to be converted</span>
+
+<span class="sd">  :returns: **str** with the subnet mask representation for this many bits</span>
+
+<span class="sd">  :raises: **ValueError** if given a number of bits outside the range of 0-32</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">bits</span> <span class="o">&gt;</span> <span class="mi">32</span> <span class="ow">or</span> <span class="n">bits</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;A mask can only be 0-32 bits, got </span><span class="si">%i</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">bits</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="n">bits</span> <span class="o">==</span> <span class="mi">32</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">FULL_IPv4_MASK</span>
+
+  <span class="c"># get the binary representation of the mask</span>
+  <span class="n">mask_bin</span> <span class="o">=</span> <span class="n">_get_binary</span><span class="p">(</span><span class="mi">2</span> <span class="o">**</span> <span class="n">bits</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">32</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+  <span class="c"># breaks it into eight character groupings</span>
+  <span class="n">octets</span> <span class="o">=</span> <span class="p">[</span><span class="n">mask_bin</span><span class="p">[</span><span class="mi">8</span> <span class="o">*</span> <span class="n">i</span><span class="p">:</span><span class="mi">8</span> <span class="o">*</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)]</span>
+
+  <span class="c"># converts each octet into its integer value</span>
+  <span class="k">return</span> <span class="s">&#39;.&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">octet</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span> <span class="k">for</span> <span class="n">octet</span> <span class="ow">in</span> <span class="n">octets</span><span class="p">])</span>
+
+</div>
+<div class="viewcode-block" id="get_mask_ipv6"><a class="viewcode-back" href="../../../api/util/connection.html#stem.util.connection.get_mask_ipv6">[docs]</a><span class="k">def</span> <span class="nf">get_mask_ipv6</span><span class="p">(</span><span class="n">bits</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the IPv6 mask for a given number of bits, in the hex colon-delimited</span>
+<span class="sd">  format.</span>
+
+<span class="sd">  :param int bits: number of bits to be converted</span>
+
+<span class="sd">  :returns: **str** with the subnet mask representation for this many bits</span>
+
+<span class="sd">  :raises: **ValueError** if given a number of bits outside the range of 0-128</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">bits</span> <span class="o">&gt;</span> <span class="mi">128</span> <span class="ow">or</span> <span class="n">bits</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;A mask can only be 0-128 bits, got </span><span class="si">%i</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">bits</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="n">bits</span> <span class="o">==</span> <span class="mi">128</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">FULL_IPv6_MASK</span>
+
+  <span class="c"># get the binary representation of the mask</span>
+  <span class="n">mask_bin</span> <span class="o">=</span> <span class="n">_get_binary</span><span class="p">(</span><span class="mi">2</span> <span class="o">**</span> <span class="n">bits</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">128</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+  <span class="c"># breaks it into sixteen character groupings</span>
+  <span class="n">groupings</span> <span class="o">=</span> <span class="p">[</span><span class="n">mask_bin</span><span class="p">[</span><span class="mi">16</span> <span class="o">*</span> <span class="n">i</span><span class="p">:</span><span class="mi">16</span> <span class="o">*</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">)]</span>
+
+  <span class="c"># converts each group into its hex value</span>
+  <span class="k">return</span> <span class="s">&#39;:&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s">&#39;</span><span class="si">%04x</span><span class="s">&#39;</span> <span class="o">%</span> <span class="nb">int</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">groupings</span><span class="p">])</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_get_masked_bits</span><span class="p">(</span><span class="n">mask</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the number of bits that an IPv4 subnet mask represents. Note that</span>
+<span class="sd">  not all masks can be represented by a bit count.</span>
+
+<span class="sd">  :param str mask: mask to be converted</span>
+
+<span class="sd">  :returns: **int** with the number of bits represented by the mask</span>
+
+<span class="sd">  :raises: **ValueError** if the mask is invalid or can&#39;t be converted</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="n">mask</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; is an invalid subnet mask&quot;</span> <span class="o">%</span> <span class="n">mask</span><span class="p">)</span>
+
+  <span class="c"># converts octets to binary representation</span>
+  <span class="n">mask_bin</span> <span class="o">=</span> <span class="n">_get_address_binary</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+  <span class="n">mask_match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^(1*)(0*)$&#39;</span><span class="p">,</span> <span class="n">mask_bin</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">mask_match</span><span class="p">:</span>
+    <span class="k">return</span> <span class="mi">32</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">mask_match</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">1</span><span class="p">])</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Unable to convert mask to a bit count: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">mask</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_get_binary</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">bits</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the given value as a binary string, padded with zeros to the given</span>
+<span class="sd">  number of bits.</span>
+
+<span class="sd">  :param int value: value to be converted</span>
+<span class="sd">  :param int bits: number of bits to pad to</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># http://www.daniweb.com/code/snippet216539.html</span>
+  <span class="k">return</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">((</span><span class="n">value</span> <span class="o">&gt;&gt;</span> <span class="n">y</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">bits</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)])</span>
+
+
+<span class="k">def</span> <span class="nf">_get_address_binary</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the binary value for an IPv4 or IPv6 address.</span>
+
+<span class="sd">  :returns: **str** with the binary representation of this address</span>
+
+<span class="sd">  :raises: **ValueError** if address is neither an IPv4 nor IPv6 address</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">_get_binary</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">octet</span><span class="p">),</span> <span class="mi">8</span><span class="p">)</span> <span class="k">for</span> <span class="n">octet</span> <span class="ow">in</span> <span class="n">address</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)])</span>
+  <span class="k">elif</span> <span class="n">is_valid_ipv6_address</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+    <span class="n">address</span> <span class="o">=</span> <span class="n">expand_ipv6_address</span><span class="p">(</span><span class="n">address</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">_get_binary</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">grouping</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span> <span class="mi">16</span><span class="p">)</span> <span class="k">for</span> <span class="n">grouping</span> <span class="ow">in</span> <span class="n">address</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">)])</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; is neither an IPv4 or IPv6 address&quot;</span> <span class="o">%</span> <span class="n">address</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_hmac_sha256</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Generates a sha256 digest using the given key and message.</span>
+
+<span class="sd">  :param str key: starting key for the hash</span>
+<span class="sd">  :param str msg: message to be hashed</span>
+
+<span class="sd">  :returns: sha256 digest of msg as bytes, hashed using the given key</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">return</span> <span class="n">hmac</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">)</span><span class="o">.</span><span class="n">digest</span><span class="p">()</span>
+
+
+<span class="k">def</span> <span class="nf">_cryptovariables_equal</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Compares two strings for equality securely.</span>
+
+<span class="sd">  :param str x: string to be compared.</span>
+<span class="sd">  :param str y: the other string to be compared.</span>
+
+<span class="sd">  :returns: **True** if both strings are equal, **False** otherwise.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">return</span> <span class="p">(</span>
+    <span class="n">_hmac_sha256</span><span class="p">(</span><span class="n">CRYPTOVARIABLE_EQUALITY_COMPARISON_NONCE</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="o">==</span>
+    <span class="n">_hmac_sha256</span><span class="p">(</span><span class="n">CRYPTOVARIABLE_EQUALITY_COMPARISON_NONCE</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>
+
+<span class="c"># TODO: drop with stem 2.x</span>
+<span class="c"># We renamed our methods to drop a redundant &#39;get_*&#39; prefix, so alias the old</span>
+<span class="c"># names for backward compatability.</span>
+
+<span class="n">get_system_resolvers</span> <span class="o">=</span> <span class="n">system_resolvers</span>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

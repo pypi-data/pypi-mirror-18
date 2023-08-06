@@ -1,0 +1,747 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Mirror Mirror on the Wall &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>Mirror Mirror on the Wall</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="over_the_river.html">Hidden Services</a></li>
+              <li><a href="#">Tor Descriptors</a></li>
+              <li><a href="east_of_the_sun.html">Utilities</a></li>
+              <li><a href="down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../api.html">API</a>
+            <ul>
+              <li><a href="../api/control.html">stem.control</a></li>
+              <li><a href="../api/connection.html">stem.connection</a></li>
+              <li><a href="../api/socket.html">stem.socket</a></li>
+              <li><a href="../api/process.html">stem.process</a></li>
+              <li><a href="../api/response.html">stem.response</a></li>
+              <li><a href="../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../api/version.html">stem.version</a></li>
+              <li><a href="../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../faq.html">FAQ</a></li>
+              <li><a href="../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="mirror-mirror-on-the-wall">
+<h1>Mirror Mirror on the Wall<a class="headerlink" href="#mirror-mirror-on-the-wall" title="Permalink to this headline">¶</a></h1>
+<p>The following is an overview of <strong>Tor descriptors</strong>. If you're already familiar
+with what they are and where to get them then you may want to skip to the end.</p>
+<ul class="simple">
+<li><a class="reference internal" href="#what-is-a-descriptor"><em>What is a descriptor?</em></a></li>
+<li><a class="reference internal" href="#where-do-descriptors-come-from"><em>Where do descriptors come from?</em></a></li>
+<li><a class="reference internal" href="#where-can-i-get-the-current-descriptors"><em>Where can I get the current descriptors?</em></a></li>
+<li><a class="reference internal" href="#where-can-i-get-past-descriptors"><em>Where can I get past descriptors?</em></a></li>
+<li><a class="reference internal" href="#can-i-get-descriptors-from-the-tor-process"><em>Can I get descriptors from the Tor process?</em></a></li>
+<li><a class="reference internal" href="#validating-the-descriptors-content"><em>Validating the descriptor's content</em></a></li>
+<li><a class="reference internal" href="#saving-and-loading-descriptors"><em>Saving and loading descriptors</em></a></li>
+<li><a class="reference internal" href="#putting-it-together"><em>Putting it together...</em></a></li>
+<li><a class="reference internal" href="#are-there-any-other-parsing-libraries"><em>Are there any other parsing libraries?</em></a></li>
+</ul>
+<div class="section" id="what-is-a-descriptor">
+<span id="id1"></span><h2>What is a descriptor?<a class="headerlink" href="#what-is-a-descriptor" title="Permalink to this headline">¶</a></h2>
+<p>Tor is made up of two parts: the application and a distributed network of a few
+thousand volunteer relays. Information about these relays is public, and made
+up of documents called <strong>descriptors</strong>.</p>
+<p>There are several different kinds of descriptors, the most common ones being...</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="21%" />
+<col width="79%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Descriptor Type</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><a class="reference external" href="../api/descriptor/server_descriptor.html">Server Descriptor</a></td>
+<td>Information that relays publish about themselves. Tor clients once downloaded this information, but now they use microdescriptors instead.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference external" href="../api/descriptor/extrainfo_descriptor.html">ExtraInfo Descriptor</a></td>
+<td>Relay information that Tor clients do not need in order to function. This is self-published, like server descriptors, but not downloaded by default.</td>
+</tr>
+<tr class="row-even"><td><a class="reference external" href="../api/descriptor/microdescriptor.html">Microdescriptor</a></td>
+<td>Minimalistic document that just includes the information necessary for Tor clients to work.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference external" href="../api/descriptor/networkstatus.html">Network Status Document</a></td>
+<td>Though Tor relays are decentralized, the directories that track the overall network are not. These central points are called <strong>directory authorities</strong>, and every hour they publish a document called a <strong>consensus</strong> (aka, network status document). The consensus in turn is made up of <strong>router status entries</strong>.</td>
+</tr>
+<tr class="row-even"><td><a class="reference external" href="../api/descriptor/router_status_entry.html">Router Status Entry</a></td>
+<td>Relay information provided by the directory authorities including flags, heuristics used for relay selection, etc.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference external" href="../api/descriptor/hidden_service_descriptor.html">Hidden Service Descriptor</a></td>
+<td>Information pertaining to a <a class="reference external" href="https://www.torproject.org/docs/hidden-services.html.en">Hidden Service</a>. These can only be <a class="reference external" href="over_the_river.html#hidden-service-descriptors">queried through the tor process</a>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="where-do-descriptors-come-from">
+<span id="id2"></span><h2>Where do descriptors come from?<a class="headerlink" href="#where-do-descriptors-come-from" title="Permalink to this headline">¶</a></h2>
+<p>Descriptors fall into two camps:</p>
+<ul>
+<li><p class="first"><strong>Server</strong>, <strong>extra-info</strong>, and <strong>hidden service</strong> descriptors are
+<strong>self-published documents</strong>. Relays and hidden services publish these about
+themselves, and so naturally can indicate anything they'd like in them (true
+or not).</p>
+<p>These are <strong>self contained documents</strong>, bundling within themselves a
+signiture Stem can <a class="reference external" href="./mirror_mirror_on_the_wall.html#validating-the-descriptors-content">optionally check</a>.</p>
+</li>
+<li><p class="first"><strong>Network status documents</strong> (aka <strong>votes</strong>, the <strong>consensus</strong>, and <strong>router
+status entries</strong> they contain) are created by the <strong>directory authorities</strong>.
+For a great overview on how this works see <a class="reference external" href="https://jordan-wright.github.io/blog/2015/05/14/how-tor-works-part-three-the-consensus/">Jordan Wright's article on how
+the consensus is made</a>.</p>
+</li>
+</ul>
+<p><strong>Microdescriptors</strong> are merely a distilled copy of a <strong>server descriptor</strong>,
+and so belong to the first camp.</p>
+</div>
+<div class="section" id="where-can-i-get-the-current-descriptors">
+<span id="id3"></span><h2>Where can I get the current descriptors?<a class="headerlink" href="#where-can-i-get-the-current-descriptors" title="Permalink to this headline">¶</a></h2>
+<p>To work Tor needs to have up-to-date information about relays within the
+network. As such getting current descriptors is easy: <em>just download it like
+Tor does</em>.</p>
+<p>The <a class="reference external" href="../api/descriptor/remote.html">stem.descriptor.remote</a> module downloads
+descriptors from the tor directory authorities and mirrors. <strong>Please show
+some restraint when doing this</strong>! This adds load to the network, and hence an
+irresponsible script can make Tor worse for everyone.</p>
+<p>Listing the current relays in the Tor network is as easy as...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">stem.descriptor.remote</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">remote</span><span class="o">.</span><span class="n">get_consensus</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">():</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;found relay </span><span class="si">%s</span><span class="s"> (</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">desc</span><span class="o">.</span><span class="n">nickname</span><span class="p">,</span> <span class="n">desc</span><span class="o">.</span><span class="n">fingerprint</span><span class="p">))</span>
+<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+  <span class="k">print</span><span class="p">(</span><span class="s">&quot;Unable to retrieve the consensus: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">exc</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If you want to see what the raw descriptors look like you can also curl this
+information from the DirPort of directory authorities and mirrors...</p>
+<div class="highlight-python"><pre>% curl 128.31.0.34:9131/tor/server/all
+router Unnamed 83.227.81.207 9001 0 9030
+identity-ed25519
+-----BEGIN ED25519 CERT-----
+AQQABj3aAV7JzKHjSJjocve8jvnMwmy/Pv2HsSKoymeepddNBU5iAQAgBABw1VVB
+965QDxs+wicWj4vNXMKIkKCN4gQhvzqG2UxsgmkaQlsKiEMrIxrzwlazP6od9+hi
+WZKl3tshd0ekgUB6AAKwlvsrxl9wfy0G/Bf8PVsBftvNCWPwLR4pI3nibQU=
+-----END ED25519 CERT-----
+master-key-ed25519 cNVVQfeuUA8bPsInFo+LzVzCiJCgjeIEIb86htlMbII
+...</pre>
+</div>
+</div>
+<div class="section" id="where-can-i-get-past-descriptors">
+<span id="id4"></span><h2>Where can I get past descriptors?<a class="headerlink" href="#where-can-i-get-past-descriptors" title="Permalink to this headline">¶</a></h2>
+<p>Descriptor archives are available from <a class="reference external" href="https://collector.torproject.org/">CollecTor</a>. These archives can be read with
+the <a class="reference external" href="../api/descriptor/reader.html">DescriptorReader</a>...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">stem.descriptor.reader</span> <span class="kn">import</span> <span class="n">DescriptorReader</span>
+
+<span class="k">with</span> <span class="n">DescriptorReader</span><span class="p">([</span><span class="s">&quot;/home/atagar/server-descriptors-2013-03.tar&quot;</span><span class="p">])</span> <span class="k">as</span> <span class="n">reader</span><span class="p">:</span>
+  <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">reader</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;found relay </span><span class="si">%s</span><span class="s"> (</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">desc</span><span class="o">.</span><span class="n">nickname</span><span class="p">,</span> <span class="n">desc</span><span class="o">.</span><span class="n">fingerprint</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="can-i-get-descriptors-from-the-tor-process">
+<span id="id5"></span><h2>Can I get descriptors from the Tor process?<a class="headerlink" href="#can-i-get-descriptors-from-the-tor-process" title="Permalink to this headline">¶</a></h2>
+<p>If you already have Tor running on your system then it is already downloading
+descriptors on your behalf. Reusing these is a great way to keep from burdening
+the rest of the Tor network.</p>
+<p>Tor only gets the descriptors that it needs by default, so if you're scripting
+against Tor you may want to set some of the following in your <a class="reference external" href="https://www.torproject.org/docs/faq.html.en#torrc">torrc</a>. Keep in mind that these
+add a small burden to the network, so don't set them in a widely distributed
+application. And, of course, please consider <a class="reference external" href="https://www.torproject.org/docs/tor-doc-relay.html.en">running Tor as a relay</a> so you give back to
+the network!</p>
+<div class="highlight-lighttpd"><div class="highlight"><pre><span class="c1"># Descriptors have a range of time during which they&#39;re valid. To get the</span>
+<span class="c1"># most recent descriptor information, regardless of if Tor needs it or not,</span>
+<span class="c1"># set the following.</span>
+
+<span class="k">FetchDirInfoEarly</span> <span class="m">1</span>
+<span class="k">FetchDirInfoExtraEarly</span> <span class="m">1</span>
+
+<span class="c1"># If you aren&#39;t actively using Tor as a client then Tor will eventually stop</span>
+<span class="c1"># downloading descriptor information that it doesn&#39;t need. To prevent this</span>
+<span class="c1"># from happening set...</span>
+
+<span class="k">FetchUselessDescriptors</span> <span class="m">1</span>
+
+<span class="c1"># Tor no longer downloads server descriptors by default, opting for</span>
+<span class="c1"># microdescriptors instead. If you want Tor to download server descriptors</span>
+<span class="c1"># then set...</span>
+
+<span class="k">UseMicrodescriptors</span> <span class="m">0</span>
+
+<span class="c1"># Tor doesn&#39;t need extrainfo descriptors to work. If you want Tor to download</span>
+<span class="c1"># them anyway then set...</span>
+
+<span class="k">DownloadExtraInfo</span> <span class="m">1</span>
+</pre></div>
+</div>
+<p>Now that Tor is happy chugging along, up-to-date descriptors are available
+through Tor's control socket...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">stem.control</span> <span class="kn">import</span> <span class="n">Controller</span>
+
+<span class="k">with</span> <span class="n">Controller</span><span class="o">.</span><span class="n">from_port</span><span class="p">(</span><span class="n">port</span> <span class="o">=</span> <span class="mi">9051</span><span class="p">)</span> <span class="k">as</span> <span class="n">controller</span><span class="p">:</span>
+  <span class="n">controller</span><span class="o">.</span><span class="n">authenticate</span><span class="p">()</span>
+
+  <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">controller</span><span class="o">.</span><span class="n">get_network_statuses</span><span class="p">():</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;found relay </span><span class="si">%s</span><span class="s"> (</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">desc</span><span class="o">.</span><span class="n">nickname</span><span class="p">,</span> <span class="n">desc</span><span class="o">.</span><span class="n">fingerprint</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>... or by reading directly from Tor's data directory...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">stem.descriptor</span> <span class="kn">import</span> <span class="n">parse_file</span>
+
+<span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">parse_file</span><span class="p">(</span><span class="s">&#39;/home/atagar/.tor/cached-consensus&#39;</span><span class="p">):</span>
+  <span class="k">print</span><span class="p">(</span><span class="s">&#39;found relay </span><span class="si">%s</span><span class="s"> (</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">desc</span><span class="o">.</span><span class="n">nickname</span><span class="p">,</span> <span class="n">desc</span><span class="o">.</span><span class="n">fingerprint</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="validating-the-descriptor-s-content">
+<span id="validating-the-descriptors-content"></span><h2>Validating the descriptor's content<a class="headerlink" href="#validating-the-descriptor-s-content" title="Permalink to this headline">¶</a></h2>
+<p>Stem can optionally validate descriptors, checking their integrity and
+compliance with Tor's specs. This does the following...</p>
+<ul class="simple">
+<li>Checks that we have mandatory fields, and that their content conforms with
+what Tor's spec says they should have. This can be useful when data
+integrity is important to you since it provides an upfront assurance that
+the descriptor's correct (no need for 'None' checks).</li>
+<li>If you have <strong>pycrypto</strong> we'll validate signatures for descriptor types
+where that has been implemented (such as server and hidden service
+descriptors).</li>
+</ul>
+<p>Prior to Stem 1.4.0 descriptors were validated by default, but this has become
+opt-in since then.</p>
+<p>General rule of thumb: if <em>speed</em> is your chief concern then leave it off, but
+if <em>correctness</em> or <em>signature validation</em> is important then turn it on.
+Validating is as simple as including <strong>validate = True</strong> in any method that
+provides descriptors...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">stem.descriptor</span> <span class="kn">import</span> <span class="n">parse_file</span>
+
+<span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">parse_file</span><span class="p">(</span><span class="s">&#39;/home/atagar/.tor/cached-consensus&#39;</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+  <span class="k">print</span><span class="p">(</span><span class="s">&#39;found relay </span><span class="si">%s</span><span class="s"> (</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">desc</span><span class="o">.</span><span class="n">nickname</span><span class="p">,</span> <span class="n">desc</span><span class="o">.</span><span class="n">fingerprint</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="saving-and-loading-descriptors">
+<span id="id6"></span><h2>Saving and loading descriptors<a class="headerlink" href="#saving-and-loading-descriptors" title="Permalink to this headline">¶</a></h2>
+<p>Tor descriptors are just plaintext documents. As such, if you'd rather not use
+<a class="reference external" href="https://wiki.python.org/moin/UsingPickle">Pickle</a> you can persist a
+descriptor by simply writing it to disk, then reading it back later.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">stem.descriptor.remote</span>
+
+<span class="n">server_descriptors</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">remote</span><span class="o">.</span><span class="n">get_server_descriptors</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;/tmp/descriptor_dump&#39;</span><span class="p">,</span> <span class="s">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">descriptor_file</span><span class="p">:</span>
+  <span class="n">descriptor_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">server_descriptors</span><span class="p">)))</span>
+</pre></div>
+</div>
+<p>Our <em>server_descriptors</em> here is a list of
+<a class="reference internal" href="../api/descriptor/server_descriptor.html#stem.descriptor.server_descriptor.RelayDescriptor" title="stem.descriptor.server_descriptor.RelayDescriptor"><tt class="xref py py-class docutils literal"><span class="pre">RelayDescriptor</span></tt></a> instances. When we
+write it to a file this looks like...</p>
+<div class="highlight-python"><pre>router default 68.229.17.182 443 0 9030
+platform Tor 0.2.4.23 on Windows XP
+protocols Link 1 2 Circuit 1
+published 2014-11-17 23:42:38
+fingerprint EE04 42C3 6DB6 6903 0816 247F 2607 382A 0783 2D5A
+uptime 63
+bandwidth 5242880 10485760 77824
+extra-info-digest 1ABA9FC6B912E755483D0F4F6E9BC1B23A2B7206
+... etc...</pre>
+</div>
+<p>We can then read it back with <a class="reference internal" href="../api/descriptor/descriptor.html#stem.descriptor.__init__.parse_file" title="stem.descriptor.__init__.parse_file"><tt class="xref py py-func docutils literal"><span class="pre">parse_file()</span></tt></a>
+by telling it the type of descriptors we're reading...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">stem.descriptor</span> <span class="kn">import</span> <span class="n">parse_file</span>
+
+<span class="n">server_descriptors</span> <span class="o">=</span> <span class="n">parse_file</span><span class="p">(</span><span class="s">&#39;/tmp/descriptor_dump&#39;</span><span class="p">,</span> <span class="n">descriptor_type</span> <span class="o">=</span> <span class="s">&#39;server-descriptor 1.0&#39;</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">relay</span> <span class="ow">in</span> <span class="n">server_descriptors</span><span class="p">:</span>
+  <span class="k">print</span><span class="p">(</span><span class="n">relay</span><span class="o">.</span><span class="n">fingerprint</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For an example of doing this with a consensus document <a class="reference external" href="examples/persisting_a_consensus.html">see here</a>.</p>
+</div>
+<div class="section" id="putting-it-together">
+<span id="id7"></span><h2>Putting it together...<a class="headerlink" href="#putting-it-together" title="Permalink to this headline">¶</a></h2>
+<p>As discussed above there are four methods for reading descriptors...</p>
+<ul class="simple">
+<li>Download descriptors directly with <a class="reference external" href="../api/descriptor/remote.html">stem.descriptor.remote</a>.</li>
+<li>Read a single file with <a class="reference internal" href="../api/descriptor/descriptor.html#stem.descriptor.__init__.parse_file" title="stem.descriptor.__init__.parse_file"><tt class="xref py py-func docutils literal"><span class="pre">parse_file()</span></tt></a>.</li>
+<li>Read multiple files or an archive with the <a class="reference external" href="../api/descriptor/reader.html">DescriptorReader</a>.</li>
+<li>Requesting them from Tor with <a class="reference internal" href="../api/control.html#stem.control.Controller" title="stem.control.Controller"><tt class="xref py py-class docutils literal"><span class="pre">Controller</span></tt></a> methods like <a class="reference internal" href="../api/control.html#stem.control.Controller.get_server_descriptors" title="stem.control.Controller.get_server_descriptors"><tt class="xref py py-func docutils literal"><span class="pre">get_server_descriptors()</span></tt></a> and <a class="reference internal" href="../api/control.html#stem.control.Controller.get_network_statuses" title="stem.control.Controller.get_network_statuses"><tt class="xref py py-func docutils literal"><span class="pre">get_network_statuses()</span></tt></a>.</li>
+</ul>
+<p>Now lets say you want to figure out who the <em>biggest</em> exit relays are. You
+could use any of the methods above, but for this example we'll use
+<a class="reference external" href="../api/descriptor/remote.html">stem.descriptor.remote</a>...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">import</span> <span class="nn">stem.descriptor.remote</span>
+
+<span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">str_tools</span>
+
+<span class="c"># provides a mapping of observed bandwidth to the relay nicknames</span>
+<span class="k">def</span> <span class="nf">get_bw_to_relay</span><span class="p">():</span>
+  <span class="n">bw_to_relay</span> <span class="o">=</span> <span class="p">{}</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">remote</span><span class="o">.</span><span class="n">get_server_descriptors</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">():</span>
+      <span class="k">if</span> <span class="n">desc</span><span class="o">.</span><span class="n">exit_policy</span><span class="o">.</span><span class="n">is_exiting_allowed</span><span class="p">():</span>
+        <span class="n">bw_to_relay</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">desc</span><span class="o">.</span><span class="n">observed_bandwidth</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">desc</span><span class="o">.</span><span class="n">nickname</span><span class="p">)</span>
+  <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;Unable to retrieve the server descriptors: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">exc</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">bw_to_relay</span>
+
+<span class="c"># prints the top fifteen relays</span>
+
+<span class="n">bw_to_relay</span> <span class="o">=</span> <span class="n">get_bw_to_relay</span><span class="p">()</span>
+<span class="n">count</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="k">for</span> <span class="n">bw_value</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">bw_to_relay</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">reverse</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+  <span class="k">for</span> <span class="n">nickname</span> <span class="ow">in</span> <span class="n">bw_to_relay</span><span class="p">[</span><span class="n">bw_value</span><span class="p">]:</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%i</span><span class="s">. </span><span class="si">%s</span><span class="s"> (</span><span class="si">%s</span><span class="s">/s)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="n">nickname</span><span class="p">,</span> <span class="n">str_tools</span><span class="o">.</span><span class="n">size_label</span><span class="p">(</span><span class="n">bw_value</span><span class="p">,</span> <span class="mi">2</span><span class="p">)))</span>
+    <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">if</span> <span class="n">count</span> <span class="o">&gt;</span> <span class="mi">15</span><span class="p">:</span>
+      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="highlight-python"><pre>% python example.py
+1. herngaard (40.95 MB/s)
+2. chaoscomputerclub19 (40.43 MB/s)
+3. chaoscomputerclub18 (40.02 MB/s)
+4. chaoscomputerclub20 (38.98 MB/s)
+5. wannabe (38.63 MB/s)
+6. dorrisdeebrown (38.48 MB/s)
+7. manning2 (38.20 MB/s)
+8. chaoscomputerclub21 (36.90 MB/s)
+9. TorLand1 (36.22 MB/s)
+10. bolobolo1 (35.93 MB/s)
+11. manning1 (35.39 MB/s)
+12. gorz (34.10 MB/s)
+13. ndnr1 (25.36 MB/s)
+14. politkovskaja2 (24.93 MB/s)
+15. wau (24.72 MB/s)</pre>
+</div>
+</div>
+<div class="section" id="are-there-any-other-parsing-libraries">
+<span id="id11"></span><h2>Are there any other parsing libraries?<a class="headerlink" href="#are-there-any-other-parsing-libraries" title="Permalink to this headline">¶</a></h2>
+<p>Yup! Stem isn't the only game in town when it comes to parsing. <a class="reference external" href="https://gitweb.torproject.org/metrics-lib.git/">Metrics-lib</a> is a highly mature parsing
+library for Java, and <a class="reference external" href="https://gitweb.torproject.org/user/phw/zoossh.git/">Zoossh</a> is available for Go.
+Each library has its own capabilities...</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="32%" />
+<col width="25%" />
+<col width="22%" />
+<col width="21%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Capability</th>
+<th class="head">Stem</th>
+<th class="head">Metrics-lib</th>
+<th class="head">Zoossh</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>Language</td>
+<td><span class="green">Python</span></td>
+<td><span class="green">Java</span></td>
+<td><span class="green">Go</span></td>
+</tr>
+<tr class="row-odd"><td>Checks signatures</td>
+<td><span class="green">Mostly</span></td>
+<td><span class="red">No</span></td>
+<td><span class="red">No</span></td>
+</tr>
+<tr class="row-even"><td>Create new descriptors</td>
+<td><span class="red">No</span></td>
+<td><span class="red">No</span></td>
+<td><span class="red">No</span></td>
+</tr>
+<tr class="row-odd"><td>Lazy parsing</td>
+<td><span class="green">Yes</span></td>
+<td><span class="red">No</span></td>
+<td><span class="green">Yes</span></td>
+</tr>
+<tr class="row-even"><td>Type detection by &#64;type</td>
+<td><span class="green">Yes</span></td>
+<td><span class="green">Yes</span></td>
+<td><span class="green">Yes</span></td>
+</tr>
+<tr class="row-odd"><td>Type detection by filename</td>
+<td><span class="green">Yes</span></td>
+<td><span class="red">No</span></td>
+<td><span class="red">No</span></td>
+</tr>
+<tr class="row-even"><td>Packages</td>
+<td><span class="green">Several</span></td>
+<td><span class="red">None</span></td>
+<td><span class="red">None</span></td>
+</tr>
+<tr class="row-odd"><td><strong>Can Read/Download From</strong></td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td>Files</td>
+<td><span class="green">Yes</span></td>
+<td><span class="green">Yes</span></td>
+<td><span class="green">Yes</span></td>
+</tr>
+<tr class="row-odd"><td>Tarballs</td>
+<td><span class="green">Yes</span></td>
+<td><span class="green">Yes</span></td>
+<td><span class="red">No</span></td>
+</tr>
+<tr class="row-even"><td>Tor Process</td>
+<td><span class="green">Yes</span></td>
+<td><span class="red">No</span></td>
+<td><span class="red">No</span></td>
+</tr>
+<tr class="row-odd"><td>Directory Authorities</td>
+<td><span class="green">Yes</span></td>
+<td><span class="green">Yes</span></td>
+<td><span class="red">No</span></td>
+</tr>
+<tr class="row-even"><td>CollecTor</td>
+<td><span class="red">No</span></td>
+<td><span class="green">Yes</span></td>
+<td><span class="red">No</span></td>
+</tr>
+<tr class="row-odd"><td><strong>Supported Types</strong></td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td>Server Descriptors</td>
+<td><span class="green">Yes</span></td>
+<td><span class="green">Yes</span></td>
+<td><span class="green">Partly</span></td>
+</tr>
+<tr class="row-odd"><td>Extrainfo Descriptors</td>
+<td><span class="green">Yes</span></td>
+<td><span class="green">Yes</span></td>
+<td><span class="red">No</span></td>
+</tr>
+<tr class="row-even"><td>Microdescriptors</td>
+<td><span class="green">Yes</span></td>
+<td><span class="green">Yes</span></td>
+<td><span class="red">No</span></td>
+</tr>
+<tr class="row-odd"><td>Consensus</td>
+<td><span class="green">Yes</span></td>
+<td><span class="green">Yes</span></td>
+<td><span class="green">Partly</span></td>
+</tr>
+<tr class="row-even"><td>Bridge Descriptors</td>
+<td><span class="green">Yes</span></td>
+<td><span class="green">Yes</span></td>
+<td><span class="red">No</span></td>
+</tr>
+<tr class="row-odd"><td>Hidden Service Descriptors</td>
+<td><span class="green">Yes</span></td>
+<td><span class="red">No</span></td>
+<td><span class="red">No</span></td>
+</tr>
+<tr class="row-even"><td>Bridge Pool Assignments</td>
+<td><span class="red">No</span></td>
+<td><span class="green">Yes</span></td>
+<td><span class="red">No</span></td>
+</tr>
+<tr class="row-odd"><td>Torperf</td>
+<td><span class="red">No</span></td>
+<td><span class="green">Yes</span></td>
+<td><span class="red">No</span></td>
+</tr>
+<tr class="row-even"><td>Tordnsel</td>
+<td><span class="green">Yes</span></td>
+<td><span class="green">Yes</span></td>
+<td><span class="red">No</span></td>
+</tr>
+<tr class="row-odd"><td><strong>Benchmarks</strong></td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td>Server Descriptors</td>
+<td><span class="green">0.60 ms</span></td>
+<td><span class="green">0.29 ms</span></td>
+<td><span class="green">0.46 ms</span></td>
+</tr>
+<tr class="row-odd"><td>Extrainfo Descriptors</td>
+<td><span class="green">0.40 ms</span></td>
+<td><span class="green">0.22 ms</span></td>
+<td><span class="red">unsupported</span></td>
+</tr>
+<tr class="row-even"><td>Microdescriptors</td>
+<td><span class="green">0.33 ms</span></td>
+<td><span class="green">0.07 ms</span></td>
+<td><span class="red">unsupported</span></td>
+</tr>
+<tr class="row-odd"><td>Consensus</td>
+<td><span class="green">865.72 ms</span></td>
+<td><span class="green">246.71 ms</span></td>
+<td><span class="green">83.00 ms</span></td>
+</tr>
+<tr class="row-even"><td>Benchmarked With Commit</td>
+<td><span class="green">c01a9cd</span></td>
+<td><span class="green">8767f3e</span></td>
+<td><span class="green">2380e55</span></td>
+</tr>
+<tr class="row-odd"><td>Language Interpreter</td>
+<td><span class="green">Python 3.5.1</span></td>
+<td><span class="green">Java 1.7.0</span></td>
+<td><span class="green">Go 1.5.2</span></td>
+</tr>
+</tbody>
+</table>
+<p>Few things to note about these benchmarks...</p>
+<ul class="simple">
+<li><strong>Zoossh is the fastest.</strong> Its benchmarks were at a disadvantage due to not
+reading from tarballs.</li>
+<li>Your Python version makes a very large difference for Stem. For instance,
+with Python 2.7 reading a consensus takes <strong>1,290.84 ms</strong> (almost twice as
+long).</li>
+<li>Metrics-lib and Stem can both read from compressed tarballs at a small
+performance cost. For instance, Metrics-lib can read an <a class="reference external" href="../faq.html#how-do-i-read-tar-xz-descriptor-archives">lzma compressed</a> consensus in
+<strong>255.76 ms</strong> and Stem can do it in <strong>902.75 ms</strong>.</li>
+</ul>
+<p>So what does code with each of these look like?</p>
+</div>
+<div class="section" id="stem-example">
+<h2>Stem Example<a class="headerlink" href="#stem-example" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference external" href="../.../../_static/example/benchmark_stem.py">Benchmark Script</a></li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">stem.descriptor</span>
+
+<span class="k">def</span> <span class="nf">measure_average_advertised_bandwidth</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+  <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+  <span class="n">total_bw</span><span class="p">,</span> <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+
+  <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">parse_file</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+    <span class="n">total_bw</span> <span class="o">+=</span> <span class="nb">min</span><span class="p">(</span><span class="n">desc</span><span class="o">.</span><span class="n">average_bandwidth</span><span class="p">,</span> <span class="n">desc</span><span class="o">.</span><span class="n">burst_bandwidth</span><span class="p">,</span> <span class="n">desc</span><span class="o">.</span><span class="n">observed_bandwidth</span><span class="p">)</span>
+    <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+  <span class="n">runtime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+  <span class="k">print</span><span class="p">(</span><span class="s">&quot;Finished measure_average_advertised_bandwidth(&#39;</span><span class="si">%s</span><span class="s">&#39;)&quot;</span> <span class="o">%</span> <span class="n">path</span><span class="p">)</span>
+  <span class="k">print</span><span class="p">(</span><span class="s">&#39;  Total time: </span><span class="si">%i</span><span class="s"> seconds&#39;</span> <span class="o">%</span> <span class="n">runtime</span><span class="p">)</span>
+  <span class="k">print</span><span class="p">(</span><span class="s">&#39;  Processed server descriptors: </span><span class="si">%i</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">count</span><span class="p">)</span>
+  <span class="k">print</span><span class="p">(</span><span class="s">&#39;  Average advertised bandwidth: </span><span class="si">%i</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">total_bw</span> <span class="o">/</span> <span class="n">count</span><span class="p">))</span>
+  <span class="k">print</span><span class="p">(</span><span class="s">&#39;  Time per server descriptor: </span><span class="si">%0.5f</span><span class="s"> seconds&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">runtime</span> <span class="o">/</span> <span class="n">count</span><span class="p">))</span>
+  <span class="k">print</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+  <span class="n">measure_average_advertised_bandwidth</span><span class="p">(</span><span class="s">&#39;server-descriptors-2015-11.tar&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="metrics-lib-example">
+<h2>Metrics-lib Example<a class="headerlink" href="#metrics-lib-example" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference external" href="../.../../_static/example/benchmark_metrics_lib.java">Benchmark Script</a></li>
+</ul>
+<div class="highlight-java"><div class="highlight"><pre><span class="kn">package</span> <span class="n">org</span><span class="o">.</span><span class="na">torproject</span><span class="o">.</span><span class="na">descriptor</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">java.io.File</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.util.Iterator</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.torproject.descriptor.DescriptorSourceFactory</span><span class="o">;</span>
+
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">MeasurePerformance</span> <span class="o">{</span>
+  <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">measureAverageAdvertisedBandwidth</span><span class="o">(</span><span class="k">new</span> <span class="n">File</span><span class="o">(</span><span class="s">&quot;server-descriptors-2015-11.tar&quot;</span><span class="o">));</span>
+  <span class="o">}</span>
+
+  <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">measureAverageAdvertisedBandwidth</span><span class="o">(</span>
+      <span class="n">File</span> <span class="n">tarballFileOrDirectory</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;Starting measureAverageAdvertisedBandwidth&quot;</span><span class="o">);</span>
+    <span class="kt">long</span> <span class="n">startedMillis</span> <span class="o">=</span> <span class="n">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">();</span>
+    <span class="kt">long</span> <span class="n">sumAdvertisedBandwidth</span> <span class="o">=</span> <span class="mi">0</span><span class="o">,</span> <span class="n">countedServerDescriptors</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+    <span class="n">DescriptorReader</span> <span class="n">descriptorReader</span> <span class="o">=</span>
+        <span class="n">DescriptorSourceFactory</span><span class="o">.</span><span class="na">createDescriptorReader</span><span class="o">();</span>
+    <span class="n">descriptorReader</span><span class="o">.</span><span class="na">addTarball</span><span class="o">(</span><span class="n">tarballFileOrDirectory</span><span class="o">);</span>
+    <span class="n">descriptorReader</span><span class="o">.</span><span class="na">addDirectory</span><span class="o">(</span><span class="n">tarballFileOrDirectory</span><span class="o">);</span>
+    <span class="n">Iterator</span><span class="o">&lt;</span><span class="n">DescriptorFile</span><span class="o">&gt;</span> <span class="n">descriptorFiles</span> <span class="o">=</span>
+        <span class="n">descriptorReader</span><span class="o">.</span><span class="na">readDescriptors</span><span class="o">();</span>
+    <span class="k">while</span> <span class="o">(</span><span class="n">descriptorFiles</span><span class="o">.</span><span class="na">hasNext</span><span class="o">())</span> <span class="o">{</span>
+      <span class="n">DescriptorFile</span> <span class="n">descriptorFile</span> <span class="o">=</span> <span class="n">descriptorFiles</span><span class="o">.</span><span class="na">next</span><span class="o">();</span>
+      <span class="k">for</span> <span class="o">(</span><span class="n">Descriptor</span> <span class="n">descriptor</span> <span class="o">:</span> <span class="n">descriptorFile</span><span class="o">.</span><span class="na">getDescriptors</span><span class="o">())</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(!(</span><span class="n">descriptor</span> <span class="k">instanceof</span> <span class="n">ServerDescriptor</span><span class="o">))</span> <span class="o">{</span>
+          <span class="k">continue</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="n">ServerDescriptor</span> <span class="n">serverDescriptor</span> <span class="o">=</span> <span class="o">(</span><span class="n">ServerDescriptor</span><span class="o">)</span> <span class="n">descriptor</span><span class="o">;</span>
+        <span class="n">sumAdvertisedBandwidth</span> <span class="o">+=</span> <span class="o">(</span><span class="kt">long</span><span class="o">)</span> <span class="n">Math</span><span class="o">.</span><span class="na">min</span><span class="o">(</span><span class="n">Math</span><span class="o">.</span><span class="na">min</span><span class="o">(</span>
+            <span class="n">serverDescriptor</span><span class="o">.</span><span class="na">getBandwidthRate</span><span class="o">(),</span>
+            <span class="n">serverDescriptor</span><span class="o">.</span><span class="na">getBandwidthBurst</span><span class="o">()),</span>
+            <span class="n">serverDescriptor</span><span class="o">.</span><span class="na">getBandwidthObserved</span><span class="o">());</span>
+        <span class="n">countedServerDescriptors</span><span class="o">++;</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="kt">long</span> <span class="n">endedMillis</span> <span class="o">=</span> <span class="n">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">();</span>
+    <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;Ending measureAverageAdvertisedBandwidth&quot;</span><span class="o">);</span>
+    <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">printf</span><span class="o">(</span><span class="s">&quot;Total time: %d millis%n&quot;</span><span class="o">,</span>
+        <span class="n">endedMillis</span> <span class="o">-</span> <span class="n">startedMillis</span><span class="o">);</span>
+    <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">printf</span><span class="o">(</span><span class="s">&quot;Processed server descriptors: %d%n&quot;</span><span class="o">,</span>
+        <span class="n">countedServerDescriptors</span><span class="o">);</span>
+    <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">printf</span><span class="o">(</span><span class="s">&quot;Average advertised bandwidth: %d%n&quot;</span><span class="o">,</span>
+        <span class="n">sumAdvertisedBandwidth</span> <span class="o">/</span> <span class="n">countedServerDescriptors</span><span class="o">);</span>
+    <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">printf</span><span class="o">(</span><span class="s">&quot;Time per server descriptor: %.6f millis%n&quot;</span><span class="o">,</span>
+        <span class="o">((</span><span class="kt">double</span><span class="o">)</span> <span class="o">(</span><span class="n">endedMillis</span> <span class="o">-</span> <span class="n">startedMillis</span><span class="o">))</span>
+        <span class="o">/</span> <span class="o">((</span><span class="kt">double</span><span class="o">)</span> <span class="n">countedServerDescriptors</span><span class="o">));</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="zoossh-example">
+<h2>Zoossh Example<a class="headerlink" href="#zoossh-example" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference external" href="../.../../_static/example/benchmark_zoossh.go">Benchmark Script</a></li>
+</ul>
+<div class="highlight-go"><div class="highlight"><pre><span class="k">package</span> <span class="n">main</span>
+
+<span class="k">import</span> <span class="p">(</span>
+  <span class="s">&quot;fmt&quot;</span>
+  <span class="s">&quot;os&quot;</span>
+  <span class="s">&quot;path/filepath&quot;</span>
+  <span class="s">&quot;time&quot;</span>
+
+  <span class="s">&quot;git.torproject.org/user/phw/zoossh.git&quot;</span>
+<span class="p">)</span>
+
+<span class="k">var</span> <span class="n">processedDescs</span> <span class="nb">int64</span> <span class="p">=</span> <span class="mi">0</span>
+<span class="k">var</span> <span class="n">totalBw</span> <span class="nb">uint64</span> <span class="p">=</span> <span class="mi">0</span>
+
+<span class="k">func</span> <span class="n">Min</span><span class="p">(</span><span class="n">a</span> <span class="nb">uint64</span><span class="p">,</span> <span class="n">b</span> <span class="nb">uint64</span><span class="p">,</span> <span class="n">c</span> <span class="nb">uint64</span><span class="p">)</span> <span class="nb">uint64</span> <span class="p">{</span>
+  <span class="n">min</span> <span class="p">:=</span> <span class="n">a</span>
+
+  <span class="k">if</span> <span class="n">b</span> <span class="p">&lt;</span> <span class="n">min</span> <span class="p">{</span>
+    <span class="n">min</span> <span class="p">=</span> <span class="n">b</span>
+  <span class="p">}</span>
+
+  <span class="k">if</span> <span class="n">c</span> <span class="p">&lt;</span> <span class="n">min</span> <span class="p">{</span>
+    <span class="n">min</span> <span class="p">=</span> <span class="n">c</span>
+  <span class="p">}</span>
+
+  <span class="k">return</span> <span class="n">min</span>
+<span class="p">}</span>
+
+<span class="k">func</span> <span class="n">ProcessDescriptors</span><span class="p">(</span><span class="n">path</span> <span class="nb">string</span><span class="p">,</span> <span class="n">info</span> <span class="n">os</span><span class="p">.</span><span class="n">FileInfo</span><span class="p">,</span> <span class="n">err</span> <span class="n">error</span><span class="p">)</span> <span class="n">error</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="n">_</span><span class="p">,</span> <span class="n">err</span> <span class="p">:=</span> <span class="n">os</span><span class="p">.</span><span class="n">Stat</span><span class="p">(</span><span class="n">path</span><span class="p">);</span> <span class="n">err</span> <span class="p">!=</span> <span class="n">nil</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">err</span>
+  <span class="p">}</span>
+
+  <span class="k">if</span> <span class="n">info</span><span class="p">.</span><span class="n">IsDir</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">nil</span>
+  <span class="p">}</span>
+
+  <span class="n">consensus</span><span class="p">,</span> <span class="n">err</span> <span class="p">:=</span> <span class="n">zoossh</span><span class="p">.</span><span class="n">ParseDescriptorFile</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+  <span class="k">if</span> <span class="n">err</span> <span class="p">!=</span> <span class="n">nil</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">err</span>
+  <span class="p">}</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="n">processedDescs</span> <span class="p">%</span> <span class="mi">100</span><span class="p">)</span> <span class="p">==</span> <span class="mi">0</span> <span class="p">{</span>
+    <span class="n">fmt</span><span class="p">.</span><span class="n">Printf</span><span class="p">(</span><span class="s">&quot;.&quot;</span><span class="p">)</span>
+  <span class="p">}</span>
+
+  <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">getDesc</span> <span class="p">:=</span> <span class="k">range</span> <span class="n">consensus</span><span class="p">.</span><span class="n">RouterDescriptors</span> <span class="p">{</span>
+    <span class="n">desc</span> <span class="p">:=</span> <span class="n">getDesc</span><span class="p">()</span>
+    <span class="n">totalBw</span> <span class="p">+=</span> <span class="n">Min</span><span class="p">(</span><span class="n">desc</span><span class="p">.</span><span class="n">BandwidthAvg</span><span class="p">,</span> <span class="n">desc</span><span class="p">.</span><span class="n">BandwidthBurst</span><span class="p">,</span> <span class="n">desc</span><span class="p">.</span><span class="n">BandwidthObs</span><span class="p">)</span>
+    <span class="n">processedDescs</span><span class="p">++</span>
+  <span class="p">}</span>
+
+  <span class="k">return</span> <span class="n">nil</span>
+<span class="p">}</span>
+
+<span class="k">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+  <span class="n">before</span> <span class="p">=</span> <span class="n">time</span><span class="p">.</span><span class="n">Now</span><span class="p">()</span>
+  <span class="n">filepath</span><span class="p">.</span><span class="n">Walk</span><span class="p">(</span><span class="s">&quot;server-descriptors-2015-11&quot;</span><span class="p">,</span> <span class="n">ProcessDescriptors</span><span class="p">)</span>
+  <span class="n">fmt</span><span class="p">.</span><span class="n">Println</span><span class="p">()</span>
+  <span class="n">after</span> <span class="p">=</span> <span class="n">time</span><span class="p">.</span><span class="n">Now</span><span class="p">()</span>
+
+  <span class="n">duration</span> <span class="p">=</span> <span class="n">after</span><span class="p">.</span><span class="n">Sub</span><span class="p">(</span><span class="n">before</span><span class="p">)</span>
+  <span class="n">fmt</span><span class="p">.</span><span class="n">Println</span><span class="p">(</span><span class="s">&quot;Total time for descriptors:&quot;</span><span class="p">,</span> <span class="n">duration</span><span class="p">)</span>
+  <span class="n">fmt</span><span class="p">.</span><span class="n">Printf</span><span class="p">(</span><span class="s">&quot;Time per descriptor: %dns\n&quot;</span><span class="p">,</span>
+    <span class="n">duration</span><span class="p">.</span><span class="n">Nanoseconds</span><span class="p">()/</span><span class="n">processedDescs</span><span class="p">)</span>
+  <span class="n">fmt</span><span class="p">.</span><span class="n">Printf</span><span class="p">(</span><span class="s">&quot;Processed %d descriptors.\n&quot;</span><span class="p">,</span> <span class="n">processedDescs</span><span class="p">)</span>
+  <span class="n">fmt</span><span class="p">.</span><span class="n">Printf</span><span class="p">(</span><span class="s">&quot;Average advertised bandwidth: %d\n&quot;</span><span class="p">,</span> <span class="n">totalBw</span><span class="p">/</span><span class="nb">uint64</span><span class="p">(</span><span class="n">processedDescs</span><span class="p">))</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

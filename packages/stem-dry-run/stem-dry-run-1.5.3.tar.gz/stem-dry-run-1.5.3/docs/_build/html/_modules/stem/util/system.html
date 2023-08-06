@@ -1,0 +1,1365 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.util.system &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem" href="../../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.util.system</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.util.system</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2011-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Helper functions for working with the underlying system. These are mostly os</span>
+<span class="sd">dependent, only working on linux, osx, and bsd. In almost all cases they&#39;re</span>
+<span class="sd">best-effort, providing **None** if the lookup fails.</span>
+
+<span class="sd">.. versionchanged:: 1.3.0</span>
+<span class="sd">   Dropped the get_* prefix from several function names. The old names still</span>
+<span class="sd">   work, but are deprecated aliases.</span>
+
+<span class="sd">.. versionchanged:: 1.5.0</span>
+<span class="sd">   Added the **SYSTEM_CALL_TIME** global, which tracks total time spent making</span>
+<span class="sd">   system commands.</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  is_windows - checks if we&#39;re running on windows</span>
+<span class="sd">  is_mac - checks if we&#39;re running on a mac</span>
+<span class="sd">  is_gentoo - checks if we&#39;re running on gentoo</span>
+<span class="sd">  is_bsd - checks if we&#39;re running on the bsd family of operating systems</span>
+
+<span class="sd">  is_available - determines if a command is available on this system</span>
+<span class="sd">  is_running - determines if a given process is running</span>
+<span class="sd">  call - runs the given system command and provides back the results</span>
+
+<span class="sd">  name_by_pid - gets the name for a process by the given pid</span>
+<span class="sd">  pid_by_name - gets the pid for a process by the given name</span>
+<span class="sd">  pid_by_port - gets the pid for a process listening to a given port</span>
+<span class="sd">  pid_by_open_file - gets the pid for the process with an open file</span>
+<span class="sd">  pids_by_user - provides processes owned by a user</span>
+<span class="sd">  cwd - provides the current working directory for a given process</span>
+<span class="sd">  user - provides the user a process is running under</span>
+<span class="sd">  start_time - provides the unix timestamp when the process started</span>
+<span class="sd">  tail - provides lines from the end of a file</span>
+<span class="sd">  bsd_jail_id - provides the BSD jail id a given process is running within</span>
+<span class="sd">  bsd_jail_path - provides the path of the given BSD jail</span>
+
+<span class="sd">  is_tarfile - checks if the given path is a tarball</span>
+<span class="sd">  expand_path - expands relative paths and ~ entries</span>
+<span class="sd">  files_with_suffix - provides files with the given suffix</span>
+
+<span class="sd">  get_process_name - provides our process&#39; name</span>
+<span class="sd">  set_process_name - changes our process&#39; name</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">ctypes</span>
+<span class="kn">import</span> <span class="nn">ctypes.util</span>
+<span class="kn">import</span> <span class="nn">distutils.spawn</span>
+<span class="kn">import</span> <span class="nn">mimetypes</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">platform</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span> <span class="nn">tarfile</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">import</span> <span class="nn">stem.util.proc</span>
+<span class="kn">import</span> <span class="nn">stem.util.str_tools</span>
+
+<span class="kn">from</span> <span class="nn">stem</span> <span class="kn">import</span> <span class="n">UNDEFINED</span>
+<span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">str_type</span><span class="p">,</span> <span class="n">log</span>
+
+<span class="c"># Mapping of commands to if they&#39;re available or not.</span>
+
+<span class="n">CMD_AVAILABLE_CACHE</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="c"># An incomplete listing of commands provided by the shell. Expand this as</span>
+<span class="c"># needed. Some noteworthy things about shell commands...</span>
+<span class="c">#</span>
+<span class="c"># * They&#39;re not in the path so is_available() will fail.</span>
+<span class="c"># * subprocess.Popen() without the &#39;shell = True&#39; argument will fail with...</span>
+<span class="c">#   OSError: [Errno 2] No such file or directory</span>
+
+<span class="n">SHELL_COMMANDS</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;ulimit&#39;</span><span class="p">]</span>
+
+<span class="n">IS_RUNNING_PS_LINUX</span> <span class="o">=</span> <span class="s">&#39;ps -A co command&#39;</span>
+<span class="n">IS_RUNNING_PS_BSD</span> <span class="o">=</span> <span class="s">&#39;ps -ao ucomm=&#39;</span>
+<span class="n">GET_NAME_BY_PID_PS</span> <span class="o">=</span> <span class="s">&#39;ps -p </span><span class="si">%s</span><span class="s"> -o comm&#39;</span>
+<span class="n">GET_PID_BY_NAME_PGREP</span> <span class="o">=</span> <span class="s">&#39;pgrep -x </span><span class="si">%s</span><span class="s">&#39;</span>
+<span class="n">GET_PID_BY_NAME_PIDOF</span> <span class="o">=</span> <span class="s">&#39;pidof </span><span class="si">%s</span><span class="s">&#39;</span>
+<span class="n">GET_PID_BY_NAME_PS_LINUX</span> <span class="o">=</span> <span class="s">&#39;ps -o pid -C </span><span class="si">%s</span><span class="s">&#39;</span>
+<span class="n">GET_PID_BY_NAME_PS_BSD</span> <span class="o">=</span> <span class="s">&#39;ps axc&#39;</span>
+<span class="n">GET_PID_BY_NAME_LSOF</span> <span class="o">=</span> <span class="s">&#39;lsof -tc </span><span class="si">%s</span><span class="s">&#39;</span>
+<span class="n">GET_PID_BY_PORT_NETSTAT</span> <span class="o">=</span> <span class="s">&#39;netstat -npltu&#39;</span>
+<span class="n">GET_PID_BY_PORT_SOCKSTAT</span> <span class="o">=</span> <span class="s">&#39;sockstat -4l -P tcp -p </span><span class="si">%s</span><span class="s">&#39;</span>
+<span class="n">GET_PID_BY_PORT_LSOF</span> <span class="o">=</span> <span class="s">&#39;lsof -wnP -iTCP -sTCP:LISTEN&#39;</span>
+<span class="n">GET_PID_BY_FILE_LSOF</span> <span class="o">=</span> <span class="s">&#39;lsof -tw </span><span class="si">%s</span><span class="s">&#39;</span>
+<span class="n">GET_PIDS_BY_USER</span> <span class="o">=</span> <span class="s">&#39;ps -o pid -u </span><span class="si">%s</span><span class="s">&#39;</span>
+<span class="n">GET_CWD_PWDX</span> <span class="o">=</span> <span class="s">&#39;pwdx </span><span class="si">%s</span><span class="s">&#39;</span>
+<span class="n">GET_CWD_LSOF</span> <span class="o">=</span> <span class="s">&#39;lsof -a -p </span><span class="si">%s</span><span class="s"> -d cwd -Fn&#39;</span>
+<span class="n">GET_BSD_JAIL_ID_PS</span> <span class="o">=</span> <span class="s">&#39;ps -p </span><span class="si">%s</span><span class="s"> -o jid&#39;</span>
+<span class="n">GET_BSD_JAIL_PATH</span> <span class="o">=</span> <span class="s">&#39;jls -j </span><span class="si">%s</span><span class="s">&#39;</span>
+
+<span class="n">BLOCK_SIZE</span> <span class="o">=</span> <span class="mi">1024</span>
+
+<span class="c"># flag for setting the process name, found in &#39;/usr/include/linux/prctl.h&#39;</span>
+
+<span class="n">PR_SET_NAME</span> <span class="o">=</span> <span class="mi">15</span>
+
+<span class="n">argc_t</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">ctypes</span><span class="o">.</span><span class="n">c_char_p</span><span class="p">)</span>
+
+<span class="c"># The following can fail with pypy...</span>
+<span class="c"># AttributeError: No symbol Py_GetArgcArgv found in library &lt;None&gt;</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="n">Py_GetArgcArgv</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">pythonapi</span><span class="o">.</span><span class="n">Py_GetArgcArgv</span>
+  <span class="n">Py_GetArgcArgv</span><span class="o">.</span><span class="n">restype</span> <span class="o">=</span> <span class="bp">None</span>
+  <span class="n">Py_GetArgcArgv</span><span class="o">.</span><span class="n">argtypes</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">ctypes</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">ctypes</span><span class="o">.</span><span class="n">c_int</span><span class="p">),</span>
+    <span class="n">ctypes</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">argc_t</span><span class="p">),</span>
+  <span class="p">]</span>
+<span class="k">except</span><span class="p">:</span>
+  <span class="n">Py_GetArgcArgv</span> <span class="o">=</span> <span class="bp">None</span>
+
+<span class="c"># This is both a cache for get_process_name() and tracks what we&#39;ve changed our</span>
+<span class="c"># process name to.</span>
+
+<span class="n">_PROCESS_NAME</span> <span class="o">=</span> <span class="bp">None</span>
+
+<span class="c"># Length of our original process name.</span>
+<span class="c">#</span>
+<span class="c"># The original author our process renaming is based on did a memset for 256,</span>
+<span class="c"># while Jake did it for the original process name length (capped at 1608). I&#39;m</span>
+<span class="c"># not sure of the reasons for either of these limits, but setting it to</span>
+<span class="c"># anything higher than our original name length should be pointless, so opting</span>
+<span class="c"># for Jake&#39;s limit.</span>
+
+<span class="n">_MAX_NAME_LENGTH</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+
+<span class="c"># Tracks total time spent shelling out to other commands like &#39;ps&#39; and</span>
+<span class="c"># &#39;netstat&#39;, so we can account for it as part of our cpu time along with</span>
+<span class="c"># os.times().</span>
+
+<span class="n">SYSTEM_CALL_TIME</span> <span class="o">=</span> <span class="mf">0.0</span>
+<span class="n">SYSTEM_CALL_TIME_LOCK</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="CallError"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.CallError">[docs]</a><span class="k">class</span> <span class="nc">CallError</span><span class="p">(</span><span class="ne">OSError</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Error response when making a system call. This is an **OSError** subclass</span>
+<span class="sd">  with additional information about the process. Depending on the nature of the</span>
+<span class="sd">  error not all of these attributes will be available.</span>
+
+<span class="sd">  :var str msg: exception string</span>
+<span class="sd">  :var str command: command that was ran</span>
+<span class="sd">  :var int exit_status: exit code of the process</span>
+<span class="sd">  :var float runtime: time the command took to run</span>
+<span class="sd">  :var str stdout: stdout of the process</span>
+<span class="sd">  :var str stderr: stderr of the process</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="n">exit_status</span><span class="p">,</span> <span class="n">runtime</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">msg</span> <span class="o">=</span> <span class="n">msg</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">command</span> <span class="o">=</span> <span class="n">command</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">exit_status</span> <span class="o">=</span> <span class="n">exit_status</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">runtime</span> <span class="o">=</span> <span class="n">runtime</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">stdout</span> <span class="o">=</span> <span class="n">stdout</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">stderr</span> <span class="o">=</span> <span class="n">stderr</span>
+
+  <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">msg</span>
+
+</div>
+<div class="viewcode-block" id="is_windows"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.is_windows">[docs]</a><span class="k">def</span> <span class="nf">is_windows</span><span class="p">():</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks if we are running on Windows.</span>
+
+<span class="sd">  :returns: **bool** to indicate if we&#39;re on Windows</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">return</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;Windows&#39;</span>
+
+</div>
+<div class="viewcode-block" id="is_mac"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.is_mac">[docs]</a><span class="k">def</span> <span class="nf">is_mac</span><span class="p">():</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks if we are running on Mac OSX.</span>
+
+<span class="sd">  :returns: **bool** to indicate if we&#39;re on a Mac</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">return</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;Darwin&#39;</span>
+
+</div>
+<div class="viewcode-block" id="is_gentoo"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.is_gentoo">[docs]</a><span class="k">def</span> <span class="nf">is_gentoo</span><span class="p">():</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks if we&#39;re running on Gentoo.</span>
+
+<span class="sd">  :returns: **bool** to indicate if we&#39;re on Gentoo</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="s">&#39;/etc/gentoo-release&#39;</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="is_bsd"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.is_bsd">[docs]</a><span class="k">def</span> <span class="nf">is_bsd</span><span class="p">():</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks if we are within the BSD family of operating systems. This currently</span>
+<span class="sd">  recognizes Macs, FreeBSD, and OpenBSD but may be expanded later.</span>
+
+<span class="sd">  :returns: **bool** to indicate if we&#39;re on a BSD OS</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">return</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;Darwin&#39;</span><span class="p">,</span> <span class="s">&#39;FreeBSD&#39;</span><span class="p">,</span> <span class="s">&#39;OpenBSD&#39;</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="is_available"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.is_available">[docs]</a><span class="k">def</span> <span class="nf">is_available</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">cached</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks the current PATH to see if a command is available or not. If more</span>
+<span class="sd">  than one command is present (for instance &quot;ls -a | grep foo&quot;) then this</span>
+<span class="sd">  just checks the first.</span>
+
+<span class="sd">  Note that shell (like cd and ulimit) aren&#39;t in the PATH so this lookup will</span>
+<span class="sd">  try to assume that it&#39;s available. This only happends for recognized shell</span>
+<span class="sd">  commands (those in SHELL_COMMANDS).</span>
+
+<span class="sd">  :param str command: command to search for</span>
+<span class="sd">  :param bool cached: makes use of available cached results if **True**</span>
+
+<span class="sd">  :returns: **True** if an executable we can use by that name exists in the</span>
+<span class="sd">    PATH, **False** otherwise</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="s">&#39; &#39;</span> <span class="ow">in</span> <span class="n">command</span><span class="p">:</span>
+    <span class="n">command</span> <span class="o">=</span> <span class="n">command</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+  <span class="k">if</span> <span class="n">command</span> <span class="ow">in</span> <span class="n">SHELL_COMMANDS</span><span class="p">:</span>
+    <span class="c"># we can&#39;t actually look it up, so hope the shell really provides it...</span>
+
+    <span class="k">return</span> <span class="bp">True</span>
+  <span class="k">elif</span> <span class="n">cached</span> <span class="ow">and</span> <span class="n">command</span> <span class="ow">in</span> <span class="n">CMD_AVAILABLE_CACHE</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">CMD_AVAILABLE_CACHE</span><span class="p">[</span><span class="n">command</span><span class="p">]</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="n">cmd_exists</span> <span class="o">=</span> <span class="n">distutils</span><span class="o">.</span><span class="n">spawn</span><span class="o">.</span><span class="n">find_executable</span><span class="p">(</span><span class="n">command</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span>
+    <span class="n">CMD_AVAILABLE_CACHE</span><span class="p">[</span><span class="n">command</span><span class="p">]</span> <span class="o">=</span> <span class="n">cmd_exists</span>
+    <span class="k">return</span> <span class="n">cmd_exists</span>
+
+</div>
+<div class="viewcode-block" id="is_running"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.is_running">[docs]</a><span class="k">def</span> <span class="nf">is_running</span><span class="p">(</span><span class="n">command</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks for if a process with a given name is running or not.</span>
+
+<span class="sd">  :param str command: process name to be checked</span>
+
+<span class="sd">  :returns: **True** if the process is running, **False** if it&#39;s not among ps</span>
+<span class="sd">    results, and **None** if ps can&#39;t be queried</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># Linux and the BSD families have different variants of ps. Guess based on</span>
+  <span class="c"># the is_bsd() check which to try first, then fall back to the other.</span>
+  <span class="c">#</span>
+  <span class="c"># Linux</span>
+  <span class="c">#   -A          - Select all processes.</span>
+  <span class="c">#   -co command - Shows just the base command.</span>
+  <span class="c">#</span>
+  <span class="c"># Mac / BSD</span>
+  <span class="c">#   -a        - Display information about other users&#39; processes as well as</span>
+  <span class="c">#               our own.</span>
+  <span class="c">#   -o ucomm= - Shows just the ucomm attribute (&quot;name to be used for</span>
+  <span class="c">#               accounting&quot;)</span>
+
+  <span class="k">if</span> <span class="n">is_available</span><span class="p">(</span><span class="s">&#39;ps&#39;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">is_bsd</span><span class="p">():</span>
+      <span class="n">primary_resolver</span> <span class="o">=</span> <span class="n">IS_RUNNING_PS_BSD</span>
+      <span class="n">secondary_resolver</span> <span class="o">=</span> <span class="n">IS_RUNNING_PS_LINUX</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">primary_resolver</span> <span class="o">=</span> <span class="n">IS_RUNNING_PS_LINUX</span>
+      <span class="n">secondary_resolver</span> <span class="o">=</span> <span class="n">IS_RUNNING_PS_BSD</span>
+
+    <span class="n">command_listing</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="n">primary_resolver</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">command_listing</span><span class="p">:</span>
+      <span class="n">command_listing</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="n">secondary_resolver</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">command_listing</span><span class="p">:</span>
+      <span class="n">command_listing</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">str_type</span><span class="o">.</span><span class="n">strip</span><span class="p">,</span> <span class="n">command_listing</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">command</span> <span class="ow">in</span> <span class="n">command_listing</span>
+
+  <span class="k">return</span> <span class="bp">None</span>
+
+</div>
+<div class="viewcode-block" id="name_by_pid"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.name_by_pid">[docs]</a><span class="k">def</span> <span class="nf">name_by_pid</span><span class="p">(</span><span class="n">pid</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Attempts to determine the name a given process is running under (not</span>
+<span class="sd">  including arguments). This uses...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    1. Information from /proc</span>
+<span class="sd">    2. ps -p &lt;pid&gt; -o command</span>
+
+<span class="sd">  :param int pid: process id of the process to be queried</span>
+
+<span class="sd">  :returns: **str** with the process name, **None** if it can&#39;t be determined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">process_name</span> <span class="o">=</span> <span class="bp">None</span>
+
+  <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">proc</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">process_name</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">proc</span><span class="o">.</span><span class="n">stats</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">proc</span><span class="o">.</span><span class="n">Stat</span><span class="o">.</span><span class="n">COMMAND</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+      <span class="k">pass</span>
+
+  <span class="c"># attempts to resolve using ps, failing if:</span>
+  <span class="c"># - system&#39;s ps variant doesn&#39;t handle these flags (none known at the moment)</span>
+  <span class="c">#</span>
+  <span class="c"># example output:</span>
+  <span class="c">#   atagar@morrigan:~$ ps -p 5767 -o comm</span>
+  <span class="c">#   COMMAND</span>
+  <span class="c">#   vim</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">process_name</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">results</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="n">GET_NAME_BY_PID_PS</span> <span class="o">%</span> <span class="n">pid</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+      <span class="n">results</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">if</span> <span class="n">results</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;COMMAND&#39;</span><span class="p">:</span>
+      <span class="n">process_name</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+  <span class="k">return</span> <span class="n">process_name</span>
+
+</div>
+<div class="viewcode-block" id="pid_by_name"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.pid_by_name">[docs]</a><span class="k">def</span> <span class="nf">pid_by_name</span><span class="p">(</span><span class="n">process_name</span><span class="p">,</span> <span class="n">multiple</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Attempts to determine the process id for a running process, using...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    1. pgrep -x &lt;name&gt;</span>
+<span class="sd">    2. pidof &lt;name&gt;</span>
+<span class="sd">    3. ps -o pid -C &lt;name&gt; (linux)</span>
+<span class="sd">       ps axc | egrep &quot; &lt;name&gt;$&quot; (bsd)</span>
+<span class="sd">    4. lsof -tc &lt;name&gt;</span>
+<span class="sd">    5. tasklist | str &lt;name&gt;.exe</span>
+
+<span class="sd">  :param str process_name: process name for which to fetch the pid</span>
+<span class="sd">  :param bool multiple: provides a list of all pids if **True**, otherwise</span>
+<span class="sd">    results with multiple processes are discarded</span>
+
+<span class="sd">  :returns:</span>
+<span class="sd">    Response depends upon the &#39;multiple&#39; argument as follows...</span>
+
+<span class="sd">    * if **False** then this provides an **int** with the process id or **None** if it can&#39;t be determined</span>
+<span class="sd">    * if **True** then this provides a **list** of all **int** process ids, and an empty list if it can&#39;t be determined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># attempts to resolve using pgrep, failing if:</span>
+  <span class="c"># - we&#39;re running on bsd (command unavailable)</span>
+  <span class="c">#</span>
+  <span class="c"># example output:</span>
+  <span class="c">#   atagar@morrigan:~$ pgrep -x vim</span>
+  <span class="c">#   3283</span>
+  <span class="c">#   3392</span>
+
+  <span class="k">if</span> <span class="n">is_available</span><span class="p">(</span><span class="s">&#39;pgrep&#39;</span><span class="p">):</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="n">GET_PID_BY_NAME_PGREP</span> <span class="o">%</span> <span class="n">process_name</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">results</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">pids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">results</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">multiple</span><span class="p">:</span>
+          <span class="k">return</span> <span class="n">pids</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">pids</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+          <span class="k">return</span> <span class="n">pids</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+      <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+  <span class="c"># attempts to resolve using pidof, failing if:</span>
+  <span class="c"># - we&#39;re running on bsd (command unavailable)</span>
+  <span class="c">#</span>
+  <span class="c"># example output:</span>
+  <span class="c">#   atagar@morrigan:~$ pidof vim</span>
+  <span class="c">#   3392 3283</span>
+
+  <span class="k">if</span> <span class="n">is_available</span><span class="p">(</span><span class="s">&#39;pidof&#39;</span><span class="p">):</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="n">GET_PID_BY_NAME_PIDOF</span> <span class="o">%</span> <span class="n">process_name</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">results</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">pids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()))</span>
+
+        <span class="k">if</span> <span class="n">multiple</span><span class="p">:</span>
+          <span class="k">return</span> <span class="n">pids</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">pids</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+          <span class="k">return</span> <span class="n">pids</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+      <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+  <span class="c"># attempts to resolve using ps, failing if:</span>
+  <span class="c"># - system&#39;s ps variant doesn&#39;t handle these flags (none known at the moment)</span>
+  <span class="c">#</span>
+  <span class="c"># example output:</span>
+  <span class="c">#   atagar@morrigan:~/Desktop/stem$ ps -o pid -C vim</span>
+  <span class="c">#     PID</span>
+  <span class="c">#    3283</span>
+  <span class="c">#    3392</span>
+  <span class="c">#</span>
+  <span class="c">#   atagar$ ps axc</span>
+  <span class="c">#     PID   TT  STAT      TIME COMMAND</span>
+  <span class="c">#       1   ??  Ss     9:00.22 launchd</span>
+  <span class="c">#      10   ??  Ss     0:09.97 kextd</span>
+  <span class="c">#      11   ??  Ss     5:47.36 DirectoryService</span>
+  <span class="c">#      12   ??  Ss     3:01.44 notifyd</span>
+
+  <span class="k">if</span> <span class="n">is_available</span><span class="p">(</span><span class="s">&#39;ps&#39;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_bsd</span><span class="p">():</span>
+      <span class="c"># linux variant of ps</span>
+      <span class="n">results</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="n">GET_PID_BY_NAME_PS_LINUX</span> <span class="o">%</span> <span class="n">process_name</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">results</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+          <span class="n">pids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">results</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span>
+
+          <span class="k">if</span> <span class="n">multiple</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pids</span>
+          <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">pids</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pids</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+          <span class="k">pass</span>
+
+    <span class="k">if</span> <span class="n">is_bsd</span><span class="p">():</span>
+      <span class="c"># bsd variant of ps</span>
+      <span class="n">results</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="n">GET_PID_BY_NAME_PS_BSD</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">results</span><span class="p">:</span>
+        <span class="c"># filters results to those with our process name</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">results</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39; </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">process_name</span><span class="p">)]</span>
+
+        <span class="k">try</span><span class="p">:</span>
+          <span class="n">pids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">results</span><span class="p">))</span>
+
+          <span class="k">if</span> <span class="n">multiple</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pids</span>
+          <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">pids</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pids</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+          <span class="k">pass</span>
+
+  <span class="c"># resolves using lsof which works on both Linux and BSD, only failing if:</span>
+  <span class="c"># - lsof is unavailable (not included by default on OpenBSD)</span>
+  <span class="c"># - the process being run as a different user due to permissions</span>
+  <span class="c"># - the process doesn&#39;t have any open files to be reported by lsof?</span>
+  <span class="c">#</span>
+  <span class="c"># flags:</span>
+  <span class="c">#   t - only show pids</span>
+  <span class="c">#   c - restrict results to that command</span>
+  <span class="c">#</span>
+  <span class="c"># example output:</span>
+  <span class="c">#   atagar@morrigan:~$ lsof -t -c vim</span>
+  <span class="c">#   2470</span>
+  <span class="c">#   2561</span>
+
+  <span class="k">if</span> <span class="n">is_available</span><span class="p">(</span><span class="s">&#39;lsof&#39;</span><span class="p">):</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="n">GET_PID_BY_NAME_LSOF</span> <span class="o">%</span> <span class="n">process_name</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">results</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">pids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">results</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">multiple</span><span class="p">:</span>
+          <span class="k">return</span> <span class="n">pids</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">pids</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+          <span class="k">return</span> <span class="n">pids</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+      <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+  <span class="k">if</span> <span class="n">is_available</span><span class="p">(</span><span class="s">&#39;tasklist&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">is_windows</span><span class="p">():</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">process_name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;.exe&#39;</span><span class="p">):</span>
+      <span class="n">process_name</span> <span class="o">=</span> <span class="n">process_name</span> <span class="o">+</span> <span class="s">&#39;.exe&#39;</span>
+
+    <span class="n">process_ids</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">results</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="s">&#39;tasklist&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">results</span><span class="p">:</span>
+      <span class="n">tasklist_regex</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^\s*</span><span class="si">%s</span><span class="s">\s+(?P&lt;pid&gt;[0-9]*)&#39;</span> <span class="o">%</span> <span class="n">process_name</span><span class="p">)</span>
+
+      <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">tasklist_regex</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+          <span class="n">process_ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s">&#39;pid&#39;</span><span class="p">)))</span>
+
+      <span class="k">if</span> <span class="n">multiple</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">process_ids</span>
+      <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">process_ids</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">process_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+  <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;failed to resolve a pid for &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="n">process_name</span><span class="p">)</span>
+  <span class="k">return</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">multiple</span> <span class="k">else</span> <span class="bp">None</span>
+
+</div>
+<div class="viewcode-block" id="pid_by_port"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.pid_by_port">[docs]</a><span class="k">def</span> <span class="nf">pid_by_port</span><span class="p">(</span><span class="n">port</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Attempts to determine the process id for a process with the given port,</span>
+<span class="sd">  using...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    1. netstat -npltu | grep 127.0.0.1:&lt;port&gt;</span>
+<span class="sd">    2. sockstat -4l -P tcp -p &lt;port&gt;</span>
+<span class="sd">    3. lsof -wnP -iTCP -sTCP:LISTEN | grep &quot;:&lt;port&gt;&quot;</span>
+
+<span class="sd">  Most queries limit results to listening TCP connections. This function likely</span>
+<span class="sd">  won&#39;t work on Mac OSX.</span>
+
+<span class="sd">  :param int port: port where the process we&#39;re looking for is listening</span>
+
+<span class="sd">  :returns: **int** with the process id, **None** if it can&#39;t be determined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># attempts to resolve using netstat, failing if:</span>
+  <span class="c"># - netstat doesn&#39;t accept these flags (Linux only)</span>
+  <span class="c"># - the process being run as a different user due to permissions</span>
+  <span class="c">#</span>
+  <span class="c"># flags:</span>
+  <span class="c">#   n - numeric (disables hostname lookups)</span>
+  <span class="c">#   p - program (include pids)</span>
+  <span class="c">#   l - listening (include listening sockets)</span>
+  <span class="c">#   tu - show tcp and udp sockets, and nothing else</span>
+  <span class="c">#</span>
+  <span class="c"># example output:</span>
+  <span class="c">#   atagar@morrigan:~$ netstat -npltu</span>
+  <span class="c">#   Active Internet connections (only servers)</span>
+  <span class="c">#   Proto Recv-Q Send-Q Local Address           Foreign Address   State    PID/Program name</span>
+  <span class="c">#   tcp        0      0 127.0.0.1:631           0.0.0.0:*         LISTEN   -</span>
+  <span class="c">#   tcp        0      0 127.0.0.1:9051          0.0.0.0:*         LISTEN   1641/tor</span>
+  <span class="c">#   tcp6       0      0 ::1:631                 :::*              LISTEN   -</span>
+  <span class="c">#   udp        0      0 0.0.0.0:5353            0.0.0.0:*                  -</span>
+  <span class="c">#   udp6       0      0 fe80::7ae4:ff:fe2f::123 :::*                       -</span>
+
+  <span class="k">if</span> <span class="n">is_available</span><span class="p">(</span><span class="s">&#39;netstat&#39;</span><span class="p">):</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="n">GET_PID_BY_PORT_NETSTAT</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">results</span><span class="p">:</span>
+      <span class="c"># filters to results with our port</span>
+      <span class="n">results</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">results</span> <span class="k">if</span> <span class="s">&#39;127.0.0.1:</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">port</span> <span class="ow">in</span> <span class="n">r</span><span class="p">]</span>
+
+      <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">())</span> <span class="o">==</span> <span class="mi">7</span><span class="p">:</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">6</span><span class="p">]</span>  <span class="c"># process field (ex. &quot;7184/tor&quot;)</span>
+        <span class="n">pid</span> <span class="o">=</span> <span class="n">results</span><span class="p">[:</span><span class="n">results</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="p">)]</span>
+
+        <span class="k">if</span> <span class="n">pid</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+          <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span>
+
+  <span class="c"># attempts to resolve using sockstat, failing if:</span>
+  <span class="c"># - sockstat doesn&#39;t accept the -4 flag (BSD only)</span>
+  <span class="c"># - sockstat isn&#39;t available (encountered with OSX 10.5.8)</span>
+  <span class="c"># - there are multiple instances using the same port on different addresses</span>
+  <span class="c">#</span>
+  <span class="c"># flags:</span>
+  <span class="c">#   4 - only show IPv4 sockets</span>
+  <span class="c">#   l - listening sockets</span>
+  <span class="c">#   P tcp - only show tcp connections</span>
+  <span class="c">#   p - only includes results if the local or foreign port match this</span>
+  <span class="c">#</span>
+  <span class="c"># example output:</span>
+  <span class="c">#   # sockstat -4 | grep tor</span>
+  <span class="c">#   _tor     tor        4397  7  tcp4   51.64.7.84:9050    *:*</span>
+  <span class="c">#   _tor     tor        4397  8  udp4   51.64.7.84:53      *:*</span>
+  <span class="c">#   _tor     tor        4397  12 tcp4   51.64.7.84:54011   80.3.121.7:9001</span>
+  <span class="c">#   _tor     tor        4397  15 tcp4   51.64.7.84:59374   7.42.1.102:9001</span>
+  <span class="c">#   _tor     tor        4397  20 tcp4   51.64.7.84:51946   32.83.7.104:443</span>
+
+  <span class="k">if</span> <span class="n">is_available</span><span class="p">(</span><span class="s">&#39;sockstat&#39;</span><span class="p">):</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="n">GET_PID_BY_PORT_SOCKSTAT</span> <span class="o">%</span> <span class="n">port</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">results</span><span class="p">:</span>
+      <span class="c"># filters to results where this is the local port</span>
+      <span class="n">results</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">results</span> <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">split</span><span class="p">())</span> <span class="o">==</span> <span class="mi">7</span> <span class="ow">and</span> <span class="p">(</span><span class="s">&#39;:</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">port</span><span class="p">)</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">5</span><span class="p">])]</span>
+
+      <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">pid</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">pid</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+          <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span>
+
+  <span class="c"># resolves using lsof which works on both Linux and BSD, only failing if:</span>
+  <span class="c"># - lsof is unavailable (not included by default on OpenBSD)</span>
+  <span class="c"># - lsof doesn&#39;t provide the port ip/port, nor accept the -i and -s args</span>
+  <span class="c">#   (encountered with OSX 10.5.8)</span>
+  <span class="c"># - the process being run as a different user due to permissions</span>
+  <span class="c"># - there are multiple instances using the same port on different addresses</span>
+  <span class="c">#</span>
+  <span class="c"># flags:</span>
+  <span class="c">#   w - disables warning messages</span>
+  <span class="c">#   n - numeric addresses (disables hostname lookups)</span>
+  <span class="c">#   P - numeric ports (disables replacement of ports with their protocol)</span>
+  <span class="c">#   iTCP - only show tcp connections</span>
+  <span class="c">#   sTCP:LISTEN - listening sockets</span>
+  <span class="c">#</span>
+  <span class="c"># example output:</span>
+  <span class="c">#   atagar@morrigan:~$ lsof -wnP -iTCP -sTCP:LISTEN</span>
+  <span class="c">#   COMMAND  PID   USER   FD   TYPE DEVICE SIZE/OFF NODE NAME</span>
+  <span class="c">#   tor     1745 atagar    6u  IPv4  14229      0t0  TCP 127.0.0.1:9051 (LISTEN)</span>
+
+  <span class="k">if</span> <span class="n">is_available</span><span class="p">(</span><span class="s">&#39;lsof&#39;</span><span class="p">):</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="n">GET_PID_BY_PORT_LSOF</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">results</span><span class="p">:</span>
+      <span class="c"># filters to results with our port</span>
+      <span class="n">results</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">results</span> <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">split</span><span class="p">())</span> <span class="o">==</span> <span class="mi">10</span> <span class="ow">and</span> <span class="p">(</span><span class="s">&#39;:</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">port</span><span class="p">)</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">8</span><span class="p">])]</span>
+
+      <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">pid</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">pid</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+          <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="bp">None</span>  <span class="c"># all queries failed</span>
+
+</div>
+<div class="viewcode-block" id="pid_by_open_file"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.pid_by_open_file">[docs]</a><span class="k">def</span> <span class="nf">pid_by_open_file</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Attempts to determine the process id for a process with the given open file,</span>
+<span class="sd">  using...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    lsof -w &lt;path&gt;</span>
+
+<span class="sd">  :param str path: location of the socket file to query against</span>
+
+<span class="sd">  :returns: **int** with the process id, **None** if it can&#39;t be determined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># resolves using lsof which works on both Linux and BSD, only failing if:</span>
+  <span class="c"># - lsof is unavailable (not included by default on OpenBSD)</span>
+  <span class="c"># - the file can&#39;t be read due to permissions</span>
+  <span class="c">#</span>
+  <span class="c"># flags:</span>
+  <span class="c">#   t - only show pids</span>
+  <span class="c">#   w - disables warning messages</span>
+  <span class="c">#</span>
+  <span class="c"># example output:</span>
+  <span class="c">#   atagar@morrigan:~$ lsof -tw /tmp/foo</span>
+  <span class="c">#   4762</span>
+
+  <span class="k">if</span> <span class="n">is_available</span><span class="p">(</span><span class="s">&#39;lsof&#39;</span><span class="p">):</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="n">GET_PID_BY_FILE_LSOF</span> <span class="o">%</span> <span class="n">path</span><span class="p">,</span> <span class="p">[])</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+      <span class="n">pid</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+      <span class="k">if</span> <span class="n">pid</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="bp">None</span>  <span class="c"># all queries failed</span>
+
+</div>
+<div class="viewcode-block" id="pids_by_user"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.pids_by_user">[docs]</a><span class="k">def</span> <span class="nf">pids_by_user</span><span class="p">(</span><span class="n">user</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides processes owned by a given user.</span>
+
+<span class="sd">  .. versionadded:: 1.5.0</span>
+
+<span class="sd">  :param str user: user to look up processes for</span>
+
+<span class="sd">  :returns: **list** with the process ids, **None** if it can&#39;t be determined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># example output:</span>
+  <span class="c">#   atagar@odin:~$ ps -o pid -u avahi</span>
+  <span class="c">#     PID</span>
+  <span class="c">#     914</span>
+  <span class="c">#     915</span>
+
+  <span class="k">if</span> <span class="n">is_available</span><span class="p">(</span><span class="s">&#39;ps&#39;</span><span class="p">):</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="n">GET_PIDS_BY_USER</span> <span class="o">%</span> <span class="n">user</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">results</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">results</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span>
+      <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+  <span class="k">return</span> <span class="bp">None</span>
+
+</div>
+<div class="viewcode-block" id="cwd"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.cwd">[docs]</a><span class="k">def</span> <span class="nf">cwd</span><span class="p">(</span><span class="n">pid</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the working directory of the given process.</span>
+
+<span class="sd">  :param int pid: process id of the process to be queried</span>
+
+<span class="sd">  :returns: **str** with the absolute path for the process&#39; present working</span>
+<span class="sd">    directory, **None** if it can&#39;t be determined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># try fetching via the proc contents if it&#39;s available</span>
+  <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">proc</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">proc</span><span class="o">.</span><span class="n">cwd</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+      <span class="k">pass</span>
+
+  <span class="c"># Fall back to a pwdx query. This isn&#39;t available on BSD.</span>
+  <span class="n">logging_prefix</span> <span class="o">=</span> <span class="s">&#39;cwd(</span><span class="si">%s</span><span class="s">):&#39;</span> <span class="o">%</span> <span class="n">pid</span>
+
+  <span class="k">if</span> <span class="n">is_available</span><span class="p">(</span><span class="s">&#39;pwdx&#39;</span><span class="p">):</span>
+    <span class="c"># pwdx results are of the form:</span>
+    <span class="c"># 3799: /home/atagar</span>
+    <span class="c"># 5839: No such process</span>
+
+    <span class="n">results</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="n">GET_CWD_PWDX</span> <span class="o">%</span> <span class="n">pid</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">results</span><span class="p">:</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> pwdx didn&#39;t return any results&quot;</span> <span class="o">%</span> <span class="n">logging_prefix</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;No such process&#39;</span><span class="p">):</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> pwdx processes reported for this pid&#39;</span> <span class="o">%</span> <span class="n">logging_prefix</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">: &#39;</span> <span class="o">%</span> <span class="n">pid</span><span class="p">):</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> we got unexpected output from pwdx: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">logging_prefix</span><span class="p">,</span> <span class="n">results</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+  <span class="c"># Use lsof as the final fallback. This is available on both Linux and is the</span>
+  <span class="c"># only lookup method here that works for BSD...</span>
+  <span class="c"># https://trac.torproject.org/projects/tor/ticket/4236</span>
+  <span class="c">#</span>
+  <span class="c"># flags:</span>
+  <span class="c">#   a - presents the intersection of the following arguments</span>
+  <span class="c">#   p - limits results to this pid</span>
+  <span class="c">#   d cwd - limits results to just the cwd rather than all open files</span>
+  <span class="c">#   Fn - short listing in a single column, with just the pid and cwd</span>
+  <span class="c">#</span>
+  <span class="c"># example output:</span>
+  <span class="c">#   ~$ lsof -a -p 75717 -d cwd -Fn</span>
+  <span class="c">#   p75717</span>
+  <span class="c">#   n/Users/atagar/tor/src/or</span>
+
+  <span class="k">if</span> <span class="n">is_available</span><span class="p">(</span><span class="s">&#39;lsof&#39;</span><span class="p">):</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="n">GET_CWD_LSOF</span> <span class="o">%</span> <span class="n">pid</span><span class="p">,</span> <span class="p">[])</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">results</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;n/&#39;</span><span class="p">):</span>
+      <span class="n">lsof_result</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+      <span class="c"># If we lack read permissions for the cwd then it returns...</span>
+      <span class="c"># p2683</span>
+      <span class="c"># n/proc/2683/cwd (readlink: Permission denied)</span>
+
+      <span class="k">if</span> <span class="s">&#39; &#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">lsof_result</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">lsof_result</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> we got unexpected output from lsof: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">logging_prefix</span><span class="p">,</span> <span class="n">results</span><span class="p">))</span>
+
+  <span class="k">return</span> <span class="bp">None</span>  <span class="c"># all queries failed</span>
+
+</div>
+<div class="viewcode-block" id="user"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.user">[docs]</a><span class="k">def</span> <span class="nf">user</span><span class="p">(</span><span class="n">pid</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the user a process is running under.</span>
+
+<span class="sd">  :param int pid: process id of the process to be queried</span>
+
+<span class="sd">  :returns: **str** with the username a process is running under, **None** if</span>
+<span class="sd">    it can&#39;t be determined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">or</span> <span class="n">pid</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">None</span>
+
+  <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">proc</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="kn">import</span> <span class="nn">pwd</span>  <span class="c"># only available on unix platforms</span>
+
+      <span class="n">uid</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">proc</span><span class="o">.</span><span class="n">uid</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">uid</span> <span class="ow">and</span> <span class="n">uid</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">pwd</span><span class="o">.</span><span class="n">getpwuid</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">uid</span><span class="p">))</span><span class="o">.</span><span class="n">pw_name</span>
+    <span class="k">except</span><span class="p">:</span>
+      <span class="k">pass</span>
+
+  <span class="k">if</span> <span class="n">is_available</span><span class="p">(</span><span class="s">&#39;ps&#39;</span><span class="p">):</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="s">&#39;ps -o user </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">pid</span><span class="p">,</span> <span class="p">[])</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">results</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+  <span class="k">return</span> <span class="bp">None</span>
+
+</div>
+<div class="viewcode-block" id="start_time"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.start_time">[docs]</a><span class="k">def</span> <span class="nf">start_time</span><span class="p">(</span><span class="n">pid</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the unix timestamp when the given process started.</span>
+
+<span class="sd">  :param int pid: process id of the process to be queried</span>
+
+<span class="sd">  :returns: **float** for the unix timestamp when the process began, **None**</span>
+<span class="sd">    if it can&#39;t be determined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">or</span> <span class="n">pid</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">None</span>
+
+  <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">proc</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">proc</span><span class="o">.</span><span class="n">stats</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">proc</span><span class="o">.</span><span class="n">Stat</span><span class="o">.</span><span class="n">START_TIME</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+      <span class="k">pass</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">ps_results</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="s">&#39;ps -p </span><span class="si">%s</span><span class="s"> -o etime&#39;</span> <span class="o">%</span> <span class="n">pid</span><span class="p">,</span> <span class="p">[])</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ps_results</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+      <span class="n">etime</span> <span class="o">=</span> <span class="n">ps_results</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+      <span class="k">return</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">parse_short_time_label</span><span class="p">(</span><span class="n">etime</span><span class="p">)</span>
+  <span class="k">except</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+  <span class="k">return</span> <span class="bp">None</span>
+
+</div>
+<div class="viewcode-block" id="tail"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.tail">[docs]</a><span class="k">def</span> <span class="nf">tail</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">lines</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides lines of a file starting with the end. For instance,</span>
+<span class="sd">  &#39;tail -n 50 /tmp/my_log&#39; could be done with...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    reversed(list(tail(&#39;/tmp/my_log&#39;, 50)))</span>
+
+<span class="sd">  :param str,file target: path or file object to read from</span>
+<span class="sd">  :param int lines: number of lines to read</span>
+
+<span class="sd">  :returns: **generator** that reads lines, starting with the end</span>
+
+<span class="sd">  :raises: **IOError** if unable to read the file</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="s">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">target_file</span><span class="p">:</span>
+      <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">tail</span><span class="p">(</span><span class="n">target_file</span><span class="p">,</span> <span class="n">lines</span><span class="p">):</span>
+        <span class="k">yield</span> <span class="n">line</span>
+
+      <span class="k">return</span>
+
+  <span class="c"># based on snippet from...</span>
+  <span class="c"># https://stackoverflow.com/questions/136168/get-last-n-lines-of-a-file-with-python-similar-to-tail</span>
+
+  <span class="n">target</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>  <span class="c"># go to the end of the file</span>
+  <span class="n">block_end_byte</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">tell</span><span class="p">()</span>
+  <span class="n">block_number</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+  <span class="n">content</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;&#39;</span>
+
+  <span class="k">while</span> <span class="p">(</span><span class="n">lines</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">lines</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="n">block_end_byte</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">block_end_byte</span> <span class="o">-</span> <span class="n">BLOCK_SIZE</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>
+      <span class="c"># read the last block we haven&#39;t yet read</span>
+      <span class="n">target</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="n">block_number</span> <span class="o">*</span> <span class="n">BLOCK_SIZE</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+      <span class="n">content</span><span class="p">,</span> <span class="n">completed_lines</span> <span class="o">=</span> <span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">BLOCK_SIZE</span><span class="p">)</span> <span class="o">+</span> <span class="n">content</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="c"># reached the start of the file, just read what&#39;s left</span>
+      <span class="n">target</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+      <span class="n">completed_lines</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">block_end_byte</span><span class="p">)</span> <span class="o">+</span> <span class="n">content</span>
+
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">completed_lines</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()):</span>
+      <span class="k">if</span> <span class="n">lines</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">lines</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">lines</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+          <span class="n">lines</span> <span class="o">-=</span> <span class="mi">1</span>
+
+        <span class="k">yield</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+    <span class="n">block_end_byte</span> <span class="o">-=</span> <span class="n">BLOCK_SIZE</span>
+    <span class="n">block_number</span> <span class="o">-=</span> <span class="mi">1</span>
+
+</div>
+<div class="viewcode-block" id="bsd_jail_id"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.bsd_jail_id">[docs]</a><span class="k">def</span> <span class="nf">bsd_jail_id</span><span class="p">(</span><span class="n">pid</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Gets the jail id for a process. These seem to only exist for FreeBSD (this</span>
+<span class="sd">  style for jails does not exist on Linux, OSX, or OpenBSD).</span>
+
+<span class="sd">  :param int pid: process id of the jail id to be queried</span>
+
+<span class="sd">  :returns: **int** for the jail id, zero if this can&#39;t be determined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># Output when called from a FreeBSD jail or when Tor isn&#39;t jailed:</span>
+  <span class="c">#   JID</span>
+  <span class="c">#    0</span>
+  <span class="c">#</span>
+  <span class="c"># Otherwise it&#39;s something like:</span>
+  <span class="c">#   JID</span>
+  <span class="c">#    1</span>
+
+  <span class="n">ps_output</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="n">GET_BSD_JAIL_ID_PS</span> <span class="o">%</span> <span class="n">pid</span><span class="p">,</span> <span class="p">[])</span>
+
+  <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ps_output</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">ps_output</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">())</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="n">jid</span> <span class="o">=</span> <span class="n">ps_output</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">jid</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+      <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">jid</span><span class="p">)</span>
+
+  <span class="n">os_name</span> <span class="o">=</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span>
+  <span class="k">if</span> <span class="n">os_name</span> <span class="o">==</span> <span class="s">&#39;FreeBSD&#39;</span><span class="p">:</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&#39;Unable to get the jail id for process </span><span class="si">%s</span><span class="s">.&#39;</span> <span class="o">%</span> <span class="n">pid</span><span class="p">)</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;bsd_jail_id(</span><span class="si">%s</span><span class="s">): jail ids do not exist on </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="n">os_name</span><span class="p">))</span>
+
+  <span class="k">return</span> <span class="mi">0</span>
+
+</div>
+<div class="viewcode-block" id="bsd_jail_path"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.bsd_jail_path">[docs]</a><span class="k">def</span> <span class="nf">bsd_jail_path</span><span class="p">(</span><span class="n">jid</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the path of the given FreeBSD jail.</span>
+
+<span class="sd">  :param int jid: jail id to be queried</span>
+
+<span class="sd">  :returns: **str** of the path prefix, **None** if this can&#39;t be determined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">jid</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="c"># Output should be something like:</span>
+    <span class="c">#    JID  IP Address      Hostname      Path</span>
+    <span class="c">#      1  10.0.0.2        tor-jail      /usr/jails/tor-jail</span>
+
+    <span class="n">jls_output</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="n">GET_BSD_JAIL_PATH</span> <span class="o">%</span> <span class="n">jid</span><span class="p">,</span> <span class="p">[])</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">jls_output</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">jls_output</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">())</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">jls_output</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">3</span><span class="p">]</span>
+
+  <span class="k">return</span> <span class="bp">None</span>
+
+</div>
+<div class="viewcode-block" id="is_tarfile"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.is_tarfile">[docs]</a><span class="k">def</span> <span class="nf">is_tarfile</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Returns if the path belongs to a tarfile or not.</span>
+
+<span class="sd">  .. versionadded:: 1.2.0</span>
+
+<span class="sd">  :param str path: path to be checked</span>
+
+<span class="sd">  :returns: **True** if the path belongs to a tarball, **False** otherwise</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># Checking if it&#39;s a tar file may fail due to permissions so failing back</span>
+  <span class="c"># to the mime type...</span>
+  <span class="c">#</span>
+  <span class="c">#   IOError: [Errno 13] Permission denied: &#39;/vmlinuz.old&#39;</span>
+  <span class="c">#</span>
+  <span class="c"># With python 3 insuffient permissions raises an AttributeError instead...</span>
+  <span class="c">#</span>
+  <span class="c">#   http://bugs.python.org/issue17059</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">is_tarfile</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+  <span class="k">except</span> <span class="p">(</span><span class="ne">IOError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">mimetypes</span><span class="o">.</span><span class="n">guess_type</span><span class="p">(</span><span class="n">path</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;application/x-tar&#39;</span>
+
+</div>
+<div class="viewcode-block" id="expand_path"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.expand_path">[docs]</a><span class="k">def</span> <span class="nf">expand_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">cwd</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides an absolute path, expanding tildes with the user&#39;s home and</span>
+<span class="sd">  appending a current working directory if the path was relative.</span>
+
+<span class="sd">  :param str path: path to be expanded</span>
+<span class="sd">  :param str cwd: current working directory to expand relative paths with, our</span>
+<span class="sd">    process&#39; if this is **None**</span>
+
+<span class="sd">  :returns: **str** of the path expanded to be an absolute path, never with an</span>
+<span class="sd">    ending slash</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">is_windows</span><span class="p">():</span>
+    <span class="n">relative_path</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="se">\\</span><span class="s">&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\\</span><span class="s">&#39;</span><span class="p">)</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="n">relative_path</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">relative_path</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isabs</span><span class="p">(</span><span class="n">relative_path</span><span class="p">):</span>
+    <span class="c"># empty or already absolute - nothing to do</span>
+    <span class="k">pass</span>
+  <span class="k">elif</span> <span class="n">relative_path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;~&#39;</span><span class="p">):</span>
+    <span class="c"># prefixed with a ~ or ~user entry</span>
+    <span class="n">relative_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">relative_path</span><span class="p">)</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="c"># relative path, expand with the cwd</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">cwd</span><span class="p">:</span>
+      <span class="n">cwd</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+
+    <span class="c"># we&#39;ll be dealing with both &quot;my/path/&quot; and &quot;./my/path&quot; entries, so</span>
+    <span class="c"># cropping the later</span>
+    <span class="k">if</span> <span class="n">relative_path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;./&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">relative_path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;.</span><span class="se">\\</span><span class="s">&#39;</span><span class="p">):</span>
+      <span class="n">relative_path</span> <span class="o">=</span> <span class="n">relative_path</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span>
+    <span class="k">elif</span> <span class="n">relative_path</span> <span class="o">==</span> <span class="s">&#39;.&#39;</span><span class="p">:</span>
+      <span class="n">relative_path</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+
+    <span class="k">if</span> <span class="n">relative_path</span> <span class="o">==</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+      <span class="n">relative_path</span> <span class="o">=</span> <span class="n">cwd</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">relative_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cwd</span><span class="p">,</span> <span class="n">relative_path</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">relative_path</span>
+
+</div>
+<div class="viewcode-block" id="files_with_suffix"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.files_with_suffix">[docs]</a><span class="k">def</span> <span class="nf">files_with_suffix</span><span class="p">(</span><span class="n">base_path</span><span class="p">,</span> <span class="n">suffix</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Iterates over files in a given directory, providing filenames with a certain</span>
+<span class="sd">  suffix.</span>
+
+<span class="sd">  .. versionadded:: 1.2.0</span>
+
+<span class="sd">  :param str base_path: directory to be iterated over</span>
+<span class="sd">  :param str suffix: filename suffix to look for</span>
+
+<span class="sd">  :returns: iterator that yields the absolute path for files with the given suffix</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">base_path</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">base_path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">suffix</span><span class="p">):</span>
+      <span class="k">yield</span> <span class="n">base_path</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">root</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">files</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">walk</span><span class="p">(</span><span class="n">base_path</span><span class="p">):</span>
+      <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">filename</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">suffix</span><span class="p">):</span>
+          <span class="k">yield</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="call"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.call">[docs]</a><span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">default</span> <span class="o">=</span> <span class="n">UNDEFINED</span><span class="p">,</span> <span class="n">ignore_exit_status</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">env</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  call(command, default = UNDEFINED, ignore_exit_status = False)</span>
+
+<span class="sd">  Issues a command in a subprocess, blocking until completion and returning the</span>
+<span class="sd">  results. This is not actually ran in a shell so pipes and other shell syntax</span>
+<span class="sd">  are not permitted.</span>
+
+<span class="sd">  .. versionchanged:: 1.5.0</span>
+<span class="sd">     Providing additional information upon failure by raising a CallError. This</span>
+<span class="sd">     is a subclass of OSError, providing backward compatibility.</span>
+
+<span class="sd">  .. versionchanged:: 1.5.0</span>
+<span class="sd">     Added env argument.</span>
+
+<span class="sd">  :param str,list command: command to be issued</span>
+<span class="sd">  :param object default: response if the query fails</span>
+<span class="sd">  :param bool ignore_exit_status: reports failure if our command&#39;s exit status</span>
+<span class="sd">    was non-zero</span>
+<span class="sd">  :param dict env: environment variables</span>
+
+<span class="sd">  :returns: **list** with the lines of output from the command</span>
+
+<span class="sd">  :raises: **CallError** if this fails and no default was provided, this is an</span>
+<span class="sd">    **OSError** subclass</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">global</span> <span class="n">SYSTEM_CALL_TIME</span>
+
+  <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="n">command_list</span> <span class="o">=</span> <span class="n">command</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="n">command_list</span> <span class="o">=</span> <span class="n">command</span>
+
+  <span class="n">exit_status</span><span class="p">,</span> <span class="n">runtime</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span>
+  <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">is_shell_command</span> <span class="o">=</span> <span class="n">command_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">SHELL_COMMANDS</span>
+
+    <span class="n">process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">command_list</span><span class="p">,</span> <span class="n">stdout</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">shell</span> <span class="o">=</span> <span class="n">is_shell_command</span><span class="p">,</span> <span class="n">env</span> <span class="o">=</span> <span class="n">env</span><span class="p">)</span>
+
+    <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">communicate</span><span class="p">()</span>
+    <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">stdout</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="n">stderr</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="n">runtime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+
+    <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;System call: </span><span class="si">%s</span><span class="s"> (runtime: </span><span class="si">%0.2f</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">runtime</span><span class="p">))</span>
+    <span class="n">trace_prefix</span> <span class="o">=</span> <span class="s">&#39;Received from system (</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="n">command</span>
+
+    <span class="k">if</span> <span class="n">stdout</span> <span class="ow">and</span> <span class="n">stderr</span><span class="p">:</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="n">trace_prefix</span> <span class="o">+</span> <span class="s">&#39;, stdout:</span><span class="se">\n</span><span class="si">%s</span><span class="se">\n</span><span class="s">stderr:</span><span class="se">\n</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="n">stdout</span><span class="p">:</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="n">trace_prefix</span> <span class="o">+</span> <span class="s">&#39;, stdout:</span><span class="se">\n</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">stdout</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">stderr</span><span class="p">:</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="n">trace_prefix</span> <span class="o">+</span> <span class="s">&#39;, stderr:</span><span class="se">\n</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">stderr</span><span class="p">)</span>
+
+    <span class="n">exit_status</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">ignore_exit_status</span> <span class="ow">and</span> <span class="n">exit_status</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> returned exit status </span><span class="si">%i</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">exit_status</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">stdout</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">stdout</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">&#39;utf-8&#39;</span><span class="p">,</span> <span class="s">&#39;replace&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">return</span> <span class="p">[]</span>
+  <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;System call (failed): </span><span class="si">%s</span><span class="s"> (error: </span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">default</span> <span class="o">!=</span> <span class="n">UNDEFINED</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">default</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">CallError</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">),</span> <span class="s">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">command_list</span><span class="p">),</span> <span class="n">exit_status</span><span class="p">,</span> <span class="n">runtime</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span><span class="p">)</span>
+  <span class="k">finally</span><span class="p">:</span>
+    <span class="k">with</span> <span class="n">SYSTEM_CALL_TIME_LOCK</span><span class="p">:</span>
+      <span class="n">SYSTEM_CALL_TIME</span> <span class="o">+=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+
+</div>
+<div class="viewcode-block" id="get_process_name"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.get_process_name">[docs]</a><span class="k">def</span> <span class="nf">get_process_name</span><span class="p">():</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the present name of our process.</span>
+
+<span class="sd">  :returns: **str** with the present name of our process</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">global</span> <span class="n">_PROCESS_NAME</span><span class="p">,</span> <span class="n">_MAX_NAME_LENGTH</span>
+
+  <span class="k">if</span> <span class="n">_PROCESS_NAME</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="c"># Example output...</span>
+    <span class="c">#</span>
+    <span class="c">#   COMMAND</span>
+    <span class="c">#   python run_tests.py --unit</span>
+
+    <span class="n">ps_output</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="s">&#39;ps -p </span><span class="si">%i</span><span class="s"> -o args&#39;</span> <span class="o">%</span> <span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">(),</span> <span class="p">[])</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ps_output</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">ps_output</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;COMMAND&#39;</span><span class="p">,</span> <span class="s">&#39;ARGS&#39;</span><span class="p">):</span>
+      <span class="n">_PROCESS_NAME</span> <span class="o">=</span> <span class="n">ps_output</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="c"># Falling back on using ctypes to get our argv. Unfortunately the simple</span>
+      <span class="c"># method for getting this...</span>
+      <span class="c">#</span>
+      <span class="c">#   &#39; &#39;.join([&#39;python&#39;] + sys.argv)</span>
+      <span class="c">#</span>
+      <span class="c"># ... doesn&#39;t do the trick since this will miss interpreter arguments.</span>
+      <span class="c">#</span>
+      <span class="c">#   python -W ignore::DeprecationWarning my_script.py</span>
+
+      <span class="n">args</span><span class="p">,</span> <span class="n">argc</span> <span class="o">=</span> <span class="p">[],</span> <span class="n">argc_t</span><span class="p">()</span>
+
+      <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
+        <span class="c"># The ending index can be either None or raise a ValueError when</span>
+        <span class="c"># accessed...</span>
+        <span class="c">#</span>
+        <span class="c"># ValueError: NULL pointer access</span>
+
+        <span class="k">try</span><span class="p">:</span>
+          <span class="k">if</span> <span class="n">argc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+          <span class="k">break</span>
+
+        <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">argc</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+
+      <span class="n">_PROCESS_NAME</span> <span class="o">=</span> <span class="s">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="n">_MAX_NAME_LENGTH</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">_PROCESS_NAME</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">_PROCESS_NAME</span>
+
+</div>
+<div class="viewcode-block" id="set_process_name"><a class="viewcode-back" href="../../../api/util/system.html#stem.util.system.set_process_name">[docs]</a><span class="k">def</span> <span class="nf">set_process_name</span><span class="p">(</span><span class="n">process_name</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Renames our current process from &quot;python &lt;args&gt;&quot; to a custom name. This is</span>
+<span class="sd">  best-effort, not necessarily working on all platforms.</span>
+
+<span class="sd">  **Note:** This might have issues on FreeBSD (:trac:`9804`).</span>
+
+<span class="sd">  :param str process_name: new name for our process</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># This is mostly based on...</span>
+  <span class="c">#</span>
+  <span class="c"># http://www.rhinocerus.net/forum/lang-python/569677-setting-program-name-like-0-perl.html#post2272369</span>
+  <span class="c">#</span>
+  <span class="c"># ... and an adaptation by Jake...</span>
+  <span class="c">#</span>
+  <span class="c"># https://github.com/ioerror/chameleon</span>
+  <span class="c">#</span>
+  <span class="c"># A cleaner implementation is available at...</span>
+  <span class="c">#</span>
+  <span class="c"># https://github.com/cream/libs/blob/b38970e2a6f6d2620724c828808235be0445b799/cream/util/procname.py</span>
+  <span class="c">#</span>
+  <span class="c"># but I&#39;m not quite clear on their implementation, and it only does targeted</span>
+  <span class="c"># argument replacement (ie, replace argv[0], argv[1], etc but with a string</span>
+  <span class="c"># the same size).</span>
+
+  <span class="n">_set_argv</span><span class="p">(</span><span class="n">process_name</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;Linux&#39;</span><span class="p">:</span>
+    <span class="n">_set_prctl_name</span><span class="p">(</span><span class="n">process_name</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;Darwin&#39;</span><span class="p">,</span> <span class="s">&#39;FreeBSD&#39;</span><span class="p">,</span> <span class="s">&#39;OpenBSD&#39;</span><span class="p">):</span>
+    <span class="n">_set_proc_title</span><span class="p">(</span><span class="n">process_name</span><span class="p">)</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_set_argv</span><span class="p">(</span><span class="n">process_name</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Overwrites our argv in a similar fashion to how it&#39;s done in C with:</span>
+<span class="sd">  strcpy(argv[0], &#39;new_name&#39;);</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">Py_GetArgcArgv</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="k">return</span>
+
+  <span class="k">global</span> <span class="n">_PROCESS_NAME</span>
+
+  <span class="c"># both gets the current process name and initializes _MAX_NAME_LENGTH</span>
+
+  <span class="n">current_name</span> <span class="o">=</span> <span class="n">get_process_name</span><span class="p">()</span>
+
+  <span class="n">argv</span><span class="p">,</span> <span class="n">argc</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_int</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">argc_t</span><span class="p">()</span>
+  <span class="n">Py_GetArgcArgv</span><span class="p">(</span><span class="n">argv</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">pointer</span><span class="p">(</span><span class="n">argc</span><span class="p">))</span>
+
+  <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">process_name</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">_MAX_NAME_LENGTH</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;Can&#39;t rename process to something longer than our initial name (this would overwrite memory used for the env)&quot;</span><span class="p">)</span>
+
+  <span class="c"># space we need to clear</span>
+  <span class="n">zero_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">current_name</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">process_name</span><span class="p">))</span>
+
+  <span class="n">ctypes</span><span class="o">.</span><span class="n">memset</span><span class="p">(</span><span class="n">argc</span><span class="o">.</span><span class="n">contents</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">zero_size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>  <span class="c"># null terminate the string&#39;s end</span>
+  <span class="n">process_name_encoded</span> <span class="o">=</span> <span class="n">process_name</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;utf8&#39;</span><span class="p">)</span>
+  <span class="n">ctypes</span><span class="o">.</span><span class="n">memmove</span><span class="p">(</span><span class="n">argc</span><span class="o">.</span><span class="n">contents</span><span class="p">,</span> <span class="n">process_name_encoded</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">process_name</span><span class="p">))</span>
+  <span class="n">_PROCESS_NAME</span> <span class="o">=</span> <span class="n">process_name</span>
+
+
+<span class="k">def</span> <span class="nf">_set_prctl_name</span><span class="p">(</span><span class="n">process_name</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Sets the prctl name, which is used by top and killall. This appears to be</span>
+<span class="sd">  Linux specific and has the max of 15 characters.</span>
+
+<span class="sd">  This is from...</span>
+<span class="sd">  http://stackoverflow.com/questions/564695/is-there-a-way-to-change-effective-process-name-in-python/923034#923034</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">libc</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">CDLL</span><span class="p">(</span><span class="n">ctypes</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">find_library</span><span class="p">(</span><span class="s">&#39;c&#39;</span><span class="p">))</span>
+  <span class="n">name_buffer</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">process_name</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+  <span class="n">name_buffer</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_bytes</span><span class="p">(</span><span class="n">process_name</span><span class="p">)</span>
+  <span class="n">libc</span><span class="o">.</span><span class="n">prctl</span><span class="p">(</span><span class="n">PR_SET_NAME</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">byref</span><span class="p">(</span><span class="n">name_buffer</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_set_proc_title</span><span class="p">(</span><span class="n">process_name</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  BSD specific calls (should be compataible with both FreeBSD and OpenBSD:</span>
+<span class="sd">  http://fxr.watson.org/fxr/source/gen/setproctitle.c?v=FREEBSD-LIBC</span>
+<span class="sd">  http://www.rootr.net/man/man/setproctitle/3</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">libc</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">CDLL</span><span class="p">(</span><span class="n">ctypes</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">find_library</span><span class="p">(</span><span class="s">&#39;c&#39;</span><span class="p">))</span>
+  <span class="n">name_buffer</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">process_name</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+  <span class="n">name_buffer</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">process_name</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">libc</span><span class="o">.</span><span class="n">setproctitle</span><span class="p">(</span><span class="n">ctypes</span><span class="o">.</span><span class="n">byref</span><span class="p">(</span><span class="n">name_buffer</span><span class="p">))</span>
+  <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+    <span class="c"># Possible issue (seen on OSX):</span>
+    <span class="c"># AttributeError: dlsym(0x7fff6a41d1e0, setproctitle): symbol not found</span>
+
+    <span class="k">pass</span>
+
+
+<span class="c"># TODO: drop with stem 2.x</span>
+<span class="c"># We renamed our methods to drop a redundant &#39;get_*&#39; prefix, so alias the old</span>
+<span class="c"># names for backward compatability.</span>
+
+<span class="n">get_name_by_pid</span> <span class="o">=</span> <span class="n">name_by_pid</span>
+<span class="n">get_pid_by_name</span> <span class="o">=</span> <span class="n">pid_by_name</span>
+<span class="n">get_pid_by_port</span> <span class="o">=</span> <span class="n">pid_by_port</span>
+<span class="n">get_pid_by_open_file</span> <span class="o">=</span> <span class="n">pid_by_open_file</span>
+<span class="n">get_cwd</span> <span class="o">=</span> <span class="n">cwd</span>
+<span class="n">get_user</span> <span class="o">=</span> <span class="n">user</span>
+<span class="n">get_start_time</span> <span class="o">=</span> <span class="n">start_time</span>
+<span class="n">get_bsd_jail_id</span> <span class="o">=</span> <span class="n">bsd_jail_id</span>
+<span class="n">get_bsd_jail_path</span> <span class="o">=</span> <span class="n">bsd_jail_path</span>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

@@ -1,0 +1,180 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.response.getinfo &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem.response" href="../response.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.response.getinfo</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.response.getinfo</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2012-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="kn">import</span> <span class="nn">stem.response</span>
+<span class="kn">import</span> <span class="nn">stem.socket</span>
+
+
+<div class="viewcode-block" id="GetInfoResponse"><a class="viewcode-back" href="../../../api/response.html#stem.response.getinfo.GetInfoResponse">[docs]</a><span class="k">class</span> <span class="nc">GetInfoResponse</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">ControlMessage</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Reply for a GETINFO query.</span>
+
+<span class="sd">  :var dict entries: mapping between the queried options and their bytes values</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">_parse_message</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="c"># Example:</span>
+    <span class="c"># 250-version=0.2.3.11-alpha-dev (git-ef0bc7f8f26a917c)</span>
+    <span class="c"># 250+config-text=</span>
+    <span class="c"># ControlPort 9051</span>
+    <span class="c"># DataDirectory /home/atagar/.tor</span>
+    <span class="c"># ExitPolicy reject *:*</span>
+    <span class="c"># Log notice stdout</span>
+    <span class="c"># Nickname Unnamed</span>
+    <span class="c"># ORPort 9050</span>
+    <span class="c"># .</span>
+    <span class="c"># 250 OK</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">entries</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">remaining_lines</span> <span class="o">=</span> <span class="p">[</span><span class="n">content</span> <span class="k">for</span> <span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="n">div</span><span class="p">,</span> <span class="n">content</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span><span class="p">(</span><span class="n">get_bytes</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)]</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_ok</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">remaining_lines</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span> <span class="o">==</span> <span class="n">b</span><span class="s">&#39;OK&#39;</span><span class="p">:</span>
+      <span class="n">unrecognized_keywords</span> <span class="o">=</span> <span class="p">[]</span>
+      <span class="k">for</span> <span class="n">code</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">code</span> <span class="o">==</span> <span class="s">&#39;552&#39;</span> <span class="ow">and</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;Unrecognized key &quot;&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">line</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;&quot;&#39;</span><span class="p">):</span>
+          <span class="n">unrecognized_keywords</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="mi">18</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+      <span class="k">if</span> <span class="n">unrecognized_keywords</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">InvalidArguments</span><span class="p">(</span><span class="s">&#39;552&#39;</span><span class="p">,</span> <span class="s">&#39;GETINFO request contained unrecognized keywords: </span><span class="si">%s</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">%</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">unrecognized_keywords</span><span class="p">),</span> <span class="n">unrecognized_keywords</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;GETINFO response didn&#39;t have an OK status:</span><span class="se">\n</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">while</span> <span class="n">remaining_lines</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">remaining_lines</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;=&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;GETINFO replies should only contain parameter=value mappings:</span><span class="se">\n</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">prereq</span><span class="o">.</span><span class="n">is_python_3</span><span class="p">():</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+
+      <span class="c"># if the value is a multiline value then it *must* be of the form</span>
+      <span class="c"># &#39;&lt;key&gt;=\n&lt;value&gt;&#39;</span>
+
+      <span class="k">if</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">value</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">):</span>
+          <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;GETINFO response contained a multi-line value that didn&#39;t start with a newline:</span><span class="se">\n</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+        <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">entries</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+  <span class="k">def</span> <span class="nf">_assert_matches</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks if we match a given set of parameters, and raise a ProtocolError if not.</span>
+
+<span class="sd">    :param set params: parameters to assert that we contain</span>
+
+<span class="sd">    :raises:</span>
+<span class="sd">      * :class:`stem.ProtocolError` if parameters don&#39;t match this response</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">reply_params</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entries</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+    <span class="k">if</span> <span class="n">params</span> <span class="o">!=</span> <span class="n">reply_params</span><span class="p">:</span>
+      <span class="n">requested_label</span> <span class="o">=</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+      <span class="n">reply_label</span> <span class="o">=</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">reply_params</span><span class="p">)</span>
+
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;GETINFO reply doesn&#39;t match the parameters that we requested. Queried &#39;</span><span class="si">%s</span><span class="s">&#39; but got &#39;</span><span class="si">%s</span><span class="s">&#39;.&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">requested_label</span><span class="p">,</span> <span class="n">reply_label</span><span class="p">))</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

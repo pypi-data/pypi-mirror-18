@@ -1,0 +1,988 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.descriptor.__init__ &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem" href="../../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.descriptor.__init__</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.descriptor.__init__</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2012-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Package for parsing and processing descriptor data.</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  parse_file - Parses the descriptors in a file.</span>
+
+<span class="sd">  Descriptor - Common parent for all descriptor file types.</span>
+<span class="sd">    |- get_path - location of the descriptor on disk if it came from a file</span>
+<span class="sd">    |- get_archive_path - location of the descriptor within the archive it came from</span>
+<span class="sd">    |- get_bytes - similar to str(), but provides our original bytes content</span>
+<span class="sd">    |- get_unrecognized_lines - unparsed descriptor content</span>
+<span class="sd">    +- __str__ - string that the descriptor was made from</span>
+
+<span class="sd">.. data:: DocumentHandler (enum)</span>
+
+<span class="sd">  Ways in which we can parse a</span>
+<span class="sd">  :class:`~stem.descriptor.networkstatus.NetworkStatusDocument`.</span>
+
+<span class="sd">  Both **ENTRIES** and **BARE_DOCUMENT** have a &#39;thin&#39; document, which doesn&#39;t</span>
+<span class="sd">  have a populated **routers** attribute. This allows for lower memory usage</span>
+<span class="sd">  and upfront runtime. However, if read time and memory aren&#39;t a concern then</span>
+<span class="sd">  **DOCUMENT** can provide you with a fully populated document.</span>
+
+<span class="sd">  =================== ===========</span>
+<span class="sd">  DocumentHandler     Description</span>
+<span class="sd">  =================== ===========</span>
+<span class="sd">  **ENTRIES**         Iterates over the contained :class:`~stem.descriptor.router_status_entry.RouterStatusEntry`. Each has a reference to the bare document it came from (through its **document** attribute).</span>
+<span class="sd">  **DOCUMENT**        :class:`~stem.descriptor.networkstatus.NetworkStatusDocument` with the :class:`~stem.descriptor.router_status_entry.RouterStatusEntry` it contains (through its **routers** attribute).</span>
+<span class="sd">  **BARE_DOCUMENT**   :class:`~stem.descriptor.networkstatus.NetworkStatusDocument` **without** a reference to its contents (the :class:`~stem.descriptor.router_status_entry.RouterStatusEntry` are unread).</span>
+<span class="sd">  =================== ===========</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">base64</span>
+<span class="kn">import</span> <span class="nn">codecs</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">hashlib</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">string</span>
+<span class="kn">import</span> <span class="nn">tarfile</span>
+
+<span class="kn">import</span> <span class="nn">stem.prereq</span>
+<span class="kn">import</span> <span class="nn">stem.util.enum</span>
+<span class="kn">import</span> <span class="nn">stem.util.str_tools</span>
+<span class="kn">import</span> <span class="nn">stem.util.system</span>
+
+<span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">str_type</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="c"># added in python 2.7</span>
+  <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+  <span class="kn">from</span> <span class="nn">stem.util.ordereddict</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+  <span class="s">&#39;export&#39;</span><span class="p">,</span>
+  <span class="s">&#39;reader&#39;</span><span class="p">,</span>
+  <span class="s">&#39;remote&#39;</span><span class="p">,</span>
+  <span class="s">&#39;extrainfo_descriptor&#39;</span><span class="p">,</span>
+  <span class="s">&#39;server_descriptor&#39;</span><span class="p">,</span>
+  <span class="s">&#39;microdescriptor&#39;</span><span class="p">,</span>
+  <span class="s">&#39;networkstatus&#39;</span><span class="p">,</span>
+  <span class="s">&#39;router_status_entry&#39;</span><span class="p">,</span>
+  <span class="s">&#39;tordnsel&#39;</span><span class="p">,</span>
+  <span class="s">&#39;parse_file&#39;</span><span class="p">,</span>
+  <span class="s">&#39;Descriptor&#39;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="n">KEYWORD_CHAR</span> <span class="o">=</span> <span class="s">&#39;a-zA-Z0-9-&#39;</span>
+<span class="n">WHITESPACE</span> <span class="o">=</span> <span class="s">&#39; </span><span class="se">\t</span><span class="s">&#39;</span>
+<span class="n">KEYWORD_LINE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^([</span><span class="si">%s</span><span class="s">]+)(?:[</span><span class="si">%s</span><span class="s">]+(.*))?$&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">KEYWORD_CHAR</span><span class="p">,</span> <span class="n">WHITESPACE</span><span class="p">))</span>
+<span class="n">SPECIFIC_KEYWORD_LINE</span> <span class="o">=</span> <span class="s">&#39;^(</span><span class="si">%%</span><span class="s">s)(?:[</span><span class="si">%s</span><span class="s">]+(.*))?$&#39;</span> <span class="o">%</span> <span class="n">WHITESPACE</span>
+<span class="n">PGP_BLOCK_START</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^-----BEGIN ([</span><span class="si">%s%s</span><span class="s">]+)-----$&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">KEYWORD_CHAR</span><span class="p">,</span> <span class="n">WHITESPACE</span><span class="p">))</span>
+<span class="n">PGP_BLOCK_END</span> <span class="o">=</span> <span class="s">&#39;-----END </span><span class="si">%s</span><span class="s">-----&#39;</span>
+
+<span class="n">DocumentHandler</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;ENTRIES&#39;</span><span class="p">,</span>
+  <span class="s">&#39;DOCUMENT&#39;</span><span class="p">,</span>
+  <span class="s">&#39;BARE_DOCUMENT&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="parse_file"><a class="viewcode-back" href="../../../api/descriptor/descriptor.html#stem.descriptor.__init__.parse_file">[docs]</a><span class="k">def</span> <span class="nf">parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">descriptor_type</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">document_handler</span> <span class="o">=</span> <span class="n">DocumentHandler</span><span class="o">.</span><span class="n">ENTRIES</span><span class="p">,</span> <span class="n">normalize_newlines</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Simple function to read the descriptor contents from a file, providing an</span>
+<span class="sd">  iterator for its :class:`~stem.descriptor.__init__.Descriptor` contents.</span>
+
+<span class="sd">  If you don&#39;t provide a **descriptor_type** argument then this automatically</span>
+<span class="sd">  tries to determine the descriptor type based on the following...</span>
+
+<span class="sd">  * The @type annotation on the first line. These are generally only found in</span>
+<span class="sd">    the `CollecTor archives &lt;https://collector.torproject.org/formats.html#relay-descriptors&gt;`_.</span>
+
+<span class="sd">  * The filename if it matches something from tor&#39;s data directory. For</span>
+<span class="sd">    instance, tor&#39;s &#39;cached-descriptors&#39; contains server descriptors.</span>
+
+<span class="sd">  This is a handy function for simple usage, but if you&#39;re reading multiple</span>
+<span class="sd">  descriptor files you might want to consider the</span>
+<span class="sd">  :class:`~stem.descriptor.reader.DescriptorReader`.</span>
+
+<span class="sd">  Descriptor types include the following, including further minor versions (ie.</span>
+<span class="sd">  if we support 1.1 then we also support everything from 1.0 and most things</span>
+<span class="sd">  from 1.2, but not 2.0)...</span>
+
+<span class="sd">  ========================================= =====</span>
+<span class="sd">  Descriptor Type                           Class</span>
+<span class="sd">  ========================================= =====</span>
+<span class="sd">  server-descriptor 1.0                     :class:`~stem.descriptor.server_descriptor.RelayDescriptor`</span>
+<span class="sd">  extra-info 1.0                            :class:`~stem.descriptor.extrainfo_descriptor.RelayExtraInfoDescriptor`</span>
+<span class="sd">  microdescriptor 1.0                       :class:`~stem.descriptor.microdescriptor.Microdescriptor`</span>
+<span class="sd">  directory 1.0                             **unsupported**</span>
+<span class="sd">  network-status-2 1.0                      :class:`~stem.descriptor.router_status_entry.RouterStatusEntryV2` (with a :class:`~stem.descriptor.networkstatus.NetworkStatusDocumentV2`)</span>
+<span class="sd">  dir-key-certificate-3 1.0                 :class:`~stem.descriptor.networkstatus.KeyCertificate`</span>
+<span class="sd">  network-status-consensus-3 1.0            :class:`~stem.descriptor.router_status_entry.RouterStatusEntryV3` (with a :class:`~stem.descriptor.networkstatus.NetworkStatusDocumentV3`)</span>
+<span class="sd">  network-status-vote-3 1.0                 :class:`~stem.descriptor.router_status_entry.RouterStatusEntryV3` (with a :class:`~stem.descriptor.networkstatus.NetworkStatusDocumentV3`)</span>
+<span class="sd">  network-status-microdesc-consensus-3 1.0  :class:`~stem.descriptor.router_status_entry.RouterStatusEntryMicroV3` (with a :class:`~stem.descriptor.networkstatus.NetworkStatusDocumentV3`)</span>
+<span class="sd">  bridge-network-status 1.0                 :class:`~stem.descriptor.router_status_entry.RouterStatusEntryV3` (with a :class:`~stem.descriptor.networkstatus.BridgeNetworkStatusDocument`)</span>
+<span class="sd">  bridge-server-descriptor 1.0              :class:`~stem.descriptor.server_descriptor.BridgeDescriptor`</span>
+<span class="sd">  bridge-extra-info 1.1 or 1.2              :class:`~stem.descriptor.extrainfo_descriptor.BridgeExtraInfoDescriptor`</span>
+<span class="sd">  torperf 1.0                               **unsupported**</span>
+<span class="sd">  bridge-pool-assignment 1.0                **unsupported**</span>
+<span class="sd">  tordnsel 1.0                              :class:`~stem.descriptor.tordnsel.TorDNSEL`</span>
+<span class="sd">  hidden-service-descriptor 1.0             :class:`~stem.descriptor.hidden_service_descriptor.HiddenServiceDescriptor`</span>
+<span class="sd">  ========================================= =====</span>
+
+<span class="sd">  If you&#39;re using **python 3** then beware that the open() function defaults to</span>
+<span class="sd">  using text mode. **Binary mode** is strongly suggested because it&#39;s both</span>
+<span class="sd">  faster (by my testing by about 33x) and doesn&#39;t do universal newline</span>
+<span class="sd">  translation which can make us misparse the document.</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    my_descriptor_file = open(descriptor_path, &#39;rb&#39;)</span>
+
+<span class="sd">  :param str,file,tarfile descriptor_file: path or opened file with the descriptor contents</span>
+<span class="sd">  :param str descriptor_type: `descriptor type &lt;https://collector.torproject.org/formats.html&gt;`_, this is guessed if not provided</span>
+<span class="sd">  :param bool validate: checks the validity of the descriptor&#39;s content if</span>
+<span class="sd">    **True**, skips these checks otherwise</span>
+<span class="sd">  :param stem.descriptor.__init__.DocumentHandler document_handler: method in</span>
+<span class="sd">    which to parse the :class:`~stem.descriptor.networkstatus.NetworkStatusDocument`</span>
+<span class="sd">  :param bool normalize_newlines: converts windows newlines (CRLF), this is the</span>
+<span class="sd">    default when reading data directories on windows</span>
+<span class="sd">  :param dict kwargs: additional arguments for the descriptor constructor</span>
+
+<span class="sd">  :returns: iterator for :class:`~stem.descriptor.__init__.Descriptor` instances in the file</span>
+
+<span class="sd">  :raises:</span>
+<span class="sd">    * **ValueError** if the contents is malformed and validate is True</span>
+<span class="sd">    * **TypeError** if we can&#39;t match the contents of the file to a descriptor type</span>
+<span class="sd">    * **IOError** if unable to read from the descriptor_file</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># Delegate to a helper if this is a path or tarfile.</span>
+
+  <span class="n">handler</span> <span class="o">=</span> <span class="bp">None</span>
+
+  <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="p">(</span><span class="nb">bytes</span><span class="p">,</span> <span class="n">str_type</span><span class="p">)):</span>
+    <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">is_tarfile</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">):</span>
+      <span class="n">handler</span> <span class="o">=</span> <span class="n">_parse_file_for_tar_path</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">handler</span> <span class="o">=</span> <span class="n">_parse_file_for_path</span>
+  <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">TarFile</span><span class="p">):</span>
+    <span class="n">handler</span> <span class="o">=</span> <span class="n">_parse_file_for_tarfile</span>
+
+  <span class="k">if</span> <span class="n">handler</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">handler</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">descriptor_type</span><span class="p">,</span> <span class="n">validate</span><span class="p">,</span> <span class="n">document_handler</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+      <span class="k">yield</span> <span class="n">desc</span>
+
+    <span class="k">return</span>
+
+  <span class="c"># The tor descriptor specifications do not provide a reliable method for</span>
+  <span class="c"># identifying a descriptor file&#39;s type and version so we need to guess</span>
+  <span class="c"># based on its filename. Metrics descriptors, however, can be identified</span>
+  <span class="c"># by an annotation on their first line...</span>
+  <span class="c"># https://trac.torproject.org/5651</span>
+
+  <span class="n">initial_position</span> <span class="o">=</span> <span class="n">descriptor_file</span><span class="o">.</span><span class="n">tell</span><span class="p">()</span>
+  <span class="n">first_line</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">descriptor_file</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+  <span class="n">metrics_header_match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^@type (\S+) (\d+).(\d+)$&#39;</span><span class="p">,</span> <span class="n">first_line</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">metrics_header_match</span><span class="p">:</span>
+    <span class="n">descriptor_file</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="n">initial_position</span><span class="p">)</span>
+
+  <span class="n">descriptor_path</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="s">&#39;name&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+  <span class="n">filename</span> <span class="o">=</span> <span class="s">&#39;&lt;undefined&gt;&#39;</span> <span class="k">if</span> <span class="n">descriptor_path</span> <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">descriptor_file</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">parse</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">normalize_newlines</span><span class="p">:</span>
+      <span class="n">descriptor_file</span> <span class="o">=</span> <span class="n">NewlineNormalizer</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">descriptor_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="n">descriptor_type_match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^(\S+) (\d+).(\d+)$&#39;</span><span class="p">,</span> <span class="n">descriptor_type</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">descriptor_type_match</span><span class="p">:</span>
+        <span class="n">desc_type</span><span class="p">,</span> <span class="n">major_version</span><span class="p">,</span> <span class="n">minor_version</span> <span class="o">=</span> <span class="n">descriptor_type_match</span><span class="o">.</span><span class="n">groups</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">_parse_metrics_file</span><span class="p">(</span><span class="n">desc_type</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">major_version</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">minor_version</span><span class="p">),</span> <span class="n">descriptor_file</span><span class="p">,</span> <span class="n">validate</span><span class="p">,</span> <span class="n">document_handler</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;The descriptor_type must be of the form &#39;&lt;type&gt; &lt;major_version&gt;.&lt;minor_version&gt;&#39;&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">metrics_header_match</span><span class="p">:</span>
+      <span class="c"># Metrics descriptor handling</span>
+
+      <span class="n">desc_type</span><span class="p">,</span> <span class="n">major_version</span><span class="p">,</span> <span class="n">minor_version</span> <span class="o">=</span> <span class="n">metrics_header_match</span><span class="o">.</span><span class="n">groups</span><span class="p">()</span>
+      <span class="k">return</span> <span class="n">_parse_metrics_file</span><span class="p">(</span><span class="n">desc_type</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">major_version</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">minor_version</span><span class="p">),</span> <span class="n">descriptor_file</span><span class="p">,</span> <span class="n">validate</span><span class="p">,</span> <span class="n">document_handler</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="c"># Cached descriptor handling. These contain multiple descriptors per file.</span>
+
+      <span class="k">if</span> <span class="n">normalize_newlines</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">is_windows</span><span class="p">():</span>
+        <span class="n">descriptor_file</span> <span class="o">=</span> <span class="n">NewlineNormalizer</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">filename</span> <span class="o">==</span> <span class="s">&#39;cached-descriptors&#39;</span> <span class="ow">or</span> <span class="n">filename</span> <span class="o">==</span> <span class="s">&#39;cached-descriptors.new&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">server_descriptor</span><span class="o">.</span><span class="n">_parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="n">validate</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="n">filename</span> <span class="o">==</span> <span class="s">&#39;cached-extrainfo&#39;</span> <span class="ow">or</span> <span class="n">filename</span> <span class="o">==</span> <span class="s">&#39;cached-extrainfo.new&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">extrainfo_descriptor</span><span class="o">.</span><span class="n">_parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="n">validate</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="n">filename</span> <span class="o">==</span> <span class="s">&#39;cached-microdescs&#39;</span> <span class="ow">or</span> <span class="n">filename</span> <span class="o">==</span> <span class="s">&#39;cached-microdescs.new&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">microdescriptor</span><span class="o">.</span><span class="n">_parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="n">validate</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="n">filename</span> <span class="o">==</span> <span class="s">&#39;cached-consensus&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">networkstatus</span><span class="o">.</span><span class="n">_parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="n">validate</span><span class="p">,</span> <span class="n">document_handler</span> <span class="o">=</span> <span class="n">document_handler</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="n">filename</span> <span class="o">==</span> <span class="s">&#39;cached-microdesc-consensus&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">networkstatus</span><span class="o">.</span><span class="n">_parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">is_microdescriptor</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="n">validate</span><span class="p">,</span> <span class="n">document_handler</span> <span class="o">=</span> <span class="n">document_handler</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Unable to determine the descriptor&#39;s type. filename: &#39;</span><span class="si">%s</span><span class="s">&#39;, first line: &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">first_line</span><span class="p">))</span>
+
+  <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">parse</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">descriptor_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="n">desc</span><span class="o">.</span><span class="n">_set_path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">descriptor_path</span><span class="p">))</span>
+
+    <span class="k">yield</span> <span class="n">desc</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_parse_file_for_path</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+  <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="s">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">desc_file</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">parse_file</span><span class="p">(</span><span class="n">desc_file</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+      <span class="k">yield</span> <span class="n">desc</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_file_for_tar_path</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+  <span class="c"># TODO: use &#39;with&#39; for tarfile after dropping python 2.6 support</span>
+  <span class="n">tar_file</span> <span class="o">=</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">parse_file</span><span class="p">(</span><span class="n">tar_file</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+      <span class="n">desc</span><span class="o">.</span><span class="n">_set_path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">))</span>
+      <span class="k">yield</span> <span class="n">desc</span>
+  <span class="k">finally</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">tar_file</span><span class="p">:</span>
+      <span class="n">tar_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_file_for_tarfile</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+  <span class="k">for</span> <span class="n">tar_entry</span> <span class="ow">in</span> <span class="n">descriptor_file</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">tar_entry</span><span class="o">.</span><span class="n">isfile</span><span class="p">():</span>
+      <span class="n">entry</span> <span class="o">=</span> <span class="n">descriptor_file</span><span class="o">.</span><span class="n">extractfile</span><span class="p">(</span><span class="n">tar_entry</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">tar_entry</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">continue</span>
+
+      <span class="k">try</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">parse_file</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+          <span class="n">desc</span><span class="o">.</span><span class="n">_set_archive_path</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+          <span class="k">yield</span> <span class="n">desc</span>
+      <span class="k">finally</span><span class="p">:</span>
+        <span class="n">entry</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_metrics_file</span><span class="p">(</span><span class="n">descriptor_type</span><span class="p">,</span> <span class="n">major_version</span><span class="p">,</span> <span class="n">minor_version</span><span class="p">,</span> <span class="n">descriptor_file</span><span class="p">,</span> <span class="n">validate</span><span class="p">,</span> <span class="n">document_handler</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+  <span class="c"># Parses descriptor files from metrics, yielding individual descriptors. This</span>
+  <span class="c"># throws a TypeError if the descriptor_type or version isn&#39;t recognized.</span>
+
+  <span class="k">if</span> <span class="n">descriptor_type</span> <span class="o">==</span> <span class="s">&#39;server-descriptor&#39;</span> <span class="ow">and</span> <span class="n">major_version</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">server_descriptor</span><span class="o">.</span><span class="n">_parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">is_bridge</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="n">validate</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+      <span class="k">yield</span> <span class="n">desc</span>
+  <span class="k">elif</span> <span class="n">descriptor_type</span> <span class="o">==</span> <span class="s">&#39;bridge-server-descriptor&#39;</span> <span class="ow">and</span> <span class="n">major_version</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">server_descriptor</span><span class="o">.</span><span class="n">_parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">is_bridge</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="n">validate</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+      <span class="k">yield</span> <span class="n">desc</span>
+  <span class="k">elif</span> <span class="n">descriptor_type</span> <span class="o">==</span> <span class="s">&#39;extra-info&#39;</span> <span class="ow">and</span> <span class="n">major_version</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">extrainfo_descriptor</span><span class="o">.</span><span class="n">_parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">is_bridge</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="n">validate</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+      <span class="k">yield</span> <span class="n">desc</span>
+  <span class="k">elif</span> <span class="n">descriptor_type</span> <span class="o">==</span> <span class="s">&#39;microdescriptor&#39;</span> <span class="ow">and</span> <span class="n">major_version</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">microdescriptor</span><span class="o">.</span><span class="n">_parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="n">validate</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+      <span class="k">yield</span> <span class="n">desc</span>
+  <span class="k">elif</span> <span class="n">descriptor_type</span> <span class="o">==</span> <span class="s">&#39;bridge-extra-info&#39;</span> <span class="ow">and</span> <span class="n">major_version</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="c"># version 1.1 introduced a &#39;transport&#39; field...</span>
+    <span class="c"># https://trac.torproject.org/6257</span>
+
+    <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">extrainfo_descriptor</span><span class="o">.</span><span class="n">_parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">is_bridge</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="n">validate</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+      <span class="k">yield</span> <span class="n">desc</span>
+  <span class="k">elif</span> <span class="n">descriptor_type</span> <span class="o">==</span> <span class="s">&#39;network-status-2&#39;</span> <span class="ow">and</span> <span class="n">major_version</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="n">document_type</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">networkstatus</span><span class="o">.</span><span class="n">NetworkStatusDocumentV2</span>
+
+    <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">networkstatus</span><span class="o">.</span><span class="n">_parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">document_type</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="n">validate</span><span class="p">,</span> <span class="n">document_handler</span> <span class="o">=</span> <span class="n">document_handler</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+      <span class="k">yield</span> <span class="n">desc</span>
+  <span class="k">elif</span> <span class="n">descriptor_type</span> <span class="o">==</span> <span class="s">&#39;dir-key-certificate-3&#39;</span> <span class="ow">and</span> <span class="n">major_version</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">networkstatus</span><span class="o">.</span><span class="n">_parse_file_key_certs</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="n">validate</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+      <span class="k">yield</span> <span class="n">desc</span>
+  <span class="k">elif</span> <span class="n">descriptor_type</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;network-status-consensus-3&#39;</span><span class="p">,</span> <span class="s">&#39;network-status-vote-3&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">major_version</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="n">document_type</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">networkstatus</span><span class="o">.</span><span class="n">NetworkStatusDocumentV3</span>
+
+    <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">networkstatus</span><span class="o">.</span><span class="n">_parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">document_type</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="n">validate</span><span class="p">,</span> <span class="n">document_handler</span> <span class="o">=</span> <span class="n">document_handler</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+      <span class="k">yield</span> <span class="n">desc</span>
+  <span class="k">elif</span> <span class="n">descriptor_type</span> <span class="o">==</span> <span class="s">&#39;network-status-microdesc-consensus-3&#39;</span> <span class="ow">and</span> <span class="n">major_version</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="n">document_type</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">networkstatus</span><span class="o">.</span><span class="n">NetworkStatusDocumentV3</span>
+
+    <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">networkstatus</span><span class="o">.</span><span class="n">_parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">document_type</span><span class="p">,</span> <span class="n">is_microdescriptor</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="n">validate</span><span class="p">,</span> <span class="n">document_handler</span> <span class="o">=</span> <span class="n">document_handler</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+      <span class="k">yield</span> <span class="n">desc</span>
+  <span class="k">elif</span> <span class="n">descriptor_type</span> <span class="o">==</span> <span class="s">&#39;bridge-network-status&#39;</span> <span class="ow">and</span> <span class="n">major_version</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="n">document_type</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">networkstatus</span><span class="o">.</span><span class="n">BridgeNetworkStatusDocument</span>
+
+    <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">networkstatus</span><span class="o">.</span><span class="n">_parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">document_type</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="n">validate</span><span class="p">,</span> <span class="n">document_handler</span> <span class="o">=</span> <span class="n">document_handler</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+      <span class="k">yield</span> <span class="n">desc</span>
+  <span class="k">elif</span> <span class="n">descriptor_type</span> <span class="o">==</span> <span class="s">&#39;tordnsel&#39;</span> <span class="ow">and</span> <span class="n">major_version</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="n">document_type</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">tordnsel</span><span class="o">.</span><span class="n">TorDNSEL</span>
+
+    <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">tordnsel</span><span class="o">.</span><span class="n">_parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="n">validate</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+      <span class="k">yield</span> <span class="n">desc</span>
+  <span class="k">elif</span> <span class="n">descriptor_type</span> <span class="o">==</span> <span class="s">&#39;hidden-service-descriptor&#39;</span> <span class="ow">and</span> <span class="n">major_version</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="n">document_type</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">hidden_service_descriptor</span><span class="o">.</span><span class="n">HiddenServiceDescriptor</span>
+
+    <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">hidden_service_descriptor</span><span class="o">.</span><span class="n">_parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="n">validate</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+      <span class="k">yield</span> <span class="n">desc</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Unrecognized metrics descriptor format. type: &#39;</span><span class="si">%s</span><span class="s">&#39;, version: &#39;</span><span class="si">%i</span><span class="s">.</span><span class="si">%i</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor_type</span><span class="p">,</span> <span class="n">major_version</span><span class="p">,</span> <span class="n">minor_version</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">_value</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="k">return</span> <span class="n">entries</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">_values</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="k">return</span> <span class="p">[</span><span class="n">entry</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">[</span><span class="n">line</span><span class="p">]]</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_simple_line</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">func</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+    <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">func</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">if</span> <span class="n">func</span> <span class="k">else</span> <span class="n">value</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">_parse</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_if_present</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">attribute</span><span class="p">):</span>
+  <span class="k">return</span> <span class="k">lambda</span> <span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">:</span> <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_bytes_line</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">attribute</span><span class="p">):</span>
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+    <span class="n">line_match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_bytes</span><span class="p">(</span><span class="s">&#39;^(opt )?</span><span class="si">%s</span><span class="s">(?:[</span><span class="si">%s</span><span class="s">]+(.*))?$&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">WHITESPACE</span><span class="p">)),</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get_bytes</span><span class="p">(),</span> <span class="n">re</span><span class="o">.</span><span class="n">MULTILINE</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">if</span> <span class="n">line_match</span><span class="p">:</span>
+      <span class="n">value</span> <span class="o">=</span> <span class="n">line_match</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span>
+      <span class="n">result</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;&#39;</span> <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">value</span>
+
+    <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">_parse</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_timestamp_line</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">attribute</span><span class="p">):</span>
+  <span class="c"># &quot;&lt;keyword&gt;&quot; YYYY-MM-DD HH:MM:SS</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_parse_timestamp</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Timestamp on </span><span class="si">%s</span><span class="s"> line wasn&#39;t parsable: </span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">keyword</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+  <span class="k">return</span> <span class="n">_parse</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_forty_character_hex</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">attribute</span><span class="p">):</span>
+  <span class="c"># format of fingerprints, sha1 digests, etc</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">tor_tools</span><span class="o">.</span><span class="n">is_hex_digits</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="mi">40</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> line had an invalid value (should be 40 hex characters): </span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">keyword</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+    <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">_parse</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_key_block</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">expected_block_type</span><span class="p">,</span> <span class="n">value_attribute</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+    <span class="n">value</span><span class="p">,</span> <span class="n">block_type</span><span class="p">,</span> <span class="n">block_contents</span> <span class="o">=</span> <span class="n">entries</span><span class="p">[</span><span class="n">keyword</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">block_contents</span> <span class="ow">or</span> <span class="n">block_type</span> <span class="o">!=</span> <span class="n">expected_block_type</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; should be followed by a </span><span class="si">%s</span><span class="s"> block, but was a </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">expected_block_type</span><span class="p">,</span> <span class="n">block_type</span><span class="p">))</span>
+
+    <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">block_contents</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">value_attribute</span><span class="p">:</span>
+      <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">value_attribute</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">_parse</span>
+
+
+<div class="viewcode-block" id="Descriptor"><a class="viewcode-back" href="../../../api/descriptor/descriptor.html#stem.descriptor.__init__.Descriptor">[docs]</a><span class="k">class</span> <span class="nc">Descriptor</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Common parent for all types of descriptors.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">ATTRIBUTES</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c"># mapping of &#39;attribute&#39; =&gt; (default_value, parsing_function)</span>
+  <span class="n">PARSER_FOR_LINE</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c"># line keyword to its associated parsing function</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">contents</span><span class="p">,</span> <span class="n">lazy_load</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_path</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_archive_path</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_raw_contents</span> <span class="o">=</span> <span class="n">contents</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_lazy_loading</span> <span class="o">=</span> <span class="n">lazy_load</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_unrecognized_lines</span> <span class="o">=</span> <span class="p">[]</span>
+
+<div class="viewcode-block" id="Descriptor.get_path"><a class="viewcode-back" href="../../../api/descriptor/descriptor.html#stem.descriptor.__init__.Descriptor.get_path">[docs]</a>  <span class="k">def</span> <span class="nf">get_path</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the absolute path that we loaded this descriptor from.</span>
+
+<span class="sd">    :returns: **str** with the absolute path of the descriptor source</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_path</span>
+</div>
+<div class="viewcode-block" id="Descriptor.get_archive_path"><a class="viewcode-back" href="../../../api/descriptor/descriptor.html#stem.descriptor.__init__.Descriptor.get_archive_path">[docs]</a>  <span class="k">def</span> <span class="nf">get_archive_path</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    If this descriptor came from an archive then provides its path within the</span>
+<span class="sd">    archive. This is only set if the descriptor came from a</span>
+<span class="sd">    :class:`~stem.descriptor.reader.DescriptorReader`, and is **None** if this</span>
+<span class="sd">    descriptor didn&#39;t come from an archive.</span>
+
+<span class="sd">    :returns: **str** with the descriptor&#39;s path within the archive</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_archive_path</span>
+</div>
+<div class="viewcode-block" id="Descriptor.get_bytes"><a class="viewcode-back" href="../../../api/descriptor/descriptor.html#stem.descriptor.__init__.Descriptor.get_bytes">[docs]</a>  <span class="k">def</span> <span class="nf">get_bytes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the ASCII **bytes** of the descriptor. This only differs from</span>
+<span class="sd">    **str()** if you&#39;re running python 3.x, in which case **str()** provides a</span>
+<span class="sd">    **unicode** string.</span>
+
+<span class="sd">    :returns: **bytes** for the descriptor&#39;s contents</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_raw_contents</span>
+</div>
+<div class="viewcode-block" id="Descriptor.get_unrecognized_lines"><a class="viewcode-back" href="../../../api/descriptor/descriptor.html#stem.descriptor.__init__.Descriptor.get_unrecognized_lines">[docs]</a>  <span class="k">def</span> <span class="nf">get_unrecognized_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides a list of lines that were either ignored or had data that we did</span>
+<span class="sd">    not know how to process. This is most common due to new descriptor fields</span>
+<span class="sd">    that this library does not yet know how to process. Patches welcome!</span>
+
+<span class="sd">    :returns: **list** of lines of unrecognized content</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lazy_loading</span><span class="p">:</span>
+      <span class="c"># we need to go ahead and parse the whole document to figure this out</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_lazy_loading</span> <span class="o">=</span> <span class="bp">False</span>
+
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_unrecognized_lines</span><span class="p">)</span>
+</div>
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entries</span><span class="p">,</span> <span class="n">validate</span><span class="p">,</span> <span class="n">parser_for_line</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parses a series of &#39;keyword =&gt; (value, pgp block)&#39; mappings and applies</span>
+<span class="sd">    them as attributes.</span>
+
+<span class="sd">    :param dict entries: descriptor contents to be applied</span>
+<span class="sd">    :param bool validate: checks the validity of descriptor content if True</span>
+<span class="sd">    :param dict parsers: mapping of lines to the function for parsing it</span>
+
+<span class="sd">    :raises: **ValueError** if an error occurs in validation</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">parser_for_line</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="n">parser_for_line</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">PARSER_FOR_LINE</span>
+
+    <span class="c"># set defaults</span>
+
+    <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ATTRIBUTES</span><span class="p">:</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ATTRIBUTES</span><span class="p">[</span><span class="n">attr</span><span class="p">][</span><span class="mi">0</span><span class="p">]))</span>
+
+    <span class="k">for</span> <span class="n">keyword</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">entries</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">parser_for_line</span><span class="p">:</span>
+          <span class="n">parser_for_line</span><span class="p">[</span><span class="n">keyword</span><span class="p">](</span><span class="bp">self</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="k">for</span> <span class="n">value</span><span class="p">,</span> <span class="n">block_type</span><span class="p">,</span> <span class="n">block_contents</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">block_contents</span><span class="p">:</span>
+              <span class="n">line</span> <span class="o">+=</span> <span class="s">&#39;</span><span class="se">\n</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">block_contents</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_unrecognized_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+      <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
+          <span class="k">raise</span>
+
+  <span class="k">def</span> <span class="nf">_set_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_path</span> <span class="o">=</span> <span class="n">path</span>
+
+  <span class="k">def</span> <span class="nf">_set_archive_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_archive_path</span> <span class="o">=</span> <span class="n">path</span>
+
+  <span class="k">def</span> <span class="nf">_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is_plural</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+
+  <span class="k">def</span> <span class="nf">_digest_for_signature</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">signing_key</span><span class="p">,</span> <span class="n">signature</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the signed digest we should have given this key and signature.</span>
+
+<span class="sd">    :param str signing_key: key block used to make this signature</span>
+<span class="sd">    :param str signature: signed digest for this descriptor content</span>
+
+<span class="sd">    :returns: the digest string encoded in uppercase hex</span>
+
+<span class="sd">    :raises: ValueError if unable to provide a validly signed digest</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">prereq</span><span class="o">.</span><span class="n">is_crypto_available</span><span class="p">():</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Generating the signed digest requires pycrypto&#39;</span><span class="p">)</span>
+
+    <span class="kn">from</span> <span class="nn">Crypto.Util</span> <span class="kn">import</span> <span class="n">asn1</span>
+    <span class="kn">from</span> <span class="nn">Crypto.Util.number</span> <span class="kn">import</span> <span class="n">bytes_to_long</span><span class="p">,</span> <span class="n">long_to_bytes</span>
+
+    <span class="c"># get the ASN.1 sequence</span>
+
+    <span class="n">seq</span> <span class="o">=</span> <span class="n">asn1</span><span class="o">.</span><span class="n">DerSequence</span><span class="p">()</span>
+    <span class="n">seq</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">_bytes_for_block</span><span class="p">(</span><span class="n">signing_key</span><span class="p">))</span>
+    <span class="n">modulus</span><span class="p">,</span> <span class="n">public_exponent</span> <span class="o">=</span> <span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">sig_as_bytes</span> <span class="o">=</span> <span class="n">_bytes_for_block</span><span class="p">(</span><span class="n">signature</span><span class="p">)</span>
+    <span class="n">sig_as_long</span> <span class="o">=</span> <span class="n">bytes_to_long</span><span class="p">(</span><span class="n">sig_as_bytes</span><span class="p">)</span>  <span class="c"># convert signature to an int</span>
+    <span class="n">blocksize</span> <span class="o">=</span> <span class="mi">128</span>  <span class="c"># block size will always be 128 for a 1024 bit key</span>
+
+    <span class="c"># use the public exponent[e] &amp; the modulus[n] to decrypt the int</span>
+
+    <span class="n">decrypted_int</span> <span class="o">=</span> <span class="nb">pow</span><span class="p">(</span><span class="n">sig_as_long</span><span class="p">,</span> <span class="n">public_exponent</span><span class="p">,</span> <span class="n">modulus</span><span class="p">)</span>
+
+    <span class="c"># convert the int to a byte array</span>
+
+    <span class="n">decrypted_bytes</span> <span class="o">=</span> <span class="n">long_to_bytes</span><span class="p">(</span><span class="n">decrypted_int</span><span class="p">,</span> <span class="n">blocksize</span><span class="p">)</span>
+
+    <span class="c">############################################################################</span>
+    <span class="c"># The decrypted bytes should have a structure exactly along these lines.</span>
+    <span class="c"># 1 byte  - [null &#39;\x00&#39;]</span>
+    <span class="c"># 1 byte  - [block type identifier &#39;\x01&#39;] - Should always be 1</span>
+    <span class="c"># N bytes - [padding &#39;\xFF&#39; ]</span>
+    <span class="c"># 1 byte  - [separator &#39;\x00&#39; ]</span>
+    <span class="c"># M bytes - [message]</span>
+    <span class="c"># Total   - 128 bytes</span>
+    <span class="c"># More info here http://www.ietf.org/rfc/rfc2313.txt</span>
+    <span class="c">#                esp the Notes in section 8.1</span>
+    <span class="c">############################################################################</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">decrypted_bytes</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;</span><span class="se">\x00\x01</span><span class="s">&#39;</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Verification failed, identifier missing&#39;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Verification failed, malformed data&#39;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">identifier_offset</span> <span class="o">=</span> <span class="mi">2</span>
+
+      <span class="c"># find the separator</span>
+      <span class="n">seperator_index</span> <span class="o">=</span> <span class="n">decrypted_bytes</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;</span><span class="se">\x00</span><span class="s">&#39;</span><span class="p">,</span> <span class="n">identifier_offset</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Verification failed, seperator not found&#39;</span><span class="p">)</span>
+
+    <span class="n">digest_hex</span> <span class="o">=</span> <span class="n">codecs</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">decrypted_bytes</span><span class="p">[</span><span class="n">seperator_index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:],</span> <span class="s">&#39;hex_codec&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">digest_hex</span><span class="o">.</span><span class="n">upper</span><span class="p">())</span>
+
+  <span class="k">def</span> <span class="nf">_digest_for_content</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the digest of our descriptor&#39;s content in a given range.</span>
+
+<span class="sd">    :param bytes start: start of the range to generate a digest for</span>
+<span class="sd">    :param bytes end: end of the range to generate a digest for</span>
+
+<span class="sd">    :returns: the digest string encoded in uppercase hex</span>
+
+<span class="sd">    :raises: ValueError if the digest canot be calculated</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">raw_descriptor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_bytes</span><span class="p">()</span>
+
+    <span class="n">start_index</span> <span class="o">=</span> <span class="n">raw_descriptor</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">start</span><span class="p">)</span>
+    <span class="n">end_index</span> <span class="o">=</span> <span class="n">raw_descriptor</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">end</span><span class="p">,</span> <span class="n">start_index</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">start_index</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Digest is for the range starting with &#39;</span><span class="si">%s</span><span class="s">&#39; but that isn&#39;t in our descriptor&quot;</span> <span class="o">%</span> <span class="n">start</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">end_index</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Digest is for the range ending with &#39;</span><span class="si">%s</span><span class="s">&#39; but that isn&#39;t in our descriptor&quot;</span> <span class="o">%</span> <span class="n">end</span><span class="p">)</span>
+
+    <span class="n">digest_content</span> <span class="o">=</span> <span class="n">raw_descriptor</span><span class="p">[</span><span class="n">start_index</span><span class="p">:</span><span class="n">end_index</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">end</span><span class="p">)]</span>
+    <span class="n">digest_hash</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha1</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_bytes</span><span class="p">(</span><span class="n">digest_content</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">digest_hash</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span><span class="o">.</span><span class="n">upper</span><span class="p">())</span>
+
+  <span class="k">def</span> <span class="nf">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+    <span class="c"># Our constructor sets these, but when unpickling we might lack them. This</span>
+    <span class="c"># check is needed to avoid an infinite loop in that case.</span>
+
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;_lazy_loading&#39;</span><span class="p">,</span> <span class="s">&#39;ATTRIBUTES&#39;</span><span class="p">):</span>
+      <span class="k">return</span> <span class="nb">super</span><span class="p">(</span><span class="n">Descriptor</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__getattribute__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="c"># If attribute isn&#39;t already present we might be lazy loading it...</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lazy_loading</span> <span class="ow">and</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ATTRIBUTES</span><span class="p">:</span>
+      <span class="n">default</span><span class="p">,</span> <span class="n">parsing_function</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ATTRIBUTES</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">parsing_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="p">)</span>
+      <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+          <span class="c"># despite having a validation failure check to see if we set something</span>
+          <span class="k">return</span> <span class="nb">super</span><span class="p">(</span><span class="n">Descriptor</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__getattribute__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+          <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">default</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="nb">super</span><span class="p">(</span><span class="n">Descriptor</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__getattribute__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">prereq</span><span class="o">.</span><span class="n">is_python_3</span><span class="p">():</span>
+      <span class="k">return</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_raw_contents</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_raw_contents</span>
+
+</div>
+<span class="k">class</span> <span class="nc">NewlineNormalizer</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  File wrapper that normalizes CRLF line endings.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wrapped_file</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_wrapped_file</span> <span class="o">=</span> <span class="n">wrapped_file</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">wrapped_file</span><span class="p">,</span> <span class="s">&#39;name&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wrapped_file</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;</span><span class="se">\r\n</span><span class="s">&#39;</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">readline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wrapped_file</span><span class="o">.</span><span class="n">readline</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;</span><span class="se">\r\n</span><span class="s">&#39;</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">readlines</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">line</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;</span><span class="se">\r</span><span class="s">&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wrapped_file</span><span class="o">.</span><span class="n">readlines</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)]</span>
+
+  <span class="k">def</span> <span class="nf">seek</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wrapped_file</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">tell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wrapped_file</span><span class="o">.</span><span class="n">tell</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_read_until_keywords</span><span class="p">(</span><span class="n">keywords</span><span class="p">,</span> <span class="n">descriptor_file</span><span class="p">,</span> <span class="n">inclusive</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">ignore_first</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">skip</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">end_position</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">include_ending_keyword</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Reads from the descriptor file until we get to one of the given keywords or reach the</span>
+<span class="sd">  end of the file.</span>
+
+<span class="sd">  :param str,list keywords: keyword(s) we want to read until</span>
+<span class="sd">  :param file descriptor_file: file with the descriptor content</span>
+<span class="sd">  :param bool inclusive: includes the line with the keyword if True</span>
+<span class="sd">  :param bool ignore_first: doesn&#39;t check if the first line read has one of the</span>
+<span class="sd">    given keywords</span>
+<span class="sd">  :param bool skip: skips buffering content, returning None</span>
+<span class="sd">  :param int end_position: end if we reach this point in the file</span>
+<span class="sd">  :param bool include_ending_keyword: provides the keyword we broke on if **True**</span>
+
+<span class="sd">  :returns: **list** with the lines until we find one of the keywords, this is</span>
+<span class="sd">    a two value tuple with the ending keyword if include_ending_keyword is</span>
+<span class="sd">    **True**</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">content</span> <span class="o">=</span> <span class="bp">None</span> <span class="k">if</span> <span class="n">skip</span> <span class="k">else</span> <span class="p">[]</span>
+  <span class="n">ending_keyword</span> <span class="o">=</span> <span class="bp">None</span>
+
+  <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">keywords</span><span class="p">,</span> <span class="p">(</span><span class="nb">bytes</span><span class="p">,</span> <span class="n">str_type</span><span class="p">)):</span>
+    <span class="n">keywords</span> <span class="o">=</span> <span class="p">(</span><span class="n">keywords</span><span class="p">,)</span>
+
+  <span class="k">if</span> <span class="n">ignore_first</span><span class="p">:</span>
+    <span class="n">first_line</span> <span class="o">=</span> <span class="n">descriptor_file</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">first_line</span> <span class="ow">and</span> <span class="n">content</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="n">content</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">first_line</span><span class="p">)</span>
+
+  <span class="n">keyword_match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">SPECIFIC_KEYWORD_LINE</span> <span class="o">%</span> <span class="s">&#39;|&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">keywords</span><span class="p">))</span>
+
+  <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+    <span class="n">last_position</span> <span class="o">=</span> <span class="n">descriptor_file</span><span class="o">.</span><span class="n">tell</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">end_position</span> <span class="ow">and</span> <span class="n">last_position</span> <span class="o">&gt;=</span> <span class="n">end_position</span><span class="p">:</span>
+      <span class="k">break</span>
+
+    <span class="n">line</span> <span class="o">=</span> <span class="n">descriptor_file</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="p">:</span>
+      <span class="k">break</span>  <span class="c"># EOF</span>
+
+    <span class="n">line_match</span> <span class="o">=</span> <span class="n">keyword_match</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">line</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">line_match</span><span class="p">:</span>
+      <span class="n">ending_keyword</span> <span class="o">=</span> <span class="n">line_match</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">inclusive</span><span class="p">:</span>
+        <span class="n">descriptor_file</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="n">last_position</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="n">content</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">content</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+      <span class="k">break</span>
+    <span class="k">elif</span> <span class="n">content</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="n">content</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">include_ending_keyword</span><span class="p">:</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">ending_keyword</span><span class="p">)</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">content</span>
+
+
+<span class="k">def</span> <span class="nf">_bytes_for_block</span><span class="p">(</span><span class="n">content</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the base64 decoded content of a pgp-style block.</span>
+
+<span class="sd">  :param str content: block to be decoded</span>
+
+<span class="sd">  :returns: decoded block content</span>
+
+<span class="sd">  :raises: **TypeError** if this isn&#39;t base64 encoded content</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># strip the &#39;-----BEGIN RSA PUBLIC KEY-----&#39; header and footer</span>
+
+  <span class="n">content</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">content</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+  <span class="k">return</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_bytes</span><span class="p">(</span><span class="n">content</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">_get_pseudo_pgp_block</span><span class="p">(</span><span class="n">remaining_contents</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks if given contents begins with a pseudo-Open-PGP-style block and, if</span>
+<span class="sd">  so, pops it off and provides it back to the caller.</span>
+
+<span class="sd">  :param list remaining_contents: lines to be checked for a public key block</span>
+
+<span class="sd">  :returns: **tuple** of the (block_type, content) or None if it doesn&#39;t exist</span>
+
+<span class="sd">  :raises: **ValueError** if the contents starts with a key block but it&#39;s</span>
+<span class="sd">    malformed (for instance, if it lacks an ending line)</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">remaining_contents</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">None</span>  <span class="c"># nothing left</span>
+
+  <span class="n">block_match</span> <span class="o">=</span> <span class="n">PGP_BLOCK_START</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">remaining_contents</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+  <span class="k">if</span> <span class="n">block_match</span><span class="p">:</span>
+    <span class="n">block_type</span> <span class="o">=</span> <span class="n">block_match</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">block_lines</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">end_line</span> <span class="o">=</span> <span class="n">PGP_BLOCK_END</span> <span class="o">%</span> <span class="n">block_type</span>
+
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">remaining_contents</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Unterminated pgp style block (looking for &#39;</span><span class="si">%s</span><span class="s">&#39;):</span><span class="se">\n</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">end_line</span><span class="p">,</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">block_lines</span><span class="p">)))</span>
+
+      <span class="n">line</span> <span class="o">=</span> <span class="n">remaining_contents</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+      <span class="n">block_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">line</span> <span class="o">==</span> <span class="n">end_line</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">block_type</span><span class="p">,</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">block_lines</span><span class="p">))</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">None</span>
+
+
+<span class="k">def</span> <span class="nf">_get_descriptor_components</span><span class="p">(</span><span class="n">raw_contents</span><span class="p">,</span> <span class="n">validate</span><span class="p">,</span> <span class="n">extra_keywords</span> <span class="o">=</span> <span class="p">(),</span> <span class="n">non_ascii_fields</span> <span class="o">=</span> <span class="p">()):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Initial breakup of the server descriptor contents to make parsing easier.</span>
+
+<span class="sd">  A descriptor contains a series of &#39;keyword lines&#39; which are simply a keyword</span>
+<span class="sd">  followed by an optional value. Lines can also be followed by a signature</span>
+<span class="sd">  block.</span>
+
+<span class="sd">  To get a sub-listing with just certain keywords use extra_keywords. This can</span>
+<span class="sd">  be useful if we care about their relative ordering with respect to each</span>
+<span class="sd">  other. For instance, we care about the ordering of &#39;accept&#39; and &#39;reject&#39;</span>
+<span class="sd">  entries because this influences the resulting exit policy, but for everything</span>
+<span class="sd">  else in server descriptors the order does not matter.</span>
+
+<span class="sd">  :param str raw_contents: descriptor content provided by the relay</span>
+<span class="sd">  :param bool validate: checks the validity of the descriptor&#39;s content if</span>
+<span class="sd">    True, skips these checks otherwise</span>
+<span class="sd">  :param list extra_keywords: entity keywords to put into a separate listing</span>
+<span class="sd">    with ordering intact</span>
+<span class="sd">  :param list non_ascii_fields: fields containing non-ascii content</span>
+
+<span class="sd">  :returns:</span>
+<span class="sd">    **collections.OrderedDict** with the &#39;keyword =&gt; (value, pgp key) entries&#39;</span>
+<span class="sd">    mappings. If a extra_keywords was provided then this instead provides a two</span>
+<span class="sd">    value tuple, the second being a list of those entries.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_contents</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
+    <span class="n">raw_contents</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">raw_contents</span><span class="p">)</span>
+
+  <span class="n">entries</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+  <span class="n">extra_entries</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c"># entries with a keyword in extra_keywords</span>
+  <span class="n">remaining_lines</span> <span class="o">=</span> <span class="n">raw_contents</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+
+  <span class="k">while</span> <span class="n">remaining_lines</span><span class="p">:</span>
+    <span class="n">line</span> <span class="o">=</span> <span class="n">remaining_lines</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="c"># V2 network status documents explicitly can contain blank lines...</span>
+    <span class="c">#</span>
+    <span class="c">#   &quot;Implementations MAY insert blank lines for clarity between sections;</span>
+    <span class="c">#   these blank lines are ignored.&quot;</span>
+    <span class="c">#</span>
+    <span class="c"># ... and server descriptors end with an extra newline. But other documents</span>
+    <span class="c"># don&#39;t say how blank lines should be handled so globally ignoring them.</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="p">:</span>
+      <span class="k">continue</span>
+
+    <span class="c"># Some lines have an &#39;opt &#39; for backward compatibility. They should be</span>
+    <span class="c"># ignored. This prefix is being removed in...</span>
+    <span class="c"># https://trac.torproject.org/projects/tor/ticket/5124</span>
+
+    <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;opt &#39;</span><span class="p">):</span>
+      <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="mi">4</span><span class="p">:]</span>
+
+    <span class="n">line_match</span> <span class="o">=</span> <span class="n">KEYWORD_LINE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">line_match</span><span class="p">:</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">validate</span><span class="p">:</span>
+        <span class="k">continue</span>
+
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Line contains invalid characters: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">line</span><span class="p">)</span>
+
+    <span class="n">keyword</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">line_match</span><span class="o">.</span><span class="n">groups</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="n">value</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">block_attr</span> <span class="o">=</span> <span class="n">_get_pseudo_pgp_block</span><span class="p">(</span><span class="n">remaining_lines</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">block_attr</span><span class="p">:</span>
+        <span class="n">block_type</span><span class="p">,</span> <span class="n">block_contents</span> <span class="o">=</span> <span class="n">block_attr</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">block_type</span><span class="p">,</span> <span class="n">block_contents</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">validate</span><span class="p">:</span>
+        <span class="k">continue</span>
+
+      <span class="k">raise</span>
+
+    <span class="k">if</span> <span class="n">validate</span> <span class="ow">and</span> <span class="n">keyword</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">non_ascii_fields</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">value</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;ascii&#39;</span><span class="p">)</span>
+      <span class="k">except</span> <span class="ne">UnicodeError</span><span class="p">:</span>
+        <span class="n">replaced</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([(</span><span class="n">char</span> <span class="k">if</span> <span class="n">char</span> <span class="ow">in</span> <span class="n">string</span><span class="o">.</span><span class="n">printable</span> <span class="k">else</span> <span class="s">&#39;?&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">char</span> <span class="ow">in</span> <span class="n">value</span><span class="p">])</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; line had non-ascii content: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">replaced</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">extra_keywords</span><span class="p">:</span>
+      <span class="n">extra_entries</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">entries</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">value</span><span class="p">,</span> <span class="n">block_type</span><span class="p">,</span> <span class="n">block_contents</span><span class="p">))</span>
+
+  <span class="k">if</span> <span class="n">extra_keywords</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">entries</span><span class="p">,</span> <span class="n">extra_entries</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">entries</span>
+
+<span class="c"># importing at the end to avoid circular dependencies on our Descriptor class</span>
+
+<span class="kn">import</span> <span class="nn">stem.descriptor.server_descriptor</span>
+<span class="kn">import</span> <span class="nn">stem.descriptor.extrainfo_descriptor</span>
+<span class="kn">import</span> <span class="nn">stem.descriptor.networkstatus</span>
+<span class="kn">import</span> <span class="nn">stem.descriptor.microdescriptor</span>
+<span class="kn">import</span> <span class="nn">stem.descriptor.tordnsel</span>
+<span class="kn">import</span> <span class="nn">stem.descriptor.hidden_service_descriptor</span>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

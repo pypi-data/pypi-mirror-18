@@ -1,0 +1,447 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>To Russia With Love &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>To Russia With Love</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="#">Client Usage</a></li>
+              <li><a href="tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="over_the_river.html">Hidden Services</a></li>
+              <li><a href="mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="east_of_the_sun.html">Utilities</a></li>
+              <li><a href="down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../api.html">API</a>
+            <ul>
+              <li><a href="../api/control.html">stem.control</a></li>
+              <li><a href="../api/connection.html">stem.connection</a></li>
+              <li><a href="../api/socket.html">stem.socket</a></li>
+              <li><a href="../api/process.html">stem.process</a></li>
+              <li><a href="../api/response.html">stem.response</a></li>
+              <li><a href="../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../api/version.html">stem.version</a></li>
+              <li><a href="../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../faq.html">FAQ</a></li>
+              <li><a href="../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="to-russia-with-love">
+<h1>To Russia With Love<a class="headerlink" href="#to-russia-with-love" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><a class="reference internal" href="#using-pycurl"><em>Using PycURL</em></a></li>
+<li><a class="reference internal" href="#using-socksipy"><em>Using SocksiPy</em></a></li>
+<li><a class="reference internal" href="#reading-twitter"><em>Reading Twitter</em></a></li>
+<li><a class="reference internal" href="#custom-path-selection"><em>Custom Path Selection</em></a></li>
+</ul>
+<div class="section" id="using-pycurl">
+<span id="id1"></span><h2>Using PycURL<a class="headerlink" href="#using-pycurl" title="Permalink to this headline">¶</a></h2>
+<p>Say it's 1982, the height of the Cold War, and you're a journalist doing a
+piece on how the Internet looks from behind the Iron Curtain. Ignoring the
+minor detail that the Internet doesn't yet exist, we'll walk you through how
+you could do it - no passport required!</p>
+<p>The Internet isn't uniform. Localization, censorship, and selective service
+based on your IP's geographic location can make the Internet a very different
+place depending on where you're coming from.</p>
+<p>Tor relays are scattered all over the world and, as such, you can pretend to be
+from any place running an exit. This can be especially useful to evade pesky
+geolocational restrictions, such as news sites that refuse to work while you're
+traveling abroad.</p>
+<p>Tor makes <a class="reference external" href="https://www.torproject.org/docs/faq.html.en#ChooseEntryExit">configuring your exit locale</a> easy through
+the <strong>ExitNodes</strong> torrc option. Note that you don't need a control port (or
+even Stem) to do this, though they can be useful if you later want to do
+something more elaborate.</p>
+<p>In the following example we're using Stem to <a class="reference external" href="../api/process.html">start Tor</a>, then read a site through it with <a class="reference external" href="http://pycurl.sourceforge.net/">PycURL</a>. This is not always reliable (some relays
+are lemons) so you may need to run this more than once.</p>
+<p>Having an issue? The following are some common gotchas...</p>
+<ul class="simple">
+<li>PycURL's <strong>PROXYTYPE_SOCKS5_HOSTNAME</strong> was added in v7.19.5.1. Try <a class="reference external" href="http://tech.michaelaltfield.net/2015/02/22/pycurl-through-tor-without-leaking-dns-lookups/">upgrading</a>
+if you get an AttributeError about it.</li>
+<li>The following example for exiting through Russia will only work if... well,
+the Tor network <em>has</em> a Russian exit. Often this isn't the case. If Tor fails
+to bootstrap try dropping the line with <strong>'ExitNodes': '{ru}'</strong>.</li>
+</ul>
+<p><strong>Do not rely on the following not to leak.</strong> Though it seems to work there may
+be edge cases that expose your real IP. If you have a suggestion for how to
+improve this example then please <a class="reference external" href="https://www.atagar.com/contact/">let me know</a>!</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">io</span>
+<span class="kn">import</span> <span class="nn">pycurl</span>
+
+<span class="kn">import</span> <span class="nn">stem.process</span>
+
+<span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">term</span>
+
+<span class="n">SOCKS_PORT</span> <span class="o">=</span> <span class="mi">7000</span>
+
+
+<span class="k">def</span> <span class="nf">query</span><span class="p">(</span><span class="n">url</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Uses pycurl to fetch a site using the proxy on the SOCKS_PORT.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">output</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
+
+  <span class="n">query</span> <span class="o">=</span> <span class="n">pycurl</span><span class="o">.</span><span class="n">Curl</span><span class="p">()</span>
+  <span class="n">query</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">URL</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
+  <span class="n">query</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">PROXY</span><span class="p">,</span> <span class="s">&#39;localhost&#39;</span><span class="p">)</span>
+  <span class="n">query</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">PROXYPORT</span><span class="p">,</span> <span class="n">SOCKS_PORT</span><span class="p">)</span>
+  <span class="n">query</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">PROXYTYPE</span><span class="p">,</span> <span class="n">pycurl</span><span class="o">.</span><span class="n">PROXYTYPE_SOCKS5_HOSTNAME</span><span class="p">)</span>
+  <span class="n">query</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">WRITEFUNCTION</span><span class="p">,</span> <span class="n">output</span><span class="o">.</span><span class="n">write</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">query</span><span class="o">.</span><span class="n">perform</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">output</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+  <span class="k">except</span> <span class="n">pycurl</span><span class="o">.</span><span class="n">error</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">return</span> <span class="s">&quot;Unable to reach </span><span class="si">%s</span><span class="s"> (</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+
+
+<span class="c"># Start an instance of Tor configured to only exit through Russia. This prints</span>
+<span class="c"># Tor&#39;s bootstrap information as it starts. Note that this likely will not</span>
+<span class="c"># work if you have another Tor instance running.</span>
+
+<span class="k">def</span> <span class="nf">print_bootstrap_lines</span><span class="p">(</span><span class="n">line</span><span class="p">):</span>
+  <span class="k">if</span> <span class="s">&quot;Bootstrapped &quot;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">term</span><span class="o">.</span><span class="n">Color</span><span class="o">.</span><span class="n">BLUE</span><span class="p">))</span>
+
+
+<span class="k">print</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;Starting Tor:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">term</span><span class="o">.</span><span class="n">Attr</span><span class="o">.</span><span class="n">BOLD</span><span class="p">))</span>
+
+<span class="n">tor_process</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">launch_tor_with_config</span><span class="p">(</span>
+  <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;SocksPort&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">SOCKS_PORT</span><span class="p">),</span>
+    <span class="s">&#39;ExitNodes&#39;</span><span class="p">:</span> <span class="s">&#39;{ru}&#39;</span><span class="p">,</span>
+  <span class="p">},</span>
+  <span class="n">init_msg_handler</span> <span class="o">=</span> <span class="n">print_bootstrap_lines</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">Checking our endpoint:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">term</span><span class="o">.</span><span class="n">Attr</span><span class="o">.</span><span class="n">BOLD</span><span class="p">))</span>
+<span class="k">print</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">query</span><span class="p">(</span><span class="s">&quot;https://www.atagar.com/echo.php&quot;</span><span class="p">),</span> <span class="n">term</span><span class="o">.</span><span class="n">Color</span><span class="o">.</span><span class="n">BLUE</span><span class="p">))</span>
+
+<span class="n">tor_process</span><span class="o">.</span><span class="n">kill</span><span class="p">()</span>  <span class="c"># stops tor</span>
+</pre></div>
+</div>
+<img alt="../_images/locale_selection_output.png" src="../_images/locale_selection_output.png" />
+</div>
+<div class="section" id="using-socksipy">
+<span id="id2"></span><h2>Using SocksiPy<a class="headerlink" href="#using-socksipy" title="Permalink to this headline">¶</a></h2>
+<p>Besides PycURL, you can also use <a class="reference external" href="http://socksipy.sourceforge.net/">SocksiPy</a>
+to do the same. Be aware that the following example routes <strong>all</strong> socket
+connections through Tor, so this'll break our ability to connect to Tor's
+control port. To use this approach simply replace the query() function above
+with...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">socks</span>  <span class="c"># SocksiPy module</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">import</span> <span class="nn">urllib</span>
+
+<span class="n">SOCKS_PORT</span> <span class="o">=</span> <span class="mi">7000</span>
+
+<span class="c"># Set socks proxy and wrap the urllib module</span>
+
+<span class="n">socks</span><span class="o">.</span><span class="n">setdefaultproxy</span><span class="p">(</span><span class="n">socks</span><span class="o">.</span><span class="n">PROXY_TYPE_SOCKS5</span><span class="p">,</span> <span class="s">&#39;127.0.0.1&#39;</span><span class="p">,</span> <span class="n">SOCKS_PORT</span><span class="p">)</span>
+<span class="n">socket</span><span class="o">.</span><span class="n">socket</span> <span class="o">=</span> <span class="n">socks</span><span class="o">.</span><span class="n">socksocket</span>
+
+<span class="c"># Perform DNS resolution through the socket</span>
+
+<span class="k">def</span> <span class="nf">getaddrinfo</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+  <span class="k">return</span> <span class="p">[(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]))]</span>
+
+<span class="n">socket</span><span class="o">.</span><span class="n">getaddrinfo</span> <span class="o">=</span> <span class="n">getaddrinfo</span>
+
+<span class="k">def</span> <span class="nf">query</span><span class="p">(</span><span class="n">url</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Uses urllib to fetch a site using SocksiPy for Tor over the SOCKS_PORT.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">urllib</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">url</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+  <span class="k">except</span><span class="p">:</span>
+    <span class="k">return</span> <span class="s">&quot;Unable to reach </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">url</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="reading-twitter">
+<span id="id3"></span><h2>Reading Twitter<a class="headerlink" href="#reading-twitter" title="Permalink to this headline">¶</a></h2>
+<p>Now lets do something a little more interesting, and read a Twitter feed over
+Tor. This can be done <a class="reference external" href="https://dev.twitter.com/rest/reference/get/statuses/user_timeline">using their API</a>, for
+authentication <a class="reference external" href="https://dev.twitter.com/oauth/overview/application-owner-access-tokens">see their instructions</a>...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">binascii</span>
+<span class="kn">import</span> <span class="nn">hashlib</span>
+<span class="kn">import</span> <span class="nn">hmac</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">urllib</span>
+<span class="kn">import</span> <span class="nn">urllib2</span>
+
+<span class="kn">import</span> <span class="nn">socks</span>  <span class="c"># SockiPy module</span>
+<span class="kn">import</span> <span class="nn">stem.process</span>
+
+<span class="n">SOCKS_PORT</span> <span class="o">=</span> <span class="mi">7000</span>
+<span class="n">TWITTER_API_URL</span> <span class="o">=</span> <span class="s">&quot;https://api.twitter.com/1.1/statuses/user_timeline.json&quot;</span>
+<span class="n">CONSUMER_KEY</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+<span class="n">CONSUMER_SECRET</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+<span class="n">ACCESS_TOKEN</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+<span class="n">ACCESS_TOKEN_SECRET</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+
+<span class="n">HEADER_AUTH_KEYS</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;oauth_consumer_key&#39;</span><span class="p">,</span> <span class="s">&#39;oauth_nonce&#39;</span><span class="p">,</span> <span class="s">&#39;oauth_signature&#39;</span><span class="p">,</span>
+  <span class="s">&#39;oauth_signature_method&#39;</span><span class="p">,</span> <span class="s">&#39;oauth_timestamp&#39;</span><span class="p">,</span> <span class="s">&#39;oauth_token&#39;</span><span class="p">,</span> <span class="s">&#39;oauth_version&#39;</span><span class="p">]</span>
+
+<span class="n">socks</span><span class="o">.</span><span class="n">setdefaultproxy</span><span class="p">(</span><span class="n">socks</span><span class="o">.</span><span class="n">PROXY_TYPE_SOCKS5</span><span class="p">,</span> <span class="s">&#39;127.0.0.1&#39;</span><span class="p">,</span> <span class="n">SOCKS_PORT</span><span class="p">)</span>
+<span class="n">socket</span><span class="o">.</span><span class="n">socket</span> <span class="o">=</span> <span class="n">socks</span><span class="o">.</span><span class="n">socksocket</span>
+
+<span class="k">def</span> <span class="nf">oauth_signature</span><span class="p">(</span><span class="n">key_dict</span><span class="p">):</span>
+  <span class="n">fin_key</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+
+  <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">key_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+    <span class="n">fin_key</span> <span class="o">+=</span> <span class="n">key</span> <span class="o">+</span> <span class="s">&quot;=&quot;</span> <span class="o">+</span> <span class="n">key_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">+</span> <span class="s">&quot;&amp;&quot;</span>
+
+  <span class="n">fin_key</span> <span class="o">=</span>  <span class="n">fin_key</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+  <span class="n">fin_key</span> <span class="o">=</span> <span class="s">&#39;GET&#39;</span> <span class="o">+</span> <span class="s">&quot;&amp;&quot;</span> <span class="o">+</span> <span class="n">urllib</span><span class="o">.</span><span class="n">quote</span><span class="p">(</span><span class="n">TWITTER_API_URL</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;&amp;&quot;</span> <span class="o">+</span> <span class="n">urllib</span><span class="o">.</span><span class="n">quote</span><span class="p">(</span><span class="n">fin_key</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">)</span>
+  <span class="n">key</span> <span class="o">=</span> <span class="n">urllib</span><span class="o">.</span><span class="n">quote</span><span class="p">(</span><span class="n">CONSUMER_SECRET</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;&amp;&quot;</span> <span class="o">+</span> <span class="n">urllib</span><span class="o">.</span><span class="n">quote</span><span class="p">(</span><span class="n">ACCESS_TOKEN_SECRET</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">)</span>
+  <span class="n">hashed</span> <span class="o">=</span> <span class="n">hmac</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">fin_key</span><span class="p">,</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha1</span><span class="p">)</span>
+  <span class="n">fin_key</span> <span class="o">=</span> <span class="n">binascii</span><span class="o">.</span><span class="n">b2a_base64</span><span class="p">(</span><span class="n">hashed</span><span class="o">.</span><span class="n">digest</span><span class="p">())[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+  <span class="k">return</span> <span class="n">urllib</span><span class="o">.</span><span class="n">quote</span><span class="p">(</span><span class="n">fin_key</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">poll_twitter_feed</span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">tweet_count</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Polls Twitter for the tweets from a given user.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">key_dict</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;oauth_consumer_key&#39;</span><span class="p">:</span> <span class="n">urllib</span><span class="o">.</span><span class="n">quote</span><span class="p">(</span><span class="n">CONSUMER_KEY</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">),</span>
+    <span class="s">&#39;oauth_nonce&#39;</span><span class="p">:</span> <span class="n">urllib</span><span class="o">.</span><span class="n">quote</span><span class="p">(</span><span class="n">hashlib</span><span class="o">.</span><span class="n">md5</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()))</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">(),</span> <span class="s">&#39;&#39;</span><span class="p">),</span>
+    <span class="s">&#39;oauth_signature_method&#39;</span><span class="p">:</span> <span class="n">urllib</span><span class="o">.</span><span class="n">quote</span><span class="p">(</span><span class="s">&quot;HMAC-SHA1&quot;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">),</span>
+    <span class="s">&#39;oauth_timestamp&#39;</span><span class="p">:</span> <span class="n">urllib</span><span class="o">.</span><span class="n">quote</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())),</span> <span class="s">&#39;&#39;</span><span class="p">),</span>
+    <span class="s">&#39;oauth_token&#39;</span><span class="p">:</span> <span class="n">urllib</span><span class="o">.</span><span class="n">quote</span><span class="p">(</span><span class="n">ACCESS_TOKEN</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">),</span>
+    <span class="s">&#39;oauth_version&#39;</span><span class="p">:</span> <span class="n">urllib</span><span class="o">.</span><span class="n">quote</span><span class="p">(</span><span class="s">&#39;1.0&#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">),</span>
+  <span class="p">}</span>
+
+  <span class="n">url_values</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;screen_name&#39;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">,</span> <span class="s">&#39;count&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">tweet_count</span><span class="p">),</span> <span class="s">&#39;include_rts&#39;</span><span class="p">:</span> <span class="s">&#39;1&#39;</span><span class="p">}</span>
+
+  <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">url_values</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="n">key_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">urllib</span><span class="o">.</span><span class="n">quote</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">)</span>
+
+  <span class="n">key_dict</span><span class="p">[</span><span class="s">&#39;oauth_signature&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">oauth_signature</span><span class="p">(</span><span class="n">key_dict</span><span class="p">)</span>
+
+  <span class="n">header_auth</span> <span class="o">=</span> <span class="s">&#39;OAuth &#39;</span> <span class="o">+</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">=&quot;</span><span class="si">%s</span><span class="s">&quot;&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">key_dict</span><span class="p">[</span><span class="n">key</span><span class="p">])</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">HEADER_AUTH_KEYS</span><span class="p">])</span>
+
+  <span class="n">data</span> <span class="o">=</span> <span class="n">urllib</span><span class="o">.</span><span class="n">urlencode</span><span class="p">(</span><span class="n">url_values</span><span class="p">)</span>
+  <span class="n">api_request</span> <span class="o">=</span> <span class="n">urllib2</span><span class="o">.</span><span class="n">Request</span><span class="p">(</span><span class="n">TWITTER_API_URL</span> <span class="o">+</span> <span class="s">&quot;?&quot;</span> <span class="o">+</span> <span class="n">data</span><span class="p">,</span> <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;Authorization&#39;</span><span class="p">:</span> <span class="n">header_auth</span><span class="p">})</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">api_response</span> <span class="o">=</span> <span class="n">urllib2</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">api_request</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+  <span class="k">except</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;Unable to reach </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">TWITTER_API_URL</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">api_response</span><span class="p">)</span>
+
+<span class="n">tor_process</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">launch_tor_with_config</span><span class="p">(</span>
+  <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;SocksPort&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">SOCKS_PORT</span><span class="p">),</span>
+    <span class="s">&#39;ExitNodes&#39;</span><span class="p">:</span> <span class="s">&#39;{ru}&#39;</span><span class="p">,</span>
+  <span class="p">},</span>
+<span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">tweet</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">poll_twitter_feed</span><span class="p">(</span><span class="s">&#39;ioerror&#39;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)):</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%i</span><span class="s">. </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">tweet</span><span class="p">[</span><span class="s">&quot;created_at&quot;</span><span class="p">]))</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">tweet</span><span class="p">[</span><span class="s">&quot;text&quot;</span><span class="p">])</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+  <span class="k">print</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+<span class="k">finally</span><span class="p">:</span>
+  <span class="n">tor_process</span><span class="o">.</span><span class="n">kill</span><span class="p">()</span>  <span class="c"># stops tor</span>
+</pre></div>
+</div>
+<img alt="../_images/twitter_output.png" src="../_images/twitter_output.png" />
+</div>
+<div class="section" id="custom-path-selection">
+<span id="id4"></span><h2>Custom Path Selection<a class="headerlink" href="#custom-path-selection" title="Permalink to this headline">¶</a></h2>
+<p>Routing requests over Tor is all well and good, but what if you want to do
+something more sophisticated? Through Tor's controller interface you can manage
+your own <strong>circuits</strong> and <strong>streams</strong>.</p>
+<p>A <strong>circuit</strong> is your path through the Tor network. Circuits must consist of at
+least two relays, and must end with a relay that allows connections to the
+destination you want to reach.</p>
+<p><strong>Streams</strong> by contrast are TCP connections carried over a circuit. Tor handles
+attaching streams to a circuit that can service it. To instead manage this
+yourself call...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">controller</span><span class="o">.</span><span class="n">set_conf</span><span class="p">(</span><span class="s">&#39;__LeaveStreamsUnattached&#39;</span><span class="p">,</span> <span class="s">&#39;1&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For an example of this lets fetch a site over each relay to determine it's
+reachability and speed. <strong>Naturally doing this causes quite a bit of load so
+please be careful not to leave this running!</strong></p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">StringIO</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">import</span> <span class="nn">pycurl</span>
+
+<span class="kn">import</span> <span class="nn">stem.control</span>
+
+<span class="c"># Static exit for us to make 2-hop circuits through. Picking aurora, a</span>
+<span class="c"># particularly beefy one...</span>
+<span class="c">#</span>
+<span class="c">#   https://atlas.torproject.org/#details/379FB450010D17078B3766C2273303C358C3A442</span>
+
+<span class="n">EXIT_FINGERPRINT</span> <span class="o">=</span> <span class="s">&#39;379FB450010D17078B3766C2273303C358C3A442&#39;</span>
+
+<span class="n">SOCKS_PORT</span> <span class="o">=</span> <span class="mi">9050</span>
+<span class="n">CONNECTION_TIMEOUT</span> <span class="o">=</span> <span class="mi">30</span>  <span class="c"># timeout before we give up on a circuit</span>
+
+<span class="k">def</span> <span class="nf">query</span><span class="p">(</span><span class="n">url</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Uses pycurl to fetch a site using the proxy on the SOCKS_PORT.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">output</span> <span class="o">=</span> <span class="n">StringIO</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
+
+  <span class="n">query</span> <span class="o">=</span> <span class="n">pycurl</span><span class="o">.</span><span class="n">Curl</span><span class="p">()</span>
+  <span class="n">query</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">URL</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
+  <span class="n">query</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">PROXY</span><span class="p">,</span> <span class="s">&#39;localhost&#39;</span><span class="p">)</span>
+  <span class="n">query</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">PROXYPORT</span><span class="p">,</span> <span class="n">SOCKS_PORT</span><span class="p">)</span>
+  <span class="n">query</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">PROXYTYPE</span><span class="p">,</span> <span class="n">pycurl</span><span class="o">.</span><span class="n">PROXYTYPE_SOCKS5_HOSTNAME</span><span class="p">)</span>
+  <span class="n">query</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">CONNECTTIMEOUT</span><span class="p">,</span> <span class="n">CONNECTION_TIMEOUT</span><span class="p">)</span>
+  <span class="n">query</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">WRITEFUNCTION</span><span class="p">,</span> <span class="n">output</span><span class="o">.</span><span class="n">write</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">query</span><span class="o">.</span><span class="n">perform</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">output</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+  <span class="k">except</span> <span class="n">pycurl</span><span class="o">.</span><span class="n">error</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Unable to reach </span><span class="si">%s</span><span class="s"> (</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">scan</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Fetch check.torproject.org through the given path of relays, providing back</span>
+<span class="sd">  the time it took.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">circuit_id</span> <span class="o">=</span> <span class="n">controller</span><span class="o">.</span><span class="n">new_circuit</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">await_build</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">attach_stream</span><span class="p">(</span><span class="n">stream</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">stream</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s">&#39;NEW&#39;</span><span class="p">:</span>
+      <span class="n">controller</span><span class="o">.</span><span class="n">attach_stream</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">circuit_id</span><span class="p">)</span>
+
+  <span class="n">controller</span><span class="o">.</span><span class="n">add_event_listener</span><span class="p">(</span><span class="n">attach_stream</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">control</span><span class="o">.</span><span class="n">EventType</span><span class="o">.</span><span class="n">STREAM</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">controller</span><span class="o">.</span><span class="n">set_conf</span><span class="p">(</span><span class="s">&#39;__LeaveStreamsUnattached&#39;</span><span class="p">,</span> <span class="s">&#39;1&#39;</span><span class="p">)</span>  <span class="c"># leave stream management to us</span>
+    <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+    <span class="n">check_page</span> <span class="o">=</span> <span class="n">query</span><span class="p">(</span><span class="s">&#39;https://check.torproject.org/&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s">&#39;Congratulations. This browser is configured to use Tor.&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">check_page</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Request didn&#39;t have the right content&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+  <span class="k">finally</span><span class="p">:</span>
+    <span class="n">controller</span><span class="o">.</span><span class="n">remove_event_listener</span><span class="p">(</span><span class="n">attach_stream</span><span class="p">)</span>
+    <span class="n">controller</span><span class="o">.</span><span class="n">reset_conf</span><span class="p">(</span><span class="s">&#39;__LeaveStreamsUnattached&#39;</span><span class="p">)</span>
+
+
+<span class="k">with</span> <span class="n">stem</span><span class="o">.</span><span class="n">control</span><span class="o">.</span><span class="n">Controller</span><span class="o">.</span><span class="n">from_port</span><span class="p">()</span> <span class="k">as</span> <span class="n">controller</span><span class="p">:</span>
+  <span class="n">controller</span><span class="o">.</span><span class="n">authenticate</span><span class="p">()</span>
+
+  <span class="n">relay_fingerprints</span> <span class="o">=</span> <span class="p">[</span><span class="n">desc</span><span class="o">.</span><span class="n">fingerprint</span> <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">controller</span><span class="o">.</span><span class="n">get_network_statuses</span><span class="p">()]</span>
+
+  <span class="k">for</span> <span class="n">fingerprint</span> <span class="ow">in</span> <span class="n">relay_fingerprints</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">time_taken</span> <span class="o">=</span> <span class="n">scan</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="p">[</span><span class="n">fingerprint</span><span class="p">,</span> <span class="n">EXIT_FINGERPRINT</span><span class="p">])</span>
+      <span class="k">print</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> =&gt; </span><span class="si">%0.2f</span><span class="s"> seconds&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fingerprint</span><span class="p">,</span> <span class="n">time_taken</span><span class="p">))</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="k">print</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> =&gt; </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fingerprint</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-python"><pre>% python scan_network.py
+000050888CF58A50E824E534063FF71A762CB227 =&gt; 2.62 seconds
+000149E6EF7102AACA9690D6E8DD2932124B94AB =&gt; 2.50 seconds
+000A10D43011EA4928A35F610405F92B4433B4DC =&gt; 2.18 seconds
+000F18AC2CDAE4C710BA0898DC9E21E72E0117D8 =&gt; 2.40 seconds
+0011BD2485AD45D984EC4159C88FC066E5E3300E =&gt; 2.03 seconds
+003000C32D9E16FCCAEFD89336467C01E16FB00D =&gt; 11.41 seconds
+008E9B9D7FF523CE1C5026B480E0127E64FA7A19 =&gt; 2.24 seconds
+009851DF933754B00DDE876FCE4088CE1B4940C1 =&gt; 2.39 seconds
+0098C475875ABC4AA864738B1D1079F711C38287 =&gt; Unable to reach https://check.torproject.org/ ((28, 'SSL connection timeout'))
+00B70D1F261EBF4576D06CE0DA69E1F700598239 =&gt; 2.41 seconds
+00DFA1137D178EE012B96F64D12F03B4D69CA0B2 =&gt; 4.53 seconds
+00EF4569C8E4E165286DE6D293DCCE1BB1F280F7 =&gt; Circuit failed to be created: CHANNEL_CLOSED
+00F12AB035D62C919A1F37C2A67144F17ACC9E75 =&gt; 3.58 seconds
+00F2D93EBAF2F51D6EE4DCB0F37D91D72F824B16 =&gt; 2.12 seconds
+00FCFBC5770DC6B716D917C73A0DE722CCF2DFE5 =&gt; 2.16 seconds
+...</pre>
+</div>
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

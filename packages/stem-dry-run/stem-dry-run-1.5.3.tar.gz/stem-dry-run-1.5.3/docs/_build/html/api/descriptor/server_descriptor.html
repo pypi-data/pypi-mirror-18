@@ -1,0 +1,350 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Server Descriptor &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>Server Descriptor</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../index.html">Home</a></li>
+          <li><a href="../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../api.html">API</a>
+            <ul>
+              <li><a href="../control.html">stem.control</a></li>
+              <li><a href="../connection.html">stem.connection</a></li>
+              <li><a href="../socket.html">stem.socket</a></li>
+              <li><a href="../process.html">stem.process</a></li>
+              <li><a href="../response.html">stem.response</a></li>
+              <li><a href="../exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../version.html">stem.version</a></li>
+              <li><a href="../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../faq.html">FAQ</a></li>
+              <li><a href="../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="module-stem.descriptor.server_descriptor">
+<span id="server-descriptor"></span><h1>Server Descriptor<a class="headerlink" href="#module-stem.descriptor.server_descriptor" title="Permalink to this headline">¶</a></h1>
+<p>Parsing for Tor server descriptors, which contains the infrequently changing
+information about a Tor relay (contact information, exit policy, public keys,
+etc). This information is provided from a few sources...</p>
+<ul class="simple">
+<li>The control port via 'GETINFO desc/*' queries.</li>
+<li>The 'cached-descriptors' file in Tor's data directory.</li>
+<li>Archived descriptors provided by CollecTor
+(<a class="reference external" href="https://collector.torproject.org/">https://collector.torproject.org/</a>).</li>
+<li>Directory authorities and mirrors via their DirPort.</li>
+</ul>
+<p><strong>Module Overview:</strong></p>
+<div class="highlight-python"><pre>ServerDescriptor - Tor server descriptor.
+  |- RelayDescriptor - Server descriptor for a relay.
+  |
+  |- BridgeDescriptor - Scrubbed server descriptor for a bridge.
+  |  |- is_scrubbed - checks if our content has been properly scrubbed
+  |  +- get_scrubbing_issues - description of issues with our scrubbing
+  |
+  |- digest - calculates the upper-case hex digest value for our content
+  |- get_annotations - dictionary of content prior to the descriptor entry
+  +- get_annotation_lines - lines that provided the annotations</pre>
+</div>
+<dl class="class">
+<dt id="stem.descriptor.server_descriptor.ServerDescriptor">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.server_descriptor.</tt><tt class="descname">ServerDescriptor</tt><big>(</big><em>raw_contents</em>, <em>validate=False</em>, <em>annotations=None</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/server_descriptor.html#ServerDescriptor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.server_descriptor.ServerDescriptor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.Descriptor</span></tt></p>
+<p>Common parent for server descriptors.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>nickname</strong> (<em>str</em>) -- <strong>*</strong> relay's nickname</li>
+<li><strong>fingerprint</strong> (<em>str</em>) -- identity key fingerprint</li>
+<li><strong>published</strong> (<em>datetime</em>) -- <strong>*</strong> time in UTC when this descriptor was made</li>
+<li><strong>address</strong> (<em>str</em>) -- <strong>*</strong> IPv4 address of the relay</li>
+<li><strong>or_port</strong> (<em>int</em>) -- <strong>*</strong> port used for relaying</li>
+<li><strong>socks_port</strong> (<em>int</em>) -- <strong>*</strong> port used as client (<strong>deprecated</strong>, always <strong>None</strong>)</li>
+<li><strong>dir_port</strong> (<em>int</em>) -- <strong>*</strong> port used for descriptor mirroring</li>
+<li><strong>platform</strong> (<em>bytes</em>) -- line with operating system and tor version</li>
+<li><strong>tor_version</strong> (<a class="reference internal" href="../version.html#stem.version.Version" title="stem.version.Version"><em>stem.version.Version</em></a>) -- version of tor</li>
+<li><strong>operating_system</strong> (<em>str</em>) -- operating system</li>
+<li><strong>uptime</strong> (<em>int</em>) -- uptime when published in seconds</li>
+<li><strong>contact</strong> (<em>bytes</em>) -- contact information</li>
+<li><strong>exit_policy</strong> (<a class="reference internal" href="../exit_policy.html#stem.exit_policy.ExitPolicy" title="stem.exit_policy.ExitPolicy"><em>stem.exit_policy.ExitPolicy</em></a>) -- <strong>*</strong> stated exit policy</li>
+<li><strong>exit_policy_v6</strong> (<a class="reference internal" href="../exit_policy.html#stem.exit_policy.MicroExitPolicy" title="stem.exit_policy.MicroExitPolicy"><em>stem.exit_policy.MicroExitPolicy</em></a>) -- <strong>*</strong> exit policy for IPv6</li>
+<li><strong>family</strong> (<em>set</em>) -- <strong>*</strong> nicknames or fingerprints of declared family</li>
+<li><strong>average_bandwidth</strong> (<em>int</em>) -- <strong>*</strong> average rate it's willing to relay in bytes/s</li>
+<li><strong>burst_bandwidth</strong> (<em>int</em>) -- <strong>*</strong> burst rate it's willing to relay in bytes/s</li>
+<li><strong>observed_bandwidth</strong> (<em>int</em>) -- <strong>*</strong> estimated capacity based on usage in bytes/s</li>
+<li><strong>link_protocols</strong> (<em>list</em>) -- link protocols supported by the relay</li>
+<li><strong>circuit_protocols</strong> (<em>list</em>) -- circuit protocols supported by the relay</li>
+<li><strong>hibernating</strong> (<em>bool</em>) -- <strong>*</strong> hibernating when published</li>
+<li><strong>allow_single_hop_exits</strong> (<em>bool</em>) -- <strong>*</strong> flag if single hop exiting is allowed</li>
+<li><strong>allow_tunneled_dir_requests</strong> (<em>bool</em>) -- <strong>*</strong> flag if tunneled directory
+requests are accepted</li>
+<li><strong>extra_info_cache</strong> (<em>bool</em>) -- <strong>*</strong> flag if a mirror for extra-info documents</li>
+<li><strong>extra_info_digest</strong> (<em>str</em>) -- upper-case hex encoded digest of our extra-info document</li>
+<li><strong>eventdns</strong> (<em>bool</em>) -- flag for evdns backend (<strong>deprecated</strong>, always unset)</li>
+<li><strong>ntor_onion_key</strong> (<em>str</em>) -- base64 key used to encrypt EXTEND in the ntor protocol</li>
+<li><strong>or_addresses</strong> (<em>list</em>) -- <strong>*</strong> alternative for our address/or_port
+attributes, each entry is a tuple of the form (address (<strong>str</strong>), port
+(<strong>int</strong>), is_ipv6 (<strong>bool</strong>))</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Deprecated</strong>, moved to extra-info descriptor...</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>read_history_end</strong> (<em>datetime</em>) -- end of the sampling interval</li>
+<li><strong>read_history_interval</strong> (<em>int</em>) -- seconds per interval</li>
+<li><strong>read_history_values</strong> (<em>list</em>) -- bytes read during each interval</li>
+<li><strong>write_history_end</strong> (<em>datetime</em>) -- end of the sampling interval</li>
+<li><strong>write_history_interval</strong> (<em>int</em>) -- seconds per interval</li>
+<li><strong>write_history_values</strong> (<em>list</em>) -- bytes written during each interval</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>*</strong> attribute is either required when we're parsed with validation or has
+a default value, others are left as <strong>None</strong> if undefined</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.5.0: </span>Added the allow_tunneled_dir_requests attribute.</p>
+<dl class="method">
+<dt id="stem.descriptor.server_descriptor.ServerDescriptor.digest">
+<tt class="descname">digest</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/server_descriptor.html#ServerDescriptor.digest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.server_descriptor.ServerDescriptor.digest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the hex encoded sha1 of our content. This value is part of the
+network status entry for this relay.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>unicode</strong> with the upper-case hex digest value for this server descriptor</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.server_descriptor.ServerDescriptor.get_annotations">
+<tt class="descname">get_annotations</tt><big>(</big><em>*args</em>, <em>**kwds</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/server_descriptor.html#ServerDescriptor.get_annotations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.server_descriptor.ServerDescriptor.get_annotations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides content that appeared prior to the descriptor. If this comes from
+the cached-descriptors file then this commonly contains content like...</p>
+<div class="highlight-python"><pre>@downloaded-at 2012-03-18 21:18:29
+@source "173.254.216.66"</pre>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>dict</strong> with the key/value pairs in our annotations</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.server_descriptor.ServerDescriptor.get_annotation_lines">
+<tt class="descname">get_annotation_lines</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/server_descriptor.html#ServerDescriptor.get_annotation_lines"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.server_descriptor.ServerDescriptor.get_annotation_lines" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the lines of content that appeared prior to the descriptor. This
+is the same as the
+<a class="reference internal" href="#stem.descriptor.server_descriptor.ServerDescriptor.get_annotations" title="stem.descriptor.server_descriptor.ServerDescriptor.get_annotations"><tt class="xref py py-func docutils literal"><span class="pre">get_annotations()</span></tt></a>
+results, but with the unparsed lines and ordering retained.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>list</strong> with the lines of annotation that came before this descriptor</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.descriptor.server_descriptor.RelayDescriptor">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.server_descriptor.</tt><tt class="descname">RelayDescriptor</tt><big>(</big><em>raw_contents</em>, <em>validate=False</em>, <em>annotations=None</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/server_descriptor.html#RelayDescriptor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.server_descriptor.RelayDescriptor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.descriptor.server_descriptor.ServerDescriptor" title="stem.descriptor.server_descriptor.ServerDescriptor"><tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.server_descriptor.ServerDescriptor</span></tt></a></p>
+<p>Server descriptor (<a class="reference external" href="https://gitweb.torproject.org/torspec.git/tree/dir-spec.txt">descriptor specification</a>)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>ed25519_certificate</strong> (<em>str</em>) -- base64 encoded ed25519 certificate</li>
+<li><strong>ed25519_master_key</strong> (<em>str</em>) -- base64 encoded master key for our ed25519 certificate</li>
+<li><strong>ed25519_signature</strong> (<em>str</em>) -- signature of this document using ed25519</li>
+<li><strong>onion_key</strong> (<em>str</em>) -- <strong>*</strong> key used to encrypt EXTEND cells</li>
+<li><strong>onion_key_crosscert</strong> (<em>str</em>) -- signature generated using the onion_key</li>
+<li><strong>ntor_onion_key_crosscert</strong> (<em>str</em>) -- signature generated using the ntor-onion-key</li>
+<li><strong>ntor_onion_key_crosscert_sign</strong> (<em>str</em>) -- sign of the corresponding ed25519 public key</li>
+<li><strong>signing_key</strong> (<em>str</em>) -- <strong>*</strong> relay's long-term identity key</li>
+<li><strong>signature</strong> (<em>str</em>) -- <strong>*</strong> signature for this descriptor</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>*</strong> attribute is required when we're parsed with validation</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.5.0: </span>Added the ed25519_certificate, ed25519_master_key, ed25519_signature,
+onion_key_crosscert, ntor_onion_key_crosscert, and
+ntor_onion_key_crosscert_sign attributes.</p>
+<dl class="method">
+<dt id="stem.descriptor.server_descriptor.RelayDescriptor.digest">
+<tt class="descname">digest</tt><big>(</big><em>*args</em>, <em>**kwds</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/server_descriptor.html#RelayDescriptor.digest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.server_descriptor.RelayDescriptor.digest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the digest of our descriptor's content.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">the digest string encoded in uppercase hex</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body">ValueError if the digest canot be calculated</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.descriptor.server_descriptor.BridgeDescriptor">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.server_descriptor.</tt><tt class="descname">BridgeDescriptor</tt><big>(</big><em>raw_contents</em>, <em>validate=False</em>, <em>annotations=None</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/server_descriptor.html#BridgeDescriptor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.server_descriptor.BridgeDescriptor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.descriptor.server_descriptor.ServerDescriptor" title="stem.descriptor.server_descriptor.ServerDescriptor"><tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.server_descriptor.ServerDescriptor</span></tt></a></p>
+<p>Bridge descriptor (<a class="reference external" href="https://collector.torproject.org/formats.html#bridge-descriptors">bridge descriptor specification</a>)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>ed25519_certificate_hash</strong> (<em>str</em>) -- sha256 hash of the original identity-ed25519</li>
+<li><strong>router_digest_sha256</strong> (<em>str</em>) -- sha256 digest of this document</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.5.0: </span>Added the ed25519_certificate_hash and router_digest_sha256 attributes.
+Also added ntor_onion_key (previously this only belonged to unsanitized
+descriptors).</p>
+<dl class="method">
+<dt id="stem.descriptor.server_descriptor.BridgeDescriptor.digest">
+<tt class="descname">digest</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/server_descriptor.html#BridgeDescriptor.digest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.server_descriptor.BridgeDescriptor.digest" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.server_descriptor.BridgeDescriptor.is_scrubbed">
+<tt class="descname">is_scrubbed</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/server_descriptor.html#BridgeDescriptor.is_scrubbed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.server_descriptor.BridgeDescriptor.is_scrubbed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if we've been properly scrubbed in accordance with the <a class="reference external" href="https://collector.torproject.org/formats.html#bridge-descriptors">bridge
+descriptor specification</a>.
+Validation is a moving target so this may not be fully up to date.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>True</strong> if we're scrubbed, <strong>False</strong> otherwise</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.server_descriptor.BridgeDescriptor.get_scrubbing_issues">
+<tt class="descname">get_scrubbing_issues</tt><big>(</big><em>*args</em>, <em>**kwds</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/server_descriptor.html#BridgeDescriptor.get_scrubbing_issues"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.server_descriptor.BridgeDescriptor.get_scrubbing_issues" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides issues with our scrubbing.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>list</strong> of strings which describe issues we have with our
+scrubbing, this list is empty if we're properly scrubbed</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

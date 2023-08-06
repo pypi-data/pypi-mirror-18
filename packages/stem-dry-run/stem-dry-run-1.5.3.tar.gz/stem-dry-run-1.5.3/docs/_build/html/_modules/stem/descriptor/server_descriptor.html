@@ -1,0 +1,1001 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.descriptor.server_descriptor &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem" href="../../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.descriptor.server_descriptor</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.descriptor.server_descriptor</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2012-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Parsing for Tor server descriptors, which contains the infrequently changing</span>
+<span class="sd">information about a Tor relay (contact information, exit policy, public keys,</span>
+<span class="sd">etc). This information is provided from a few sources...</span>
+
+<span class="sd">* The control port via &#39;GETINFO desc/\*&#39; queries.</span>
+
+<span class="sd">* The &#39;cached-descriptors&#39; file in Tor&#39;s data directory.</span>
+
+<span class="sd">* Archived descriptors provided by CollecTor</span>
+<span class="sd">  (https://collector.torproject.org/).</span>
+
+<span class="sd">* Directory authorities and mirrors via their DirPort.</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  ServerDescriptor - Tor server descriptor.</span>
+<span class="sd">    |- RelayDescriptor - Server descriptor for a relay.</span>
+<span class="sd">    |</span>
+<span class="sd">    |- BridgeDescriptor - Scrubbed server descriptor for a bridge.</span>
+<span class="sd">    |  |- is_scrubbed - checks if our content has been properly scrubbed</span>
+<span class="sd">    |  +- get_scrubbing_issues - description of issues with our scrubbing</span>
+<span class="sd">    |</span>
+<span class="sd">    |- digest - calculates the upper-case hex digest value for our content</span>
+<span class="sd">    |- get_annotations - dictionary of content prior to the descriptor entry</span>
+<span class="sd">    +- get_annotation_lines - lines that provided the annotations</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">hashlib</span>
+<span class="kn">import</span> <span class="nn">re</span>
+
+<span class="kn">import</span> <span class="nn">stem.descriptor.extrainfo_descriptor</span>
+<span class="kn">import</span> <span class="nn">stem.exit_policy</span>
+<span class="kn">import</span> <span class="nn">stem.prereq</span>
+<span class="kn">import</span> <span class="nn">stem.util.connection</span>
+<span class="kn">import</span> <span class="nn">stem.util.str_tools</span>
+<span class="kn">import</span> <span class="nn">stem.util.tor_tools</span>
+<span class="kn">import</span> <span class="nn">stem.version</span>
+
+<span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">str_type</span>
+
+<span class="kn">from</span> <span class="nn">stem.descriptor</span> <span class="kn">import</span> <span class="p">(</span>
+  <span class="n">PGP_BLOCK_END</span><span class="p">,</span>
+  <span class="n">Descriptor</span><span class="p">,</span>
+  <span class="n">_get_descriptor_components</span><span class="p">,</span>
+  <span class="n">_read_until_keywords</span><span class="p">,</span>
+  <span class="n">_bytes_for_block</span><span class="p">,</span>
+  <span class="n">_value</span><span class="p">,</span>
+  <span class="n">_values</span><span class="p">,</span>
+  <span class="n">_parse_simple_line</span><span class="p">,</span>
+  <span class="n">_parse_if_present</span><span class="p">,</span>
+  <span class="n">_parse_bytes_line</span><span class="p">,</span>
+  <span class="n">_parse_timestamp_line</span><span class="p">,</span>
+  <span class="n">_parse_forty_character_hex</span><span class="p">,</span>
+  <span class="n">_parse_key_block</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="c"># added in python 3.2</span>
+  <span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">lru_cache</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+  <span class="kn">from</span> <span class="nn">stem.util.lru_cache</span> <span class="kn">import</span> <span class="n">lru_cache</span>
+
+<span class="c"># relay descriptors must have exactly one of the following</span>
+<span class="n">REQUIRED_FIELDS</span> <span class="o">=</span> <span class="p">(</span>
+  <span class="s">&#39;router&#39;</span><span class="p">,</span>
+  <span class="s">&#39;bandwidth&#39;</span><span class="p">,</span>
+  <span class="s">&#39;published&#39;</span><span class="p">,</span>
+  <span class="s">&#39;onion-key&#39;</span><span class="p">,</span>
+  <span class="s">&#39;signing-key&#39;</span><span class="p">,</span>
+  <span class="s">&#39;router-signature&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c"># optional entries that can appear at most once</span>
+<span class="n">SINGLE_FIELDS</span> <span class="o">=</span> <span class="p">(</span>
+  <span class="s">&#39;identity-ed25519&#39;</span><span class="p">,</span>
+  <span class="s">&#39;master-key-ed25519&#39;</span><span class="p">,</span>
+  <span class="s">&#39;platform&#39;</span><span class="p">,</span>
+  <span class="s">&#39;fingerprint&#39;</span><span class="p">,</span>
+  <span class="s">&#39;hibernating&#39;</span><span class="p">,</span>
+  <span class="s">&#39;uptime&#39;</span><span class="p">,</span>
+  <span class="s">&#39;contact&#39;</span><span class="p">,</span>
+  <span class="s">&#39;read-history&#39;</span><span class="p">,</span>
+  <span class="s">&#39;write-history&#39;</span><span class="p">,</span>
+  <span class="s">&#39;eventdns&#39;</span><span class="p">,</span>
+  <span class="s">&#39;family&#39;</span><span class="p">,</span>
+  <span class="s">&#39;caches-extra-info&#39;</span><span class="p">,</span>
+  <span class="s">&#39;extra-info-digest&#39;</span><span class="p">,</span>
+  <span class="s">&#39;hidden-service-dir&#39;</span><span class="p">,</span>
+  <span class="s">&#39;protocols&#39;</span><span class="p">,</span>
+  <span class="s">&#39;allow-single-hop-exits&#39;</span><span class="p">,</span>
+  <span class="s">&#39;tunnelled-dir-server&#39;</span><span class="p">,</span>
+  <span class="s">&#39;onion-key-crosscert&#39;</span><span class="p">,</span>
+  <span class="s">&#39;ntor-onion-key&#39;</span><span class="p">,</span>
+  <span class="s">&#39;ntor-onion-key-crosscert&#39;</span><span class="p">,</span>
+  <span class="s">&#39;router-sig-ed25519&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">DEFAULT_IPV6_EXIT_POLICY</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">exit_policy</span><span class="o">.</span><span class="n">MicroExitPolicy</span><span class="p">(</span><span class="s">&#39;reject 1-65535&#39;</span><span class="p">)</span>
+<span class="n">REJECT_ALL_POLICY</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">exit_policy</span><span class="o">.</span><span class="n">ExitPolicy</span><span class="p">(</span><span class="s">&#39;reject *:*&#39;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">is_bridge</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Iterates over the server descriptors in a file.</span>
+
+<span class="sd">  :param file descriptor_file: file with descriptor content</span>
+<span class="sd">  :param bool is_bridge: parses the file as being a bridge descriptor</span>
+<span class="sd">  :param bool validate: checks the validity of the descriptor&#39;s content if</span>
+<span class="sd">    **True**, skips these checks otherwise</span>
+<span class="sd">  :param dict kwargs: additional arguments for the descriptor constructor</span>
+
+<span class="sd">  :returns: iterator for ServerDescriptor instances in the file</span>
+
+<span class="sd">  :raises:</span>
+<span class="sd">    * **ValueError** if the contents is malformed and validate is True</span>
+<span class="sd">    * **IOError** if the file can&#39;t be read</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># Handler for relay descriptors</span>
+  <span class="c">#</span>
+  <span class="c"># Cached descriptors consist of annotations followed by the descriptor</span>
+  <span class="c"># itself. For instance...</span>
+  <span class="c">#</span>
+  <span class="c">#   @downloaded-at 2012-03-14 16:31:05</span>
+  <span class="c">#   @source &quot;145.53.65.130&quot;</span>
+  <span class="c">#   router caerSidi 71.35.143.157 9001 0 0</span>
+  <span class="c">#   platform Tor 0.2.1.30 on Linux x86_64</span>
+  <span class="c">#   &lt;rest of the descriptor content&gt;</span>
+  <span class="c">#   router-signature</span>
+  <span class="c">#   -----BEGIN SIGNATURE-----</span>
+  <span class="c">#   &lt;signature for the above descriptor&gt;</span>
+  <span class="c">#   -----END SIGNATURE-----</span>
+  <span class="c">#</span>
+  <span class="c"># Metrics descriptor files are the same, but lack any annotations. The</span>
+  <span class="c"># following simply does the following...</span>
+  <span class="c">#</span>
+  <span class="c">#   - parse as annotations until we get to &#39;router&#39;</span>
+  <span class="c">#   - parse as descriptor content until we get to &#39;router-signature&#39; followed</span>
+  <span class="c">#     by the end of the signature block</span>
+  <span class="c">#   - construct a descriptor and provide it back to the caller</span>
+  <span class="c">#</span>
+  <span class="c"># Any annotations after the last server descriptor is ignored (never provided</span>
+  <span class="c"># to the caller).</span>
+
+  <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+    <span class="n">annotations</span> <span class="o">=</span> <span class="n">_read_until_keywords</span><span class="p">(</span><span class="s">&#39;router&#39;</span><span class="p">,</span> <span class="n">descriptor_file</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_bridge</span><span class="p">:</span>
+      <span class="n">descriptor_content</span> <span class="o">=</span> <span class="n">_read_until_keywords</span><span class="p">(</span><span class="s">&#39;router-signature&#39;</span><span class="p">,</span> <span class="n">descriptor_file</span><span class="p">)</span>
+
+      <span class="c"># we&#39;ve reached the &#39;router-signature&#39;, now include the pgp style block</span>
+
+      <span class="n">block_end_prefix</span> <span class="o">=</span> <span class="n">PGP_BLOCK_END</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+      <span class="n">descriptor_content</span> <span class="o">+=</span> <span class="n">_read_until_keywords</span><span class="p">(</span><span class="n">block_end_prefix</span><span class="p">,</span> <span class="n">descriptor_file</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">descriptor_content</span> <span class="o">=</span> <span class="n">_read_until_keywords</span><span class="p">(</span><span class="s">&#39;router-digest&#39;</span><span class="p">,</span> <span class="n">descriptor_file</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">descriptor_content</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">descriptor_content</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;@type&#39;</span><span class="p">):</span>
+        <span class="n">descriptor_content</span> <span class="o">=</span> <span class="n">descriptor_content</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+      <span class="c"># strip newlines from annotations</span>
+      <span class="n">annotations</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">bytes</span><span class="o">.</span><span class="n">strip</span><span class="p">,</span> <span class="n">annotations</span><span class="p">))</span>
+
+      <span class="n">descriptor_text</span> <span class="o">=</span> <span class="nb">bytes</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">descriptor_content</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">is_bridge</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">BridgeDescriptor</span><span class="p">(</span><span class="n">descriptor_text</span><span class="p">,</span> <span class="n">validate</span><span class="p">,</span> <span class="n">annotations</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">RelayDescriptor</span><span class="p">(</span><span class="n">descriptor_text</span><span class="p">,</span> <span class="n">validate</span><span class="p">,</span> <span class="n">annotations</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">validate</span> <span class="ow">and</span> <span class="n">annotations</span><span class="p">:</span>
+        <span class="n">orphaned_annotations</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">annotations</span><span class="p">))</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Content conform to being a server descriptor:</span><span class="se">\n</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">orphaned_annotations</span><span class="p">)</span>
+
+      <span class="k">break</span>  <span class="c"># done parsing descriptors</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_router_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;router&quot; nickname address ORPort SocksPort DirPort</span>
+
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;router&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+  <span class="n">router_comp</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+  <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">router_comp</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Router line must have five values: router </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">tor_tools</span><span class="o">.</span><span class="n">is_valid_nickname</span><span class="p">(</span><span class="n">router_comp</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Router line entry isn&#39;t a valid nickname: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">router_comp</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+  <span class="k">elif</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="n">router_comp</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Router line entry isn&#39;t a valid IPv4 address: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">router_comp</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+  <span class="k">elif</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">router_comp</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">allow_zero</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Router line&#39;s ORPort is invalid: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">router_comp</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+  <span class="k">elif</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">router_comp</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">allow_zero</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Router line&#39;s SocksPort is invalid: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">router_comp</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+  <span class="k">elif</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">router_comp</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span> <span class="n">allow_zero</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Router line&#39;s DirPort is invalid: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">router_comp</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">nickname</span> <span class="o">=</span> <span class="n">router_comp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">address</span> <span class="o">=</span> <span class="n">router_comp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">or_port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">router_comp</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">socks_port</span> <span class="o">=</span> <span class="bp">None</span> <span class="k">if</span> <span class="n">router_comp</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;0&#39;</span> <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">router_comp</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">dir_port</span> <span class="o">=</span> <span class="bp">None</span> <span class="k">if</span> <span class="n">router_comp</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;0&#39;</span> <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">router_comp</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_bandwidth_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;bandwidth&quot; bandwidth-avg bandwidth-burst bandwidth-observed</span>
+
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;bandwidth&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+  <span class="n">bandwidth_comp</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+  <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bandwidth_comp</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Bandwidth line must have three values: bandwidth </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="ow">not</span> <span class="n">bandwidth_comp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Bandwidth line&#39;s average rate isn&#39;t numeric: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">bandwidth_comp</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+  <span class="k">elif</span> <span class="ow">not</span> <span class="n">bandwidth_comp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Bandwidth line&#39;s burst rate isn&#39;t numeric: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">bandwidth_comp</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+  <span class="k">elif</span> <span class="ow">not</span> <span class="n">bandwidth_comp</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Bandwidth line&#39;s observed rate isn&#39;t numeric: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">bandwidth_comp</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">average_bandwidth</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">bandwidth_comp</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">burst_bandwidth</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">bandwidth_comp</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">observed_bandwidth</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">bandwidth_comp</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_platform_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;platform&quot; string</span>
+
+  <span class="n">_parse_bytes_line</span><span class="p">(</span><span class="s">&#39;platform&#39;</span><span class="p">,</span> <span class="s">&#39;platform&#39;</span><span class="p">)(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+
+  <span class="c"># The platform attribute was set earlier. This line can contain any</span>
+  <span class="c"># arbitrary data, but tor seems to report its version followed by the</span>
+  <span class="c"># os like the following...</span>
+  <span class="c">#</span>
+  <span class="c">#   platform Tor 0.2.2.35 (git-73ff13ab3cc9570d) on Linux x86_64</span>
+  <span class="c">#</span>
+  <span class="c"># There&#39;s no guarantee that we&#39;ll be able to pick these out the</span>
+  <span class="c"># version, but might as well try to save our caller the effort.</span>
+
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;platform&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+  <span class="n">platform_match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^(?:node-)?Tor (\S*).* on (.*)$&#39;</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">platform_match</span><span class="p">:</span>
+    <span class="n">version_str</span><span class="p">,</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">operating_system</span> <span class="o">=</span> <span class="n">platform_match</span><span class="o">.</span><span class="n">groups</span><span class="p">()</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">descriptor</span><span class="o">.</span><span class="n">tor_version</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">_get_version</span><span class="p">(</span><span class="n">version_str</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+      <span class="k">pass</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_fingerprint_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># This is forty hex digits split into space separated groups of four.</span>
+  <span class="c"># Checking that we match this pattern.</span>
+
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;fingerprint&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+  <span class="n">fingerprint</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">)</span>
+
+  <span class="k">for</span> <span class="n">grouping</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">grouping</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Fingerprint line should have groupings of four hex digits: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">tor_tools</span><span class="o">.</span><span class="n">is_valid_fingerprint</span><span class="p">(</span><span class="n">fingerprint</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Tor relay fingerprints consist of forty hex digits: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">fingerprint</span> <span class="o">=</span> <span class="n">fingerprint</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_extrainfo_digest_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;extra-info-digest&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+  <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>  <span class="c"># lines have additional content from propsal 228, waiting for it to be documented: #16227</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">tor_tools</span><span class="o">.</span><span class="n">is_hex_digits</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="mi">40</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;extra-info-digest should be 40 hex characters: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">extra_info_digest</span> <span class="o">=</span> <span class="n">value</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_hibernating_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;hibernating&quot; 0|1 (in practice only set if one)</span>
+
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;hibernating&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;0&#39;</span><span class="p">,</span> <span class="s">&#39;1&#39;</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Hibernating line had an invalid value, must be zero or one: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">hibernating</span> <span class="o">=</span> <span class="n">value</span> <span class="o">==</span> <span class="s">&#39;1&#39;</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_hidden_service_dir_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;hidden-service-dir&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">value</span><span class="p">:</span>
+    <span class="n">descriptor</span><span class="o">.</span><span class="n">hidden_service_dir</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="n">descriptor</span><span class="o">.</span><span class="n">hidden_service_dir</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;2&#39;</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_uptime_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># We need to be tolerant of negative uptimes to accommodate a past tor</span>
+  <span class="c"># bug...</span>
+  <span class="c">#</span>
+  <span class="c"># Changes in version 0.1.2.7-alpha - 2007-02-06</span>
+  <span class="c">#  - If our system clock jumps back in time, don&#39;t publish a negative</span>
+  <span class="c">#    uptime in the descriptor. Also, don&#39;t let the global rate limiting</span>
+  <span class="c">#    buckets go absurdly negative.</span>
+  <span class="c">#</span>
+  <span class="c"># After parsing all of the attributes we&#39;ll double check that negative</span>
+  <span class="c"># uptimes only occurred prior to this fix.</span>
+
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;uptime&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">descriptor</span><span class="o">.</span><span class="n">uptime</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+  <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Uptime line must have an integer value: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_protocols_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;protocols&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+  <span class="n">protocols_match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^Link (.*) Circuit (.*)$&#39;</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">protocols_match</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Protocols line did not match the expected pattern: protocols </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+
+  <span class="n">link_versions</span><span class="p">,</span> <span class="n">circuit_versions</span> <span class="o">=</span> <span class="n">protocols_match</span><span class="o">.</span><span class="n">groups</span><span class="p">()</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">link_protocols</span> <span class="o">=</span> <span class="n">link_versions</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">circuit_protocols</span> <span class="o">=</span> <span class="n">circuit_versions</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_or_address_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="n">all_values</span> <span class="o">=</span> <span class="n">_values</span><span class="p">(</span><span class="s">&#39;or-address&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+  <span class="n">or_addresses</span> <span class="o">=</span> <span class="p">[]</span>
+
+  <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">all_values</span><span class="p">:</span>
+    <span class="n">line</span> <span class="o">=</span> <span class="s">&#39;or-address </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">entry</span>
+
+    <span class="k">if</span> <span class="s">&#39;:&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;or-address line missing a colon: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">line</span><span class="p">)</span>
+
+    <span class="n">address</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="n">address</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv6_address</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">allow_brackets</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;or-address line has a malformed address: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">line</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">port</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;or-address line has a malformed port: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">line</span><span class="p">)</span>
+
+    <span class="n">or_addresses</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">address</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s">&#39;[&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s">&#39;]&#39;</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">port</span><span class="p">),</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv6_address</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">allow_brackets</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)))</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">or_addresses</span> <span class="o">=</span> <span class="n">or_addresses</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_history_line</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">history_end_attribute</span><span class="p">,</span> <span class="n">history_interval_attribute</span><span class="p">,</span> <span class="n">history_values_attribute</span><span class="p">,</span> <span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+  <span class="n">timestamp</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">remainder</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">extrainfo_descriptor</span><span class="o">.</span><span class="n">_parse_timestamp_and_interval</span><span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">remainder</span><span class="p">:</span>
+      <span class="n">history_values</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">remainder</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">)]</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">history_values</span> <span class="o">=</span> <span class="p">[]</span>
+  <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> line has non-numeric values: </span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="n">keyword</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+  <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">history_end_attribute</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">)</span>
+  <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">history_interval_attribute</span><span class="p">,</span> <span class="n">interval</span><span class="p">)</span>
+  <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">history_values_attribute</span><span class="p">,</span> <span class="n">history_values</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_exit_policy</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="s">&#39;_unparsed_exit_policy&#39;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">_unparsed_exit_policy</span> <span class="o">==</span> <span class="p">[</span><span class="n">str_type</span><span class="p">(</span><span class="s">&#39;reject *:*&#39;</span><span class="p">)]:</span>
+      <span class="n">descriptor</span><span class="o">.</span><span class="n">exit_policy</span> <span class="o">=</span> <span class="n">REJECT_ALL_POLICY</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">descriptor</span><span class="o">.</span><span class="n">exit_policy</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">exit_policy</span><span class="o">.</span><span class="n">ExitPolicy</span><span class="p">(</span><span class="o">*</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_unparsed_exit_policy</span><span class="p">)</span>
+
+    <span class="k">del</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">_unparsed_exit_policy</span>
+
+
+<span class="n">_parse_identity_ed25519_line</span> <span class="o">=</span> <span class="n">_parse_key_block</span><span class="p">(</span><span class="s">&#39;identity-ed25519&#39;</span><span class="p">,</span> <span class="s">&#39;ed25519_certificate&#39;</span><span class="p">,</span> <span class="s">&#39;ED25519 CERT&#39;</span><span class="p">)</span>
+<span class="n">_parse_master_key_ed25519_line</span> <span class="o">=</span> <span class="n">_parse_simple_line</span><span class="p">(</span><span class="s">&#39;master-key-ed25519&#39;</span><span class="p">,</span> <span class="s">&#39;ed25519_master_key&#39;</span><span class="p">)</span>
+<span class="n">_parse_master_key_ed25519_for_hash_line</span> <span class="o">=</span> <span class="n">_parse_simple_line</span><span class="p">(</span><span class="s">&#39;master-key-ed25519&#39;</span><span class="p">,</span> <span class="s">&#39;ed25519_certificate_hash&#39;</span><span class="p">)</span>
+<span class="n">_parse_contact_line</span> <span class="o">=</span> <span class="n">_parse_bytes_line</span><span class="p">(</span><span class="s">&#39;contact&#39;</span><span class="p">,</span> <span class="s">&#39;contact&#39;</span><span class="p">)</span>
+<span class="n">_parse_published_line</span> <span class="o">=</span> <span class="n">_parse_timestamp_line</span><span class="p">(</span><span class="s">&#39;published&#39;</span><span class="p">,</span> <span class="s">&#39;published&#39;</span><span class="p">)</span>
+<span class="n">_parse_read_history_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_history_line</span><span class="p">,</span> <span class="s">&#39;read-history&#39;</span><span class="p">,</span> <span class="s">&#39;read_history_end&#39;</span><span class="p">,</span> <span class="s">&#39;read_history_interval&#39;</span><span class="p">,</span> <span class="s">&#39;read_history_values&#39;</span><span class="p">)</span>
+<span class="n">_parse_write_history_line</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_parse_history_line</span><span class="p">,</span> <span class="s">&#39;write-history&#39;</span><span class="p">,</span> <span class="s">&#39;write_history_end&#39;</span><span class="p">,</span> <span class="s">&#39;write_history_interval&#39;</span><span class="p">,</span> <span class="s">&#39;write_history_values&#39;</span><span class="p">)</span>
+<span class="n">_parse_ipv6_policy_line</span> <span class="o">=</span> <span class="n">_parse_simple_line</span><span class="p">(</span><span class="s">&#39;ipv6-policy&#39;</span><span class="p">,</span> <span class="s">&#39;exit_policy_v6&#39;</span><span class="p">,</span> <span class="n">func</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">stem</span><span class="o">.</span><span class="n">exit_policy</span><span class="o">.</span><span class="n">MicroExitPolicy</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+<span class="n">_parse_allow_single_hop_exits_line</span> <span class="o">=</span> <span class="n">_parse_if_present</span><span class="p">(</span><span class="s">&#39;allow-single-hop-exits&#39;</span><span class="p">,</span> <span class="s">&#39;allow_single_hop_exits&#39;</span><span class="p">)</span>
+<span class="n">_parse_tunneled_dir_server_line</span> <span class="o">=</span> <span class="n">_parse_if_present</span><span class="p">(</span><span class="s">&#39;tunnelled-dir-server&#39;</span><span class="p">,</span> <span class="s">&#39;allow_tunneled_dir_requests&#39;</span><span class="p">)</span>
+<span class="n">_parse_caches_extra_info_line</span> <span class="o">=</span> <span class="n">_parse_if_present</span><span class="p">(</span><span class="s">&#39;caches-extra-info&#39;</span><span class="p">,</span> <span class="s">&#39;extra_info_cache&#39;</span><span class="p">)</span>
+<span class="n">_parse_family_line</span> <span class="o">=</span> <span class="n">_parse_simple_line</span><span class="p">(</span><span class="s">&#39;family&#39;</span><span class="p">,</span> <span class="s">&#39;family&#39;</span><span class="p">,</span> <span class="n">func</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="nb">set</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)))</span>
+<span class="n">_parse_eventdns_line</span> <span class="o">=</span> <span class="n">_parse_simple_line</span><span class="p">(</span><span class="s">&#39;eventdns&#39;</span><span class="p">,</span> <span class="s">&#39;eventdns&#39;</span><span class="p">,</span> <span class="n">func</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">v</span> <span class="o">==</span> <span class="s">&#39;1&#39;</span><span class="p">)</span>
+<span class="n">_parse_onion_key_line</span> <span class="o">=</span> <span class="n">_parse_key_block</span><span class="p">(</span><span class="s">&#39;onion-key&#39;</span><span class="p">,</span> <span class="s">&#39;onion_key&#39;</span><span class="p">,</span> <span class="s">&#39;RSA PUBLIC KEY&#39;</span><span class="p">)</span>
+<span class="n">_parse_onion_key_crosscert_line</span> <span class="o">=</span> <span class="n">_parse_key_block</span><span class="p">(</span><span class="s">&#39;onion-key-crosscert&#39;</span><span class="p">,</span> <span class="s">&#39;onion_key_crosscert&#39;</span><span class="p">,</span> <span class="s">&#39;CROSSCERT&#39;</span><span class="p">)</span>
+<span class="n">_parse_signing_key_line</span> <span class="o">=</span> <span class="n">_parse_key_block</span><span class="p">(</span><span class="s">&#39;signing-key&#39;</span><span class="p">,</span> <span class="s">&#39;signing_key&#39;</span><span class="p">,</span> <span class="s">&#39;RSA PUBLIC KEY&#39;</span><span class="p">)</span>
+<span class="n">_parse_router_signature_line</span> <span class="o">=</span> <span class="n">_parse_key_block</span><span class="p">(</span><span class="s">&#39;router-signature&#39;</span><span class="p">,</span> <span class="s">&#39;signature&#39;</span><span class="p">,</span> <span class="s">&#39;SIGNATURE&#39;</span><span class="p">)</span>
+<span class="n">_parse_ntor_onion_key_line</span> <span class="o">=</span> <span class="n">_parse_simple_line</span><span class="p">(</span><span class="s">&#39;ntor-onion-key&#39;</span><span class="p">,</span> <span class="s">&#39;ntor_onion_key&#39;</span><span class="p">)</span>
+<span class="n">_parse_ntor_onion_key_crosscert_line</span> <span class="o">=</span> <span class="n">_parse_key_block</span><span class="p">(</span><span class="s">&#39;ntor-onion-key-crosscert&#39;</span><span class="p">,</span> <span class="s">&#39;ntor_onion_key_crosscert&#39;</span><span class="p">,</span> <span class="s">&#39;ED25519 CERT&#39;</span><span class="p">,</span> <span class="s">&#39;ntor_onion_key_crosscert_sign&#39;</span><span class="p">)</span>
+<span class="n">_parse_router_sig_ed25519_line</span> <span class="o">=</span> <span class="n">_parse_simple_line</span><span class="p">(</span><span class="s">&#39;router-sig-ed25519&#39;</span><span class="p">,</span> <span class="s">&#39;ed25519_signature&#39;</span><span class="p">)</span>
+<span class="n">_parse_router_digest_sha256_line</span> <span class="o">=</span> <span class="n">_parse_simple_line</span><span class="p">(</span><span class="s">&#39;router-digest-sha256&#39;</span><span class="p">,</span> <span class="s">&#39;router_digest_sha256&#39;</span><span class="p">)</span>
+<span class="n">_parse_router_digest_line</span> <span class="o">=</span> <span class="n">_parse_forty_character_hex</span><span class="p">(</span><span class="s">&#39;router-digest&#39;</span><span class="p">,</span> <span class="s">&#39;_digest&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="ServerDescriptor"><a class="viewcode-back" href="../../../api/descriptor/server_descriptor.html#stem.descriptor.server_descriptor.ServerDescriptor">[docs]</a><span class="k">class</span> <span class="nc">ServerDescriptor</span><span class="p">(</span><span class="n">Descriptor</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Common parent for server descriptors.</span>
+
+<span class="sd">  :var str nickname: **\*** relay&#39;s nickname</span>
+<span class="sd">  :var str fingerprint: identity key fingerprint</span>
+<span class="sd">  :var datetime published: **\*** time in UTC when this descriptor was made</span>
+
+<span class="sd">  :var str address: **\*** IPv4 address of the relay</span>
+<span class="sd">  :var int or_port: **\*** port used for relaying</span>
+<span class="sd">  :var int socks_port: **\*** port used as client (**deprecated**, always **None**)</span>
+<span class="sd">  :var int dir_port: **\*** port used for descriptor mirroring</span>
+
+<span class="sd">  :var bytes platform: line with operating system and tor version</span>
+<span class="sd">  :var stem.version.Version tor_version: version of tor</span>
+<span class="sd">  :var str operating_system: operating system</span>
+<span class="sd">  :var int uptime: uptime when published in seconds</span>
+<span class="sd">  :var bytes contact: contact information</span>
+<span class="sd">  :var stem.exit_policy.ExitPolicy exit_policy: **\*** stated exit policy</span>
+<span class="sd">  :var stem.exit_policy.MicroExitPolicy exit_policy_v6: **\*** exit policy for IPv6</span>
+<span class="sd">  :var set family: **\*** nicknames or fingerprints of declared family</span>
+
+<span class="sd">  :var int average_bandwidth: **\*** average rate it&#39;s willing to relay in bytes/s</span>
+<span class="sd">  :var int burst_bandwidth: **\*** burst rate it&#39;s willing to relay in bytes/s</span>
+<span class="sd">  :var int observed_bandwidth: **\*** estimated capacity based on usage in bytes/s</span>
+
+<span class="sd">  :var list link_protocols: link protocols supported by the relay</span>
+<span class="sd">  :var list circuit_protocols: circuit protocols supported by the relay</span>
+<span class="sd">  :var bool hibernating: **\*** hibernating when published</span>
+<span class="sd">  :var bool allow_single_hop_exits: **\*** flag if single hop exiting is allowed</span>
+<span class="sd">  :var bool allow_tunneled_dir_requests: **\*** flag if tunneled directory</span>
+<span class="sd">    requests are accepted</span>
+<span class="sd">  :var bool extra_info_cache: **\*** flag if a mirror for extra-info documents</span>
+<span class="sd">  :var str extra_info_digest: upper-case hex encoded digest of our extra-info document</span>
+<span class="sd">  :var bool eventdns: flag for evdns backend (**deprecated**, always unset)</span>
+<span class="sd">  :var str ntor_onion_key: base64 key used to encrypt EXTEND in the ntor protocol</span>
+<span class="sd">  :var list or_addresses: **\*** alternative for our address/or_port</span>
+<span class="sd">    attributes, each entry is a tuple of the form (address (**str**), port</span>
+<span class="sd">    (**int**), is_ipv6 (**bool**))</span>
+
+<span class="sd">  **Deprecated**, moved to extra-info descriptor...</span>
+
+<span class="sd">  :var datetime read_history_end: end of the sampling interval</span>
+<span class="sd">  :var int read_history_interval: seconds per interval</span>
+<span class="sd">  :var list read_history_values: bytes read during each interval</span>
+
+<span class="sd">  :var datetime write_history_end: end of the sampling interval</span>
+<span class="sd">  :var int write_history_interval: seconds per interval</span>
+<span class="sd">  :var list write_history_values: bytes written during each interval</span>
+
+<span class="sd">  **\*** attribute is either required when we&#39;re parsed with validation or has</span>
+<span class="sd">  a default value, others are left as **None** if undefined</span>
+
+<span class="sd">  .. versionchanged:: 1.5.0</span>
+<span class="sd">     Added the allow_tunneled_dir_requests attribute.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">ATTRIBUTES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;nickname&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_router_line</span><span class="p">),</span>
+    <span class="s">&#39;fingerprint&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_fingerprint_line</span><span class="p">),</span>
+    <span class="s">&#39;contact&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_contact_line</span><span class="p">),</span>
+    <span class="s">&#39;published&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_published_line</span><span class="p">),</span>
+    <span class="s">&#39;exit_policy&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_exit_policy</span><span class="p">),</span>
+
+    <span class="s">&#39;address&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_router_line</span><span class="p">),</span>
+    <span class="s">&#39;or_port&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_router_line</span><span class="p">),</span>
+    <span class="s">&#39;socks_port&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_router_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_port&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_router_line</span><span class="p">),</span>
+
+    <span class="s">&#39;platform&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_platform_line</span><span class="p">),</span>
+    <span class="s">&#39;tor_version&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_platform_line</span><span class="p">),</span>
+    <span class="s">&#39;operating_system&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_platform_line</span><span class="p">),</span>
+    <span class="s">&#39;uptime&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_uptime_line</span><span class="p">),</span>
+    <span class="s">&#39;exit_policy_v6&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">DEFAULT_IPV6_EXIT_POLICY</span><span class="p">,</span> <span class="n">_parse_ipv6_policy_line</span><span class="p">),</span>
+    <span class="s">&#39;family&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">set</span><span class="p">(),</span> <span class="n">_parse_family_line</span><span class="p">),</span>
+
+    <span class="s">&#39;average_bandwidth&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_bandwidth_line</span><span class="p">),</span>
+    <span class="s">&#39;burst_bandwidth&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_bandwidth_line</span><span class="p">),</span>
+    <span class="s">&#39;observed_bandwidth&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_bandwidth_line</span><span class="p">),</span>
+
+    <span class="s">&#39;link_protocols&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_protocols_line</span><span class="p">),</span>
+    <span class="s">&#39;circuit_protocols&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_protocols_line</span><span class="p">),</span>
+    <span class="s">&#39;hibernating&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">False</span><span class="p">,</span> <span class="n">_parse_hibernating_line</span><span class="p">),</span>
+    <span class="s">&#39;allow_single_hop_exits&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">False</span><span class="p">,</span> <span class="n">_parse_allow_single_hop_exits_line</span><span class="p">),</span>
+    <span class="s">&#39;allow_tunneled_dir_requests&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">False</span><span class="p">,</span> <span class="n">_parse_tunneled_dir_server_line</span><span class="p">),</span>
+    <span class="s">&#39;extra_info_cache&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">False</span><span class="p">,</span> <span class="n">_parse_caches_extra_info_line</span><span class="p">),</span>
+    <span class="s">&#39;extra_info_digest&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_extrainfo_digest_line</span><span class="p">),</span>
+    <span class="s">&#39;hidden_service_dir&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_hidden_service_dir_line</span><span class="p">),</span>
+    <span class="s">&#39;eventdns&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_eventdns_line</span><span class="p">),</span>
+    <span class="s">&#39;ntor_onion_key&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_ntor_onion_key_line</span><span class="p">),</span>
+    <span class="s">&#39;or_addresses&#39;</span><span class="p">:</span> <span class="p">([],</span> <span class="n">_parse_or_address_line</span><span class="p">),</span>
+
+    <span class="s">&#39;read_history_end&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_read_history_line</span><span class="p">),</span>
+    <span class="s">&#39;read_history_interval&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_read_history_line</span><span class="p">),</span>
+    <span class="s">&#39;read_history_values&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_read_history_line</span><span class="p">),</span>
+
+    <span class="s">&#39;write_history_end&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_write_history_line</span><span class="p">),</span>
+    <span class="s">&#39;write_history_interval&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_write_history_line</span><span class="p">),</span>
+    <span class="s">&#39;write_history_values&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_write_history_line</span><span class="p">),</span>
+  <span class="p">}</span>
+
+  <span class="n">PARSER_FOR_LINE</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;router&#39;</span><span class="p">:</span> <span class="n">_parse_router_line</span><span class="p">,</span>
+    <span class="s">&#39;bandwidth&#39;</span><span class="p">:</span> <span class="n">_parse_bandwidth_line</span><span class="p">,</span>
+    <span class="s">&#39;platform&#39;</span><span class="p">:</span> <span class="n">_parse_platform_line</span><span class="p">,</span>
+    <span class="s">&#39;published&#39;</span><span class="p">:</span> <span class="n">_parse_published_line</span><span class="p">,</span>
+    <span class="s">&#39;fingerprint&#39;</span><span class="p">:</span> <span class="n">_parse_fingerprint_line</span><span class="p">,</span>
+    <span class="s">&#39;contact&#39;</span><span class="p">:</span> <span class="n">_parse_contact_line</span><span class="p">,</span>
+    <span class="s">&#39;hibernating&#39;</span><span class="p">:</span> <span class="n">_parse_hibernating_line</span><span class="p">,</span>
+    <span class="s">&#39;extra-info-digest&#39;</span><span class="p">:</span> <span class="n">_parse_extrainfo_digest_line</span><span class="p">,</span>
+    <span class="s">&#39;hidden-service-dir&#39;</span><span class="p">:</span> <span class="n">_parse_hidden_service_dir_line</span><span class="p">,</span>
+    <span class="s">&#39;uptime&#39;</span><span class="p">:</span> <span class="n">_parse_uptime_line</span><span class="p">,</span>
+    <span class="s">&#39;protocols&#39;</span><span class="p">:</span> <span class="n">_parse_protocols_line</span><span class="p">,</span>
+    <span class="s">&#39;ntor-onion-key&#39;</span><span class="p">:</span> <span class="n">_parse_ntor_onion_key_line</span><span class="p">,</span>
+    <span class="s">&#39;or-address&#39;</span><span class="p">:</span> <span class="n">_parse_or_address_line</span><span class="p">,</span>
+    <span class="s">&#39;read-history&#39;</span><span class="p">:</span> <span class="n">_parse_read_history_line</span><span class="p">,</span>
+    <span class="s">&#39;write-history&#39;</span><span class="p">:</span> <span class="n">_parse_write_history_line</span><span class="p">,</span>
+    <span class="s">&#39;ipv6-policy&#39;</span><span class="p">:</span> <span class="n">_parse_ipv6_policy_line</span><span class="p">,</span>
+    <span class="s">&#39;allow-single-hop-exits&#39;</span><span class="p">:</span> <span class="n">_parse_allow_single_hop_exits_line</span><span class="p">,</span>
+    <span class="s">&#39;tunnelled-dir-server&#39;</span><span class="p">:</span> <span class="n">_parse_tunneled_dir_server_line</span><span class="p">,</span>
+    <span class="s">&#39;caches-extra-info&#39;</span><span class="p">:</span> <span class="n">_parse_caches_extra_info_line</span><span class="p">,</span>
+    <span class="s">&#39;family&#39;</span><span class="p">:</span> <span class="n">_parse_family_line</span><span class="p">,</span>
+    <span class="s">&#39;eventdns&#39;</span><span class="p">:</span> <span class="n">_parse_eventdns_line</span><span class="p">,</span>
+  <span class="p">}</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_contents</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">annotations</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Server descriptor constructor, created from an individual relay&#39;s</span>
+<span class="sd">    descriptor content (as provided by &#39;GETINFO desc/*&#39;, cached descriptors,</span>
+<span class="sd">    and metrics).</span>
+
+<span class="sd">    By default this validates the descriptor&#39;s content as it&#39;s parsed. This</span>
+<span class="sd">    validation can be disables to either improve performance or be accepting of</span>
+<span class="sd">    malformed data.</span>
+
+<span class="sd">    :param str raw_contents: descriptor content provided by the relay</span>
+<span class="sd">    :param bool validate: checks the validity of the descriptor&#39;s content if</span>
+<span class="sd">      **True**, skips these checks otherwise</span>
+<span class="sd">    :param list annotations: lines that appeared prior to the descriptor</span>
+
+<span class="sd">    :raises: **ValueError** if the contents is malformed and validate is True</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nb">super</span><span class="p">(</span><span class="n">ServerDescriptor</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">raw_contents</span><span class="p">,</span> <span class="n">lazy_load</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">validate</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_annotation_lines</span> <span class="o">=</span> <span class="n">annotations</span> <span class="k">if</span> <span class="n">annotations</span> <span class="k">else</span> <span class="p">[]</span>
+
+    <span class="c"># A descriptor contains a series of &#39;keyword lines&#39; which are simply a</span>
+    <span class="c"># keyword followed by an optional value. Lines can also be followed by a</span>
+    <span class="c"># signature block.</span>
+    <span class="c">#</span>
+    <span class="c"># We care about the ordering of &#39;accept&#39; and &#39;reject&#39; entries because this</span>
+    <span class="c"># influences the resulting exit policy, but for everything else the order</span>
+    <span class="c"># does not matter so breaking it into key / value pairs.</span>
+
+    <span class="n">entries</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unparsed_exit_policy</span> <span class="o">=</span> <span class="n">_get_descriptor_components</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">raw_contents</span><span class="p">),</span> <span class="n">validate</span><span class="p">,</span> <span class="n">extra_keywords</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;accept&#39;</span><span class="p">,</span> <span class="s">&#39;reject&#39;</span><span class="p">),</span> <span class="n">non_ascii_fields</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;contact&#39;</span><span class="p">,</span> <span class="s">&#39;platform&#39;</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">validate</span><span class="p">)</span>
+
+      <span class="n">_parse_exit_policy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+
+      <span class="c"># if we have a negative uptime and a tor version that shouldn&#39;t exhibit</span>
+      <span class="c"># this bug then fail validation</span>
+
+      <span class="k">if</span> <span class="n">validate</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">uptime</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">tor_version</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">uptime</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">tor_version</span> <span class="o">&gt;=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Version</span><span class="p">(</span><span class="s">&#39;0.1.2.7&#39;</span><span class="p">):</span>
+          <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Descriptor for version &#39;</span><span class="si">%s</span><span class="s">&#39; had a negative uptime value: </span><span class="si">%i</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tor_version</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">uptime</span><span class="p">))</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">_check_constraints</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span> <span class="o">=</span> <span class="n">entries</span>
+
+<div class="viewcode-block" id="ServerDescriptor.digest"><a class="viewcode-back" href="../../../api/descriptor/server_descriptor.html#stem.descriptor.server_descriptor.ServerDescriptor.digest">[docs]</a>  <span class="k">def</span> <span class="nf">digest</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the hex encoded sha1 of our content. This value is part of the</span>
+<span class="sd">    network status entry for this relay.</span>
+
+<span class="sd">    :returns: **unicode** with the upper-case hex digest value for this server descriptor</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Unsupported Operation: this should be implemented by the ServerDescriptor subclass&#39;</span><span class="p">)</span>
+</div>
+  <span class="nd">@lru_cache</span><span class="p">()</span>
+<div class="viewcode-block" id="ServerDescriptor.get_annotations"><a class="viewcode-back" href="../../../api/descriptor/server_descriptor.html#stem.descriptor.server_descriptor.ServerDescriptor.get_annotations">[docs]</a>  <span class="k">def</span> <span class="nf">get_annotations</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides content that appeared prior to the descriptor. If this comes from</span>
+<span class="sd">    the cached-descriptors file then this commonly contains content like...</span>
+
+<span class="sd">    ::</span>
+
+<span class="sd">      @downloaded-at 2012-03-18 21:18:29</span>
+<span class="sd">      @source &quot;173.254.216.66&quot;</span>
+
+<span class="sd">    :returns: **dict** with the key/value pairs in our annotations</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">annotation_dict</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_annotation_lines</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">b</span><span class="s">&#39; &#39;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+        <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">b</span><span class="s">&#39; &#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">annotation_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">annotation_dict</span><span class="p">[</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">return</span> <span class="n">annotation_dict</span>
+</div>
+<div class="viewcode-block" id="ServerDescriptor.get_annotation_lines"><a class="viewcode-back" href="../../../api/descriptor/server_descriptor.html#stem.descriptor.server_descriptor.ServerDescriptor.get_annotation_lines">[docs]</a>  <span class="k">def</span> <span class="nf">get_annotation_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the lines of content that appeared prior to the descriptor. This</span>
+<span class="sd">    is the same as the</span>
+<span class="sd">    :func:`~stem.descriptor.server_descriptor.ServerDescriptor.get_annotations`</span>
+<span class="sd">    results, but with the unparsed lines and ordering retained.</span>
+
+<span class="sd">    :returns: **list** with the lines of annotation that came before this descriptor</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_annotation_lines</span>
+</div>
+  <span class="k">def</span> <span class="nf">_check_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Does a basic check that the entries conform to this descriptor type&#39;s</span>
+<span class="sd">    constraints.</span>
+
+<span class="sd">    :param dict entries: keyword =&gt; (value, pgp key) entries</span>
+
+<span class="sd">    :raises: **ValueError** if an issue arises in validation</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">for</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_required_fields</span><span class="p">():</span>
+      <span class="k">if</span> <span class="n">keyword</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Descriptor must have a &#39;</span><span class="si">%s</span><span class="s">&#39; entry&quot;</span> <span class="o">%</span> <span class="n">keyword</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_single_fields</span><span class="p">():</span>
+      <span class="k">if</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">entries</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">entries</span><span class="p">[</span><span class="n">keyword</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;The &#39;</span><span class="si">%s</span><span class="s">&#39; entry can only appear once in a descriptor&quot;</span> <span class="o">%</span> <span class="n">keyword</span><span class="p">)</span>
+
+    <span class="n">expected_first_keyword</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_first_keyword</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">expected_first_keyword</span> <span class="ow">and</span> <span class="n">expected_first_keyword</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">(</span><span class="n">entries</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Descriptor must start with a &#39;</span><span class="si">%s</span><span class="s">&#39; entry&quot;</span> <span class="o">%</span> <span class="n">expected_first_keyword</span><span class="p">)</span>
+
+    <span class="n">expected_last_keyword</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_keyword</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">expected_last_keyword</span> <span class="ow">and</span> <span class="n">expected_last_keyword</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">(</span><span class="n">entries</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Descriptor must end with a &#39;</span><span class="si">%s</span><span class="s">&#39; entry&quot;</span> <span class="o">%</span> <span class="n">expected_last_keyword</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">exit_policy</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Descriptor must have at least one &#39;accept&#39; or &#39;reject&#39; entry&quot;</span><span class="p">)</span>
+
+  <span class="c"># Constraints that the descriptor must meet to be valid. These can be None if</span>
+  <span class="c"># not applicable.</span>
+
+  <span class="k">def</span> <span class="nf">_required_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">REQUIRED_FIELDS</span>
+
+  <span class="k">def</span> <span class="nf">_single_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">REQUIRED_FIELDS</span> <span class="o">+</span> <span class="n">SINGLE_FIELDS</span>
+
+  <span class="k">def</span> <span class="nf">_first_keyword</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&#39;router&#39;</span>
+
+  <span class="k">def</span> <span class="nf">_last_keyword</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&#39;router-signature&#39;</span>
+
+</div>
+<div class="viewcode-block" id="RelayDescriptor"><a class="viewcode-back" href="../../../api/descriptor/server_descriptor.html#stem.descriptor.server_descriptor.RelayDescriptor">[docs]</a><span class="k">class</span> <span class="nc">RelayDescriptor</span><span class="p">(</span><span class="n">ServerDescriptor</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Server descriptor (`descriptor specification</span>
+<span class="sd">  &lt;https://gitweb.torproject.org/torspec.git/tree/dir-spec.txt&gt;`_)</span>
+
+<span class="sd">  :var str ed25519_certificate: base64 encoded ed25519 certificate</span>
+<span class="sd">  :var str ed25519_master_key: base64 encoded master key for our ed25519 certificate</span>
+<span class="sd">  :var str ed25519_signature: signature of this document using ed25519</span>
+
+<span class="sd">  :var str onion_key: **\*** key used to encrypt EXTEND cells</span>
+<span class="sd">  :var str onion_key_crosscert: signature generated using the onion_key</span>
+<span class="sd">  :var str ntor_onion_key_crosscert: signature generated using the ntor-onion-key</span>
+<span class="sd">  :var str ntor_onion_key_crosscert_sign: sign of the corresponding ed25519 public key</span>
+<span class="sd">  :var str signing_key: **\*** relay&#39;s long-term identity key</span>
+<span class="sd">  :var str signature: **\*** signature for this descriptor</span>
+
+<span class="sd">  **\*** attribute is required when we&#39;re parsed with validation</span>
+
+<span class="sd">  .. versionchanged:: 1.5.0</span>
+<span class="sd">     Added the ed25519_certificate, ed25519_master_key, ed25519_signature,</span>
+<span class="sd">     onion_key_crosscert, ntor_onion_key_crosscert, and</span>
+<span class="sd">     ntor_onion_key_crosscert_sign attributes.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">ATTRIBUTES</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ServerDescriptor</span><span class="o">.</span><span class="n">ATTRIBUTES</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span>
+    <span class="s">&#39;ed25519_certificate&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_identity_ed25519_line</span><span class="p">),</span>
+    <span class="s">&#39;ed25519_master_key&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_master_key_ed25519_line</span><span class="p">),</span>
+    <span class="s">&#39;ed25519_signature&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_router_sig_ed25519_line</span><span class="p">),</span>
+
+    <span class="s">&#39;onion_key&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_onion_key_line</span><span class="p">),</span>
+    <span class="s">&#39;onion_key_crosscert&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_onion_key_crosscert_line</span><span class="p">),</span>
+    <span class="s">&#39;ntor_onion_key_crosscert&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_ntor_onion_key_crosscert_line</span><span class="p">),</span>
+    <span class="s">&#39;ntor_onion_key_crosscert_sign&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_ntor_onion_key_crosscert_line</span><span class="p">),</span>
+    <span class="s">&#39;signing_key&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_signing_key_line</span><span class="p">),</span>
+    <span class="s">&#39;signature&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_router_signature_line</span><span class="p">),</span>
+  <span class="p">})</span>
+
+  <span class="n">PARSER_FOR_LINE</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ServerDescriptor</span><span class="o">.</span><span class="n">PARSER_FOR_LINE</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span>
+    <span class="s">&#39;identity-ed25519&#39;</span><span class="p">:</span> <span class="n">_parse_identity_ed25519_line</span><span class="p">,</span>
+    <span class="s">&#39;master-key-ed25519&#39;</span><span class="p">:</span> <span class="n">_parse_master_key_ed25519_line</span><span class="p">,</span>
+    <span class="s">&#39;router-sig-ed25519&#39;</span><span class="p">:</span> <span class="n">_parse_router_sig_ed25519_line</span><span class="p">,</span>
+    <span class="s">&#39;onion-key&#39;</span><span class="p">:</span> <span class="n">_parse_onion_key_line</span><span class="p">,</span>
+    <span class="s">&#39;onion-key-crosscert&#39;</span><span class="p">:</span> <span class="n">_parse_onion_key_crosscert_line</span><span class="p">,</span>
+    <span class="s">&#39;ntor-onion-key-crosscert&#39;</span><span class="p">:</span> <span class="n">_parse_ntor_onion_key_crosscert_line</span><span class="p">,</span>
+    <span class="s">&#39;signing-key&#39;</span><span class="p">:</span> <span class="n">_parse_signing_key_line</span><span class="p">,</span>
+    <span class="s">&#39;router-signature&#39;</span><span class="p">:</span> <span class="n">_parse_router_signature_line</span><span class="p">,</span>
+  <span class="p">})</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_contents</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">annotations</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">RelayDescriptor</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">raw_contents</span><span class="p">,</span> <span class="n">validate</span><span class="p">,</span> <span class="n">annotations</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fingerprint</span><span class="p">:</span>
+        <span class="n">key_hash</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha1</span><span class="p">(</span><span class="n">_bytes_for_block</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">signing_key</span><span class="p">))</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">key_hash</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fingerprint</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+          <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Fingerprint does not match the hash of our signing key (fingerprint: </span><span class="si">%s</span><span class="s">, signing key hash: </span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fingerprint</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="n">key_hash</span><span class="p">))</span>
+
+      <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">prereq</span><span class="o">.</span><span class="n">is_crypto_available</span><span class="p">():</span>
+        <span class="n">signed_digest</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_digest_for_signature</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">signing_key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">signature</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">signed_digest</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">digest</span><span class="p">():</span>
+          <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Decrypted digest does not match local digest (calculated: </span><span class="si">%s</span><span class="s">, local: </span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">signed_digest</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">digest</span><span class="p">()))</span>
+
+  <span class="nd">@lru_cache</span><span class="p">()</span>
+<div class="viewcode-block" id="RelayDescriptor.digest"><a class="viewcode-back" href="../../../api/descriptor/server_descriptor.html#stem.descriptor.server_descriptor.RelayDescriptor.digest">[docs]</a>  <span class="k">def</span> <span class="nf">digest</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the digest of our descriptor&#39;s content.</span>
+
+<span class="sd">    :returns: the digest string encoded in uppercase hex</span>
+
+<span class="sd">    :raises: ValueError if the digest canot be calculated</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_digest_for_content</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;router &#39;</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">router-signature</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+</div>
+  <span class="k">def</span> <span class="nf">_compare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">method</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">RelayDescriptor</span><span class="p">):</span>
+      <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="k">return</span> <span class="n">method</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="nb">str</span><span class="p">(</span><span class="n">other</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+  <span class="k">def</span> <span class="nf">_check_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">RelayDescriptor</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">_check_constraints</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ed25519_certificate</span><span class="p">:</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">onion_key_crosscert</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Descriptor must have a &#39;onion-key-crosscert&#39; when identity-ed25519 is present&quot;</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">ed25519_signature</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Descriptor must have a &#39;router-sig-ed25519&#39; when identity-ed25519 is present&quot;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+  <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">==</span> <span class="n">o</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span>
+
+  <span class="k">def</span> <span class="nf">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">&lt;</span> <span class="n">o</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__le__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">&lt;=</span> <span class="n">o</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="BridgeDescriptor"><a class="viewcode-back" href="../../../api/descriptor/server_descriptor.html#stem.descriptor.server_descriptor.BridgeDescriptor">[docs]</a><span class="k">class</span> <span class="nc">BridgeDescriptor</span><span class="p">(</span><span class="n">ServerDescriptor</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Bridge descriptor (`bridge descriptor specification</span>
+<span class="sd">  &lt;https://collector.torproject.org/formats.html#bridge-descriptors&gt;`_)</span>
+
+<span class="sd">  :var str ed25519_certificate_hash: sha256 hash of the original identity-ed25519</span>
+<span class="sd">  :var str router_digest_sha256: sha256 digest of this document</span>
+
+<span class="sd">  .. versionchanged:: 1.5.0</span>
+<span class="sd">     Added the ed25519_certificate_hash and router_digest_sha256 attributes.</span>
+<span class="sd">     Also added ntor_onion_key (previously this only belonged to unsanitized</span>
+<span class="sd">     descriptors).</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">ATTRIBUTES</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ServerDescriptor</span><span class="o">.</span><span class="n">ATTRIBUTES</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span>
+    <span class="s">&#39;ed25519_certificate_hash&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_master_key_ed25519_for_hash_line</span><span class="p">),</span>
+    <span class="s">&#39;router_digest_sha256&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_router_digest_sha256_line</span><span class="p">),</span>
+    <span class="s">&#39;_digest&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_router_digest_line</span><span class="p">),</span>
+  <span class="p">})</span>
+
+  <span class="n">PARSER_FOR_LINE</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ServerDescriptor</span><span class="o">.</span><span class="n">PARSER_FOR_LINE</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span>
+    <span class="s">&#39;master-key-ed25519&#39;</span><span class="p">:</span> <span class="n">_parse_master_key_ed25519_for_hash_line</span><span class="p">,</span>
+    <span class="s">&#39;router-digest-sha256&#39;</span><span class="p">:</span> <span class="n">_parse_router_digest_sha256_line</span><span class="p">,</span>
+    <span class="s">&#39;router-digest&#39;</span><span class="p">:</span> <span class="n">_parse_router_digest_line</span><span class="p">,</span>
+  <span class="p">})</span>
+
+<div class="viewcode-block" id="BridgeDescriptor.digest"><a class="viewcode-back" href="../../../api/descriptor/server_descriptor.html#stem.descriptor.server_descriptor.BridgeDescriptor.digest">[docs]</a>  <span class="k">def</span> <span class="nf">digest</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_digest</span>
+</div>
+<div class="viewcode-block" id="BridgeDescriptor.is_scrubbed"><a class="viewcode-back" href="../../../api/descriptor/server_descriptor.html#stem.descriptor.server_descriptor.BridgeDescriptor.is_scrubbed">[docs]</a>  <span class="k">def</span> <span class="nf">is_scrubbed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks if we&#39;ve been properly scrubbed in accordance with the `bridge</span>
+<span class="sd">    descriptor specification</span>
+<span class="sd">    &lt;https://collector.torproject.org/formats.html#bridge-descriptors&gt;`_.</span>
+<span class="sd">    Validation is a moving target so this may not be fully up to date.</span>
+
+<span class="sd">    :returns: **True** if we&#39;re scrubbed, **False** otherwise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_scrubbing_issues</span><span class="p">()</span> <span class="o">==</span> <span class="p">[]</span>
+</div>
+  <span class="nd">@lru_cache</span><span class="p">()</span>
+<div class="viewcode-block" id="BridgeDescriptor.get_scrubbing_issues"><a class="viewcode-back" href="../../../api/descriptor/server_descriptor.html#stem.descriptor.server_descriptor.BridgeDescriptor.get_scrubbing_issues">[docs]</a>  <span class="k">def</span> <span class="nf">get_scrubbing_issues</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides issues with our scrubbing.</span>
+
+<span class="sd">    :returns: **list** of strings which describe issues we have with our</span>
+<span class="sd">      scrubbing, this list is empty if we&#39;re properly scrubbed</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">issues</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;10.&#39;</span><span class="p">):</span>
+      <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Router line&#39;s address should be scrubbed to be &#39;10.x.x.x&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">contact</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">contact</span> <span class="o">!=</span> <span class="s">&#39;somebody&#39;</span><span class="p">:</span>
+      <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Contact line should be scrubbed to be &#39;somebody&#39;, but instead had &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">contact</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">address</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">is_ipv6</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">or_addresses</span><span class="p">:</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">is_ipv6</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">address</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;10.&#39;</span><span class="p">):</span>
+        <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;or-address line&#39;s address should be scrubbed to be &#39;10.x.x.x&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">address</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="n">is_ipv6</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">address</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;fd9f:2e19:3bcf::&#39;</span><span class="p">):</span>
+        <span class="c"># TODO: this check isn&#39;t quite right because we aren&#39;t checking that</span>
+        <span class="c"># the next grouping of hex digits contains 1-2 digits</span>
+        <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;or-address line&#39;s address should be scrubbed to be &#39;fd9f:2e19:3bcf::xx:xxxx&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">address</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_unrecognized_lines</span><span class="p">():</span>
+      <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;onion-key &#39;</span><span class="p">):</span>
+        <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Bridge descriptors should have their onion-key scrubbed: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">line</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;signing-key &#39;</span><span class="p">):</span>
+        <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Bridge descriptors should have their signing-key scrubbed: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">line</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;router-signature &#39;</span><span class="p">):</span>
+        <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Bridge descriptors should have their signature scrubbed: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">line</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">issues</span>
+</div>
+  <span class="k">def</span> <span class="nf">_required_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="c"># bridge required fields are the same as a relay descriptor, minus items</span>
+    <span class="c"># excluded according to the format page</span>
+
+    <span class="n">excluded_fields</span> <span class="o">=</span> <span class="p">[</span>
+      <span class="s">&#39;onion-key&#39;</span><span class="p">,</span>
+      <span class="s">&#39;signing-key&#39;</span><span class="p">,</span>
+      <span class="s">&#39;router-signature&#39;</span><span class="p">,</span>
+    <span class="p">]</span>
+
+    <span class="n">included_fields</span> <span class="o">=</span> <span class="p">[</span>
+      <span class="s">&#39;router-digest&#39;</span><span class="p">,</span>
+    <span class="p">]</span>
+
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">included_fields</span> <span class="o">+</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">REQUIRED_FIELDS</span> <span class="k">if</span> <span class="n">f</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">excluded_fields</span><span class="p">])</span>
+
+  <span class="k">def</span> <span class="nf">_single_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_required_fields</span><span class="p">()</span> <span class="o">+</span> <span class="n">SINGLE_FIELDS</span>
+
+  <span class="k">def</span> <span class="nf">_last_keyword</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">None</span>
+
+  <span class="k">def</span> <span class="nf">_compare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">method</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">BridgeDescriptor</span><span class="p">):</span>
+      <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="k">return</span> <span class="n">method</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="nb">str</span><span class="p">(</span><span class="n">other</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+  <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+  <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">==</span> <span class="n">o</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span>
+
+  <span class="k">def</span> <span class="nf">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">&lt;</span> <span class="n">o</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__le__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">&lt;=</span> <span class="n">o</span><span class="p">)</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

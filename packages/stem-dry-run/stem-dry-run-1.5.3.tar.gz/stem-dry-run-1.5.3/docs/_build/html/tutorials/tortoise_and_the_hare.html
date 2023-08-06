@@ -1,0 +1,303 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Tortoise and the Hare &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>Tortoise and the Hare</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="#">Event Listening</a></li>
+              <li><a href="over_the_river.html">Hidden Services</a></li>
+              <li><a href="mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="east_of_the_sun.html">Utilities</a></li>
+              <li><a href="down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../api.html">API</a>
+            <ul>
+              <li><a href="../api/control.html">stem.control</a></li>
+              <li><a href="../api/connection.html">stem.connection</a></li>
+              <li><a href="../api/socket.html">stem.socket</a></li>
+              <li><a href="../api/process.html">stem.process</a></li>
+              <li><a href="../api/response.html">stem.response</a></li>
+              <li><a href="../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../api/version.html">stem.version</a></li>
+              <li><a href="../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../faq.html">FAQ</a></li>
+              <li><a href="../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="tortoise-and-the-hare">
+<h1>Tortoise and the Hare<a class="headerlink" href="#tortoise-and-the-hare" title="Permalink to this headline">¶</a></h1>
+<p>Controllers have two methods of talking with Tor...</p>
+<ul class="simple">
+<li><strong>Synchronous</strong> - Most commonly you make a request to Tor then receive its
+reply. The <a class="reference internal" href="../api/control.html#stem.control.Controller.get_info" title="stem.control.Controller.get_info"><tt class="xref py py-func docutils literal"><span class="pre">get_info()</span></tt></a> calls in the <a class="reference external" href="the_little_relay_that_could.html">first
+tutorial</a> are an example of this.</li>
+<li><strong>Asynchronous</strong> - Controllers can subscribe to be notified when various
+kinds of events occur within Tor (see the <a class="reference internal" href="../api/control.html#stem.control.EventType" title="stem.control.EventType"><tt class="xref py py-data docutils literal"><span class="pre">EventType</span></tt></a>).
+Stem's users provide a callback function to
+<a class="reference internal" href="../api/control.html#stem.control.Controller.add_event_listener" title="stem.control.Controller.add_event_listener"><tt class="xref py py-func docutils literal"><span class="pre">add_event_listener()</span></tt></a> which is then notified
+when the event occurs.</li>
+</ul>
+<p>Try to avoid lengthy operations within event callbacks. They're notified by a
+single dedicated event thread, and blocking this thread will prevent the
+delivery of further events.</p>
+<p>With that out of the way lets see an example. The following is a <a class="reference external" href="https://docs.python.org/2/howto/curses.html">curses</a> application that graphs the
+bandwidth usage of Tor...</p>
+<img alt="../_images/bandwidth_graph_output.png" src="../_images/bandwidth_graph_output.png" />
+<p>To do this it listens to <strong>BW events</strong>
+(the class for which is a <a class="reference internal" href="../api/response.html#stem.response.events.BandwidthEvent" title="stem.response.events.BandwidthEvent"><tt class="xref py py-class docutils literal"><span class="pre">BandwidthEvent</span></tt></a>). These
+are events that Tor emits each second saying the number of bytes downloaded and
+uploaded.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">curses</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+
+<span class="kn">from</span> <span class="nn">stem.control</span> <span class="kn">import</span> <span class="n">EventType</span><span class="p">,</span> <span class="n">Controller</span>
+<span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">str_tools</span>
+
+<span class="c"># colors that curses can handle</span>
+
+<span class="n">COLOR_LIST</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="s">&quot;red&quot;</span><span class="p">:</span> <span class="n">curses</span><span class="o">.</span><span class="n">COLOR_RED</span><span class="p">,</span>
+  <span class="s">&quot;green&quot;</span><span class="p">:</span> <span class="n">curses</span><span class="o">.</span><span class="n">COLOR_GREEN</span><span class="p">,</span>
+  <span class="s">&quot;yellow&quot;</span><span class="p">:</span> <span class="n">curses</span><span class="o">.</span><span class="n">COLOR_YELLOW</span><span class="p">,</span>
+  <span class="s">&quot;blue&quot;</span><span class="p">:</span> <span class="n">curses</span><span class="o">.</span><span class="n">COLOR_BLUE</span><span class="p">,</span>
+  <span class="s">&quot;cyan&quot;</span><span class="p">:</span> <span class="n">curses</span><span class="o">.</span><span class="n">COLOR_CYAN</span><span class="p">,</span>
+  <span class="s">&quot;magenta&quot;</span><span class="p">:</span> <span class="n">curses</span><span class="o">.</span><span class="n">COLOR_MAGENTA</span><span class="p">,</span>
+  <span class="s">&quot;black&quot;</span><span class="p">:</span> <span class="n">curses</span><span class="o">.</span><span class="n">COLOR_BLACK</span><span class="p">,</span>
+  <span class="s">&quot;white&quot;</span><span class="p">:</span> <span class="n">curses</span><span class="o">.</span><span class="n">COLOR_WHITE</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">GRAPH_WIDTH</span> <span class="o">=</span> <span class="mi">40</span>
+<span class="n">GRAPH_HEIGHT</span> <span class="o">=</span> <span class="mi">8</span>
+
+<span class="n">DOWNLOAD_COLOR</span> <span class="o">=</span> <span class="s">&quot;green&quot;</span>
+<span class="n">UPLOAD_COLOR</span> <span class="o">=</span> <span class="s">&quot;blue&quot;</span>
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+  <span class="k">with</span> <span class="n">Controller</span><span class="o">.</span><span class="n">from_port</span><span class="p">(</span><span class="n">port</span> <span class="o">=</span> <span class="mi">9051</span><span class="p">)</span> <span class="k">as</span> <span class="n">controller</span><span class="p">:</span>
+    <span class="n">controller</span><span class="o">.</span><span class="n">authenticate</span><span class="p">()</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="c"># This makes curses initialize and call draw_bandwidth_graph() with a</span>
+      <span class="c"># reference to the screen, followed by additional arguments (in this</span>
+      <span class="c"># case just the controller).</span>
+
+      <span class="n">curses</span><span class="o">.</span><span class="n">wrapper</span><span class="p">(</span><span class="n">draw_bandwidth_graph</span><span class="p">,</span> <span class="n">controller</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+      <span class="k">pass</span>  <span class="c"># the user hit ctrl+c</span>
+
+<span class="k">def</span> <span class="nf">draw_bandwidth_graph</span><span class="p">(</span><span class="n">stdscr</span><span class="p">,</span> <span class="n">controller</span><span class="p">):</span>
+  <span class="n">window</span> <span class="o">=</span> <span class="n">Window</span><span class="p">(</span><span class="n">stdscr</span><span class="p">)</span>
+
+  <span class="c"># (downloaded, uploaded) tuples for the last 40 seconds</span>
+
+  <span class="n">bandwidth_rates</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)]</span> <span class="o">*</span> <span class="n">GRAPH_WIDTH</span>
+
+  <span class="c"># Making a partial that wraps the window and bandwidth_rates with a function</span>
+  <span class="c"># for Tor to call when it gets a BW event. This causes the &#39;window&#39; and</span>
+  <span class="c"># &#39;bandwidth_rates&#39; to be provided as the first two arguments whenever</span>
+  <span class="c"># &#39;bw_event_handler()&#39; is called.</span>
+
+  <span class="n">bw_event_handler</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_handle_bandwidth_event</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="n">bandwidth_rates</span><span class="p">)</span>
+
+<span class="hll">  <span class="c"># Registering this listener with Tor. Tor reports a BW event each second.</span>
+</span><span class="hll">
+</span><span class="hll">  <span class="n">controller</span><span class="o">.</span><span class="n">add_event_listener</span><span class="p">(</span><span class="n">bw_event_handler</span><span class="p">,</span> <span class="n">EventType</span><span class="o">.</span><span class="n">BW</span><span class="p">)</span>
+</span>
+  <span class="c"># Pause the main thread until the user hits any key... and no, don&#39;t you dare</span>
+  <span class="c"># ask where the &#39;any&#39; key is. :P</span>
+
+  <span class="n">stdscr</span><span class="o">.</span><span class="n">getch</span><span class="p">()</span>
+
+<span class="hll"><span class="k">def</span> <span class="nf">_handle_bandwidth_event</span><span class="p">(</span><span class="n">window</span><span class="p">,</span> <span class="n">bandwidth_rates</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+</span><span class="hll">  <span class="c"># callback for when tor provides us with a BW event</span>
+</span><span class="hll">
+</span><span class="hll">  <span class="n">bandwidth_rates</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">read</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">written</span><span class="p">))</span>
+</span><span class="hll">  <span class="n">bandwidth_rates</span> <span class="o">=</span> <span class="n">bandwidth_rates</span><span class="p">[:</span><span class="n">GRAPH_WIDTH</span><span class="p">]</span>  <span class="c"># truncate old values</span>
+</span><span class="hll">  <span class="n">_render_graph</span><span class="p">(</span><span class="n">window</span><span class="p">,</span> <span class="n">bandwidth_rates</span><span class="p">)</span>
+</span>
+<span class="k">def</span> <span class="nf">_render_graph</span><span class="p">(</span><span class="n">window</span><span class="p">,</span> <span class="n">bandwidth_rates</span><span class="p">):</span>
+  <span class="n">window</span><span class="o">.</span><span class="n">erase</span><span class="p">()</span>
+
+  <span class="n">download_rates</span> <span class="o">=</span> <span class="p">[</span><span class="n">entry</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">bandwidth_rates</span><span class="p">]</span>
+  <span class="n">upload_rates</span> <span class="o">=</span> <span class="p">[</span><span class="n">entry</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">bandwidth_rates</span><span class="p">]</span>
+
+  <span class="c"># show the latest values at the top</span>
+
+  <span class="n">label</span> <span class="o">=</span> <span class="s">&quot;Downloaded (</span><span class="si">%s</span><span class="s">/s):&quot;</span> <span class="o">%</span> <span class="n">str_tools</span><span class="o">.</span><span class="n">size_label</span><span class="p">(</span><span class="n">download_rates</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
+  <span class="n">window</span><span class="o">.</span><span class="n">addstr</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">DOWNLOAD_COLOR</span><span class="p">,</span> <span class="n">curses</span><span class="o">.</span><span class="n">A_BOLD</span><span class="p">)</span>
+
+  <span class="n">label</span> <span class="o">=</span> <span class="s">&quot;Uploaded (</span><span class="si">%s</span><span class="s">/s):&quot;</span> <span class="o">%</span> <span class="n">str_tools</span><span class="o">.</span><span class="n">size_label</span><span class="p">(</span><span class="n">upload_rates</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
+  <span class="n">window</span><span class="o">.</span><span class="n">addstr</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">GRAPH_WIDTH</span> <span class="o">+</span> <span class="mi">7</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">UPLOAD_COLOR</span><span class="p">,</span> <span class="n">curses</span><span class="o">.</span><span class="n">A_BOLD</span><span class="p">)</span>
+
+  <span class="c"># draw the graph bounds in KB</span>
+
+  <span class="n">max_download_rate</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">download_rates</span><span class="p">)</span>
+  <span class="n">max_upload_rate</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">upload_rates</span><span class="p">)</span>
+
+  <span class="n">window</span><span class="o">.</span><span class="n">addstr</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&quot;</span><span class="si">%4i</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">max_download_rate</span> <span class="o">/</span> <span class="mi">1024</span><span class="p">),</span> <span class="n">DOWNLOAD_COLOR</span><span class="p">)</span>
+  <span class="n">window</span><span class="o">.</span><span class="n">addstr</span><span class="p">(</span><span class="n">GRAPH_HEIGHT</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&quot;   0&quot;</span><span class="p">,</span> <span class="n">DOWNLOAD_COLOR</span><span class="p">)</span>
+
+  <span class="n">window</span><span class="o">.</span><span class="n">addstr</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">GRAPH_WIDTH</span> <span class="o">+</span> <span class="mi">7</span><span class="p">,</span> <span class="s">&quot;</span><span class="si">%4i</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">max_upload_rate</span> <span class="o">/</span> <span class="mi">1024</span><span class="p">),</span> <span class="n">UPLOAD_COLOR</span><span class="p">)</span>
+  <span class="n">window</span><span class="o">.</span><span class="n">addstr</span><span class="p">(</span><span class="n">GRAPH_HEIGHT</span><span class="p">,</span> <span class="n">GRAPH_WIDTH</span> <span class="o">+</span> <span class="mi">7</span><span class="p">,</span> <span class="s">&quot;   0&quot;</span><span class="p">,</span> <span class="n">UPLOAD_COLOR</span><span class="p">)</span>
+
+  <span class="c"># draw the graph</span>
+
+  <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">GRAPH_WIDTH</span><span class="p">):</span>
+    <span class="n">col_height</span> <span class="o">=</span> <span class="n">GRAPH_HEIGHT</span> <span class="o">*</span> <span class="n">download_rates</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">max_download_rate</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">col_height</span><span class="p">):</span>
+      <span class="n">window</span><span class="o">.</span><span class="n">addstr</span><span class="p">(</span><span class="n">GRAPH_HEIGHT</span> <span class="o">-</span> <span class="n">row</span><span class="p">,</span> <span class="n">col</span> <span class="o">+</span> <span class="mi">6</span><span class="p">,</span> <span class="s">&quot; &quot;</span><span class="p">,</span> <span class="n">DOWNLOAD_COLOR</span><span class="p">,</span> <span class="n">curses</span><span class="o">.</span><span class="n">A_STANDOUT</span><span class="p">)</span>
+
+    <span class="n">col_height</span> <span class="o">=</span> <span class="n">GRAPH_HEIGHT</span> <span class="o">*</span> <span class="n">upload_rates</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">max_upload_rate</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">col_height</span><span class="p">):</span>
+      <span class="n">window</span><span class="o">.</span><span class="n">addstr</span><span class="p">(</span><span class="n">GRAPH_HEIGHT</span> <span class="o">-</span> <span class="n">row</span><span class="p">,</span> <span class="n">col</span> <span class="o">+</span> <span class="n">GRAPH_WIDTH</span> <span class="o">+</span> <span class="mi">12</span><span class="p">,</span> <span class="s">&quot; &quot;</span><span class="p">,</span> <span class="n">UPLOAD_COLOR</span><span class="p">,</span> <span class="n">curses</span><span class="o">.</span><span class="n">A_STANDOUT</span><span class="p">)</span>
+
+  <span class="n">window</span><span class="o">.</span><span class="n">refresh</span><span class="p">()</span>
+
+<span class="k">class</span> <span class="nc">Window</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Simple wrapper for the curses standard screen object.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stdscr</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_stdscr</span> <span class="o">=</span> <span class="n">stdscr</span>
+
+    <span class="c"># Mappings of names to the curses color attribute. Initially these all</span>
+    <span class="c"># reference black text, but if the terminal can handle color then</span>
+    <span class="c"># they&#39;re set with that foreground color.</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_colors</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">color</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">color</span> <span class="ow">in</span> <span class="n">COLOR_LIST</span><span class="p">])</span>
+
+    <span class="c"># allows for background transparency</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">curses</span><span class="o">.</span><span class="n">use_default_colors</span><span class="p">()</span>
+    <span class="k">except</span> <span class="n">curses</span><span class="o">.</span><span class="n">error</span><span class="p">:</span>
+      <span class="k">pass</span>
+
+    <span class="c"># makes the cursor invisible</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">curses</span><span class="o">.</span><span class="n">curs_set</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">curses</span><span class="o">.</span><span class="n">error</span><span class="p">:</span>
+      <span class="k">pass</span>
+
+    <span class="c"># initializes colors if the terminal can handle them</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">curses</span><span class="o">.</span><span class="n">has_colors</span><span class="p">():</span>
+        <span class="n">color_pair</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">foreground</span> <span class="ow">in</span> <span class="n">COLOR_LIST</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+          <span class="n">background</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>  <span class="c"># allows for default (possibly transparent) background</span>
+          <span class="n">curses</span><span class="o">.</span><span class="n">init_pair</span><span class="p">(</span><span class="n">color_pair</span><span class="p">,</span> <span class="n">foreground</span><span class="p">,</span> <span class="n">background</span><span class="p">)</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_colors</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">curses</span><span class="o">.</span><span class="n">color_pair</span><span class="p">(</span><span class="n">color_pair</span><span class="p">)</span>
+          <span class="n">color_pair</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">except</span> <span class="n">curses</span><span class="o">.</span><span class="n">error</span><span class="p">:</span>
+      <span class="k">pass</span>
+
+  <span class="k">def</span> <span class="nf">addstr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">attr</span> <span class="o">=</span> <span class="n">curses</span><span class="o">.</span><span class="n">A_NORMAL</span><span class="p">):</span>
+    <span class="c"># Curses throws an error if we try to draw a message that spans out of the</span>
+    <span class="c"># window&#39;s bounds (... seriously?), so doing our best to avoid that.</span>
+
+    <span class="k">if</span> <span class="n">color</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">color</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_colors</span><span class="p">:</span>
+        <span class="n">recognized_colors</span> <span class="o">=</span> <span class="s">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_colors</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;The &#39;</span><span class="si">%s</span><span class="s">&#39; color isn&#39;t recognized: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">color</span><span class="p">,</span> <span class="n">recognized_colors</span><span class="p">))</span>
+
+      <span class="n">attr</span> <span class="o">|=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_colors</span><span class="p">[</span><span class="n">color</span><span class="p">]</span>
+
+    <span class="n">max_y</span><span class="p">,</span> <span class="n">max_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stdscr</span><span class="o">.</span><span class="n">getmaxyx</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">max_x</span> <span class="o">&gt;</span> <span class="n">x</span> <span class="ow">and</span> <span class="n">max_y</span> <span class="o">&gt;</span> <span class="n">y</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stdscr</span><span class="o">.</span><span class="n">addstr</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">msg</span><span class="p">[:</span><span class="n">max_x</span> <span class="o">-</span> <span class="n">x</span><span class="p">],</span> <span class="n">attr</span><span class="p">)</span>
+      <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>  <span class="c"># maybe an edge case while resizing the window</span>
+
+  <span class="k">def</span> <span class="nf">erase</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_stdscr</span><span class="o">.</span><span class="n">erase</span><span class="p">()</span>
+
+  <span class="k">def</span> <span class="nf">refresh</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_stdscr</span><span class="o">.</span><span class="n">refresh</span><span class="p">()</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+  <span class="n">main</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

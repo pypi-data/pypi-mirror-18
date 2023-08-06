@@ -1,0 +1,510 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.descriptor.hidden_service_descriptor &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem" href="../../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.descriptor.hidden_service_descriptor</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.descriptor.hidden_service_descriptor</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2015-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Parsing for Tor hidden service descriptors as described in Tor&#39;s `rend-spec</span>
+<span class="sd">&lt;https://gitweb.torproject.org/torspec.git/tree/rend-spec.txt&gt;`_.</span>
+
+<span class="sd">Unlike other descriptor types these describe a hidden service rather than a</span>
+<span class="sd">relay. They&#39;re created by the service, and can only be fetched via relays with</span>
+<span class="sd">the HSDir flag.</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  HiddenServiceDescriptor - Tor hidden service descriptor.</span>
+
+<span class="sd">.. versionadded:: 1.4.0</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c"># TODO: Add a description for how to retrieve them when tor supports that</span>
+<span class="c"># (#14847) and then update #15009.</span>
+
+<span class="kn">import</span> <span class="nn">base64</span>
+<span class="kn">import</span> <span class="nn">binascii</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">hashlib</span>
+<span class="kn">import</span> <span class="nn">io</span>
+
+<span class="kn">import</span> <span class="nn">stem.util.connection</span>
+<span class="kn">import</span> <span class="nn">stem.util.str_tools</span>
+
+<span class="kn">from</span> <span class="nn">stem.descriptor</span> <span class="kn">import</span> <span class="p">(</span>
+  <span class="n">PGP_BLOCK_END</span><span class="p">,</span>
+  <span class="n">Descriptor</span><span class="p">,</span>
+  <span class="n">_get_descriptor_components</span><span class="p">,</span>
+  <span class="n">_read_until_keywords</span><span class="p">,</span>
+  <span class="n">_bytes_for_block</span><span class="p">,</span>
+  <span class="n">_value</span><span class="p">,</span>
+  <span class="n">_parse_simple_line</span><span class="p">,</span>
+  <span class="n">_parse_timestamp_line</span><span class="p">,</span>
+  <span class="n">_parse_key_block</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="c"># added in python 3.2</span>
+  <span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">lru_cache</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+  <span class="kn">from</span> <span class="nn">stem.util.lru_cache</span> <span class="kn">import</span> <span class="n">lru_cache</span>
+
+<span class="n">REQUIRED_FIELDS</span> <span class="o">=</span> <span class="p">(</span>
+  <span class="s">&#39;rendezvous-service-descriptor&#39;</span><span class="p">,</span>
+  <span class="s">&#39;version&#39;</span><span class="p">,</span>
+  <span class="s">&#39;permanent-key&#39;</span><span class="p">,</span>
+  <span class="s">&#39;secret-id-part&#39;</span><span class="p">,</span>
+  <span class="s">&#39;publication-time&#39;</span><span class="p">,</span>
+  <span class="s">&#39;protocol-versions&#39;</span><span class="p">,</span>
+  <span class="s">&#39;signature&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">INTRODUCTION_POINTS_ATTR</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="s">&#39;identifier&#39;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span>
+  <span class="s">&#39;address&#39;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span>
+  <span class="s">&#39;port&#39;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span>
+  <span class="s">&#39;onion_key&#39;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span>
+  <span class="s">&#39;service_key&#39;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span>
+  <span class="s">&#39;intro_authentication&#39;</span><span class="p">:</span> <span class="p">[],</span>
+<span class="p">}</span>
+
+<span class="c"># introduction-point fields that can only appear once</span>
+
+<span class="n">SINGLE_INTRODUCTION_POINT_FIELDS</span> <span class="o">=</span> <span class="p">[</span>
+  <span class="s">&#39;introduction-point&#39;</span><span class="p">,</span>
+  <span class="s">&#39;ip-address&#39;</span><span class="p">,</span>
+  <span class="s">&#39;onion-port&#39;</span><span class="p">,</span>
+  <span class="s">&#39;onion-key&#39;</span><span class="p">,</span>
+  <span class="s">&#39;service-key&#39;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="n">BASIC_AUTH</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">STEALTH_AUTH</span> <span class="o">=</span> <span class="mi">2</span>
+
+
+<div class="viewcode-block" id="IntroductionPoints"><a class="viewcode-back" href="../../../api/descriptor/hidden_service_descriptor.html#stem.descriptor.hidden_service_descriptor.IntroductionPoints">[docs]</a><span class="k">class</span> <span class="nc">IntroductionPoints</span><span class="p">(</span><span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s">&#39;IntroductionPoints&#39;</span><span class="p">,</span> <span class="n">INTRODUCTION_POINTS_ATTR</span><span class="o">.</span><span class="n">keys</span><span class="p">())):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  :var str identifier: hash of this introduction point&#39;s identity key</span>
+<span class="sd">  :var str address: address of this introduction point</span>
+<span class="sd">  :var int port: port where this introduction point is listening</span>
+<span class="sd">  :var str onion_key: public key for communicating with this introduction point</span>
+<span class="sd">  :var str service_key: public key for communicating with this hidden service</span>
+<span class="sd">  :var list intro_authentication: tuples of the form (auth_type, auth_data) for</span>
+<span class="sd">    establishing a connection</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+</div>
+<div class="viewcode-block" id="DecryptionFailure"><a class="viewcode-back" href="../../../api/descriptor/hidden_service_descriptor.html#stem.descriptor.hidden_service_descriptor.DecryptionFailure">[docs]</a><span class="k">class</span> <span class="nc">DecryptionFailure</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Failure to decrypt the hidden service descriptor&#39;s introduction-points.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Iterates over the hidden service descriptors in a file.</span>
+
+<span class="sd">  :param file descriptor_file: file with descriptor content</span>
+<span class="sd">  :param bool validate: checks the validity of the descriptor&#39;s content if</span>
+<span class="sd">    **True**, skips these checks otherwise</span>
+<span class="sd">  :param dict kwargs: additional arguments for the descriptor constructor</span>
+
+<span class="sd">  :returns: iterator for :class:`~stem.descriptor.hidden_service_descriptor.HiddenServiceDescriptor`</span>
+<span class="sd">    instances in the file</span>
+
+<span class="sd">  :raises:</span>
+<span class="sd">    * **ValueError** if the contents is malformed and validate is **True**</span>
+<span class="sd">    * **IOError** if the file can&#39;t be read</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+    <span class="n">descriptor_content</span> <span class="o">=</span> <span class="n">_read_until_keywords</span><span class="p">(</span><span class="s">&#39;signature&#39;</span><span class="p">,</span> <span class="n">descriptor_file</span><span class="p">)</span>
+
+    <span class="c"># we&#39;ve reached the &#39;signature&#39;, now include the pgp style block</span>
+    <span class="n">block_end_prefix</span> <span class="o">=</span> <span class="n">PGP_BLOCK_END</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">descriptor_content</span> <span class="o">+=</span> <span class="n">_read_until_keywords</span><span class="p">(</span><span class="n">block_end_prefix</span><span class="p">,</span> <span class="n">descriptor_file</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">descriptor_content</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">descriptor_content</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;@type&#39;</span><span class="p">):</span>
+        <span class="n">descriptor_content</span> <span class="o">=</span> <span class="n">descriptor_content</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+      <span class="k">yield</span> <span class="n">HiddenServiceDescriptor</span><span class="p">(</span><span class="nb">bytes</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">descriptor_content</span><span class="p">),</span> <span class="n">validate</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">break</span>  <span class="c"># done parsing file</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_version_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;version&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+    <span class="n">descriptor</span><span class="o">.</span><span class="n">version</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;version line must have a positive integer value: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_protocol_versions_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;protocol-versions&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">versions</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">)]</span>
+  <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;protocol-versions line has non-numeric versoins: protocol-versions </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+
+  <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">versions</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;protocol-versions must be positive integers: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">protocol_versions</span> <span class="o">=</span> <span class="n">versions</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_introduction_points_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="n">_</span><span class="p">,</span> <span class="n">block_type</span><span class="p">,</span> <span class="n">block_contents</span> <span class="o">=</span> <span class="n">entries</span><span class="p">[</span><span class="s">&#39;introduction-points&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">block_contents</span> <span class="ow">or</span> <span class="n">block_type</span> <span class="o">!=</span> <span class="s">&#39;MESSAGE&#39;</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;introduction-points&#39; should be followed by a MESSAGE block, but was a </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">block_type</span><span class="p">)</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">introduction_points_encoded</span> <span class="o">=</span> <span class="n">block_contents</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">introduction_points_auth</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c"># field was never implemented in tor (#15190)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">descriptor</span><span class="o">.</span><span class="n">introduction_points_content</span> <span class="o">=</span> <span class="n">_bytes_for_block</span><span class="p">(</span><span class="n">block_contents</span><span class="p">)</span>
+  <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;introduction-points&#39; isn&#39;t base64 encoded content:</span><span class="se">\n</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">block_contents</span><span class="p">)</span>
+
+<span class="n">_parse_rendezvous_service_descriptor_line</span> <span class="o">=</span> <span class="n">_parse_simple_line</span><span class="p">(</span><span class="s">&#39;rendezvous-service-descriptor&#39;</span><span class="p">,</span> <span class="s">&#39;descriptor_id&#39;</span><span class="p">)</span>
+<span class="n">_parse_permanent_key_line</span> <span class="o">=</span> <span class="n">_parse_key_block</span><span class="p">(</span><span class="s">&#39;permanent-key&#39;</span><span class="p">,</span> <span class="s">&#39;permanent_key&#39;</span><span class="p">,</span> <span class="s">&#39;RSA PUBLIC KEY&#39;</span><span class="p">)</span>
+<span class="n">_parse_secret_id_part_line</span> <span class="o">=</span> <span class="n">_parse_simple_line</span><span class="p">(</span><span class="s">&#39;secret-id-part&#39;</span><span class="p">,</span> <span class="s">&#39;secret_id_part&#39;</span><span class="p">)</span>
+<span class="n">_parse_publication_time_line</span> <span class="o">=</span> <span class="n">_parse_timestamp_line</span><span class="p">(</span><span class="s">&#39;publication-time&#39;</span><span class="p">,</span> <span class="s">&#39;published&#39;</span><span class="p">)</span>
+<span class="n">_parse_signature_line</span> <span class="o">=</span> <span class="n">_parse_key_block</span><span class="p">(</span><span class="s">&#39;signature&#39;</span><span class="p">,</span> <span class="s">&#39;signature&#39;</span><span class="p">,</span> <span class="s">&#39;SIGNATURE&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="HiddenServiceDescriptor"><a class="viewcode-back" href="../../../api/descriptor/hidden_service_descriptor.html#stem.descriptor.hidden_service_descriptor.HiddenServiceDescriptor">[docs]</a><span class="k">class</span> <span class="nc">HiddenServiceDescriptor</span><span class="p">(</span><span class="n">Descriptor</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Hidden service descriptor.</span>
+
+<span class="sd">  :var str descriptor_id: **\*** identifier for this descriptor, this is a base32 hash of several fields</span>
+<span class="sd">  :var int version: **\*** hidden service descriptor version</span>
+<span class="sd">  :var str permanent_key: **\*** long term key of the hidden service</span>
+<span class="sd">  :var str secret_id_part: **\*** hash of the time period, cookie, and replica</span>
+<span class="sd">    values so our descriptor_id can be validated</span>
+<span class="sd">  :var datetime published: **\*** time in UTC when this descriptor was made</span>
+<span class="sd">  :var list protocol_versions: **\*** list of **int** versions that are supported when establishing a connection</span>
+<span class="sd">  :var str introduction_points_encoded: raw introduction points blob</span>
+<span class="sd">  :var list introduction_points_auth: **\*** tuples of the form</span>
+<span class="sd">    (auth_method, auth_data) for our introduction_points_content</span>
+<span class="sd">    (**deprecated**, always **[]**)</span>
+<span class="sd">  :var bytes introduction_points_content: decoded introduction-points content</span>
+<span class="sd">    without authentication data, if using cookie authentication this is</span>
+<span class="sd">    encrypted</span>
+<span class="sd">  :var str signature: signature of the descriptor content</span>
+
+<span class="sd">  **\*** attribute is either required when we&#39;re parsed with validation or has</span>
+<span class="sd">  a default value, others are left as **None** if undefined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">ATTRIBUTES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;descriptor_id&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_rendezvous_service_descriptor_line</span><span class="p">),</span>
+    <span class="s">&#39;version&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_version_line</span><span class="p">),</span>
+    <span class="s">&#39;permanent_key&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_permanent_key_line</span><span class="p">),</span>
+    <span class="s">&#39;secret_id_part&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_secret_id_part_line</span><span class="p">),</span>
+    <span class="s">&#39;published&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_publication_time_line</span><span class="p">),</span>
+    <span class="s">&#39;protocol_versions&#39;</span><span class="p">:</span> <span class="p">([],</span> <span class="n">_parse_protocol_versions_line</span><span class="p">),</span>
+    <span class="s">&#39;introduction_points_encoded&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_introduction_points_line</span><span class="p">),</span>
+    <span class="s">&#39;introduction_points_auth&#39;</span><span class="p">:</span> <span class="p">([],</span> <span class="n">_parse_introduction_points_line</span><span class="p">),</span>
+    <span class="s">&#39;introduction_points_content&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_introduction_points_line</span><span class="p">),</span>
+    <span class="s">&#39;signature&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_signature_line</span><span class="p">),</span>
+  <span class="p">}</span>
+
+  <span class="n">PARSER_FOR_LINE</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;rendezvous-service-descriptor&#39;</span><span class="p">:</span> <span class="n">_parse_rendezvous_service_descriptor_line</span><span class="p">,</span>
+    <span class="s">&#39;version&#39;</span><span class="p">:</span> <span class="n">_parse_version_line</span><span class="p">,</span>
+    <span class="s">&#39;permanent-key&#39;</span><span class="p">:</span> <span class="n">_parse_permanent_key_line</span><span class="p">,</span>
+    <span class="s">&#39;secret-id-part&#39;</span><span class="p">:</span> <span class="n">_parse_secret_id_part_line</span><span class="p">,</span>
+    <span class="s">&#39;publication-time&#39;</span><span class="p">:</span> <span class="n">_parse_publication_time_line</span><span class="p">,</span>
+    <span class="s">&#39;protocol-versions&#39;</span><span class="p">:</span> <span class="n">_parse_protocol_versions_line</span><span class="p">,</span>
+    <span class="s">&#39;introduction-points&#39;</span><span class="p">:</span> <span class="n">_parse_introduction_points_line</span><span class="p">,</span>
+    <span class="s">&#39;signature&#39;</span><span class="p">:</span> <span class="n">_parse_signature_line</span><span class="p">,</span>
+  <span class="p">}</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_contents</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">HiddenServiceDescriptor</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">raw_contents</span><span class="p">,</span> <span class="n">lazy_load</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">validate</span><span class="p">)</span>
+    <span class="n">entries</span> <span class="o">=</span> <span class="n">_get_descriptor_components</span><span class="p">(</span><span class="n">raw_contents</span><span class="p">,</span> <span class="n">validate</span><span class="p">,</span> <span class="n">non_ascii_fields</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;introduction-points&#39;</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
+      <span class="k">for</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">REQUIRED_FIELDS</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">keyword</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Hidden service descriptor must have a &#39;</span><span class="si">%s</span><span class="s">&#39; entry&quot;</span> <span class="o">%</span> <span class="n">keyword</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">entries</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">entries</span><span class="p">[</span><span class="n">keyword</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;The &#39;</span><span class="si">%s</span><span class="s">&#39; entry can only appear once in a hidden service descriptor&quot;</span> <span class="o">%</span> <span class="n">keyword</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="s">&#39;rendezvous-service-descriptor&#39;</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">(</span><span class="n">entries</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Hidden service descriptor must start with a &#39;rendezvous-service-descriptor&#39; entry&quot;</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="s">&#39;signature&#39;</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">(</span><span class="n">entries</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Hidden service descriptor must end with a &#39;signature&#39; entry&quot;</span><span class="p">)</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">validate</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">prereq</span><span class="o">.</span><span class="n">is_crypto_available</span><span class="p">():</span>
+        <span class="n">signed_digest</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_digest_for_signature</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">permanent_key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">signature</span><span class="p">)</span>
+        <span class="n">content_digest</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_digest_for_content</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;rendezvous-service-descriptor &#39;</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">signature</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">signed_digest</span> <span class="o">!=</span> <span class="n">content_digest</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Decrypted digest does not match local digest (calculated: </span><span class="si">%s</span><span class="s">, local: </span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">signed_digest</span><span class="p">,</span> <span class="n">content_digest</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span> <span class="o">=</span> <span class="n">entries</span>
+
+  <span class="nd">@lru_cache</span><span class="p">()</span>
+<div class="viewcode-block" id="HiddenServiceDescriptor.introduction_points"><a class="viewcode-back" href="../../../api/descriptor/hidden_service_descriptor.html#stem.descriptor.hidden_service_descriptor.HiddenServiceDescriptor.introduction_points">[docs]</a>  <span class="k">def</span> <span class="nf">introduction_points</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">authentication_cookie</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provided this service&#39;s introduction points.</span>
+
+<span class="sd">    :returns: **list** of :class:`~stem.descriptor.hidden_service_descriptor.IntroductionPoints`</span>
+
+<span class="sd">    :raises:</span>
+<span class="sd">      * **ValueError** if the our introduction-points is malformed</span>
+<span class="sd">      * **DecryptionFailure** if unable to decrypt this field</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">introduction_points_content</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">content</span><span class="p">:</span>
+      <span class="k">return</span> <span class="p">[]</span>
+    <span class="k">elif</span> <span class="n">authentication_cookie</span><span class="p">:</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">prereq</span><span class="o">.</span><span class="n">is_crypto_available</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="n">DecryptionFailure</span><span class="p">(</span><span class="s">&#39;Decrypting introduction-points requires pycrypto&#39;</span><span class="p">)</span>
+
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">missing_padding</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">authentication_cookie</span><span class="p">)</span> <span class="o">%</span> <span class="mi">4</span>
+        <span class="n">authentication_cookie</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_bytes</span><span class="p">(</span><span class="n">authentication_cookie</span><span class="p">)</span> <span class="o">+</span> <span class="n">b</span><span class="s">&#39;=&#39;</span> <span class="o">*</span> <span class="n">missing_padding</span><span class="p">)</span>
+      <span class="k">except</span> <span class="ne">TypeError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">DecryptionFailure</span><span class="p">(</span><span class="s">&#39;authentication_cookie must be a base64 encoded string (</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="n">exc</span><span class="p">)</span>
+
+      <span class="n">authentication_type</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">binascii</span><span class="o">.</span><span class="n">hexlify</span><span class="p">(</span><span class="n">content</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">1</span><span class="p">]),</span> <span class="mi">16</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">authentication_type</span> <span class="o">==</span> <span class="n">BASIC_AUTH</span><span class="p">:</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">HiddenServiceDescriptor</span><span class="o">.</span><span class="n">_decrypt_basic_auth</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">authentication_cookie</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="n">authentication_type</span> <span class="o">==</span> <span class="n">STEALTH_AUTH</span><span class="p">:</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">HiddenServiceDescriptor</span><span class="o">.</span><span class="n">_decrypt_stealth_auth</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">authentication_cookie</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">DecryptionFailure</span><span class="p">(</span><span class="s">&quot;Unrecognized authentication type &#39;</span><span class="si">%s</span><span class="s">&#39;, currently we only support basic auth (</span><span class="si">%s</span><span class="s">) and stealth auth (</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">authentication_type</span><span class="p">,</span> <span class="n">BASIC_AUTH</span><span class="p">,</span> <span class="n">STEALTH_AUTH</span><span class="p">))</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">content</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;introduction-point &#39;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">DecryptionFailure</span><span class="p">(</span><span class="s">&#39;Unable to decrypt the introduction-points, maybe this is the wrong key?&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">content</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;introduction-point &#39;</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="n">DecryptionFailure</span><span class="p">(</span><span class="s">&#39;introduction-points content is encrypted, you need to provide its authentication_cookie&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">HiddenServiceDescriptor</span><span class="o">.</span><span class="n">_parse_introduction_points</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+</div>
+  <span class="nd">@staticmethod</span>
+  <span class="k">def</span> <span class="nf">_decrypt_basic_auth</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">authentication_cookie</span><span class="p">):</span>
+    <span class="kn">from</span> <span class="nn">Crypto.Cipher</span> <span class="kn">import</span> <span class="n">AES</span>
+    <span class="kn">from</span> <span class="nn">Crypto.Util</span> <span class="kn">import</span> <span class="n">Counter</span>
+    <span class="kn">from</span> <span class="nn">Crypto.Util.number</span> <span class="kn">import</span> <span class="n">bytes_to_long</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">client_blocks</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">binascii</span><span class="o">.</span><span class="n">hexlify</span><span class="p">(</span><span class="n">content</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">2</span><span class="p">]),</span> <span class="mi">16</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">DecryptionFailure</span><span class="p">(</span><span class="s">&quot;When using basic auth the content should start with a number of blocks but wasn&#39;t a hex digit: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">binascii</span><span class="o">.</span><span class="n">hexlify</span><span class="p">(</span><span class="n">content</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">2</span><span class="p">]))</span>
+
+    <span class="c"># parse the client id and encrypted session keys</span>
+
+    <span class="n">client_entries_length</span> <span class="o">=</span> <span class="n">client_blocks</span> <span class="o">*</span> <span class="mi">16</span> <span class="o">*</span> <span class="mi">20</span>
+    <span class="n">client_entries</span> <span class="o">=</span> <span class="n">content</span><span class="p">[</span><span class="mi">2</span><span class="p">:</span><span class="mi">2</span> <span class="o">+</span> <span class="n">client_entries_length</span><span class="p">]</span>
+    <span class="n">client_keys</span> <span class="o">=</span> <span class="p">[(</span><span class="n">client_entries</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="mi">4</span><span class="p">],</span> <span class="n">client_entries</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">4</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="mi">20</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">client_entries_length</span><span class="p">,</span> <span class="mi">4</span> <span class="o">+</span> <span class="mi">16</span><span class="p">)]</span>
+
+    <span class="n">iv</span> <span class="o">=</span> <span class="n">content</span><span class="p">[</span><span class="mi">2</span> <span class="o">+</span> <span class="n">client_entries_length</span><span class="p">:</span><span class="mi">2</span> <span class="o">+</span> <span class="n">client_entries_length</span> <span class="o">+</span> <span class="mi">16</span><span class="p">]</span>
+    <span class="n">encrypted</span> <span class="o">=</span> <span class="n">content</span><span class="p">[</span><span class="mi">2</span> <span class="o">+</span> <span class="n">client_entries_length</span> <span class="o">+</span> <span class="mi">16</span><span class="p">:]</span>
+
+    <span class="n">client_id</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha1</span><span class="p">(</span><span class="n">authentication_cookie</span> <span class="o">+</span> <span class="n">iv</span><span class="p">)</span><span class="o">.</span><span class="n">digest</span><span class="p">()[:</span><span class="mi">4</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">entry_id</span><span class="p">,</span> <span class="n">encrypted_session_key</span> <span class="ow">in</span> <span class="n">client_keys</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">entry_id</span> <span class="o">!=</span> <span class="n">client_id</span><span class="p">:</span>
+        <span class="k">continue</span>  <span class="c"># not the session key for this client</span>
+
+      <span class="c"># try decrypting the session key</span>
+
+      <span class="n">counter</span> <span class="o">=</span> <span class="n">Counter</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="n">initial_value</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+      <span class="n">cipher</span> <span class="o">=</span> <span class="n">AES</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">authentication_cookie</span><span class="p">,</span> <span class="n">AES</span><span class="o">.</span><span class="n">MODE_CTR</span><span class="p">,</span> <span class="n">counter</span> <span class="o">=</span> <span class="n">counter</span><span class="p">)</span>
+      <span class="n">session_key</span> <span class="o">=</span> <span class="n">cipher</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">encrypted_session_key</span><span class="p">)</span>
+
+      <span class="c"># attempt to decrypt the intro points with the session key</span>
+
+      <span class="n">counter</span> <span class="o">=</span> <span class="n">Counter</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="n">initial_value</span> <span class="o">=</span> <span class="n">bytes_to_long</span><span class="p">(</span><span class="n">iv</span><span class="p">))</span>
+      <span class="n">cipher</span> <span class="o">=</span> <span class="n">AES</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">session_key</span><span class="p">,</span> <span class="n">AES</span><span class="o">.</span><span class="n">MODE_CTR</span><span class="p">,</span> <span class="n">counter</span> <span class="o">=</span> <span class="n">counter</span><span class="p">)</span>
+      <span class="n">decrypted</span> <span class="o">=</span> <span class="n">cipher</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">encrypted</span><span class="p">)</span>
+
+      <span class="c"># check if the decryption looks correct</span>
+
+      <span class="k">if</span> <span class="n">decrypted</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;introduction-point &#39;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">decrypted</span>
+
+    <span class="k">return</span> <span class="n">content</span>  <span class="c"># nope, unable to decrypt the content</span>
+
+  <span class="nd">@staticmethod</span>
+  <span class="k">def</span> <span class="nf">_decrypt_stealth_auth</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">authentication_cookie</span><span class="p">):</span>
+    <span class="kn">from</span> <span class="nn">Crypto.Cipher</span> <span class="kn">import</span> <span class="n">AES</span>
+    <span class="kn">from</span> <span class="nn">Crypto.Util</span> <span class="kn">import</span> <span class="n">Counter</span>
+    <span class="kn">from</span> <span class="nn">Crypto.Util.number</span> <span class="kn">import</span> <span class="n">bytes_to_long</span>
+
+    <span class="c"># byte 1 = authentication type, 2-17 = input vector, 18 on = encrypted content</span>
+
+    <span class="n">iv</span><span class="p">,</span> <span class="n">encrypted</span> <span class="o">=</span> <span class="n">content</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">17</span><span class="p">],</span> <span class="n">content</span><span class="p">[</span><span class="mi">17</span><span class="p">:]</span>
+    <span class="n">counter</span> <span class="o">=</span> <span class="n">Counter</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="n">initial_value</span> <span class="o">=</span> <span class="n">bytes_to_long</span><span class="p">(</span><span class="n">iv</span><span class="p">))</span>
+    <span class="n">cipher</span> <span class="o">=</span> <span class="n">AES</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">authentication_cookie</span><span class="p">,</span> <span class="n">AES</span><span class="o">.</span><span class="n">MODE_CTR</span><span class="p">,</span> <span class="n">counter</span> <span class="o">=</span> <span class="n">counter</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">cipher</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">encrypted</span><span class="p">)</span>
+
+  <span class="nd">@staticmethod</span>
+  <span class="k">def</span> <span class="nf">_parse_introduction_points</span><span class="p">(</span><span class="n">content</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the parsed list of IntroductionPoints for the unencrypted content.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">introduction_points</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">content_io</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+      <span class="n">content</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">_read_until_keywords</span><span class="p">(</span><span class="s">&#39;introduction-point&#39;</span><span class="p">,</span> <span class="n">content_io</span><span class="p">,</span> <span class="n">ignore_first</span> <span class="o">=</span> <span class="bp">True</span><span class="p">))</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">content</span><span class="p">:</span>
+        <span class="k">break</span>  <span class="c"># reached the end</span>
+
+      <span class="n">attr</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">INTRODUCTION_POINTS_ATTR</span><span class="p">)</span>
+      <span class="n">entries</span> <span class="o">=</span> <span class="n">_get_descriptor_components</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+
+      <span class="k">for</span> <span class="n">keyword</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">entries</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+        <span class="n">value</span><span class="p">,</span> <span class="n">block_type</span><span class="p">,</span> <span class="n">block_contents</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">SINGLE_INTRODUCTION_POINT_FIELDS</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; can only appear once in an introduction-point block, but appeared </span><span class="si">%i</span><span class="s"> times&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">keyword</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)))</span>
+
+        <span class="k">if</span> <span class="n">keyword</span> <span class="o">==</span> <span class="s">&#39;introduction-point&#39;</span><span class="p">:</span>
+          <span class="n">attr</span><span class="p">[</span><span class="s">&#39;identifier&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">elif</span> <span class="n">keyword</span> <span class="o">==</span> <span class="s">&#39;ip-address&#39;</span><span class="p">:</span>
+          <span class="k">if</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; is an invalid IPv4 address&quot;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+
+          <span class="n">attr</span><span class="p">[</span><span class="s">&#39;address&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">elif</span> <span class="n">keyword</span> <span class="o">==</span> <span class="s">&#39;onion-port&#39;</span><span class="p">:</span>
+          <span class="k">if</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; is an invalid port&quot;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+
+          <span class="n">attr</span><span class="p">[</span><span class="s">&#39;port&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">keyword</span> <span class="o">==</span> <span class="s">&#39;onion-key&#39;</span><span class="p">:</span>
+          <span class="n">attr</span><span class="p">[</span><span class="s">&#39;onion_key&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">block_contents</span>
+        <span class="k">elif</span> <span class="n">keyword</span> <span class="o">==</span> <span class="s">&#39;service-key&#39;</span><span class="p">:</span>
+          <span class="n">attr</span><span class="p">[</span><span class="s">&#39;service_key&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">block_contents</span>
+        <span class="k">elif</span> <span class="n">keyword</span> <span class="o">==</span> <span class="s">&#39;intro-authentication&#39;</span><span class="p">:</span>
+          <span class="n">auth_entries</span> <span class="o">=</span> <span class="p">[]</span>
+
+          <span class="k">for</span> <span class="n">auth_value</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s">&#39; &#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">auth_value</span><span class="p">:</span>
+              <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;We expected &#39;intro-authentication [auth_type] [auth_data]&#39;, but had &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="n">auth_value</span><span class="p">)</span>
+
+            <span class="n">auth_type</span><span class="p">,</span> <span class="n">auth_data</span> <span class="o">=</span> <span class="n">auth_value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)[:</span><span class="mi">2</span><span class="p">]</span>
+            <span class="n">auth_entries</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">auth_type</span><span class="p">,</span> <span class="n">auth_data</span><span class="p">))</span>
+
+      <span class="n">introduction_points</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">IntroductionPoints</span><span class="p">(</span><span class="o">**</span><span class="n">attr</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">introduction_points</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

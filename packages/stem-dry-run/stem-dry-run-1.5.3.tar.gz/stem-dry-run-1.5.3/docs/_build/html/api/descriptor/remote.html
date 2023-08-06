@@ -1,0 +1,806 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Descriptor Remote &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>Descriptor Remote</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../index.html">Home</a></li>
+          <li><a href="../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../api.html">API</a>
+            <ul>
+              <li><a href="../control.html">stem.control</a></li>
+              <li><a href="../connection.html">stem.connection</a></li>
+              <li><a href="../socket.html">stem.socket</a></li>
+              <li><a href="../process.html">stem.process</a></li>
+              <li><a href="../response.html">stem.response</a></li>
+              <li><a href="../exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../version.html">stem.version</a></li>
+              <li><a href="../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../faq.html">FAQ</a></li>
+              <li><a href="../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="module-stem.descriptor.remote">
+<span id="descriptor-remote"></span><h1>Descriptor Remote<a class="headerlink" href="#module-stem.descriptor.remote" title="Permalink to this headline">¶</a></h1>
+<p>Module for remotely retrieving descriptors from directory authorities and
+mirrors. This is the simplest method for getting current tor descriptor
+information...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">stem.descriptor.remote</span>
+
+<span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">remote</span><span class="o">.</span><span class="n">get_server_descriptors</span><span class="p">():</span>
+  <span class="k">if</span> <span class="n">desc</span><span class="o">.</span><span class="n">exit_policy</span><span class="o">.</span><span class="n">is_exiting_allowed</span><span class="p">():</span>
+    <span class="k">print</span> <span class="s">&#39;  </span><span class="si">%s</span><span class="s"> (</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">desc</span><span class="o">.</span><span class="n">nickname</span><span class="p">,</span> <span class="n">desc</span><span class="o">.</span><span class="n">fingerprint</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>More custom downloading behavior can be done through the
+<a class="reference internal" href="#stem.descriptor.remote.DescriptorDownloader" title="stem.descriptor.remote.DescriptorDownloader"><tt class="xref py py-class docutils literal"><span class="pre">DescriptorDownloader</span></tt></a> class, which issues
+<a class="reference internal" href="#stem.descriptor.remote.Query" title="stem.descriptor.remote.Query"><tt class="xref py py-class docutils literal"><span class="pre">Query</span></tt></a> instances to get you descriptor
+content. For example...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">stem.descriptor.remote</span> <span class="kn">import</span> <span class="n">DescriptorDownloader</span>
+
+<span class="n">downloader</span> <span class="o">=</span> <span class="n">DescriptorDownloader</span><span class="p">(</span>
+  <span class="n">use_mirrors</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span>
+  <span class="n">timeout</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">query</span> <span class="o">=</span> <span class="n">downloader</span><span class="o">.</span><span class="n">get_server_descriptors</span><span class="p">()</span>
+
+<span class="k">print</span> <span class="s">&#39;Exit Relays:&#39;</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">query</span><span class="o">.</span><span class="n">run</span><span class="p">():</span>
+    <span class="k">if</span> <span class="n">desc</span><span class="o">.</span><span class="n">exit_policy</span><span class="o">.</span><span class="n">is_exiting_allowed</span><span class="p">():</span>
+      <span class="k">print</span> <span class="s">&#39;  </span><span class="si">%s</span><span class="s"> (</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">desc</span><span class="o">.</span><span class="n">nickname</span><span class="p">,</span> <span class="n">desc</span><span class="o">.</span><span class="n">fingerprint</span><span class="p">)</span>
+
+  <span class="k">print</span>
+  <span class="k">print</span> <span class="s">&#39;Query took </span><span class="si">%0.2f</span><span class="s"> seconds&#39;</span> <span class="o">%</span> <span class="n">query</span><span class="o">.</span><span class="n">runtime</span>
+<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+  <span class="k">print</span> <span class="s">&#39;Unable to retrieve the server descriptors: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">exc</span>
+</pre></div>
+</div>
+<div class="highlight-python"><pre>get_instance - Provides a singleton DescriptorDownloader used for...
+  |- get_server_descriptors - provides present server descriptors
+  |- get_extrainfo_descriptors - provides present extrainfo descriptors
+  +- get_consensus - provides the present consensus or router status entries
+
+get_authorities - Provides tor directory information.
+
+Directory - Relay we can retrieve directory information from
+  |- DirectoryAuthority - Information about a tor directory authority
+  +- FallbackDirectory - Directory mirror tor uses when authories are unavailable
+      |- from_cache - Provides fallback directories cached with Stem.
+      +- from_remote - Retrieves fallback directories remotely from tor's latest commit.
+
+Query - Asynchronous request to download tor descriptors
+  |- start - issues the query if it isn't already running
+  +- run - blocks until the request is finished and provides the results
+
+DescriptorDownloader - Configurable class for issuing queries
+  |- use_directory_mirrors - use directory mirrors to download future descriptors
+  |- get_server_descriptors - provides present server descriptors
+  |- get_extrainfo_descriptors - provides present extrainfo descriptors
+  |- get_consensus - provides the present consensus or router status entries
+  |- get_key_certificates - provides present authority key certificates
+  +- query - request an arbitrary descriptor resource</pre>
+</div>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.1.0.</span></p>
+<dl class="data">
+<dt id="stem.descriptor.remote.MAX_FINGERPRINTS">
+<tt class="descclassname">stem.descriptor.remote.</tt><tt class="descname">MAX_FINGERPRINTS</tt><a class="headerlink" href="#stem.descriptor.remote.MAX_FINGERPRINTS" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximum number of descriptors that can requested at a time by their
+fingerprints.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="stem.descriptor.remote.MAX_MICRODESCRIPTOR_HASHES">
+<tt class="descclassname">stem.descriptor.remote.</tt><tt class="descname">MAX_MICRODESCRIPTOR_HASHES</tt><a class="headerlink" href="#stem.descriptor.remote.MAX_MICRODESCRIPTOR_HASHES" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximum number of microdescriptors that can requested at a time by their
+hashes.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.descriptor.remote.get_instance">
+<tt class="descclassname">stem.descriptor.remote.</tt><tt class="descname">get_instance</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#get_instance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.get_instance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the singleton <a class="reference internal" href="#stem.descriptor.remote.DescriptorDownloader" title="stem.descriptor.remote.DescriptorDownloader"><tt class="xref py py-class docutils literal"><span class="pre">DescriptorDownloader</span></tt></a>
+used for the following functions...</p>
+<blockquote>
+<div><ul class="simple">
+<li><a class="reference internal" href="#stem.descriptor.remote.get_server_descriptors" title="stem.descriptor.remote.get_server_descriptors"><tt class="xref py py-func docutils literal"><span class="pre">stem.descriptor.remote.get_server_descriptors()</span></tt></a></li>
+<li><a class="reference internal" href="#stem.descriptor.remote.get_extrainfo_descriptors" title="stem.descriptor.remote.get_extrainfo_descriptors"><tt class="xref py py-func docutils literal"><span class="pre">stem.descriptor.remote.get_extrainfo_descriptors()</span></tt></a></li>
+<li><a class="reference internal" href="#stem.descriptor.remote.get_consensus" title="stem.descriptor.remote.get_consensus"><tt class="xref py py-func docutils literal"><span class="pre">stem.descriptor.remote.get_consensus()</span></tt></a></li>
+</ul>
+</div></blockquote>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.5.0.</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">singleton <a class="reference internal" href="#stem.descriptor.remote.DescriptorDownloader" title="stem.descriptor.remote.DescriptorDownloader"><tt class="xref py py-class docutils literal"><span class="pre">DescriptorDownloader</span></tt></a> instance</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.descriptor.remote.get_server_descriptors">
+<tt class="descclassname">stem.descriptor.remote.</tt><tt class="descname">get_server_descriptors</tt><big>(</big><em>fingerprints=None</em>, <em>**query_args</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#get_server_descriptors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.get_server_descriptors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shorthand for
+<a class="reference internal" href="#stem.descriptor.remote.DescriptorDownloader.get_server_descriptors" title="stem.descriptor.remote.DescriptorDownloader.get_server_descriptors"><tt class="xref py py-func docutils literal"><span class="pre">get_server_descriptors()</span></tt></a>
+on our singleton instance.</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.5.0.</span></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.descriptor.remote.get_extrainfo_descriptors">
+<tt class="descclassname">stem.descriptor.remote.</tt><tt class="descname">get_extrainfo_descriptors</tt><big>(</big><em>fingerprints=None</em>, <em>**query_args</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#get_extrainfo_descriptors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.get_extrainfo_descriptors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shorthand for
+<a class="reference internal" href="#stem.descriptor.remote.DescriptorDownloader.get_extrainfo_descriptors" title="stem.descriptor.remote.DescriptorDownloader.get_extrainfo_descriptors"><tt class="xref py py-func docutils literal"><span class="pre">get_extrainfo_descriptors()</span></tt></a>
+on our singleton instance.</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.5.0.</span></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.descriptor.remote.get_consensus">
+<tt class="descclassname">stem.descriptor.remote.</tt><tt class="descname">get_consensus</tt><big>(</big><em>authority_v3ident=None</em>, <em>microdescriptor=False</em>, <em>**query_args</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#get_consensus"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.get_consensus" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shorthand for
+<a class="reference internal" href="#stem.descriptor.remote.DescriptorDownloader.get_consensus" title="stem.descriptor.remote.DescriptorDownloader.get_consensus"><tt class="xref py py-func docutils literal"><span class="pre">get_consensus()</span></tt></a>
+on our singleton instance.</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.5.0.</span></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.descriptor.remote.Query">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.remote.</tt><tt class="descname">Query</tt><big>(</big><em>resource</em>, <em>descriptor_type=None</em>, <em>endpoints=None</em>, <em>retries=2</em>, <em>fall_back_to_authority=False</em>, <em>timeout=None</em>, <em>start=True</em>, <em>block=False</em>, <em>validate=False</em>, <em>document_handler='ENTRIES'</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#Query"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.Query" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Asynchronous request for descriptor content from a directory authority or
+mirror. These can either be made through the
+<a class="reference internal" href="#stem.descriptor.remote.DescriptorDownloader" title="stem.descriptor.remote.DescriptorDownloader"><tt class="xref py py-class docutils literal"><span class="pre">DescriptorDownloader</span></tt></a> or directly for more
+advanced usage.</p>
+<p>To block on the response and get results either call
+<a class="reference internal" href="#stem.descriptor.remote.Query.run" title="stem.descriptor.remote.Query.run"><tt class="xref py py-func docutils literal"><span class="pre">run()</span></tt></a> or iterate over the Query. The
+<a class="reference internal" href="#stem.descriptor.remote.Query.run" title="stem.descriptor.remote.Query.run"><tt class="xref py py-func docutils literal"><span class="pre">run()</span></tt></a> method pass along any errors that
+arise...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">stem.descriptor.remote</span> <span class="kn">import</span> <span class="n">Query</span>
+
+<span class="n">query</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span>
+  <span class="s">&#39;/tor/server/all.z&#39;</span><span class="p">,</span>
+  <span class="n">block</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span>
+  <span class="n">timeout</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="k">print</span> <span class="s">&#39;Current relays:&#39;</span>
+
+<span class="k">if</span> <span class="ow">not</span> <span class="n">query</span><span class="o">.</span><span class="n">error</span><span class="p">:</span>
+  <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">query</span><span class="p">:</span>
+    <span class="k">print</span> <span class="n">desc</span><span class="o">.</span><span class="n">fingerprint</span>
+<span class="k">else</span><span class="p">:</span>
+  <span class="k">print</span> <span class="s">&#39;Unable to retrieve the server descriptors: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">query</span><span class="o">.</span><span class="n">error</span>
+</pre></div>
+</div>
+<p>... while iterating fails silently...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">print</span> <span class="s">&#39;Current relays:&#39;</span>
+
+<span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">Query</span><span class="p">(</span><span class="s">&#39;/tor/server/all.z&#39;</span><span class="p">,</span> <span class="s">&#39;server-descriptor 1.0&#39;</span><span class="p">):</span>
+  <span class="k">print</span> <span class="n">desc</span><span class="o">.</span><span class="n">fingerprint</span>
+</pre></div>
+</div>
+<p>In either case exceptions are available via our 'error' attribute.</p>
+<p>Tor provides quite a few different descriptor resources via its directory
+protocol (see section 4.2 and later of the <a class="reference external" href="https://gitweb.torproject.org/torspec.git/tree/dir-spec.txt">dir-spec</a>).
+Commonly useful ones include...</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="49%" />
+<col width="51%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Resource</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>/tor/server/all.z</td>
+<td>all present server descriptors</td>
+</tr>
+<tr class="row-odd"><td>/tor/server/fp/&lt;fp1&gt;+&lt;fp2&gt;+&lt;fp3&gt;.z</td>
+<td>server descriptors with the given fingerprints</td>
+</tr>
+<tr class="row-even"><td>/tor/extra/all.z</td>
+<td>all present extrainfo descriptors</td>
+</tr>
+<tr class="row-odd"><td>/tor/extra/fp/&lt;fp1&gt;+&lt;fp2&gt;+&lt;fp3&gt;.z</td>
+<td>extrainfo descriptors with the given fingerprints</td>
+</tr>
+<tr class="row-even"><td>/tor/micro/d/&lt;hash1&gt;-&lt;hash2&gt;.z</td>
+<td>microdescriptors with the given hashes</td>
+</tr>
+<tr class="row-odd"><td>/tor/status-vote/current/consensus.z</td>
+<td>present consensus</td>
+</tr>
+<tr class="row-even"><td>/tor/status-vote/current/consensus-microdesc.z</td>
+<td>present microdescriptor consensus</td>
+</tr>
+<tr class="row-odd"><td>/tor/keys/all.z</td>
+<td>key certificates for the authorities</td>
+</tr>
+<tr class="row-even"><td>/tor/keys/fp/&lt;v3ident1&gt;+&lt;v3ident2&gt;.z</td>
+<td>key certificates for specific authorities</td>
+</tr>
+</tbody>
+</table>
+<p>The '.z' suffix can be excluded to get a plaintext rather than compressed
+response. Compression is handled transparently, so this shouldn't matter to
+the caller.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first simple">
+<li><strong>resource</strong> (<em>str</em>) -- resource being fetched, such as '/tor/server/all.z'</li>
+<li><strong>descriptor_type</strong> (<em>str</em>) -- type of descriptors being fetched (for options see
+<a class="reference internal" href="descriptor.html#stem.descriptor.__init__.parse_file" title="stem.descriptor.__init__.parse_file"><tt class="xref py py-func docutils literal"><span class="pre">parse_file()</span></tt></a>), this is guessed from the
+resource if <strong>None</strong></li>
+<li><strong>endpoints</strong> (<em>list</em>) -- (address, dirport) tuples of the authority or mirror
+we're querying, this uses authorities if undefined</li>
+<li><strong>retries</strong> (<em>int</em>) -- number of times to attempt the request if downloading it
+fails</li>
+<li><strong>fall_back_to_authority</strong> (<em>bool</em>) -- when retrying request issues the last
+request to a directory authority if <strong>True</strong></li>
+<li><strong>content</strong> (<em>str</em>) -- downloaded descriptor content</li>
+<li><strong>error</strong> (<em>Exception</em>) -- exception if a problem occured</li>
+<li><strong>is_done</strong> (<em>bool</em>) -- flag that indicates if our request has finished</li>
+<li><strong>download_url</strong> (<em>str</em>) -- last url used to download the descriptor, this is
+unset until we've actually made a download attempt</li>
+<li><strong>start_time</strong> (<em>float</em>) -- unix timestamp when we first started running</li>
+<li><strong>timeout</strong> (<em>float</em>) -- duration before we'll time out our request</li>
+<li><strong>runtime</strong> (<em>float</em>) -- time our query took, this is <strong>None</strong> if it's not yet
+finished</li>
+<li><strong>validate</strong> (<em>bool</em>) -- checks the validity of the descriptor's content if
+<strong>True</strong>, skips these checks otherwise</li>
+<li><strong>document_handler</strong> (<a class="reference internal" href="descriptor.html#stem.descriptor.__init__.DocumentHandler" title="stem.descriptor.__init__.DocumentHandler"><em>stem.descriptor.__init__.DocumentHandler</em></a>) -- method in
+which to parse a <a class="reference internal" href="networkstatus.html#stem.descriptor.networkstatus.NetworkStatusDocument" title="stem.descriptor.networkstatus.NetworkStatusDocument"><tt class="xref py py-class docutils literal"><span class="pre">NetworkStatusDocument</span></tt></a></li>
+<li><strong>kwargs</strong> (<em>dict</em>) -- additional arguments for the descriptor constructor</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>start</strong> (<em>bool</em>) -- start making the request when constructed (default is <strong>True</strong>)</li>
+<li><strong>block</strong> (<em>bool</em>) -- only return after the request has been completed, this is
+the same as running <strong>query.run(True)</strong> (default is <strong>False</strong>)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="stem.descriptor.remote.Query.start">
+<tt class="descname">start</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#Query.start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.Query.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Starts downloading the scriptors if we haven't started already.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.remote.Query.run">
+<tt class="descname">run</tt><big>(</big><em>suppress=False</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#Query.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.Query.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Blocks until our request is complete then provides the descriptors. If we
+haven't yet started our request then this does so.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>suppress</strong> (<em>bool</em>) -- avoids raising exceptions if <strong>True</strong></p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">list for the requested <a class="reference internal" href="descriptor.html#stem.descriptor.__init__.Descriptor" title="stem.descriptor.__init__.Descriptor"><tt class="xref py py-class docutils literal"><span class="pre">Descriptor</span></tt></a> instances</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first">Using the iterator can fail with the following if <strong>suppress</strong> is
+<strong>False</strong>...</p>
+<blockquote>
+<div><ul class="simple">
+<li><strong>ValueError</strong> if the descriptor contents is malformed</li>
+<li><strong>socket.timeout</strong> if our request timed out</li>
+<li><strong>urllib2.URLError</strong> for most request failures</li>
+</ul>
+</div></blockquote>
+<p class="last">Note that the urllib2 module may fail with other exception types, in
+which case we'll pass it along.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.descriptor.remote.DescriptorDownloader">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.remote.</tt><tt class="descname">DescriptorDownloader</tt><big>(</big><em>use_mirrors=False</em>, <em>**default_args</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#DescriptorDownloader"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.DescriptorDownloader" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Configurable class that issues <a class="reference internal" href="#stem.descriptor.remote.Query" title="stem.descriptor.remote.Query"><tt class="xref py py-class docutils literal"><span class="pre">Query</span></tt></a>
+instances on your behalf.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>use_mirrors</strong> (<em>bool</em>) -- downloads the present consensus and uses the directory
+mirrors to fetch future requests, this fails silently if the consensus
+cannot be downloaded</li>
+<li><strong>default_args</strong> -- default arguments for the
+<a class="reference internal" href="#stem.descriptor.remote.Query" title="stem.descriptor.remote.Query"><tt class="xref py py-class docutils literal"><span class="pre">Query</span></tt></a> constructor</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="stem.descriptor.remote.DescriptorDownloader.use_directory_mirrors">
+<tt class="descname">use_directory_mirrors</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#DescriptorDownloader.use_directory_mirrors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.DescriptorDownloader.use_directory_mirrors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Downloads the present consensus and configures ourselves to use directory
+mirrors, in addition to authorities.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><a class="reference internal" href="networkstatus.html#stem.descriptor.networkstatus.NetworkStatusDocumentV3" title="stem.descriptor.networkstatus.NetworkStatusDocumentV3"><tt class="xref py py-class docutils literal"><span class="pre">NetworkStatusDocumentV3</span></tt></a>
+from which we got the directory mirrors</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><strong>Exception</strong> if unable to determine the directory mirrors</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.remote.DescriptorDownloader.get_server_descriptors">
+<tt class="descname">get_server_descriptors</tt><big>(</big><em>fingerprints=None</em>, <em>**query_args</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#DescriptorDownloader.get_server_descriptors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.DescriptorDownloader.get_server_descriptors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the server descriptors with the given fingerprints. If no
+fingerprints are provided then this returns all descriptors in the present
+consensus.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>fingerprints</strong> (<em>str,list</em>) -- fingerprint or list of fingerprints to be
+retrieved, gets all descriptors if <strong>None</strong></li>
+<li><strong>query_args</strong> -- additional arguments for the
+<a class="reference internal" href="#stem.descriptor.remote.Query" title="stem.descriptor.remote.Query"><tt class="xref py py-class docutils literal"><span class="pre">Query</span></tt></a> constructor</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><a class="reference internal" href="#stem.descriptor.remote.Query" title="stem.descriptor.remote.Query"><tt class="xref py py-class docutils literal"><span class="pre">Query</span></tt></a> for the server descriptors</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last"><strong>ValueError</strong> if we request more than 96 descriptors by their
+fingerprints (this is due to a limit on the url length by squid proxies).</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.remote.DescriptorDownloader.get_extrainfo_descriptors">
+<tt class="descname">get_extrainfo_descriptors</tt><big>(</big><em>fingerprints=None</em>, <em>**query_args</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#DescriptorDownloader.get_extrainfo_descriptors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.DescriptorDownloader.get_extrainfo_descriptors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the extrainfo descriptors with the given fingerprints. If no
+fingerprints are provided then this returns all descriptors in the present
+consensus.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>fingerprints</strong> (<em>str,list</em>) -- fingerprint or list of fingerprints to be
+retrieved, gets all descriptors if <strong>None</strong></li>
+<li><strong>query_args</strong> -- additional arguments for the
+<a class="reference internal" href="#stem.descriptor.remote.Query" title="stem.descriptor.remote.Query"><tt class="xref py py-class docutils literal"><span class="pre">Query</span></tt></a> constructor</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><a class="reference internal" href="#stem.descriptor.remote.Query" title="stem.descriptor.remote.Query"><tt class="xref py py-class docutils literal"><span class="pre">Query</span></tt></a> for the extrainfo descriptors</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last"><strong>ValueError</strong> if we request more than 96 descriptors by their
+fingerprints (this is due to a limit on the url length by squid proxies).</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.remote.DescriptorDownloader.get_microdescriptors">
+<tt class="descname">get_microdescriptors</tt><big>(</big><em>hashes</em>, <em>**query_args</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#DescriptorDownloader.get_microdescriptors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.DescriptorDownloader.get_microdescriptors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the microdescriptors with the given hashes. To get these see the
+'microdescriptor_hashes' attribute of
+<a class="reference internal" href="router_status_entry.html#stem.descriptor.router_status_entry.RouterStatusEntryV3" title="stem.descriptor.router_status_entry.RouterStatusEntryV3"><tt class="xref py py-class docutils literal"><span class="pre">RouterStatusEntryV3</span></tt></a>. Note
+that these are only provided via a microdescriptor consensus (such as
+'cached-microdesc-consensus' in your data directory).</p>
+<p class="deprecated">
+<span class="versionmodified">Deprecated since version 1.5.0: </span>This function has never worked, as it was never implemented in tor
+(<a class="reference external" href="https://trac.torproject.org/9271">ticket 9271</a>).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>hashes</strong> (<em>str,list</em>) -- microdescriptor hash or list of hashes to be
+retrieved</li>
+<li><strong>query_args</strong> -- additional arguments for the
+<a class="reference internal" href="#stem.descriptor.remote.Query" title="stem.descriptor.remote.Query"><tt class="xref py py-class docutils literal"><span class="pre">Query</span></tt></a> constructor</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><a class="reference internal" href="#stem.descriptor.remote.Query" title="stem.descriptor.remote.Query"><tt class="xref py py-class docutils literal"><span class="pre">Query</span></tt></a> for the microdescriptors</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last"><strong>ValueError</strong> if we request more than 92 microdescriptors by their
+hashes (this is due to a limit on the url length by squid proxies).</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.remote.DescriptorDownloader.get_consensus">
+<tt class="descname">get_consensus</tt><big>(</big><em>authority_v3ident=None</em>, <em>microdescriptor=False</em>, <em>**query_args</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#DescriptorDownloader.get_consensus"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.DescriptorDownloader.get_consensus" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the present router status entries.</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.5.0: </span>Added the microdescriptor argument.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>authority_v3ident</strong> (<em>str</em>) -- fingerprint of the authority key for which
+to get the consensus, see <a class="reference external" href="https://gitweb.torproject.org/tor.git/tree/src/or/config.c#n819">'v3ident' in tor's config.c</a>
+for the values.</li>
+<li><strong>microdescriptor</strong> (<em>bool</em>) -- provides the microdescriptor consensus if
+<strong>True</strong>, standard consensus otherwise</li>
+<li><strong>query_args</strong> -- additional arguments for the
+<a class="reference internal" href="#stem.descriptor.remote.Query" title="stem.descriptor.remote.Query"><tt class="xref py py-class docutils literal"><span class="pre">Query</span></tt></a> constructor</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#stem.descriptor.remote.Query" title="stem.descriptor.remote.Query"><tt class="xref py py-class docutils literal"><span class="pre">Query</span></tt></a> for the router status
+entries</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.remote.DescriptorDownloader.get_vote">
+<tt class="descname">get_vote</tt><big>(</big><em>authority</em>, <em>**query_args</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#DescriptorDownloader.get_vote"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.DescriptorDownloader.get_vote" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the present vote for a given directory authority.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>authority</strong> (<a class="reference internal" href="#stem.descriptor.remote.DirectoryAuthority" title="stem.descriptor.remote.DirectoryAuthority"><em>stem.descriptor.remote.DirectoryAuthority</em></a>) -- authority for which to retrieve a vote for</li>
+<li><strong>query_args</strong> -- additional arguments for the
+<a class="reference internal" href="#stem.descriptor.remote.Query" title="stem.descriptor.remote.Query"><tt class="xref py py-class docutils literal"><span class="pre">Query</span></tt></a> constructor</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#stem.descriptor.remote.Query" title="stem.descriptor.remote.Query"><tt class="xref py py-class docutils literal"><span class="pre">Query</span></tt></a> for the router status
+entries</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.remote.DescriptorDownloader.get_key_certificates">
+<tt class="descname">get_key_certificates</tt><big>(</big><em>authority_v3idents=None</em>, <em>**query_args</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#DescriptorDownloader.get_key_certificates"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.DescriptorDownloader.get_key_certificates" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the key certificates for authorities with the given fingerprints.
+If no fingerprints are provided then this returns all present key
+certificates.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>authority_v3idents</strong> (<em>str</em>) -- <p>fingerprint or list of fingerprints of the
+authority keys, see <a class="reference external" href="https://gitweb.torproject.org/tor.git/tree/src/or/config.c#n819">'v3ident' in tor's config.c</a>
+for the values.</p>
+</li>
+<li><strong>query_args</strong> -- additional arguments for the
+<a class="reference internal" href="#stem.descriptor.remote.Query" title="stem.descriptor.remote.Query"><tt class="xref py py-class docutils literal"><span class="pre">Query</span></tt></a> constructor</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><a class="reference internal" href="#stem.descriptor.remote.Query" title="stem.descriptor.remote.Query"><tt class="xref py py-class docutils literal"><span class="pre">Query</span></tt></a> for the key certificates</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last"><strong>ValueError</strong> if we request more than 96 key certificates by
+their identity fingerprints (this is due to a limit on the url length by
+squid proxies).</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.remote.DescriptorDownloader.query">
+<tt class="descname">query</tt><big>(</big><em>resource</em>, <em>**query_args</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#DescriptorDownloader.query"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.DescriptorDownloader.query" title="Permalink to this definition">¶</a></dt>
+<dd><p>Issues a request for the given resource.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>resource</strong> (<em>str</em>) -- resource being fetched, such as '/tor/server/all.z'</li>
+<li><strong>query_args</strong> -- additional arguments for the
+<a class="reference internal" href="#stem.descriptor.remote.Query" title="stem.descriptor.remote.Query"><tt class="xref py py-class docutils literal"><span class="pre">Query</span></tt></a> constructor</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><a class="reference internal" href="#stem.descriptor.remote.Query" title="stem.descriptor.remote.Query"><tt class="xref py py-class docutils literal"><span class="pre">Query</span></tt></a> for the descriptors</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last"><strong>ValueError</strong> if resource is clearly invalid or the descriptor
+type can't be determined when 'descriptor_type' is <strong>None</strong></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.descriptor.remote.Directory">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.remote.</tt><tt class="descname">Directory</tt><big>(</big><em>address</em>, <em>or_port</em>, <em>dir_port</em>, <em>fingerprint</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#Directory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.Directory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Relay we can contact for directory information</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.5.0.</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>address</strong> (<em>str</em>) -- IPv4 address of the directory</li>
+<li><strong>or_port</strong> (<em>int</em>) -- port on which the relay services relay traffic</li>
+<li><strong>dir_port</strong> (<em>int</em>) -- port on which directory information is available</li>
+<li><strong>fingerprint</strong> (<em>str</em>) -- relay fingerprint</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.descriptor.remote.DirectoryAuthority">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.remote.</tt><tt class="descname">DirectoryAuthority</tt><big>(</big><em>address=None</em>, <em>or_port=None</em>, <em>dir_port=None</em>, <em>fingerprint=None</em>, <em>nickname=None</em>, <em>v3ident=None</em>, <em>is_bandwidth_authority=False</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#DirectoryAuthority"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.DirectoryAuthority" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.descriptor.remote.Directory" title="stem.descriptor.remote.Directory"><tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.remote.Directory</span></tt></a></p>
+<p>Tor directory authority, a special type of relay <a class="reference external" href="https://gitweb.torproject.org/tor.git/tree/src/or/config.c#n819">hardcoded into tor</a>
+that enumerates the other relays within the network.</p>
+<p>At a very high level tor works as follows...</p>
+<ol class="arabic simple">
+<li>A volunteer starts up a new tor relay, during which it sends a <a class="reference external" href="server_descriptor.html">server
+descriptor</a> to each of the directory
+authorities.</li>
+<li>Each hour the directory authorities make a <a class="reference external" href="networkstatus.html">vote</a>
+that says who they think the active relays are in the network and some
+attributes about them.</li>
+<li>The directory authorities send each other their votes, and compile that
+into the <a class="reference external" href="networkstatus.html">consensus</a>. This document is very similar
+to the votes, the only difference being that the majority of the
+authorities agree upon and sign this document. The idividual relay entries
+in the vote or consensus is called <a class="reference external" href="router_status_entry.html">router status entries</a>.</li>
+<li>Tor clients (people using the service) download the consensus from one of
+the authorities or a mirror to determine the active relays within the
+network. They in turn use this to construct their circuits and use the
+network.</li>
+</ol>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.3.0: </span>Added the is_bandwidth_authority attribute.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>nickname</strong> (<em>str</em>) -- nickname of the authority</li>
+<li><strong>v3ident</strong> (<em>str</em>) -- identity key fingerprint used to sign votes and consensus</li>
+<li><strong>is_bandwidth_authority</strong> (<em>bool</em>) -- <strong>True</strong> if this is a bandwidth authority,
+<strong>False</strong> otherwise</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.descriptor.remote.get_authorities">
+<tt class="descclassname">stem.descriptor.remote.</tt><tt class="descname">get_authorities</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#get_authorities"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.get_authorities" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the Tor directory authority information as of <strong>Tor on 11/21/14</strong>.
+The directory information hardcoded into Tor and occasionally changes, so the
+information this provides might not necessarily match your version of tor.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>dict</strong> of <strong>str</strong> nicknames to <a class="reference internal" href="#stem.descriptor.remote.DirectoryAuthority" title="stem.descriptor.remote.DirectoryAuthority"><tt class="xref py py-class docutils literal"><span class="pre">DirectoryAuthority</span></tt></a> instances</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.descriptor.remote.FallbackDirectory">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.remote.</tt><tt class="descname">FallbackDirectory</tt><big>(</big><em>address=None</em>, <em>or_port=None</em>, <em>dir_port=None</em>, <em>fingerprint=None</em>, <em>orport_v6=None</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#FallbackDirectory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.FallbackDirectory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.descriptor.remote.Directory" title="stem.descriptor.remote.Directory"><tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.remote.Directory</span></tt></a></p>
+<p>Particularly stable relays tor can instead of authorities when
+bootstrapping. These relays are <a class="reference external" href="https://gitweb.torproject.org/tor.git/tree/src/or/fallback_dirs.inc">hardcoded in tor</a>.</p>
+<p>For example, the following checks the performance of tor's fallback directories...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">stem.descriptor.remote</span> <span class="kn">import</span> <span class="n">DescriptorDownloader</span><span class="p">,</span> <span class="n">FallbackDirectory</span>
+
+<span class="n">downloader</span> <span class="o">=</span> <span class="n">DescriptorDownloader</span><span class="p">()</span>
+
+<span class="k">for</span> <span class="n">fallback_directory</span> <span class="ow">in</span> <span class="n">FallbackDirectory</span><span class="o">.</span><span class="n">from_cache</span><span class="p">()</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+  <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+  <span class="n">downloader</span><span class="o">.</span><span class="n">get_consensus</span><span class="p">(</span><span class="n">endpoints</span> <span class="o">=</span> <span class="p">[(</span><span class="n">fallback_directory</span><span class="o">.</span><span class="n">address</span><span class="p">,</span> <span class="n">fallback_directory</span><span class="o">.</span><span class="n">dir_port</span><span class="p">)])</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+  <span class="k">print</span><span class="p">(</span><span class="s">&#39;Downloading the consensus took </span><span class="si">%0.2f</span><span class="s"> from </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">,</span> <span class="n">fallback_directory</span><span class="o">.</span><span class="n">fingerprint</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-python"><pre>% python example.py
+Downloading the consensus took 5.07 from 0AD3FA884D18F89EEA2D89C019379E0E7FD94417
+Downloading the consensus took 3.59 from C871C91489886D5E2E94C13EA1A5FDC4B6DC5204
+Downloading the consensus took 4.16 from 74A910646BCEEFBCD2E874FC1DC997430F968145
+...</pre>
+</div>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.5.0.</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>orport_v6</strong> (<em>str</em>) -- <strong>(address, port)</strong> tuple for the directory's IPv6
+ORPort, or <strong>None</strong> if it doesn't have one</td>
+</tr>
+</tbody>
+</table>
+<dl class="staticmethod">
+<dt id="stem.descriptor.remote.FallbackDirectory.from_cache">
+<em class="property">static </em><tt class="descname">from_cache</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#FallbackDirectory.from_cache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.FallbackDirectory.from_cache" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides fallback directory information cached with Stem. Unlike
+<a class="reference internal" href="#stem.descriptor.remote.FallbackDirectory.from_remote" title="stem.descriptor.remote.FallbackDirectory.from_remote"><tt class="xref py py-func docutils literal"><span class="pre">from_remote()</span></tt></a> this doesn't
+have any system requirements, and is faster too. Only drawback is that
+these fallback directories are only as up to date as the Stem release we're
+using.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>dict</strong> of <strong>str</strong> fingerprints to their
+<a class="reference internal" href="#stem.descriptor.remote.FallbackDirectory" title="stem.descriptor.remote.FallbackDirectory"><tt class="xref py py-class docutils literal"><span class="pre">FallbackDirectory</span></tt></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="stem.descriptor.remote.FallbackDirectory.from_remote">
+<em class="property">static </em><tt class="descname">from_remote</tt><big>(</big><em>timeout=60</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/remote.html#FallbackDirectory.from_remote"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.remote.FallbackDirectory.from_remote" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads and parses tor's latest fallback directories <a class="reference external" href="https://gitweb.torproject.org/tor.git/plain/src/or/fallback_dirs.inc">from
+gitweb.torproject.org</a>.
+Note that while convenient, this reliance on GitWeb means you should alway
+call with a fallback, such as...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">try</span><span class="p">:</span>
+  <span class="n">fallback_directories</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">remote</span><span class="o">.</span><span class="n">from_remote</span><span class="p">()</span>
+<span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+  <span class="n">fallback_directories</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">remote</span><span class="o">.</span><span class="n">from_cache</span><span class="p">()</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<em>int</em>) -- seconds to wait before timing out the request</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>dict</strong> of <strong>str</strong> fingerprints to their
+<a class="reference internal" href="#stem.descriptor.remote.FallbackDirectory" title="stem.descriptor.remote.FallbackDirectory"><tt class="xref py py-class docutils literal"><span class="pre">FallbackDirectory</span></tt></a></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><strong>IOError</strong> if unable to retrieve the fallback directories</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

@@ -1,0 +1,381 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.process &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../index.html" />
+    <link rel="up" title="stem" href="../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.process</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../index.html">Home</a></li>
+          <li><a href="../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../api.html">API</a>
+            <ul>
+              <li><a href="../../api/control.html">stem.control</a></li>
+              <li><a href="../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../api/process.html">stem.process</a></li>
+              <li><a href="../../api/response.html">stem.response</a></li>
+              <li><a href="../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../api/version.html">stem.version</a></li>
+              <li><a href="../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../faq.html">FAQ</a></li>
+              <li><a href="../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.process</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2011-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Helper functions for working with tor as a process.</span>
+
+<span class="sd">:NO_TORRC:</span>
+<span class="sd">  when provided as a torrc_path tor is ran with a blank configuration</span>
+
+<span class="sd">:DEFAULT_INIT_TIMEOUT:</span>
+<span class="sd">  number of seconds before we time out our attempt to start a tor instance</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  launch_tor             - starts up a tor process</span>
+<span class="sd">  launch_tor_with_config - starts a tor process with a custom torrc</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">signal</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+
+<span class="kn">import</span> <span class="nn">stem.prereq</span>
+<span class="kn">import</span> <span class="nn">stem.util.str_tools</span>
+<span class="kn">import</span> <span class="nn">stem.util.system</span>
+<span class="kn">import</span> <span class="nn">stem.version</span>
+
+<span class="n">NO_TORRC</span> <span class="o">=</span> <span class="s">&#39;&lt;no torrc&gt;&#39;</span>
+<span class="n">DEFAULT_INIT_TIMEOUT</span> <span class="o">=</span> <span class="mi">90</span>
+
+
+<div class="viewcode-block" id="launch_tor"><a class="viewcode-back" href="../../api/process.html#stem.process.launch_tor">[docs]</a><span class="k">def</span> <span class="nf">launch_tor</span><span class="p">(</span><span class="n">tor_cmd</span> <span class="o">=</span> <span class="s">&#39;tor&#39;</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">torrc_path</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">completion_percent</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="n">init_msg_handler</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">timeout</span> <span class="o">=</span> <span class="n">DEFAULT_INIT_TIMEOUT</span><span class="p">,</span> <span class="n">take_ownership</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">stdin</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Initializes a tor process. This blocks until initialization completes or we</span>
+<span class="sd">  error out.</span>
+
+<span class="sd">  If tor&#39;s data directory is missing or stale then bootstrapping will include</span>
+<span class="sd">  making several requests to the directory authorities which can take a little</span>
+<span class="sd">  while. Usually this is done in 50 seconds or so, but occasionally calls seem</span>
+<span class="sd">  to get stuck, taking well over the default timeout.</span>
+
+<span class="sd">  **To work to must log at NOTICE runlevel to stdout.** It does this by</span>
+<span class="sd">  default, but if you have a &#39;Log&#39; entry in your torrc then you&#39;ll also need</span>
+<span class="sd">  &#39;Log NOTICE stdout&#39;.</span>
+
+<span class="sd">  Note: The timeout argument does not work on Windows, and relies on the global</span>
+<span class="sd">  state of the signal module.</span>
+
+<span class="sd">  :param str tor_cmd: command for starting tor</span>
+<span class="sd">  :param list args: additional arguments for tor</span>
+<span class="sd">  :param str torrc_path: location of the torrc for us to use</span>
+<span class="sd">  :param int completion_percent: percent of bootstrap completion at which</span>
+<span class="sd">    this&#39;ll return</span>
+<span class="sd">  :param functor init_msg_handler: optional functor that will be provided with</span>
+<span class="sd">    tor&#39;s initialization stdout as we get it</span>
+<span class="sd">  :param int timeout: time after which the attempt to start tor is aborted, no</span>
+<span class="sd">    timeouts are applied if **None**</span>
+<span class="sd">  :param bool take_ownership: asserts ownership over the tor process so it</span>
+<span class="sd">    aborts if this python process terminates or a :class:`~stem.control.Controller`</span>
+<span class="sd">    we establish to it disconnects</span>
+<span class="sd">  :param str stdin: content to provide on stdin</span>
+
+<span class="sd">  :returns: **subprocess.Popen** instance for the tor subprocess</span>
+
+<span class="sd">  :raises: **OSError** if we either fail to create the tor process or reached a</span>
+<span class="sd">    timeout without success</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">is_windows</span><span class="p">():</span>
+    <span class="n">timeout</span> <span class="o">=</span> <span class="bp">None</span>
+
+  <span class="c"># sanity check that we got a tor binary</span>
+
+  <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span> <span class="ow">in</span> <span class="n">tor_cmd</span><span class="p">:</span>
+    <span class="c"># got a path (either relative or absolute), check what it leads to</span>
+
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">tor_cmd</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; is a directory, not the tor executable&quot;</span> <span class="o">%</span> <span class="n">tor_cmd</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">tor_cmd</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; doesn&#39;t exist&quot;</span> <span class="o">%</span> <span class="n">tor_cmd</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">is_available</span><span class="p">(</span><span class="n">tor_cmd</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; isn&#39;t available on your system. Maybe it&#39;s not in your PATH?&quot;</span> <span class="o">%</span> <span class="n">tor_cmd</span><span class="p">)</span>
+
+  <span class="c"># double check that we have a torrc to work with</span>
+  <span class="k">if</span> <span class="n">torrc_path</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">NO_TORRC</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">torrc_path</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s">&quot;torrc doesn&#39;t exist (</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="n">torrc_path</span><span class="p">)</span>
+
+  <span class="c"># starts a tor subprocess, raising an OSError if it fails</span>
+  <span class="n">runtime_args</span><span class="p">,</span> <span class="n">temp_file</span> <span class="o">=</span> <span class="p">[</span><span class="n">tor_cmd</span><span class="p">],</span> <span class="bp">None</span>
+
+  <span class="k">if</span> <span class="n">args</span><span class="p">:</span>
+    <span class="n">runtime_args</span> <span class="o">+=</span> <span class="n">args</span>
+
+  <span class="k">if</span> <span class="n">torrc_path</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">torrc_path</span> <span class="o">==</span> <span class="n">NO_TORRC</span><span class="p">:</span>
+      <span class="n">temp_file</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkstemp</span><span class="p">(</span><span class="n">prefix</span> <span class="o">=</span> <span class="s">&#39;empty-torrc-&#39;</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+      <span class="n">runtime_args</span> <span class="o">+=</span> <span class="p">[</span><span class="s">&#39;-f&#39;</span><span class="p">,</span> <span class="n">temp_file</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">runtime_args</span> <span class="o">+=</span> <span class="p">[</span><span class="s">&#39;-f&#39;</span><span class="p">,</span> <span class="n">torrc_path</span><span class="p">]</span>
+
+  <span class="k">if</span> <span class="n">take_ownership</span><span class="p">:</span>
+    <span class="n">runtime_args</span> <span class="o">+=</span> <span class="p">[</span><span class="s">&#39;__OwningControllerProcess&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">())]</span>
+
+  <span class="n">tor_process</span> <span class="o">=</span> <span class="bp">None</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">tor_process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">runtime_args</span><span class="p">,</span> <span class="n">stdout</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stdin</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">stdin</span><span class="p">:</span>
+      <span class="n">tor_process</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_bytes</span><span class="p">(</span><span class="n">stdin</span><span class="p">))</span>
+      <span class="n">tor_process</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">timeout</span><span class="p">:</span>
+      <span class="k">def</span> <span class="nf">timeout_handler</span><span class="p">(</span><span class="n">signum</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s">&#39;reached a </span><span class="si">%i</span><span class="s"> second timeout without success&#39;</span> <span class="o">%</span> <span class="n">timeout</span><span class="p">)</span>
+
+      <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGALRM</span><span class="p">,</span> <span class="n">timeout_handler</span><span class="p">)</span>
+      <span class="n">signal</span><span class="o">.</span><span class="n">alarm</span><span class="p">(</span><span class="n">timeout</span><span class="p">)</span>
+
+    <span class="n">bootstrap_line</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;Bootstrapped ([0-9]+)%: &#39;</span><span class="p">)</span>
+    <span class="n">problem_line</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;\[(warn|err)\] (.*)$&#39;</span><span class="p">)</span>
+    <span class="n">last_problem</span> <span class="o">=</span> <span class="s">&#39;Timed out&#39;</span>
+
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+      <span class="c"># Tor&#39;s stdout will be read as ASCII bytes. This is fine for python 2, but</span>
+      <span class="c"># in python 3 that means it&#39;ll mismatch with other operations (for instance</span>
+      <span class="c"># the bootstrap_line.search() call later will fail).</span>
+      <span class="c">#</span>
+      <span class="c"># It seems like python 2.x is perfectly happy for this to be unicode, so</span>
+      <span class="c"># normalizing to that.</span>
+
+      <span class="n">init_line</span> <span class="o">=</span> <span class="n">tor_process</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">&#39;utf-8&#39;</span><span class="p">,</span> <span class="s">&#39;replace&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+      <span class="c"># this will provide empty results if the process is terminated</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">init_line</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s">&#39;Process terminated: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">last_problem</span><span class="p">)</span>
+
+      <span class="c"># provide the caller with the initialization message if they want it</span>
+
+      <span class="k">if</span> <span class="n">init_msg_handler</span><span class="p">:</span>
+        <span class="n">init_msg_handler</span><span class="p">(</span><span class="n">init_line</span><span class="p">)</span>
+
+      <span class="c"># return the process if we&#39;re done with bootstrapping</span>
+
+      <span class="n">bootstrap_match</span> <span class="o">=</span> <span class="n">bootstrap_line</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">init_line</span><span class="p">)</span>
+      <span class="n">problem_match</span> <span class="o">=</span> <span class="n">problem_line</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">init_line</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">bootstrap_match</span> <span class="ow">and</span> <span class="nb">int</span><span class="p">(</span><span class="n">bootstrap_match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="o">&gt;=</span> <span class="n">completion_percent</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">tor_process</span>
+      <span class="k">elif</span> <span class="n">problem_match</span><span class="p">:</span>
+        <span class="n">runlevel</span><span class="p">,</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">problem_match</span><span class="o">.</span><span class="n">groups</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="s">&#39;see warnings above&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">msg</span><span class="p">:</span>
+          <span class="k">if</span> <span class="s">&#39;: &#39;</span> <span class="ow">in</span> <span class="n">msg</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;: &#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+          <span class="n">last_problem</span> <span class="o">=</span> <span class="n">msg</span>
+  <span class="k">except</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">tor_process</span><span class="p">:</span>
+      <span class="n">tor_process</span><span class="o">.</span><span class="n">kill</span><span class="p">()</span>  <span class="c"># don&#39;t leave a lingering process</span>
+      <span class="n">tor_process</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+    <span class="k">raise</span>
+  <span class="k">finally</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">timeout</span><span class="p">:</span>
+      <span class="n">signal</span><span class="o">.</span><span class="n">alarm</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>  <span class="c"># stop alarm</span>
+
+    <span class="k">if</span> <span class="n">tor_process</span> <span class="ow">and</span> <span class="n">tor_process</span><span class="o">.</span><span class="n">stdout</span><span class="p">:</span>
+      <span class="n">tor_process</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">tor_process</span> <span class="ow">and</span> <span class="n">tor_process</span><span class="o">.</span><span class="n">stderr</span><span class="p">:</span>
+      <span class="n">tor_process</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">temp_file</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">temp_file</span><span class="p">)</span>
+      <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+</div>
+<div class="viewcode-block" id="launch_tor_with_config"><a class="viewcode-back" href="../../api/process.html#stem.process.launch_tor_with_config">[docs]</a><span class="k">def</span> <span class="nf">launch_tor_with_config</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">tor_cmd</span> <span class="o">=</span> <span class="s">&#39;tor&#39;</span><span class="p">,</span> <span class="n">completion_percent</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="n">init_msg_handler</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">timeout</span> <span class="o">=</span> <span class="n">DEFAULT_INIT_TIMEOUT</span><span class="p">,</span> <span class="n">take_ownership</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Initializes a tor process, like :func:`~stem.process.launch_tor`, but with a</span>
+<span class="sd">  customized configuration. This writes a temporary torrc to disk, launches</span>
+<span class="sd">  tor, then deletes the torrc.</span>
+
+<span class="sd">  For example...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    tor_process = stem.process.launch_tor_with_config(</span>
+<span class="sd">      config = {</span>
+<span class="sd">        &#39;ControlPort&#39;: &#39;2778&#39;,</span>
+<span class="sd">        &#39;Log&#39;: [</span>
+<span class="sd">          &#39;NOTICE stdout&#39;,</span>
+<span class="sd">          &#39;ERR file /tmp/tor_error_log&#39;,</span>
+<span class="sd">        ],</span>
+<span class="sd">      },</span>
+<span class="sd">    )</span>
+
+<span class="sd">  :param dict config: configuration options, such as &quot;{&#39;ControlPort&#39;: &#39;9051&#39;}&quot;,</span>
+<span class="sd">    values can either be a **str** or **list of str** if for multiple values</span>
+<span class="sd">  :param str tor_cmd: command for starting tor</span>
+<span class="sd">  :param int completion_percent: percent of bootstrap completion at which</span>
+<span class="sd">    this&#39;ll return</span>
+<span class="sd">  :param functor init_msg_handler: optional functor that will be provided with</span>
+<span class="sd">    tor&#39;s initialization stdout as we get it</span>
+<span class="sd">  :param int timeout: time after which the attempt to start tor is aborted, no</span>
+<span class="sd">    timeouts are applied if **None**</span>
+<span class="sd">  :param bool take_ownership: asserts ownership over the tor process so it</span>
+<span class="sd">    aborts if this python process terminates or a :class:`~stem.control.Controller`</span>
+<span class="sd">    we establish to it disconnects</span>
+
+<span class="sd">  :returns: **subprocess.Popen** instance for the tor subprocess</span>
+
+<span class="sd">  :raises: **OSError** if we either fail to create the tor process or reached a</span>
+<span class="sd">    timeout without success</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># TODO: Drop this version check when tor 0.2.6.3 or higher is the only game</span>
+  <span class="c"># in town.</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">use_stdin</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">get_system_tor_version</span><span class="p">(</span><span class="n">tor_cmd</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">TORRC_VIA_STDIN</span>
+  <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+    <span class="n">use_stdin</span> <span class="o">=</span> <span class="bp">False</span>
+
+  <span class="c"># we need to be sure that we&#39;re logging to stdout to figure out when we&#39;re</span>
+  <span class="c"># done bootstrapping</span>
+
+  <span class="k">if</span> <span class="s">&#39;Log&#39;</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+    <span class="n">stdout_options</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;DEBUG stdout&#39;</span><span class="p">,</span> <span class="s">&#39;INFO stdout&#39;</span><span class="p">,</span> <span class="s">&#39;NOTICE stdout&#39;</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;Log&#39;</span><span class="p">],</span> <span class="nb">str</span><span class="p">):</span>
+      <span class="n">config</span><span class="p">[</span><span class="s">&#39;Log&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;Log&#39;</span><span class="p">]]</span>
+
+    <span class="n">has_stdout</span> <span class="o">=</span> <span class="bp">False</span>
+
+    <span class="k">for</span> <span class="n">log_config</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;Log&#39;</span><span class="p">]:</span>
+      <span class="k">if</span> <span class="n">log_config</span> <span class="ow">in</span> <span class="n">stdout_options</span><span class="p">:</span>
+        <span class="n">has_stdout</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">break</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">has_stdout</span><span class="p">:</span>
+      <span class="n">config</span><span class="p">[</span><span class="s">&#39;Log&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;NOTICE stdout&#39;</span><span class="p">)</span>
+
+  <span class="n">config_str</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+
+  <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+      <span class="n">config_str</span> <span class="o">+=</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
+        <span class="n">config_str</span> <span class="o">+=</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">use_stdin</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">launch_tor</span><span class="p">(</span><span class="n">tor_cmd</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;-f&#39;</span><span class="p">,</span> <span class="s">&#39;-&#39;</span><span class="p">],</span> <span class="bp">None</span><span class="p">,</span> <span class="n">completion_percent</span><span class="p">,</span> <span class="n">init_msg_handler</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">take_ownership</span><span class="p">,</span> <span class="n">stdin</span> <span class="o">=</span> <span class="n">config_str</span><span class="p">)</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="n">torrc_descriptor</span><span class="p">,</span> <span class="n">torrc_path</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkstemp</span><span class="p">(</span><span class="n">prefix</span> <span class="o">=</span> <span class="s">&#39;torrc-&#39;</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">torrc_path</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">torrc_file</span><span class="p">:</span>
+        <span class="n">torrc_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">config_str</span><span class="p">)</span>
+
+      <span class="c"># prevents tor from erroring out due to a missing torrc if it gets a sighup</span>
+      <span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;__ReloadTorrcOnSIGHUP&#39;</span><span class="p">,</span> <span class="s">&#39;0&#39;</span><span class="p">]</span>
+
+      <span class="k">return</span> <span class="n">launch_tor</span><span class="p">(</span><span class="n">tor_cmd</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">torrc_path</span><span class="p">,</span> <span class="n">completion_percent</span><span class="p">,</span> <span class="n">init_msg_handler</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">take_ownership</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">torrc_descriptor</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">torrc_path</span><span class="p">)</span>
+      <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

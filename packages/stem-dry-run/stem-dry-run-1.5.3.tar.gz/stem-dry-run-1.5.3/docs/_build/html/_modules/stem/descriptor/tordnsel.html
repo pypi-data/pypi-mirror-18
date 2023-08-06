@@ -1,0 +1,219 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.descriptor.tordnsel &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem" href="../../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.descriptor.tordnsel</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.descriptor.tordnsel</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2013-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Parsing for `TorDNSEL &lt;https://www.torproject.org/projects/tordnsel.html.en&gt;`_</span>
+<span class="sd">exit list files.</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  TorDNSEL - Exit list provided by TorDNSEL</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">stem.util.connection</span>
+<span class="kn">import</span> <span class="nn">stem.util.str_tools</span>
+<span class="kn">import</span> <span class="nn">stem.util.tor_tools</span>
+
+<span class="kn">from</span> <span class="nn">stem.descriptor</span> <span class="kn">import</span> <span class="p">(</span>
+  <span class="n">Descriptor</span><span class="p">,</span>
+  <span class="n">_read_until_keywords</span><span class="p">,</span>
+  <span class="n">_get_descriptor_components</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_file</span><span class="p">(</span><span class="n">tordnsel_file</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Iterates over a tordnsel file.</span>
+
+<span class="sd">  :returns: iterator for :class:`~stem.descriptor.tordnsel.TorDNSEL`</span>
+<span class="sd">    instances in the file</span>
+
+<span class="sd">  :raises:</span>
+<span class="sd">    * **ValueError** if the contents is malformed and validate is **True**</span>
+<span class="sd">    * **IOError** if the file can&#39;t be read</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># skip content prior to the first ExitNode</span>
+  <span class="n">_read_until_keywords</span><span class="p">(</span><span class="s">&#39;ExitNode&#39;</span><span class="p">,</span> <span class="n">tordnsel_file</span><span class="p">,</span> <span class="n">skip</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+
+  <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+    <span class="n">contents</span> <span class="o">=</span> <span class="n">_read_until_keywords</span><span class="p">(</span><span class="s">&#39;ExitAddress&#39;</span><span class="p">,</span> <span class="n">tordnsel_file</span><span class="p">)</span>
+    <span class="n">contents</span> <span class="o">+=</span> <span class="n">_read_until_keywords</span><span class="p">(</span><span class="s">&#39;ExitNode&#39;</span><span class="p">,</span> <span class="n">tordnsel_file</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">contents</span><span class="p">:</span>
+      <span class="k">yield</span> <span class="n">TorDNSEL</span><span class="p">(</span><span class="nb">bytes</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">contents</span><span class="p">),</span> <span class="n">validate</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">break</span>  <span class="c"># done parsing file</span>
+
+
+<div class="viewcode-block" id="TorDNSEL"><a class="viewcode-back" href="../../../api/descriptor/tordnsel.html#stem.descriptor.tordnsel.TorDNSEL">[docs]</a><span class="k">class</span> <span class="nc">TorDNSEL</span><span class="p">(</span><span class="n">Descriptor</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  TorDNSEL descriptor (`exitlist specification</span>
+<span class="sd">  &lt;https://www.torproject.org/tordnsel/exitlist-spec.txt&gt;`_)</span>
+
+<span class="sd">  :var str fingerprint: **\*** authority&#39;s fingerprint</span>
+<span class="sd">  :var datetime published: **\*** time in UTC when this descriptor was made</span>
+<span class="sd">  :var datetime last_status: **\*** time in UTC when the relay was seen in a v2 network status</span>
+<span class="sd">  :var list exit_addresses: **\*** list of (str address, datetime date) tuples consisting of the found IPv4 exit address and the time</span>
+
+<span class="sd">  **\*** attribute is either required when we&#39;re parsed with validation or has</span>
+<span class="sd">  a default value, others are left as **None** if undefined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_contents</span><span class="p">,</span> <span class="n">validate</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">TorDNSEL</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">raw_contents</span><span class="p">)</span>
+    <span class="n">raw_contents</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">raw_contents</span><span class="p">)</span>
+    <span class="n">entries</span> <span class="o">=</span> <span class="n">_get_descriptor_components</span><span class="p">(</span><span class="n">raw_contents</span><span class="p">,</span> <span class="n">validate</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">fingerprint</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">published</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">last_status</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">exit_addresses</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">validate</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entries</span><span class="p">,</span> <span class="n">validate</span><span class="p">):</span>
+
+    <span class="k">for</span> <span class="n">keyword</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">entries</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+      <span class="n">value</span><span class="p">,</span> <span class="n">block_type</span><span class="p">,</span> <span class="n">block_content</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+      <span class="k">if</span> <span class="n">validate</span> <span class="ow">and</span> <span class="n">block_content</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Unexpected block content: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">block_content</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">keyword</span> <span class="o">==</span> <span class="s">&#39;ExitNode&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">validate</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">tor_tools</span><span class="o">.</span><span class="n">is_valid_fingerprint</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+          <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Tor relay fingerprints consist of forty hex digits: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fingerprint</span> <span class="o">=</span> <span class="n">value</span>
+      <span class="k">elif</span> <span class="n">keyword</span> <span class="o">==</span> <span class="s">&#39;Published&#39;</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">published</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_parse_timestamp</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+          <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Published time wasn&#39;t parsable: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="n">keyword</span> <span class="o">==</span> <span class="s">&#39;LastStatus&#39;</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">last_status</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_parse_timestamp</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+          <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;LastStatus time wasn&#39;t parsable: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="n">keyword</span> <span class="o">==</span> <span class="s">&#39;ExitAddress&#39;</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">value</span><span class="p">,</span> <span class="n">block_type</span><span class="p">,</span> <span class="n">block_content</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
+          <span class="n">address</span><span class="p">,</span> <span class="n">date</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+          <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+              <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;ExitAddress isn&#39;t a valid IPv4 address: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">address</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">block_content</span><span class="p">:</span>
+              <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Unexpected block content: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">block_content</span><span class="p">)</span>
+
+          <span class="k">try</span><span class="p">:</span>
+            <span class="n">date</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_parse_timestamp</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">exit_addresses</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">address</span><span class="p">,</span> <span class="n">date</span><span class="p">))</span>
+          <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
+              <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;ExitAddress found time wasn&#39;t parsable: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="n">validate</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Unrecognized keyword: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">keyword</span><span class="p">)</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

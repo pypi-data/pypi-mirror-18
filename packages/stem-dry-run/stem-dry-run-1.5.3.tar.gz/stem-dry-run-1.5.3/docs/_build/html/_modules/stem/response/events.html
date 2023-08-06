@@ -1,0 +1,1465 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.response.events &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem.response" href="../response.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.response.events</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.response.events</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2012-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="kn">import</span> <span class="nn">io</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">import</span> <span class="nn">stem</span>
+<span class="kn">import</span> <span class="nn">stem.control</span>
+<span class="kn">import</span> <span class="nn">stem.descriptor.router_status_entry</span>
+<span class="kn">import</span> <span class="nn">stem.response</span>
+<span class="kn">import</span> <span class="nn">stem.version</span>
+
+<span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">str_type</span><span class="p">,</span> <span class="n">int_type</span><span class="p">,</span> <span class="n">connection</span><span class="p">,</span> <span class="n">log</span><span class="p">,</span> <span class="n">str_tools</span><span class="p">,</span> <span class="n">tor_tools</span>
+
+<span class="c"># Matches keyword=value arguments. This can&#39;t be a simple &quot;(.*)=(.*)&quot; pattern</span>
+<span class="c"># because some positional arguments, like circuit paths, can have an equal</span>
+<span class="c"># sign.</span>
+
+<span class="n">KW_ARG</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^(.*) ([A-Za-z0-9_]+)=(\S*)$&#39;</span><span class="p">)</span>
+<span class="n">QUOTED_KW_ARG</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^(.*) ([A-Za-z0-9_]+)=&quot;(.*)&quot;$&#39;</span><span class="p">)</span>
+<span class="n">CELL_TYPE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^[a-z0-9_]+$&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Event"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.Event">[docs]</a><span class="k">class</span> <span class="nc">Event</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">ControlMessage</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Base for events we receive asynchronously, as described in section 4.1 of the</span>
+<span class="sd">  `control-spec</span>
+<span class="sd">  &lt;https://gitweb.torproject.org/torspec.git/tree/control-spec.txt&gt;`_.</span>
+
+<span class="sd">  :var str type: event type</span>
+<span class="sd">  :var int arrived_at: unix timestamp for when the message arrived</span>
+<span class="sd">  :var list positional_args: positional arguments of the event</span>
+<span class="sd">  :var dict keyword_args: key/value arguments of the event</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_POSITIONAL_ARGS</span> <span class="o">=</span> <span class="p">()</span>    <span class="c"># attribute names for recognized positional arguments</span>
+  <span class="n">_KEYWORD_ARGS</span> <span class="o">=</span> <span class="p">{}</span>       <span class="c"># map of &#39;keyword =&gt; attribute&#39; for recognized attributes</span>
+  <span class="n">_QUOTED</span> <span class="o">=</span> <span class="p">()</span>             <span class="c"># positional arguments that are quoted</span>
+  <span class="n">_OPTIONALLY_QUOTED</span> <span class="o">=</span> <span class="p">()</span>  <span class="c"># positional arguments that may or may not be quoted</span>
+  <span class="n">_SKIP_PARSING</span> <span class="o">=</span> <span class="bp">False</span>    <span class="c"># skip parsing contents into our positional_args and keyword_args</span>
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Version</span><span class="p">(</span><span class="s">&#39;0.1.1.1-alpha&#39;</span><span class="p">)</span>  <span class="c"># minimum version with control-spec V1 event support</span>
+
+  <span class="k">def</span> <span class="nf">_parse_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arrived_at</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">arrived_at</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="n">arrived_at</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;Received a blank tor event. Events must at the very least have a type.&#39;</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">arrived_at</span> <span class="o">=</span> <span class="n">arrived_at</span>
+
+    <span class="c"># if we&#39;re a recognized event type then translate ourselves into that subclass</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="ow">in</span> <span class="n">EVENT_TYPE_TO_CLASS</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span> <span class="o">=</span> <span class="n">EVENT_TYPE_TO_CLASS</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="p">]</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">positional_args</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">keyword_args</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_SKIP_PARSING</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_parse_standard_attr</span><span class="p">()</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">()</span>
+
+  <span class="k">def</span> <span class="nf">_parse_standard_attr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Most events are of the form...</span>
+<span class="sd">    650 *( positional_args ) *( key &quot;=&quot; value )</span>
+
+<span class="sd">    This parses this standard format, populating our **positional_args** and</span>
+<span class="sd">    **keyword_args** attributes and creating attributes if it&#39;s in our event&#39;s</span>
+<span class="sd">    **_POSITIONAL_ARGS** and **_KEYWORD_ARGS**.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c"># Tor events contain some number of positional arguments followed by</span>
+    <span class="c"># key/value mappings. Parsing keyword arguments from the end until we hit</span>
+    <span class="c"># something that isn&#39;t a key/value mapping. The rest are positional.</span>
+
+    <span class="n">content</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+      <span class="n">match</span> <span class="o">=</span> <span class="n">QUOTED_KW_ARG</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">KW_ARG</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+        <span class="n">content</span><span class="p">,</span> <span class="n">keyword</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">groups</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keyword_args</span><span class="p">[</span><span class="n">keyword</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">break</span>
+
+    <span class="c"># Setting attributes for the fields that we recognize.</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">positional_args</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="n">positional</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">positional_args</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">attr_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_POSITIONAL_ARGS</span><span class="p">:</span>
+      <span class="n">attr_value</span> <span class="o">=</span> <span class="bp">None</span>
+
+      <span class="k">if</span> <span class="n">positional</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">attr_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_QUOTED</span> <span class="ow">or</span> <span class="p">(</span><span class="n">attr_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_OPTIONALLY_QUOTED</span> <span class="ow">and</span> <span class="n">positional</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;&quot;&#39;</span><span class="p">)):</span>
+          <span class="n">attr_values</span> <span class="o">=</span> <span class="p">[</span><span class="n">positional</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)]</span>
+
+          <span class="k">if</span> <span class="ow">not</span> <span class="n">attr_values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;&quot;&#39;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;The </span><span class="si">%s</span><span class="s"> value should be quoted, but didn&#39;t have a starting quote: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">attr_name</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+          <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">positional</span><span class="p">:</span>
+              <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;The </span><span class="si">%s</span><span class="s"> value should be quoted, but didn&#39;t have an ending quote: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">attr_name</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+            <span class="n">attr_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">positional</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">attr_values</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;&quot;&#39;</span><span class="p">):</span>
+              <span class="k">break</span>
+
+          <span class="n">attr_value</span> <span class="o">=</span> <span class="s">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">attr_values</span><span class="p">)[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="n">attr_value</span> <span class="o">=</span> <span class="n">positional</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+      <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_value</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">controller_attr_name</span><span class="p">,</span> <span class="n">attr_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_KEYWORD_ARGS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+      <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">keyword_args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">controller_attr_name</span><span class="p">))</span>
+
+  <span class="c"># method overwritten by our subclasses for special handling that they do</span>
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+  <span class="k">def</span> <span class="nf">_log_if_unrecognized</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">attr_enum</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks if an attribute exists in a given enumeration, logging a message if</span>
+<span class="sd">    it isn&#39;t. Attributes can either be for a string or collection of strings</span>
+
+<span class="sd">    :param str attr: name of the attribute to check</span>
+<span class="sd">    :param stem.util.enum.Enum enum: enumeration to check against</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">attr_values</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">attr_values</span><span class="p">:</span>
+      <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attr_values</span><span class="p">,</span> <span class="p">(</span><span class="nb">bytes</span><span class="p">,</span> <span class="n">str_type</span><span class="p">)):</span>
+        <span class="n">attr_values</span> <span class="o">=</span> <span class="p">[</span><span class="n">attr_values</span><span class="p">]</span>
+
+      <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">attr_values</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">attr_enum</span><span class="p">:</span>
+          <span class="n">log_id</span> <span class="o">=</span> <span class="s">&#39;event.</span><span class="si">%s</span><span class="s">.unknown_</span><span class="si">%s</span><span class="s">.</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="n">attr</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+          <span class="n">unrecognized_msg</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s"> event had an unrecognized </span><span class="si">%s</span><span class="s"> (</span><span class="si">%s</span><span class="s">). Maybe a new addition to the control protocol? Full Event: &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+          <span class="n">log</span><span class="o">.</span><span class="n">log_once</span><span class="p">(</span><span class="n">log_id</span><span class="p">,</span> <span class="n">log</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="n">unrecognized_msg</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="AddrMapEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.AddrMapEvent">[docs]</a><span class="k">class</span> <span class="nc">AddrMapEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event that indicates a new address mapping.</span>
+
+<span class="sd">  The ADDRMAP event was one of the first Control Protocol V1 events and was</span>
+<span class="sd">  introduced in tor version 0.1.1.1-alpha.</span>
+
+<span class="sd">  .. versionchanged:: 1.1.0</span>
+<span class="sd">     Added the cached attribute.</span>
+
+<span class="sd">  :var str hostname: address being resolved</span>
+<span class="sd">  :var str destination: destination of the resolution, this is usually an ip,</span>
+<span class="sd">    but could be a hostname if TrackHostExits is enabled or **NONE** if the</span>
+<span class="sd">    resolution failed</span>
+<span class="sd">  :var datetime expiry: expiration time of the resolution in local time</span>
+<span class="sd">  :var str error: error code if the resolution failed</span>
+<span class="sd">  :var datetime utc_expiry: expiration time of the resolution in UTC</span>
+<span class="sd">  :var bool cached: **True** if the resolution will be kept until it expires,</span>
+<span class="sd">    **False** otherwise or **None** if undefined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_POSITIONAL_ARGS</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;hostname&#39;</span><span class="p">,</span> <span class="s">&#39;destination&#39;</span><span class="p">,</span> <span class="s">&#39;expiry&#39;</span><span class="p">)</span>
+  <span class="n">_KEYWORD_ARGS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;error&#39;</span><span class="p">:</span> <span class="s">&#39;error&#39;</span><span class="p">,</span>
+    <span class="s">&#39;EXPIRES&#39;</span><span class="p">:</span> <span class="s">&#39;utc_expiry&#39;</span><span class="p">,</span>
+    <span class="s">&#39;CACHED&#39;</span><span class="p">:</span> <span class="s">&#39;cached&#39;</span><span class="p">,</span>
+  <span class="p">}</span>
+  <span class="n">_OPTIONALLY_QUOTED</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;expiry&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">destination</span> <span class="o">==</span> <span class="s">&#39;&lt;error&gt;&#39;</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">destination</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">expiry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">expiry</span> <span class="o">==</span> <span class="s">&#39;NEVER&#39;</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expiry</span> <span class="o">=</span> <span class="bp">None</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">expiry</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_parse_timestamp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expiry</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;Unable to parse date in ADDRMAP event: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">utc_expiry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">utc_expiry</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_parse_timestamp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">utc_expiry</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cached</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cached</span> <span class="o">==</span> <span class="s">&#39;YES&#39;</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cached</span> <span class="o">=</span> <span class="bp">True</span>
+      <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">cached</span> <span class="o">==</span> <span class="s">&#39;NO&#39;</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cached</span> <span class="o">=</span> <span class="bp">False</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;An ADDRMAP event&#39;s CACHED mapping can only be &#39;YES&#39; or &#39;NO&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="AuthDirNewDescEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.AuthDirNewDescEvent">[docs]</a><span class="k">class</span> <span class="nc">AuthDirNewDescEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event specific to directory authorities, indicating that we just received new</span>
+<span class="sd">  descriptors. The descriptor type contained within this event is unspecified</span>
+<span class="sd">  so the descriptor contents are left unparsed.</span>
+
+<span class="sd">  The AUTHDIR_NEWDESCS event was introduced in tor version 0.1.1.10-alpha.</span>
+
+<span class="sd">  :var stem.AuthDescriptorAction action: what is being done with the descriptor</span>
+<span class="sd">  :var str message: explanation of why we chose this action</span>
+<span class="sd">  :var str descriptor: content of the descriptor</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_SKIP_PARSING</span> <span class="o">=</span> <span class="bp">True</span>
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">EVENT_AUTHDIR_NEWDESCS</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;AUTHDIR_NEWDESCS events must contain lines for at least the type, action, message, descriptor, and terminating &#39;OK&#39;&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">lines</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&#39;OK&#39;</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;AUTHDIR_NEWDESCS doesn&#39;t end with an &#39;OK&#39;&quot;</span><span class="p">)</span>
+
+    <span class="c"># TODO: For stem 2.0.0 we should consider changing &#39;descriptor&#39; to a</span>
+    <span class="c"># ServerDescriptor instance.</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">action</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">descriptor</span> <span class="o">=</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+</div>
+<div class="viewcode-block" id="BandwidthEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.BandwidthEvent">[docs]</a><span class="k">class</span> <span class="nc">BandwidthEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event emitted every second with the bytes sent and received by tor.</span>
+
+<span class="sd">  The BW event was one of the first Control Protocol V1 events and was</span>
+<span class="sd">  introduced in tor version 0.1.1.1-alpha.</span>
+
+<span class="sd">  :var long read: bytes received by tor that second</span>
+<span class="sd">  :var long written: bytes sent by tor that second</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_POSITIONAL_ARGS</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;read&#39;</span><span class="p">,</span> <span class="s">&#39;written&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;BW event is missing its read value&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">written</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;BW event is missing its written value&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">written</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;A BW event&#39;s bytes sent and received should be a positive numeric value, received: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">read</span> <span class="o">=</span> <span class="n">int_type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">written</span> <span class="o">=</span> <span class="n">int_type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">written</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="BuildTimeoutSetEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.BuildTimeoutSetEvent">[docs]</a><span class="k">class</span> <span class="nc">BuildTimeoutSetEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event indicating that the timeout value for a circuit has changed. This was</span>
+<span class="sd">  first added in tor version 0.2.2.7.</span>
+
+<span class="sd">  The BUILDTIMEOUT_SET event was introduced in tor version 0.2.2.7-alpha.</span>
+
+<span class="sd">  :var stem.TimeoutSetType set_type: way in which the timeout is changing</span>
+<span class="sd">  :var int total_times: circuit build times tor used to determine the timeout</span>
+<span class="sd">  :var int timeout: circuit timeout value in milliseconds</span>
+<span class="sd">  :var int xm: Pareto parameter Xm in milliseconds</span>
+<span class="sd">  :var float alpha: Pareto parameter alpha</span>
+<span class="sd">  :var float quantile: CDF quantile cutoff point</span>
+<span class="sd">  :var float timeout_rate: ratio of circuits that have time out</span>
+<span class="sd">  :var int close_timeout: duration to keep measurement circuits in milliseconds</span>
+<span class="sd">  :var float close_rate: ratio of measurement circuits that are closed</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_POSITIONAL_ARGS</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;set_type&#39;</span><span class="p">,)</span>
+  <span class="n">_KEYWORD_ARGS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;TOTAL_TIMES&#39;</span><span class="p">:</span> <span class="s">&#39;total_times&#39;</span><span class="p">,</span>
+    <span class="s">&#39;TIMEOUT_MS&#39;</span><span class="p">:</span> <span class="s">&#39;timeout&#39;</span><span class="p">,</span>
+    <span class="s">&#39;XM&#39;</span><span class="p">:</span> <span class="s">&#39;xm&#39;</span><span class="p">,</span>
+    <span class="s">&#39;ALPHA&#39;</span><span class="p">:</span> <span class="s">&#39;alpha&#39;</span><span class="p">,</span>
+    <span class="s">&#39;CUTOFF_QUANTILE&#39;</span><span class="p">:</span> <span class="s">&#39;quantile&#39;</span><span class="p">,</span>
+    <span class="s">&#39;TIMEOUT_RATE&#39;</span><span class="p">:</span> <span class="s">&#39;timeout_rate&#39;</span><span class="p">,</span>
+    <span class="s">&#39;CLOSE_MS&#39;</span><span class="p">:</span> <span class="s">&#39;close_timeout&#39;</span><span class="p">,</span>
+    <span class="s">&#39;CLOSE_RATE&#39;</span><span class="p">:</span> <span class="s">&#39;close_rate&#39;</span><span class="p">,</span>
+  <span class="p">}</span>
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">EVENT_BUILDTIMEOUT_SET</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="c"># convert our integer and float parameters</span>
+
+    <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;total_times&#39;</span><span class="p">,</span> <span class="s">&#39;timeout&#39;</span><span class="p">,</span> <span class="s">&#39;xm&#39;</span><span class="p">,</span> <span class="s">&#39;close_timeout&#39;</span><span class="p">):</span>
+      <span class="n">param_value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">param_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+          <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">param_value</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;The </span><span class="si">%s</span><span class="s"> of a BUILDTIMEOUT_SET should be an integer: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+    <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;alpha&#39;</span><span class="p">,</span> <span class="s">&#39;quantile&#39;</span><span class="p">,</span> <span class="s">&#39;timeout_rate&#39;</span><span class="p">,</span> <span class="s">&#39;close_rate&#39;</span><span class="p">):</span>
+      <span class="n">param_value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">param_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+          <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">param_value</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;The </span><span class="si">%s</span><span class="s"> of a BUILDTIMEOUT_SET should be a float: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;set_type&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">TimeoutSetType</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="CircuitEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.CircuitEvent">[docs]</a><span class="k">class</span> <span class="nc">CircuitEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event that indicates that a circuit has changed.</span>
+
+<span class="sd">  The fingerprint or nickname values in our &#39;path&#39; may be **None** if the</span>
+<span class="sd">  VERBOSE_NAMES feature isn&#39;t enabled. The option was first introduced in tor</span>
+<span class="sd">  version 0.1.2.2, and on by default after 0.2.2.1.</span>
+
+<span class="sd">  The CIRC event was one of the first Control Protocol V1 events and was</span>
+<span class="sd">  introduced in tor version 0.1.1.1-alpha.</span>
+
+<span class="sd">  .. versionchanged:: 1.4.0</span>
+<span class="sd">     Added the socks_username and socks_password attributes which is used for</span>
+<span class="sd">     `stream isolation</span>
+<span class="sd">     &lt;https://gitweb.torproject.org/torspec.git/tree/proposals/171-separate-streams.txt&gt;`_.</span>
+
+<span class="sd">  :var str id: circuit identifier</span>
+<span class="sd">  :var stem.CircStatus status: reported status for the circuit</span>
+<span class="sd">  :var tuple path: relays involved in the circuit, these are</span>
+<span class="sd">    **(fingerprint, nickname)** tuples</span>
+<span class="sd">  :var tuple build_flags: :data:`~stem.CircBuildFlag` attributes</span>
+<span class="sd">    governing how the circuit is built</span>
+<span class="sd">  :var stem.CircPurpose purpose: purpose that the circuit is intended for</span>
+<span class="sd">  :var stem.HiddenServiceState hs_state: status if this is a hidden service circuit</span>
+<span class="sd">  :var str rend_query: circuit&#39;s rendezvous-point if this is hidden service related</span>
+<span class="sd">  :var datetime created: time when the circuit was created or cannibalized</span>
+<span class="sd">  :var stem.CircClosureReason reason: reason for the circuit to be closed</span>
+<span class="sd">  :var stem.CircClosureReason remote_reason: remote side&#39;s reason for the circuit to be closed</span>
+<span class="sd">  :var str socks_username: username for using this circuit</span>
+<span class="sd">  :var str socks_password: password for using this circuit</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_POSITIONAL_ARGS</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;id&#39;</span><span class="p">,</span> <span class="s">&#39;status&#39;</span><span class="p">,</span> <span class="s">&#39;path&#39;</span><span class="p">)</span>
+  <span class="n">_KEYWORD_ARGS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;BUILD_FLAGS&#39;</span><span class="p">:</span> <span class="s">&#39;build_flags&#39;</span><span class="p">,</span>
+    <span class="s">&#39;PURPOSE&#39;</span><span class="p">:</span> <span class="s">&#39;purpose&#39;</span><span class="p">,</span>
+    <span class="s">&#39;HS_STATE&#39;</span><span class="p">:</span> <span class="s">&#39;hs_state&#39;</span><span class="p">,</span>
+    <span class="s">&#39;REND_QUERY&#39;</span><span class="p">:</span> <span class="s">&#39;rend_query&#39;</span><span class="p">,</span>
+    <span class="s">&#39;TIME_CREATED&#39;</span><span class="p">:</span> <span class="s">&#39;created&#39;</span><span class="p">,</span>
+    <span class="s">&#39;REASON&#39;</span><span class="p">:</span> <span class="s">&#39;reason&#39;</span><span class="p">,</span>
+    <span class="s">&#39;REMOTE_REASON&#39;</span><span class="p">:</span> <span class="s">&#39;remote_reason&#39;</span><span class="p">,</span>
+    <span class="s">&#39;SOCKS_USERNAME&#39;</span><span class="p">:</span> <span class="s">&#39;socks_username&#39;</span><span class="p">,</span>
+    <span class="s">&#39;SOCKS_PASSWORD&#39;</span><span class="p">:</span> <span class="s">&#39;socks_password&#39;</span><span class="p">,</span>
+  <span class="p">}</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">control</span><span class="o">.</span><span class="n">_parse_circ_path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_flags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">build_flags</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">build_flags</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">created</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">created</span> <span class="o">=</span> <span class="n">str_tools</span><span class="o">.</span><span class="n">_parse_iso_timestamp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">created</span><span class="p">)</span>
+      <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;Unable to parse create date (</span><span class="si">%s</span><span class="s">): </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">tor_tools</span><span class="o">.</span><span class="n">is_valid_circuit_id</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Circuit IDs must be one to sixteen alphanumeric characters, got &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;status&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">CircStatus</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;build_flags&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">CircBuildFlag</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;purpose&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">CircPurpose</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;hs_state&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">HiddenServiceState</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;reason&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">CircClosureReason</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;remote_reason&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">CircClosureReason</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_compare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">method</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">CircuitEvent</span><span class="p">):</span>
+      <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;id&#39;</span><span class="p">,</span> <span class="s">&#39;status&#39;</span><span class="p">,</span> <span class="s">&#39;path&#39;</span><span class="p">,</span> <span class="s">&#39;build_flags&#39;</span><span class="p">,</span> <span class="s">&#39;purpose&#39;</span><span class="p">,</span> <span class="s">&#39;hs_state&#39;</span><span class="p">,</span> <span class="s">&#39;rend_query&#39;</span><span class="p">,</span> <span class="s">&#39;created&#39;</span><span class="p">,</span> <span class="s">&#39;reason&#39;</span><span class="p">,</span> <span class="s">&#39;remote_reason&#39;</span><span class="p">,</span> <span class="s">&#39;socks_username&#39;</span><span class="p">,</span> <span class="s">&#39;socks_password&#39;</span><span class="p">):</span>
+      <span class="n">my_attr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+      <span class="n">other_attr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+
+      <span class="c"># Our id attribute is technically a string, but Tor conventionally uses</span>
+      <span class="c"># ints. Attempt to handle as ints if that&#39;s the case so we get numeric</span>
+      <span class="c"># ordering.</span>
+
+      <span class="k">if</span> <span class="n">attr</span> <span class="o">==</span> <span class="s">&#39;id&#39;</span> <span class="ow">and</span> <span class="n">my_attr</span> <span class="ow">and</span> <span class="n">other_attr</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">my_attr</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span> <span class="ow">and</span> <span class="n">other_attr</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+          <span class="n">my_attr</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">my_attr</span><span class="p">)</span>
+          <span class="n">other_attr</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">other_attr</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">my_attr</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">my_attr</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+
+      <span class="k">if</span> <span class="n">other_attr</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">other_attr</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+
+      <span class="k">if</span> <span class="n">my_attr</span> <span class="o">!=</span> <span class="n">other_attr</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">method</span><span class="p">(</span><span class="n">my_attr</span><span class="p">,</span> <span class="n">other_attr</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="bp">True</span>
+
+  <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+  <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">==</span> <span class="n">o</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span>
+
+  <span class="k">def</span> <span class="nf">__gt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">&gt;</span> <span class="n">o</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__ge__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">&gt;=</span> <span class="n">o</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="CircMinorEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.CircMinorEvent">[docs]</a><span class="k">class</span> <span class="nc">CircMinorEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event providing information about minor changes in our circuits. This was</span>
+<span class="sd">  first added in tor version 0.2.3.11.</span>
+
+<span class="sd">  The CIRC_MINOR event was introduced in tor version 0.2.3.11-alpha.</span>
+
+<span class="sd">  :var str id: circuit identifier</span>
+<span class="sd">  :var stem.CircEvent event: type of change in the circuit</span>
+<span class="sd">  :var tuple path: relays involved in the circuit, these are</span>
+<span class="sd">    **(fingerprint, nickname)** tuples</span>
+<span class="sd">  :var tuple build_flags: :data:`~stem.CircBuildFlag` attributes</span>
+<span class="sd">    governing how the circuit is built</span>
+<span class="sd">  :var stem.CircPurpose purpose: purpose that the circuit is intended for</span>
+<span class="sd">  :var stem.HiddenServiceState hs_state: status if this is a hidden service circuit</span>
+<span class="sd">  :var str rend_query: circuit&#39;s rendezvous-point if this is hidden service related</span>
+<span class="sd">  :var datetime created: time when the circuit was created or cannibalized</span>
+<span class="sd">  :var stem.CircPurpose old_purpose: prior purpose for the circuit</span>
+<span class="sd">  :var stem.HiddenServiceState old_hs_state: prior status as a hidden service circuit</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_POSITIONAL_ARGS</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;id&#39;</span><span class="p">,</span> <span class="s">&#39;event&#39;</span><span class="p">,</span> <span class="s">&#39;path&#39;</span><span class="p">)</span>
+  <span class="n">_KEYWORD_ARGS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;BUILD_FLAGS&#39;</span><span class="p">:</span> <span class="s">&#39;build_flags&#39;</span><span class="p">,</span>
+    <span class="s">&#39;PURPOSE&#39;</span><span class="p">:</span> <span class="s">&#39;purpose&#39;</span><span class="p">,</span>
+    <span class="s">&#39;HS_STATE&#39;</span><span class="p">:</span> <span class="s">&#39;hs_state&#39;</span><span class="p">,</span>
+    <span class="s">&#39;REND_QUERY&#39;</span><span class="p">:</span> <span class="s">&#39;rend_query&#39;</span><span class="p">,</span>
+    <span class="s">&#39;TIME_CREATED&#39;</span><span class="p">:</span> <span class="s">&#39;created&#39;</span><span class="p">,</span>
+    <span class="s">&#39;OLD_PURPOSE&#39;</span><span class="p">:</span> <span class="s">&#39;old_purpose&#39;</span><span class="p">,</span>
+    <span class="s">&#39;OLD_HS_STATE&#39;</span><span class="p">:</span> <span class="s">&#39;old_hs_state&#39;</span><span class="p">,</span>
+  <span class="p">}</span>
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">EVENT_CIRC_MINOR</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">control</span><span class="o">.</span><span class="n">_parse_circ_path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_flags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">build_flags</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">build_flags</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">created</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">created</span> <span class="o">=</span> <span class="n">str_tools</span><span class="o">.</span><span class="n">_parse_iso_timestamp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">created</span><span class="p">)</span>
+      <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;Unable to parse create date (</span><span class="si">%s</span><span class="s">): </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">tor_tools</span><span class="o">.</span><span class="n">is_valid_circuit_id</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Circuit IDs must be one to sixteen alphanumeric characters, got &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;event&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">CircEvent</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;build_flags&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">CircBuildFlag</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;purpose&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">CircPurpose</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;hs_state&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">HiddenServiceState</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;old_purpose&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">CircPurpose</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;old_hs_state&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">HiddenServiceState</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="ClientsSeenEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.ClientsSeenEvent">[docs]</a><span class="k">class</span> <span class="nc">ClientsSeenEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Periodic event on bridge relays that provides a summary of our users.</span>
+
+<span class="sd">  The CLIENTS_SEEN event was introduced in tor version 0.2.1.10-alpha.</span>
+
+<span class="sd">  :var datetime start_time: time in UTC that we started collecting these stats</span>
+<span class="sd">  :var dict locales: mapping of country codes to a rounded count for the number of users</span>
+<span class="sd">  :var dict ip_versions: mapping of ip protocols to a rounded count for the number of users</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_KEYWORD_ARGS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;TimeStarted&#39;</span><span class="p">:</span> <span class="s">&#39;start_time&#39;</span><span class="p">,</span>
+    <span class="s">&#39;CountrySummary&#39;</span><span class="p">:</span> <span class="s">&#39;locales&#39;</span><span class="p">,</span>
+    <span class="s">&#39;IPVersions&#39;</span><span class="p">:</span> <span class="s">&#39;ip_versions&#39;</span><span class="p">,</span>
+  <span class="p">}</span>
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">EVENT_CLIENTS_SEEN</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_parse_timestamp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">locales</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="n">locale_to_count</span> <span class="o">=</span> <span class="p">{}</span>
+
+      <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locales</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="s">&#39;=&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;The CLIENTS_SEEN&#39;s CountrySummary should be a comma separated listing of &#39;&lt;locale&gt;=&lt;count&gt;&#39; mappings: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+        <span class="n">locale</span><span class="p">,</span> <span class="n">count</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">locale</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Locales should be a two character code, got &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">locale</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="n">count</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+          <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;Locale count was non-numeric (</span><span class="si">%s</span><span class="s">): </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">locale</span> <span class="ow">in</span> <span class="n">locale_to_count</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;CountrySummary had multiple mappings for &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">locale</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+        <span class="n">locale_to_count</span><span class="p">[</span><span class="n">locale</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">count</span><span class="p">)</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">locales</span> <span class="o">=</span> <span class="n">locale_to_count</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ip_versions</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="n">protocol_to_count</span> <span class="o">=</span> <span class="p">{}</span>
+
+      <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ip_versions</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="s">&#39;=&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;The CLIENTS_SEEN&#39;s IPVersions should be a comma separated listing of &#39;&lt;protocol&gt;=&lt;count&gt;&#39; mappings: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+        <span class="n">protocol</span><span class="p">,</span> <span class="n">count</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">count</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+          <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;IP protocol count was non-numeric (</span><span class="si">%s</span><span class="s">): </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+        <span class="n">protocol_to_count</span><span class="p">[</span><span class="n">protocol</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">count</span><span class="p">)</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">ip_versions</span> <span class="o">=</span> <span class="n">protocol_to_count</span>
+
+</div>
+<div class="viewcode-block" id="ConfChangedEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.ConfChangedEvent">[docs]</a><span class="k">class</span> <span class="nc">ConfChangedEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event that indicates that our configuration changed, either in response to a</span>
+<span class="sd">  SETCONF or RELOAD signal.</span>
+
+<span class="sd">  The CONF_CHANGED event was introduced in tor version 0.2.3.3-alpha.</span>
+
+<span class="sd">  :var dict config: mapping of configuration options to their new values</span>
+<span class="sd">    (**None** if the option is being unset)</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_SKIP_PARSING</span> <span class="o">=</span> <span class="bp">True</span>
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">EVENT_CONF_CHANGED</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c"># Skip first and last line since they&#39;re the header and footer. For</span>
+    <span class="c"># instance...</span>
+    <span class="c">#</span>
+    <span class="c"># 650-CONF_CHANGED</span>
+    <span class="c"># 650-ExitNodes=caerSidi</span>
+    <span class="c"># 650-ExitPolicy</span>
+    <span class="c"># 650-MaxCircuitDirtiness=20</span>
+    <span class="c"># 650 OK</span>
+
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+      <span class="k">if</span> <span class="s">&#39;=&#39;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+        <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">line</span><span class="p">,</span> <span class="bp">None</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+</div>
+<div class="viewcode-block" id="DescChangedEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.DescChangedEvent">[docs]</a><span class="k">class</span> <span class="nc">DescChangedEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event that indicates that our descriptor has changed.</span>
+
+<span class="sd">  The DESCCHANGED event was introduced in tor version 0.1.2.2-alpha.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">EVENT_DESCCHANGED</span>
+
+</div>
+<div class="viewcode-block" id="GuardEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.GuardEvent">[docs]</a><span class="k">class</span> <span class="nc">GuardEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event that indicates that our guard relays have changed. The &#39;endpoint&#39; could</span>
+<span class="sd">  be either a...</span>
+
+<span class="sd">  * fingerprint</span>
+<span class="sd">  * &#39;fingerprint=nickname&#39; pair</span>
+
+<span class="sd">  The derived &#39;endpoint_*&#39; attributes are generally more useful.</span>
+
+<span class="sd">  The GUARD event was introduced in tor version 0.1.2.5-alpha.</span>
+
+<span class="sd">  :var stem.GuardType guard_type: purpose the guard relay is for</span>
+<span class="sd">  :var str endpoint: relay that the event concerns</span>
+<span class="sd">  :var str endpoint_fingerprint: endpoint&#39;s finterprint</span>
+<span class="sd">  :var str endpoint_nickname: endpoint&#39;s nickname if it was provided</span>
+<span class="sd">  :var stem.GuardStatus status: status of the guard relay</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">EVENT_GUARD</span>
+  <span class="n">_POSITIONAL_ARGS</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;guard_type&#39;</span><span class="p">,</span> <span class="s">&#39;endpoint&#39;</span><span class="p">,</span> <span class="s">&#39;status&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">endpoint_fingerprint</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">endpoint_nickname</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">endpoint_fingerprint</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">endpoint_nickname</span> <span class="o">=</span> \
+        <span class="n">stem</span><span class="o">.</span><span class="n">control</span><span class="o">.</span><span class="n">_parse_circ_entry</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;GUARD&#39;s endpoint doesn&#39;t match a ServerSpec: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;guard_type&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">GuardType</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;status&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">GuardStatus</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="HSDescEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.HSDescEvent">[docs]</a><span class="k">class</span> <span class="nc">HSDescEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event triggered when we fetch a hidden service descriptor that currently isn&#39;t in our cache.</span>
+
+<span class="sd">  The HS_DESC event was introduced in tor version 0.2.5.2-alpha.</span>
+
+<span class="sd">  .. versionadded:: 1.2.0</span>
+
+<span class="sd">  .. versionchanged:: 1.3.0</span>
+<span class="sd">     Added the reason attribute.</span>
+
+<span class="sd">  .. versionchanged:: 1.5.0</span>
+<span class="sd">     Added the replica attribute.</span>
+
+<span class="sd">  :var stem.HSDescAction action: what is happening with the descriptor</span>
+<span class="sd">  :var str address: hidden service address</span>
+<span class="sd">  :var stem.HSAuth authentication: service&#39;s authentication method</span>
+<span class="sd">  :var str directory: hidden service directory servicing the request</span>
+<span class="sd">  :var str directory_fingerprint: hidden service directory&#39;s finterprint</span>
+<span class="sd">  :var str directory_nickname: hidden service directory&#39;s nickname if it was provided</span>
+<span class="sd">  :var str descriptor_id: descriptor identifier</span>
+<span class="sd">  :var stem.HSDescReason reason: reason the descriptor failed to be fetched</span>
+<span class="sd">  :var int replica: replica number the descriptor involves</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">EVENT_HS_DESC</span>
+  <span class="n">_POSITIONAL_ARGS</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;action&#39;</span><span class="p">,</span> <span class="s">&#39;address&#39;</span><span class="p">,</span> <span class="s">&#39;authentication&#39;</span><span class="p">,</span> <span class="s">&#39;directory&#39;</span><span class="p">,</span> <span class="s">&#39;descriptor_id&#39;</span><span class="p">)</span>
+  <span class="n">_KEYWORD_ARGS</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;REASON&#39;</span><span class="p">:</span> <span class="s">&#39;reason&#39;</span><span class="p">,</span> <span class="s">&#39;REPLICA&#39;</span><span class="p">:</span> <span class="s">&#39;replica&#39;</span><span class="p">}</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">directory_fingerprint</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">directory_nickname</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">directory_fingerprint</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">directory_nickname</span> <span class="o">=</span> \
+        <span class="n">stem</span><span class="o">.</span><span class="n">control</span><span class="o">.</span><span class="n">_parse_circ_entry</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">directory</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;HS_DESC&#39;s directory doesn&#39;t match a ServerSpec: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">replica</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">replica</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;HS_DESC event got a non-numeric replica count (</span><span class="si">%s</span><span class="s">): </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">replica</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">replica</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">replica</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;action&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">HSDescAction</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;authentication&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">HSAuth</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="HSDescContentEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.HSDescContentEvent">[docs]</a><span class="k">class</span> <span class="nc">HSDescContentEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the content of hidden service descriptors we fetch.</span>
+
+<span class="sd">  The HS_DESC_CONTENT event was introduced in tor version 0.2.7.1-alpha.</span>
+
+<span class="sd">  .. versionadded:: 1.4.0</span>
+
+<span class="sd">  :var str address: hidden service address</span>
+<span class="sd">  :var str descriptor_id: descriptor identifier</span>
+<span class="sd">  :var str directory: hidden service directory servicing the request</span>
+<span class="sd">  :var str directory_fingerprint: hidden service directory&#39;s finterprint</span>
+<span class="sd">  :var str directory_nickname: hidden service directory&#39;s nickname if it was provided</span>
+<span class="sd">  :var stem.descriptor.hidden_service_descriptor.HiddenServiceDescriptor descriptor: descriptor that was retrieved</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">EVENT_HS_DESC_CONTENT</span>
+  <span class="n">_POSITIONAL_ARGS</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;address&#39;</span><span class="p">,</span> <span class="s">&#39;descriptor_id&#39;</span><span class="p">,</span> <span class="s">&#39;directory&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">address</span> <span class="o">==</span> <span class="s">&#39;UNKNOWN&#39;</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">address</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">directory_fingerprint</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">directory_nickname</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">directory_fingerprint</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">directory_nickname</span> <span class="o">=</span> \
+        <span class="n">stem</span><span class="o">.</span><span class="n">control</span><span class="o">.</span><span class="n">_parse_circ_entry</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">directory</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;HS_DESC_CONTENT&#39;s directory doesn&#39;t match a ServerSpec: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+    <span class="c"># skip the first line (our positional arguments) and last (&#39;OK&#39;)</span>
+
+    <span class="n">desc_content</span> <span class="o">=</span> <span class="n">str_tools</span><span class="o">.</span><span class="n">_to_bytes</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">descriptor</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">if</span> <span class="n">desc_content</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">descriptor</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">hidden_service_descriptor</span><span class="o">.</span><span class="n">_parse_file</span><span class="p">(</span><span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="n">desc_content</span><span class="p">)))[</span><span class="mi">0</span><span class="p">]</span>
+
+</div>
+<div class="viewcode-block" id="LogEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.LogEvent">[docs]</a><span class="k">class</span> <span class="nc">LogEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Tor logging event. These are the most visible kind of event since, by</span>
+<span class="sd">  default, tor logs at the NOTICE :data:`~stem.Runlevel` to stdout.</span>
+
+<span class="sd">  The logging events were some of the first Control Protocol V1 events</span>
+<span class="sd">  and were introduced in tor version 0.1.1.1-alpha.</span>
+
+<span class="sd">  :var stem.Runlevel runlevel: runlevel of the logged message</span>
+<span class="sd">  :var str message: logged message</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_SKIP_PARSING</span> <span class="o">=</span> <span class="bp">True</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">runlevel</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;runlevel&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">Runlevel</span><span class="p">)</span>
+
+    <span class="c"># message is our content, minus the runlevel and ending &quot;OK&quot; if a</span>
+    <span class="c"># multi-line message</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)[</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">runlevel</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">OK&#39;</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="NetworkStatusEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.NetworkStatusEvent">[docs]</a><span class="k">class</span> <span class="nc">NetworkStatusEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event for when our copy of the consensus has changed. This was introduced in</span>
+<span class="sd">  tor version 0.1.2.3.</span>
+
+<span class="sd">  The NS event was introduced in tor version 0.1.2.3-alpha.</span>
+
+<span class="sd">  :var list desc: :class:`~stem.descriptor.router_status_entry.RouterStatusEntryV3` for the changed descriptors</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_SKIP_PARSING</span> <span class="o">=</span> <span class="bp">True</span>
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">EVENT_NS</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s">&#39;NS</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">OK&#39;</span><span class="p">)</span>
+
+    <span class="c"># TODO: For stem 2.0.0 consider changing &#39;desc&#39; to &#39;descriptors&#39; to match</span>
+    <span class="c"># our other events.</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">desc</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">router_status_entry</span><span class="o">.</span><span class="n">_parse_file</span><span class="p">(</span>
+      <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_bytes</span><span class="p">(</span><span class="n">content</span><span class="p">)),</span>
+      <span class="bp">True</span><span class="p">,</span>
+      <span class="n">entry_class</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">router_status_entry</span><span class="o">.</span><span class="n">RouterStatusEntryV3</span><span class="p">,</span>
+    <span class="p">))</span>
+
+</div>
+<div class="viewcode-block" id="NetworkLivenessEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.NetworkLivenessEvent">[docs]</a><span class="k">class</span> <span class="nc">NetworkLivenessEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event for when the network becomes reachable or unreachable.</span>
+
+<span class="sd">  The NETWORK_LIVENESS event was introduced in tor version 0.2.7.2-alpha.</span>
+
+<span class="sd">  .. versionadded:: 1.5.0</span>
+
+<span class="sd">  :var str status: status of the network (&#39;UP&#39;, &#39;DOWN&#39;, or possibly other</span>
+<span class="sd">    statuses in the future)</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">EVENT_NETWORK_LIVENESS</span>
+  <span class="n">_POSITIONAL_ARGS</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;status&#39;</span><span class="p">,)</span>
+
+</div>
+<div class="viewcode-block" id="NewConsensusEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.NewConsensusEvent">[docs]</a><span class="k">class</span> <span class="nc">NewConsensusEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event for when we have a new consensus. This is similar to</span>
+<span class="sd">  :class:`~stem.response.events.NetworkStatusEvent`, except that it contains</span>
+<span class="sd">  the whole consensus so anything not listed is implicitly no longer</span>
+<span class="sd">  recommended.</span>
+
+<span class="sd">  The NEWCONSENSUS event was introduced in tor version 0.2.1.13-alpha.</span>
+
+<span class="sd">  :var list desc: :class:`~stem.descriptor.router_status_entry.RouterStatusEntryV3` for the changed descriptors</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_SKIP_PARSING</span> <span class="o">=</span> <span class="bp">True</span>
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">EVENT_NEWCONSENSUS</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s">&#39;NEWCONSENSUS</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">OK&#39;</span><span class="p">)</span>
+
+    <span class="c"># TODO: For stem 2.0.0 consider changing &#39;desc&#39; to &#39;descriptors&#39; to match</span>
+    <span class="c"># our other events.</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">desc</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">router_status_entry</span><span class="o">.</span><span class="n">_parse_file</span><span class="p">(</span>
+      <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_bytes</span><span class="p">(</span><span class="n">content</span><span class="p">)),</span>
+      <span class="bp">True</span><span class="p">,</span>
+      <span class="n">entry_class</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">router_status_entry</span><span class="o">.</span><span class="n">RouterStatusEntryV3</span><span class="p">,</span>
+    <span class="p">))</span>
+
+</div>
+<div class="viewcode-block" id="NewDescEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.NewDescEvent">[docs]</a><span class="k">class</span> <span class="nc">NewDescEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event that indicates that a new descriptor is available.</span>
+
+<span class="sd">  The fingerprint or nickname values in our &#39;relays&#39; may be **None** if the</span>
+<span class="sd">  VERBOSE_NAMES feature isn&#39;t enabled. The option was first introduced in tor</span>
+<span class="sd">  version 0.1.2.2, and on by default after 0.2.2.1.</span>
+
+<span class="sd">  The NEWDESC event was one of the first Control Protocol V1 events and was</span>
+<span class="sd">  introduced in tor version 0.1.1.1-alpha.</span>
+
+<span class="sd">  :var tuple relays: **(fingerprint, nickname)** tuples for the relays with</span>
+<span class="sd">    new descriptors</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">relays</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="n">stem</span><span class="o">.</span><span class="n">control</span><span class="o">.</span><span class="n">_parse_circ_entry</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">1</span><span class="p">:]])</span>
+
+</div>
+<div class="viewcode-block" id="ORConnEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.ORConnEvent">[docs]</a><span class="k">class</span> <span class="nc">ORConnEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event that indicates a change in a relay connection. The &#39;endpoint&#39; could be</span>
+<span class="sd">  any of several things including a...</span>
+
+<span class="sd">  * fingerprint</span>
+<span class="sd">  * nickname</span>
+<span class="sd">  * &#39;fingerprint=nickname&#39; pair</span>
+<span class="sd">  * address:port</span>
+
+<span class="sd">  The derived &#39;endpoint_*&#39; attributes are generally more useful.</span>
+
+<span class="sd">  The ORCONN event was one of the first Control Protocol V1 events and was</span>
+<span class="sd">  introduced in tor version 0.1.1.1-alpha. Its id attribute was added in</span>
+<span class="sd">  version 0.2.5.2-alpha.</span>
+
+<span class="sd">  .. versionchanged:: 1.2.0</span>
+<span class="sd">     Added the id attribute.</span>
+
+<span class="sd">  :var str id: connection identifier</span>
+<span class="sd">  :var str endpoint: relay that the event concerns</span>
+<span class="sd">  :var str endpoint_fingerprint: endpoint&#39;s finterprint if it was provided</span>
+<span class="sd">  :var str endpoint_nickname: endpoint&#39;s nickname if it was provided</span>
+<span class="sd">  :var str endpoint_address: endpoint&#39;s address if it was provided</span>
+<span class="sd">  :var int endpoint_port: endpoint&#39;s port if it was provided</span>
+<span class="sd">  :var stem.ORStatus status: state of the connection</span>
+<span class="sd">  :var stem.ORClosureReason reason: reason for the connection to be closed</span>
+<span class="sd">  :var int circ_count: number of established and pending circuits</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_POSITIONAL_ARGS</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;endpoint&#39;</span><span class="p">,</span> <span class="s">&#39;status&#39;</span><span class="p">)</span>
+  <span class="n">_KEYWORD_ARGS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;REASON&#39;</span><span class="p">:</span> <span class="s">&#39;reason&#39;</span><span class="p">,</span>
+    <span class="s">&#39;NCIRCS&#39;</span><span class="p">:</span> <span class="s">&#39;circ_count&#39;</span><span class="p">,</span>
+    <span class="s">&#39;ID&#39;</span><span class="p">:</span> <span class="s">&#39;id&#39;</span><span class="p">,</span>
+  <span class="p">}</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">endpoint_fingerprint</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">endpoint_nickname</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">endpoint_address</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">endpoint_port</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">endpoint_fingerprint</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">endpoint_nickname</span> <span class="o">=</span> \
+        <span class="n">stem</span><span class="o">.</span><span class="n">control</span><span class="o">.</span><span class="n">_parse_circ_entry</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">:</span>
+      <span class="k">if</span> <span class="s">&#39;:&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;ORCONN endpoint is neither a relay nor &#39;address:port&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+      <span class="n">address</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">port</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;ORCONN&#39;s endpoint location&#39;s port is invalid: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">endpoint_address</span> <span class="o">=</span> <span class="n">address</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">endpoint_port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">circ_count</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">circ_count</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;ORCONN event got a non-numeric circuit count (</span><span class="si">%s</span><span class="s">): </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">circ_count</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">circ_count</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">circ_count</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">tor_tools</span><span class="o">.</span><span class="n">is_valid_connection_id</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Connection IDs must be one to sixteen alphanumeric characters, got &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;status&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">ORStatus</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;reason&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">ORClosureReason</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SignalEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.SignalEvent">[docs]</a><span class="k">class</span> <span class="nc">SignalEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event that indicates that tor has received and acted upon a signal being sent</span>
+<span class="sd">  to the process. As of tor version 0.2.4.6 the only signals conveyed by this</span>
+<span class="sd">  event are...</span>
+
+<span class="sd">  * RELOAD</span>
+<span class="sd">  * DUMP</span>
+<span class="sd">  * DEBUG</span>
+<span class="sd">  * NEWNYM</span>
+<span class="sd">  * CLEARDNSCACHE</span>
+
+<span class="sd">  The SIGNAL event was introduced in tor version 0.2.3.1-alpha.</span>
+
+<span class="sd">  :var stem.Signal signal: signal that tor received</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_POSITIONAL_ARGS</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;signal&#39;</span><span class="p">,)</span>
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">EVENT_SIGNAL</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="c"># log if we recieved an unrecognized signal</span>
+    <span class="n">expected_signals</span> <span class="o">=</span> <span class="p">(</span>
+      <span class="n">stem</span><span class="o">.</span><span class="n">Signal</span><span class="o">.</span><span class="n">RELOAD</span><span class="p">,</span>
+      <span class="n">stem</span><span class="o">.</span><span class="n">Signal</span><span class="o">.</span><span class="n">DUMP</span><span class="p">,</span>
+      <span class="n">stem</span><span class="o">.</span><span class="n">Signal</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">,</span>
+      <span class="n">stem</span><span class="o">.</span><span class="n">Signal</span><span class="o">.</span><span class="n">NEWNYM</span><span class="p">,</span>
+      <span class="n">stem</span><span class="o">.</span><span class="n">Signal</span><span class="o">.</span><span class="n">CLEARDNSCACHE</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;signal&#39;</span><span class="p">,</span> <span class="n">expected_signals</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="StatusEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.StatusEvent">[docs]</a><span class="k">class</span> <span class="nc">StatusEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Notification of a change in tor&#39;s state. These are generally triggered for</span>
+<span class="sd">  the same sort of things as log messages of the NOTICE level or higher.</span>
+<span class="sd">  However, unlike :class:`~stem.response.events.LogEvent` these contain well</span>
+<span class="sd">  formed data.</span>
+
+<span class="sd">  The STATUS_GENERAL, STATUS_CLIENT, STATUS_SERVER events were introduced</span>
+<span class="sd">  in tor version 0.1.2.3-alpha.</span>
+
+<span class="sd">  :var stem.StatusType status_type: category of the status event</span>
+<span class="sd">  :var stem.Runlevel runlevel: runlevel of the logged message</span>
+<span class="sd">  :var str action: activity that caused this message</span>
+<span class="sd">  :var dict arguments: attributes about the event</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_POSITIONAL_ARGS</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;runlevel&#39;</span><span class="p">,</span> <span class="s">&#39;action&#39;</span><span class="p">)</span>
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">EVENT_STATUS</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s">&#39;STATUS_GENERAL&#39;</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">status_type</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">StatusType</span><span class="o">.</span><span class="n">GENERAL</span>
+    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s">&#39;STATUS_CLIENT&#39;</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">status_type</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">StatusType</span><span class="o">.</span><span class="n">CLIENT</span>
+    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s">&#39;STATUS_SERVER&#39;</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">status_type</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">StatusType</span><span class="o">.</span><span class="n">SERVER</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;BUG: Unrecognized status type (</span><span class="si">%s</span><span class="s">), likely an EVENT_TYPE_TO_CLASS addition without revising how &#39;status_type&#39; is assigned.&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="p">)</span>
+
+    <span class="c"># Just an alias for our parent class&#39; keyword_args since that already</span>
+    <span class="c"># parses these for us. Unlike our other event types Tor commonly supplies</span>
+    <span class="c"># arbitrary key/value pairs for these, so making an alias here to better</span>
+    <span class="c"># draw attention that the StatusEvent will likely have them.</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">keyword_args</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;runlevel&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">Runlevel</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="StreamEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.StreamEvent">[docs]</a><span class="k">class</span> <span class="nc">StreamEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event that indicates that a stream has changed.</span>
+
+<span class="sd">  The STREAM event was one of the first Control Protocol V1 events and was</span>
+<span class="sd">  introduced in tor version 0.1.1.1-alpha.</span>
+
+<span class="sd">  :var str id: stream identifier</span>
+<span class="sd">  :var stem.StreamStatus status: reported status for the stream</span>
+<span class="sd">  :var str circ_id: circuit that the stream is attached to, this is **None** of</span>
+<span class="sd">    the stream is unattached</span>
+<span class="sd">  :var str target: destination of the stream</span>
+<span class="sd">  :var str target_address: destination address (ip, hostname, or &#39;(Tor_internal)&#39;)</span>
+<span class="sd">  :var int target_port: destination port</span>
+<span class="sd">  :var stem.StreamClosureReason reason: reason for the stream to be closed</span>
+<span class="sd">  :var stem.StreamClosureReason remote_reason: remote side&#39;s reason for the stream to be closed</span>
+<span class="sd">  :var stem.StreamSource source: origin of the REMAP request</span>
+<span class="sd">  :var str source_addr: requester of the connection</span>
+<span class="sd">  :var str source_address: requester address (ip or hostname)</span>
+<span class="sd">  :var int source_port: requester port</span>
+<span class="sd">  :var stem.StreamPurpose purpose: purpose for the stream</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_POSITIONAL_ARGS</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;id&#39;</span><span class="p">,</span> <span class="s">&#39;status&#39;</span><span class="p">,</span> <span class="s">&#39;circ_id&#39;</span><span class="p">,</span> <span class="s">&#39;target&#39;</span><span class="p">)</span>
+  <span class="n">_KEYWORD_ARGS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;REASON&#39;</span><span class="p">:</span> <span class="s">&#39;reason&#39;</span><span class="p">,</span>
+    <span class="s">&#39;REMOTE_REASON&#39;</span><span class="p">:</span> <span class="s">&#39;remote_reason&#39;</span><span class="p">,</span>
+    <span class="s">&#39;SOURCE&#39;</span><span class="p">:</span> <span class="s">&#39;source&#39;</span><span class="p">,</span>
+    <span class="s">&#39;SOURCE_ADDR&#39;</span><span class="p">:</span> <span class="s">&#39;source_addr&#39;</span><span class="p">,</span>
+    <span class="s">&#39;PURPOSE&#39;</span><span class="p">:</span> <span class="s">&#39;purpose&#39;</span><span class="p">,</span>
+  <span class="p">}</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;STREAM event didn&#39;t have a target: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">if</span> <span class="s">&#39;:&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Target location must be of the form &#39;address:port&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+      <span class="n">address</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">port</span><span class="p">,</span> <span class="n">allow_zero</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Target location&#39;s port is invalid: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">target_address</span> <span class="o">=</span> <span class="n">address</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">target_port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">source_addr</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">source_address</span> <span class="o">=</span> <span class="bp">None</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">source_port</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">if</span> <span class="s">&#39;:&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">source_addr</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Source location must be of the form &#39;address:port&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+      <span class="n">address</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">source_addr</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">port</span><span class="p">,</span> <span class="n">allow_zero</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Source location&#39;s port is invalid: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">source_address</span> <span class="o">=</span> <span class="n">address</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">source_port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+
+    <span class="c"># spec specifies a circ_id of zero if the stream is unattached</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">circ_id</span> <span class="o">==</span> <span class="s">&#39;0&#39;</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">circ_id</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;reason&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">StreamClosureReason</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;remote_reason&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">StreamClosureReason</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;purpose&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">StreamPurpose</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="StreamBwEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.StreamBwEvent">[docs]</a><span class="k">class</span> <span class="nc">StreamBwEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event (emitted approximately every second) with the bytes sent and received</span>
+<span class="sd">  by the application since the last such event on this stream.</span>
+
+<span class="sd">  The STREAM_BW event was introduced in tor version 0.1.2.8-beta.</span>
+
+<span class="sd">  :var str id: stream identifier</span>
+<span class="sd">  :var long written: bytes sent by the application</span>
+<span class="sd">  :var long read: bytes received by the application</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_POSITIONAL_ARGS</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;id&#39;</span><span class="p">,</span> <span class="s">&#39;written&#39;</span><span class="p">,</span> <span class="s">&#39;read&#39;</span><span class="p">)</span>
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">EVENT_STREAM_BW</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">tor_tools</span><span class="o">.</span><span class="n">is_valid_stream_id</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Stream IDs must be one to sixteen alphanumeric characters, got &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">written</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;STREAM_BW event is missing its written value&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;STREAM_BW event is missing its read value&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">written</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;A STREAM_BW event&#39;s bytes sent and received should be a positive numeric value, received: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">read</span> <span class="o">=</span> <span class="n">int_type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">written</span> <span class="o">=</span> <span class="n">int_type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">written</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="TransportLaunchedEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.TransportLaunchedEvent">[docs]</a><span class="k">class</span> <span class="nc">TransportLaunchedEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event triggered when a pluggable transport is launched.</span>
+
+<span class="sd">  The TRANSPORT_LAUNCHED event was introduced in tor version 0.2.5.0-alpha.</span>
+
+<span class="sd">  .. versionadded:: 1.1.0</span>
+
+<span class="sd">  :var str type: &#39;server&#39; or &#39;client&#39;</span>
+<span class="sd">  :var str name: name of the pluggable transport</span>
+<span class="sd">  :var str address: IPv4 or IPv6 address where the transport is listening for</span>
+<span class="sd">    connections</span>
+<span class="sd">  :var int port: port where the transport is listening for connections</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_POSITIONAL_ARGS</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;type&#39;</span><span class="p">,</span> <span class="s">&#39;name&#39;</span><span class="p">,</span> <span class="s">&#39;address&#39;</span><span class="p">,</span> <span class="s">&#39;port&#39;</span><span class="p">)</span>
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">EVENT_TRANSPORT_LAUNCHED</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;server&#39;</span><span class="p">,</span> <span class="s">&#39;client&#39;</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Transport type should either be &#39;server&#39; or &#39;client&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">)</span> <span class="ow">and</span> \
+       <span class="ow">not</span> <span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv6_address</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Transport address isn&#39;t a valid IPv4 or IPv6 address: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;Transport port is invalid: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="ConnectionBandwidthEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.ConnectionBandwidthEvent">[docs]</a><span class="k">class</span> <span class="nc">ConnectionBandwidthEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event emitted every second with the bytes sent and received by tor on a</span>
+<span class="sd">  per-connection basis.</span>
+
+<span class="sd">  The CONN_BW event was introduced in tor version 0.2.5.2-alpha.</span>
+
+<span class="sd">  .. versionadded:: 1.2.0</span>
+
+<span class="sd">  :var str id: connection identifier</span>
+<span class="sd">  :var stem.ConnectionType type: connection type</span>
+<span class="sd">  :var long read: bytes received by tor that second</span>
+<span class="sd">  :var long written: bytes sent by tor that second</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_KEYWORD_ARGS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;ID&#39;</span><span class="p">:</span> <span class="s">&#39;id&#39;</span><span class="p">,</span>
+    <span class="s">&#39;TYPE&#39;</span><span class="p">:</span> <span class="s">&#39;type&#39;</span><span class="p">,</span>
+    <span class="s">&#39;READ&#39;</span><span class="p">:</span> <span class="s">&#39;read&#39;</span><span class="p">,</span>
+    <span class="s">&#39;WRITTEN&#39;</span><span class="p">:</span> <span class="s">&#39;written&#39;</span><span class="p">,</span>
+  <span class="p">}</span>
+
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">EVENT_CONN_BW</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;CONN_BW event is missing its id&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;CONN_BW event is missing its type&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;CONN_BW event is missing its read value&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">written</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;CONN_BW event is missing its written value&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">written</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;A CONN_BW event&#39;s bytes sent and received should be a positive numeric value, received: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">tor_tools</span><span class="o">.</span><span class="n">is_valid_connection_id</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Connection IDs must be one to sixteen alphanumeric characters, got &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">read</span> <span class="o">=</span> <span class="n">int_type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">written</span> <span class="o">=</span> <span class="n">int_type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">written</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;type&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">ConnectionType</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="CircuitBandwidthEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.CircuitBandwidthEvent">[docs]</a><span class="k">class</span> <span class="nc">CircuitBandwidthEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event emitted every second with the bytes sent and received by tor on a</span>
+<span class="sd">  per-circuit basis.</span>
+
+<span class="sd">  The CIRC_BW event was introduced in tor version 0.2.5.2-alpha.</span>
+
+<span class="sd">  .. versionadded:: 1.2.0</span>
+
+<span class="sd">  :var str id: circuit identifier</span>
+<span class="sd">  :var long read: bytes received by tor that second</span>
+<span class="sd">  :var long written: bytes sent by tor that second</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_KEYWORD_ARGS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;ID&#39;</span><span class="p">:</span> <span class="s">&#39;id&#39;</span><span class="p">,</span>
+    <span class="s">&#39;READ&#39;</span><span class="p">:</span> <span class="s">&#39;read&#39;</span><span class="p">,</span>
+    <span class="s">&#39;WRITTEN&#39;</span><span class="p">:</span> <span class="s">&#39;written&#39;</span><span class="p">,</span>
+  <span class="p">}</span>
+
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">EVENT_CIRC_BW</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;CIRC_BW event is missing its id&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;CIRC_BW event is missing its read value&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">written</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;CIRC_BW event is missing its written value&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">written</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;A CIRC_BW event&#39;s bytes sent and received should be a positive numeric value, received: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">tor_tools</span><span class="o">.</span><span class="n">is_valid_circuit_id</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Circuit IDs must be one to sixteen alphanumeric characters, got &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">read</span> <span class="o">=</span> <span class="n">int_type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">written</span> <span class="o">=</span> <span class="n">int_type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">written</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="CellStatsEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.CellStatsEvent">[docs]</a><span class="k">class</span> <span class="nc">CellStatsEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event emitted every second with a count of the number of cells types broken</span>
+<span class="sd">  down by the circuit. **These events are only emitted if TestingTorNetwork is</span>
+<span class="sd">  set.**</span>
+
+<span class="sd">  The CELL_STATS event was introduced in tor version 0.2.5.2-alpha.</span>
+
+<span class="sd">  .. versionadded:: 1.2.0</span>
+
+<span class="sd">  :var str id: circuit identifier</span>
+<span class="sd">  :var str inbound_queue: inbound queue identifier</span>
+<span class="sd">  :var str inbound_connection: inbound connection identifier</span>
+<span class="sd">  :var dict inbound_added: mapping of added inbound cell types to their count</span>
+<span class="sd">  :var dict inbound_removed: mapping of removed inbound cell types to their count</span>
+<span class="sd">  :var dict inbound_time: mapping of inbound cell types to the time they took to write in milliseconds</span>
+<span class="sd">  :var str outbound_queue: outbound queue identifier</span>
+<span class="sd">  :var str outbound_connection: outbound connection identifier</span>
+<span class="sd">  :var dict outbound_added: mapping of added outbound cell types to their count</span>
+<span class="sd">  :var dict outbound_removed: mapping of removed outbound cell types to their count</span>
+<span class="sd">  :var dict outbound_time: mapping of outbound cell types to the time they took to write in milliseconds</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_KEYWORD_ARGS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;ID&#39;</span><span class="p">:</span> <span class="s">&#39;id&#39;</span><span class="p">,</span>
+    <span class="s">&#39;InboundQueue&#39;</span><span class="p">:</span> <span class="s">&#39;inbound_queue&#39;</span><span class="p">,</span>
+    <span class="s">&#39;InboundConn&#39;</span><span class="p">:</span> <span class="s">&#39;inbound_connection&#39;</span><span class="p">,</span>
+    <span class="s">&#39;InboundAdded&#39;</span><span class="p">:</span> <span class="s">&#39;inbound_added&#39;</span><span class="p">,</span>
+    <span class="s">&#39;InboundRemoved&#39;</span><span class="p">:</span> <span class="s">&#39;inbound_removed&#39;</span><span class="p">,</span>
+    <span class="s">&#39;InboundTime&#39;</span><span class="p">:</span> <span class="s">&#39;inbound_time&#39;</span><span class="p">,</span>
+    <span class="s">&#39;OutboundQueue&#39;</span><span class="p">:</span> <span class="s">&#39;outbound_queue&#39;</span><span class="p">,</span>
+    <span class="s">&#39;OutboundConn&#39;</span><span class="p">:</span> <span class="s">&#39;outbound_connection&#39;</span><span class="p">,</span>
+    <span class="s">&#39;OutboundAdded&#39;</span><span class="p">:</span> <span class="s">&#39;outbound_added&#39;</span><span class="p">,</span>
+    <span class="s">&#39;OutboundRemoved&#39;</span><span class="p">:</span> <span class="s">&#39;outbound_removed&#39;</span><span class="p">,</span>
+    <span class="s">&#39;OutboundTime&#39;</span><span class="p">:</span> <span class="s">&#39;outbound_time&#39;</span><span class="p">,</span>
+  <span class="p">}</span>
+
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">EVENT_CELL_STATS</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">tor_tools</span><span class="o">.</span><span class="n">is_valid_circuit_id</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Circuit IDs must be one to sixteen alphanumeric characters, got &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">inbound_queue</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">tor_tools</span><span class="o">.</span><span class="n">is_valid_circuit_id</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inbound_queue</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Queue IDs must be one to sixteen alphanumeric characters, got &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inbound_queue</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">inbound_connection</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">tor_tools</span><span class="o">.</span><span class="n">is_valid_connection_id</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inbound_connection</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Connection IDs must be one to sixteen alphanumeric characters, got &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inbound_connection</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">outbound_queue</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">tor_tools</span><span class="o">.</span><span class="n">is_valid_circuit_id</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outbound_queue</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Queue IDs must be one to sixteen alphanumeric characters, got &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outbound_queue</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">outbound_connection</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">tor_tools</span><span class="o">.</span><span class="n">is_valid_connection_id</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outbound_connection</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Connection IDs must be one to sixteen alphanumeric characters, got &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outbound_connection</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">inbound_added</span> <span class="o">=</span> <span class="n">_parse_cell_type_mapping</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inbound_added</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">inbound_removed</span> <span class="o">=</span> <span class="n">_parse_cell_type_mapping</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inbound_removed</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">inbound_time</span> <span class="o">=</span> <span class="n">_parse_cell_type_mapping</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inbound_time</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">outbound_added</span> <span class="o">=</span> <span class="n">_parse_cell_type_mapping</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outbound_added</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">outbound_removed</span> <span class="o">=</span> <span class="n">_parse_cell_type_mapping</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outbound_removed</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">outbound_time</span> <span class="o">=</span> <span class="n">_parse_cell_type_mapping</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outbound_time</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="TokenBucketEmptyEvent"><a class="viewcode-back" href="../../../api/response.html#stem.response.events.TokenBucketEmptyEvent">[docs]</a><span class="k">class</span> <span class="nc">TokenBucketEmptyEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Event emitted when refilling an empty token bucket. **These events are only</span>
+<span class="sd">  emitted if TestingTorNetwork is set.**</span>
+
+<span class="sd">  The TB_EMPTY event was introduced in tor version 0.2.5.2-alpha.</span>
+
+<span class="sd">  .. versionadded:: 1.2.0</span>
+
+<span class="sd">  :var stem.TokenBucket bucket: bucket being refilled</span>
+<span class="sd">  :var str id: connection identifier</span>
+<span class="sd">  :var int read: time in milliseconds since the read bucket was last refilled</span>
+<span class="sd">  :var int written: time in milliseconds since the write bucket was last refilled</span>
+<span class="sd">  :var int last_refill: time in milliseconds the bucket has been empty since last refilled</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">_POSITIONAL_ARGS</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;bucket&#39;</span><span class="p">,)</span>
+  <span class="n">_KEYWORD_ARGS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;ID&#39;</span><span class="p">:</span> <span class="s">&#39;id&#39;</span><span class="p">,</span>
+    <span class="s">&#39;READ&#39;</span><span class="p">:</span> <span class="s">&#39;read&#39;</span><span class="p">,</span>
+    <span class="s">&#39;WRITTEN&#39;</span><span class="p">:</span> <span class="s">&#39;written&#39;</span><span class="p">,</span>
+    <span class="s">&#39;LAST&#39;</span><span class="p">:</span> <span class="s">&#39;last_refill&#39;</span><span class="p">,</span>
+  <span class="p">}</span>
+
+  <span class="n">_VERSION_ADDED</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Requirement</span><span class="o">.</span><span class="n">EVENT_TB_EMPTY</span>
+
+  <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">tor_tools</span><span class="o">.</span><span class="n">is_valid_connection_id</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Connection IDs must be one to sixteen alphanumeric characters, got &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;A TB_EMPTY&#39;s READ value should be a positive numeric value, received: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">written</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;A TB_EMPTY&#39;s WRITTEN value should be a positive numeric value, received: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_refill</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;A TB_EMPTY&#39;s LAST value should be a positive numeric value, received: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">read</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">written</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">written</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">last_refill</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_refill</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_log_if_unrecognized</span><span class="p">(</span><span class="s">&#39;bucket&#39;</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">TokenBucket</span><span class="p">)</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_parse_cell_type_mapping</span><span class="p">(</span><span class="n">mapping</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Parses a mapping of the form...</span>
+
+<span class="sd">    key1:value1,key2:value2...</span>
+
+<span class="sd">  ... in which keys are strings and values are integers.</span>
+
+<span class="sd">  :param str mapping: value to be parsed</span>
+
+<span class="sd">  :returns: dict of **str =&gt; int** mappings</span>
+
+<span class="sd">  :rasies: **stem.ProtocolError** if unable to parse the mapping</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">mapping</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">None</span>
+
+  <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+
+  <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">mapping</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s">&#39;:&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Mappings are expected to be of the form &#39;key:value&#39;, got &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">mapping</span><span class="p">))</span>
+
+    <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">CELL_TYPE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">key</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Key had invalid characters, got &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">mapping</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">value</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Values should just be integers, got &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">mapping</span><span class="p">))</span>
+
+    <span class="n">results</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">results</span>
+
+
+<span class="n">EVENT_TYPE_TO_CLASS</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="s">&#39;ADDRMAP&#39;</span><span class="p">:</span> <span class="n">AddrMapEvent</span><span class="p">,</span>
+  <span class="s">&#39;AUTHDIR_NEWDESCS&#39;</span><span class="p">:</span> <span class="n">AuthDirNewDescEvent</span><span class="p">,</span>
+  <span class="s">&#39;BUILDTIMEOUT_SET&#39;</span><span class="p">:</span> <span class="n">BuildTimeoutSetEvent</span><span class="p">,</span>
+  <span class="s">&#39;BW&#39;</span><span class="p">:</span> <span class="n">BandwidthEvent</span><span class="p">,</span>
+  <span class="s">&#39;CELL_STATS&#39;</span><span class="p">:</span> <span class="n">CellStatsEvent</span><span class="p">,</span>
+  <span class="s">&#39;CIRC&#39;</span><span class="p">:</span> <span class="n">CircuitEvent</span><span class="p">,</span>
+  <span class="s">&#39;CIRC_BW&#39;</span><span class="p">:</span> <span class="n">CircuitBandwidthEvent</span><span class="p">,</span>
+  <span class="s">&#39;CIRC_MINOR&#39;</span><span class="p">:</span> <span class="n">CircMinorEvent</span><span class="p">,</span>
+  <span class="s">&#39;CLIENTS_SEEN&#39;</span><span class="p">:</span> <span class="n">ClientsSeenEvent</span><span class="p">,</span>
+  <span class="s">&#39;CONF_CHANGED&#39;</span><span class="p">:</span> <span class="n">ConfChangedEvent</span><span class="p">,</span>
+  <span class="s">&#39;CONN_BW&#39;</span><span class="p">:</span> <span class="n">ConnectionBandwidthEvent</span><span class="p">,</span>
+  <span class="s">&#39;DEBUG&#39;</span><span class="p">:</span> <span class="n">LogEvent</span><span class="p">,</span>
+  <span class="s">&#39;DESCCHANGED&#39;</span><span class="p">:</span> <span class="n">DescChangedEvent</span><span class="p">,</span>
+  <span class="s">&#39;ERR&#39;</span><span class="p">:</span> <span class="n">LogEvent</span><span class="p">,</span>
+  <span class="s">&#39;GUARD&#39;</span><span class="p">:</span> <span class="n">GuardEvent</span><span class="p">,</span>
+  <span class="s">&#39;HS_DESC&#39;</span><span class="p">:</span> <span class="n">HSDescEvent</span><span class="p">,</span>
+  <span class="s">&#39;HS_DESC_CONTENT&#39;</span><span class="p">:</span> <span class="n">HSDescContentEvent</span><span class="p">,</span>
+  <span class="s">&#39;INFO&#39;</span><span class="p">:</span> <span class="n">LogEvent</span><span class="p">,</span>
+  <span class="s">&#39;NETWORK_LIVENESS&#39;</span><span class="p">:</span> <span class="n">NetworkLivenessEvent</span><span class="p">,</span>
+  <span class="s">&#39;NEWCONSENSUS&#39;</span><span class="p">:</span> <span class="n">NewConsensusEvent</span><span class="p">,</span>
+  <span class="s">&#39;NEWDESC&#39;</span><span class="p">:</span> <span class="n">NewDescEvent</span><span class="p">,</span>
+  <span class="s">&#39;NOTICE&#39;</span><span class="p">:</span> <span class="n">LogEvent</span><span class="p">,</span>
+  <span class="s">&#39;NS&#39;</span><span class="p">:</span> <span class="n">NetworkStatusEvent</span><span class="p">,</span>
+  <span class="s">&#39;ORCONN&#39;</span><span class="p">:</span> <span class="n">ORConnEvent</span><span class="p">,</span>
+  <span class="s">&#39;SIGNAL&#39;</span><span class="p">:</span> <span class="n">SignalEvent</span><span class="p">,</span>
+  <span class="s">&#39;STATUS_CLIENT&#39;</span><span class="p">:</span> <span class="n">StatusEvent</span><span class="p">,</span>
+  <span class="s">&#39;STATUS_GENERAL&#39;</span><span class="p">:</span> <span class="n">StatusEvent</span><span class="p">,</span>
+  <span class="s">&#39;STATUS_SERVER&#39;</span><span class="p">:</span> <span class="n">StatusEvent</span><span class="p">,</span>
+  <span class="s">&#39;STREAM&#39;</span><span class="p">:</span> <span class="n">StreamEvent</span><span class="p">,</span>
+  <span class="s">&#39;STREAM_BW&#39;</span><span class="p">:</span> <span class="n">StreamBwEvent</span><span class="p">,</span>
+  <span class="s">&#39;TB_EMPTY&#39;</span><span class="p">:</span> <span class="n">TokenBucketEmptyEvent</span><span class="p">,</span>
+  <span class="s">&#39;TRANSPORT_LAUNCHED&#39;</span><span class="p">:</span> <span class="n">TransportLaunchedEvent</span><span class="p">,</span>
+  <span class="s">&#39;WARN&#39;</span><span class="p">:</span> <span class="n">LogEvent</span><span class="p">,</span>
+
+  <span class="c"># accounting for a bug in tor 0.2.0.22</span>
+  <span class="s">&#39;STATUS_SEVER&#39;</span><span class="p">:</span> <span class="n">StatusEvent</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

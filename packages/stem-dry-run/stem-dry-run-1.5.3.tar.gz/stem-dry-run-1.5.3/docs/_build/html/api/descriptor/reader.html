@@ -1,0 +1,455 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Descriptor Reader &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>Descriptor Reader</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../index.html">Home</a></li>
+          <li><a href="../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../api.html">API</a>
+            <ul>
+              <li><a href="../control.html">stem.control</a></li>
+              <li><a href="../connection.html">stem.connection</a></li>
+              <li><a href="../socket.html">stem.socket</a></li>
+              <li><a href="../process.html">stem.process</a></li>
+              <li><a href="../response.html">stem.response</a></li>
+              <li><a href="../exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../version.html">stem.version</a></li>
+              <li><a href="../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../faq.html">FAQ</a></li>
+              <li><a href="../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="module-stem.descriptor.reader">
+<span id="descriptor-reader"></span><h1>Descriptor Reader<a class="headerlink" href="#module-stem.descriptor.reader" title="Permalink to this headline">¶</a></h1>
+<p>Utilities for reading descriptors from local directories and archives. This is
+mostly done through the <a class="reference internal" href="#stem.descriptor.reader.DescriptorReader" title="stem.descriptor.reader.DescriptorReader"><tt class="xref py py-class docutils literal"><span class="pre">DescriptorReader</span></tt></a>
+class, which is an iterator for the descriptor data in a series of
+destinations. For example...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">my_descriptors</span> <span class="o">=</span> <span class="p">[</span>
+  <span class="s">&#39;/tmp/server-descriptors-2012-03.tar.bz2&#39;</span><span class="p">,</span>
+  <span class="s">&#39;/tmp/archived_descriptors/&#39;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="c"># prints the contents of all the descriptor files</span>
+<span class="k">with</span> <span class="n">DescriptorReader</span><span class="p">(</span><span class="n">my_descriptors</span><span class="p">)</span> <span class="k">as</span> <span class="n">reader</span><span class="p">:</span>
+  <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="n">reader</span><span class="p">:</span>
+    <span class="k">print</span> <span class="n">descriptor</span>
+</pre></div>
+</div>
+<p>This ignores files that cannot be processed due to read errors or unparsable
+content. To be notified of skipped files you can register a listener with
+<a class="reference internal" href="#stem.descriptor.reader.DescriptorReader.register_skip_listener" title="stem.descriptor.reader.DescriptorReader.register_skip_listener"><tt class="xref py py-func docutils literal"><span class="pre">register_skip_listener()</span></tt></a>.</p>
+<p>The <a class="reference internal" href="#stem.descriptor.reader.DescriptorReader" title="stem.descriptor.reader.DescriptorReader"><tt class="xref py py-class docutils literal"><span class="pre">DescriptorReader</span></tt></a> keeps track of the last
+modified timestamps for descriptor files that it has read so it can skip
+unchanged files if run again. This listing of processed files can also be
+persisted and applied to other
+<a class="reference internal" href="#stem.descriptor.reader.DescriptorReader" title="stem.descriptor.reader.DescriptorReader"><tt class="xref py py-class docutils literal"><span class="pre">DescriptorReader</span></tt></a> instances. For example, the
+following prints descriptors as they're changed over the course of a minute,
+and picks up where it left off if run again...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">reader</span> <span class="o">=</span> <span class="n">DescriptorReader</span><span class="p">([</span><span class="s">&#39;/tmp/descriptor_data&#39;</span><span class="p">])</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="n">processed_files</span> <span class="o">=</span> <span class="n">load_processed_files</span><span class="p">(</span><span class="s">&#39;/tmp/used_descriptors&#39;</span><span class="p">)</span>
+  <span class="n">reader</span><span class="o">.</span><span class="n">set_processed_files</span><span class="p">(</span><span class="n">processed_files</span><span class="p">)</span>
+<span class="k">except</span><span class="p">:</span> <span class="k">pass</span> <span class="c"># could not load, maybe this is the first run</span>
+
+<span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+<span class="k">while</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">60</span><span class="p">:</span>
+  <span class="c"># prints any descriptors that have changed since last checked</span>
+  <span class="k">with</span> <span class="n">reader</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="n">reader</span><span class="p">:</span>
+      <span class="k">print</span> <span class="n">descriptor</span>
+
+  <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="n">save_processed_files</span><span class="p">(</span><span class="s">&#39;/tmp/used_descriptors&#39;</span><span class="p">,</span> <span class="n">reader</span><span class="o">.</span><span class="n">get_processed_files</span><span class="p">())</span>
+</pre></div>
+</div>
+<p><strong>Module Overview:</strong></p>
+<div class="highlight-python"><pre>load_processed_files - Loads a listing of processed files
+save_processed_files - Saves a listing of processed files
+
+DescriptorReader - Iterator for descriptor data on the local file system
+  |- get_processed_files - provides the listing of files that we've processed
+  |- set_processed_files - sets our tracking of the files we have processed
+  |- register_read_listener - adds a listener for when files are read
+  |- register_skip_listener - adds a listener that's notified of skipped files
+  |- start - begins reading descriptor data
+  |- stop - stops reading descriptor data
+  |- __enter__ / __exit__ - manages the descriptor reader thread in the context
+  +- __iter__ - iterates over descriptor data in unread files
+
+FileSkipped - Base exception for a file that was skipped
+  |- AlreadyRead - We've already read a file with this last modified timestamp
+  |- ParsingFailure - Contents can't be parsed as descriptor data
+  |- UnrecognizedType - File extension indicates non-descriptor data
+  +- ReadFailed - Wraps an error that was raised while reading the file
+     +- FileMissing - File does not exist</pre>
+</div>
+<dl class="exception">
+<dt id="stem.descriptor.reader.FileSkipped">
+<em class="property">exception </em><tt class="descclassname">stem.descriptor.reader.</tt><tt class="descname">FileSkipped</tt><a class="reference internal" href="../../_modules/stem/descriptor/reader.html#FileSkipped"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.reader.FileSkipped" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></tt></p>
+<p>Base error when we can't provide descriptor data from a file.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.descriptor.reader.AlreadyRead">
+<em class="property">exception </em><tt class="descclassname">stem.descriptor.reader.</tt><tt class="descname">AlreadyRead</tt><big>(</big><em>last_modified</em>, <em>last_modified_when_read</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/reader.html#AlreadyRead"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.reader.AlreadyRead" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.descriptor.reader.FileSkipped" title="stem.descriptor.reader.FileSkipped"><tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.reader.FileSkipped</span></tt></a></p>
+<p>Already read a file with this 'last modified' timestamp or later.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>last_modified</strong> (<em>int</em>) -- unix timestamp for when the file was last modified</li>
+<li><strong>last_modified_when_read</strong> (<em>int</em>) -- unix timestamp for the modification time
+when we last read this file</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.descriptor.reader.ParsingFailure">
+<em class="property">exception </em><tt class="descclassname">stem.descriptor.reader.</tt><tt class="descname">ParsingFailure</tt><big>(</big><em>parsing_exception</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/reader.html#ParsingFailure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.reader.ParsingFailure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.descriptor.reader.FileSkipped" title="stem.descriptor.reader.FileSkipped"><tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.reader.FileSkipped</span></tt></a></p>
+<p>File contents could not be parsed as descriptor data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>exception</strong> (<em>ValueError</em>) -- issue that arose when parsing</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.descriptor.reader.UnrecognizedType">
+<em class="property">exception </em><tt class="descclassname">stem.descriptor.reader.</tt><tt class="descname">UnrecognizedType</tt><big>(</big><em>mime_type</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/reader.html#UnrecognizedType"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.reader.UnrecognizedType" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.descriptor.reader.FileSkipped" title="stem.descriptor.reader.FileSkipped"><tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.reader.FileSkipped</span></tt></a></p>
+<p>File doesn't contain descriptor data. This could either be due to its file
+type or because it doesn't conform to a recognizable descriptor type.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>mime_type</strong> (<em>tuple</em>) -- the (type, encoding) tuple provided by mimetypes.guess_type()</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.descriptor.reader.ReadFailed">
+<em class="property">exception </em><tt class="descclassname">stem.descriptor.reader.</tt><tt class="descname">ReadFailed</tt><big>(</big><em>read_exception</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/reader.html#ReadFailed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.reader.ReadFailed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.descriptor.reader.FileSkipped" title="stem.descriptor.reader.FileSkipped"><tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.reader.FileSkipped</span></tt></a></p>
+<p>An IOError occurred while trying to read the file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>exception</strong> (<em>IOError</em>) -- issue that arose when reading the file, <strong>None</strong> if
+this arose due to the file not being present</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.descriptor.reader.FileMissing">
+<em class="property">exception </em><tt class="descclassname">stem.descriptor.reader.</tt><tt class="descname">FileMissing</tt><a class="reference internal" href="../../_modules/stem/descriptor/reader.html#FileMissing"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.reader.FileMissing" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.descriptor.reader.ReadFailed" title="stem.descriptor.reader.ReadFailed"><tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.reader.ReadFailed</span></tt></a></p>
+<p>File does not exist.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.descriptor.reader.load_processed_files">
+<tt class="descclassname">stem.descriptor.reader.</tt><tt class="descname">load_processed_files</tt><big>(</big><em>path</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/reader.html#load_processed_files"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.reader.load_processed_files" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads a dictionary of 'path =&gt; last modified timestamp' mappings, as
+persisted by <a class="reference internal" href="#stem.descriptor.reader.save_processed_files" title="stem.descriptor.reader.save_processed_files"><tt class="xref py py-func docutils literal"><span class="pre">save_processed_files()</span></tt></a>, from a
+file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>path</strong> (<em>str</em>) -- location to load the processed files dictionary from</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>dict</strong> of 'path (<strong>str</strong>) =&gt; last modified unix timestamp
+(<strong>int</strong>)' mappings</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><ul class="first last simple">
+<li><strong>IOError</strong> if unable to read the file</li>
+<li><strong>TypeError</strong> if unable to parse the file's contents</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.descriptor.reader.save_processed_files">
+<tt class="descclassname">stem.descriptor.reader.</tt><tt class="descname">save_processed_files</tt><big>(</big><em>path</em>, <em>processed_files</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/reader.html#save_processed_files"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.reader.save_processed_files" title="Permalink to this definition">¶</a></dt>
+<dd><p>Persists a dictionary of 'path =&gt; last modified timestamp' mappings (as
+provided by the DescriptorReader's
+<a class="reference internal" href="#stem.descriptor.reader.DescriptorReader.get_processed_files" title="stem.descriptor.reader.DescriptorReader.get_processed_files"><tt class="xref py py-func docutils literal"><span class="pre">get_processed_files()</span></tt></a> method)
+so that they can be loaded later and applied to another
+<a class="reference internal" href="#stem.descriptor.reader.DescriptorReader" title="stem.descriptor.reader.DescriptorReader"><tt class="xref py py-class docutils literal"><span class="pre">DescriptorReader</span></tt></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>path</strong> (<em>str</em>) -- location to save the processed files dictionary to</li>
+<li><strong>processed_files</strong> (<em>dict</em>) -- 'path =&gt; last modified' mappings</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><ul class="first last simple">
+<li><strong>IOError</strong> if unable to write to the file</li>
+<li><strong>TypeError</strong> if processed_files is of the wrong type</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.descriptor.reader.DescriptorReader">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.reader.</tt><tt class="descname">DescriptorReader</tt><big>(</big><em>target</em>, <em>validate=False</em>, <em>follow_links=False</em>, <em>buffer_size=100</em>, <em>persistence_path=None</em>, <em>document_handler='ENTRIES'</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/reader.html#DescriptorReader"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.reader.DescriptorReader" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Iterator for the descriptor data on the local file system. This can process
+text files, tarball archives (gzip or bzip2), or recurse directories.</p>
+<p>By default this limits the number of descriptors that we'll read ahead before
+waiting for our caller to fetch some of them. This is included to avoid
+unbounded memory usage.</p>
+<p>Our persistence_path argument is a convenient method to persist the listing
+of files we have processed between runs, however it doesn't allow for error
+handling. If you want that then use the
+<a class="reference internal" href="#stem.descriptor.reader.load_processed_files" title="stem.descriptor.reader.load_processed_files"><tt class="xref py py-func docutils literal"><span class="pre">load_processed_files()</span></tt></a> and
+<a class="reference internal" href="#stem.descriptor.reader.save_processed_files" title="stem.descriptor.reader.save_processed_files"><tt class="xref py py-func docutils literal"><span class="pre">save_processed_files()</span></tt></a> functions instead.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>target</strong> (<em>str,list</em>) -- path or list of paths for files or directories to be read from</li>
+<li><strong>validate</strong> (<em>bool</em>) -- checks the validity of the descriptor's content if
+<strong>True</strong>, skips these checks otherwise</li>
+<li><strong>follow_links</strong> (<em>bool</em>) -- determines if we'll follow symlinks when traversing
+directories (requires python 2.6)</li>
+<li><strong>buffer_size</strong> (<em>int</em>) -- descriptors we'll buffer before waiting for some to
+be read, this is unbounded if zero</li>
+<li><strong>persistence_path</strong> (<em>str</em>) -- if set we will load and save processed file
+listings from this path, errors are ignored</li>
+<li><strong>document_handler</strong> (<a class="reference internal" href="descriptor.html#stem.descriptor.__init__.DocumentHandler" title="stem.descriptor.__init__.DocumentHandler"><em>stem.descriptor.__init__.DocumentHandler</em></a>) -- method in
+which to parse <a class="reference internal" href="networkstatus.html#stem.descriptor.networkstatus.NetworkStatusDocument" title="stem.descriptor.networkstatus.NetworkStatusDocument"><tt class="xref py py-class docutils literal"><span class="pre">NetworkStatusDocument</span></tt></a></li>
+<li><strong>kwargs</strong> (<em>dict</em>) -- additional arguments for the descriptor constructor</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="stem.descriptor.reader.DescriptorReader.get_processed_files">
+<tt class="descname">get_processed_files</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/reader.html#DescriptorReader.get_processed_files"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.reader.DescriptorReader.get_processed_files" title="Permalink to this definition">¶</a></dt>
+<dd><p>For each file that we have read descriptor data from this provides a
+mapping of the form...</p>
+<div class="highlight-python"><pre>absolute path (str) =&gt; last modified unix timestamp (int)</pre>
+</div>
+<p>This includes entries set through the
+<a class="reference internal" href="#stem.descriptor.reader.DescriptorReader.set_processed_files" title="stem.descriptor.reader.DescriptorReader.set_processed_files"><tt class="xref py py-func docutils literal"><span class="pre">set_processed_files()</span></tt></a>
+method. Each run resets this to only the files that were present during
+that run.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>dict</strong> with the absolute paths and unix timestamp for the last
+modified times of the files we have processed</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.reader.DescriptorReader.set_processed_files">
+<tt class="descname">set_processed_files</tt><big>(</big><em>processed_files</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/reader.html#DescriptorReader.set_processed_files"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.reader.DescriptorReader.set_processed_files" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the listing of the files we have processed. Most often this is used
+with a newly created <a class="reference internal" href="#stem.descriptor.reader.DescriptorReader" title="stem.descriptor.reader.DescriptorReader"><tt class="xref py py-class docutils literal"><span class="pre">DescriptorReader</span></tt></a> to
+pre-populate the listing of descriptor files that we have seen.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>processed_files</strong> (<em>dict</em>) -- mapping of absolute paths (<strong>str</strong>) to unix
+timestamps for the last modified time (<strong>int</strong>)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.reader.DescriptorReader.register_read_listener">
+<tt class="descname">register_read_listener</tt><big>(</big><em>listener</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/reader.html#DescriptorReader.register_read_listener"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.reader.DescriptorReader.register_read_listener" title="Permalink to this definition">¶</a></dt>
+<dd><p>Registers a listener for when files are read. This is executed prior to
+processing files. Listeners are expected to be of the form...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">my_listener</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>listener</strong> (<em>functor</em>) -- functor to be notified when files are read</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.reader.DescriptorReader.register_skip_listener">
+<tt class="descname">register_skip_listener</tt><big>(</big><em>listener</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/reader.html#DescriptorReader.register_skip_listener"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.reader.DescriptorReader.register_skip_listener" title="Permalink to this definition">¶</a></dt>
+<dd><p>Registers a listener for files that are skipped. This listener is expected
+to be a functor of the form...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">my_listener</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">exception</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>listener</strong> (<em>functor</em>) -- functor to be notified of files that are skipped
+to read errors or because they couldn't be parsed as valid descriptor data</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.reader.DescriptorReader.get_buffered_descriptor_count">
+<tt class="descname">get_buffered_descriptor_count</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/reader.html#DescriptorReader.get_buffered_descriptor_count"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.reader.DescriptorReader.get_buffered_descriptor_count" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the number of descriptors that are waiting to be iterated over.
+This is limited to the buffer_size that we were constructed with.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>int</strong> for the estimated number of currently enqueued
+descriptors, this is not entirely reliable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.reader.DescriptorReader.start">
+<tt class="descname">start</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/reader.html#DescriptorReader.start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.reader.DescriptorReader.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Starts reading our descriptor files.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><strong>ValueError</strong> if we're already reading the descriptor files</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.reader.DescriptorReader.stop">
+<tt class="descname">stop</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/reader.html#DescriptorReader.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.reader.DescriptorReader.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stops further reading of descriptor files.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

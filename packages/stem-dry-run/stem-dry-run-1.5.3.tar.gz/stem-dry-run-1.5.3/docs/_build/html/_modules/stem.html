@@ -1,0 +1,955 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../api.html">API</a>
+            <ul>
+              <li><a href="../api/control.html">stem.control</a></li>
+              <li><a href="../api/connection.html">stem.connection</a></li>
+              <li><a href="../api/socket.html">stem.socket</a></li>
+              <li><a href="../api/process.html">stem.process</a></li>
+              <li><a href="../api/response.html">stem.response</a></li>
+              <li><a href="../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../api/version.html">stem.version</a></li>
+              <li><a href="../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../faq.html">FAQ</a></li>
+              <li><a href="../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2011-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Library for working with the tor process.</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  ControllerError - Base exception raised when using the controller.</span>
+<span class="sd">    |- ProtocolError - Malformed socket data.</span>
+<span class="sd">    |- OperationFailed - Tor was unable to successfully complete the operation.</span>
+<span class="sd">    |  |- UnsatisfiableRequest - Tor was unable to satisfy a valid request.</span>
+<span class="sd">    |  |  +- CircuitExtensionFailed - Attempt to make or extend a circuit failed.</span>
+<span class="sd">    |  |- DescriptorUnavailable - The given relay descriptor is unavailable.</span>
+<span class="sd">    |  +- InvalidRequest - Invalid request.</span>
+<span class="sd">    |     +- InvalidArguments - Invalid request parameters.</span>
+<span class="sd">    +- SocketError - Communication with the socket failed.</span>
+<span class="sd">       +- SocketClosed - Socket has been shut down.</span>
+
+<span class="sd">.. data:: Runlevel (enum)</span>
+
+<span class="sd">  Rating of importance used for event logging.</span>
+
+<span class="sd">  =========== ===========</span>
+<span class="sd">  Runlevel    Description</span>
+<span class="sd">  =========== ===========</span>
+<span class="sd">  **ERR**     critical issues that impair tor&#39;s ability to function</span>
+<span class="sd">  **WARN**    non-critical issues the user should be aware of</span>
+<span class="sd">  **NOTICE**  information that may be helpful to the user</span>
+<span class="sd">  **INFO**    high level runtime information</span>
+<span class="sd">  **DEBUG**   low level runtime information</span>
+<span class="sd">  =========== ===========</span>
+
+<span class="sd">.. data:: Signal (enum)</span>
+
+<span class="sd">  Signals that the tor process will accept.</span>
+
+<span class="sd">  .. versionchanged:: 1.3.0</span>
+<span class="sd">     Added the HEARTBEAT signal.</span>
+
+<span class="sd">  ========================= ===========</span>
+<span class="sd">  Signal                    Description</span>
+<span class="sd">  ========================= ===========</span>
+<span class="sd">  **RELOAD** or **HUP**     reloads our torrc</span>
+<span class="sd">  **SHUTDOWN** or **INT**   shut down, waiting ShutdownWaitLength first if we&#39;re a relay</span>
+<span class="sd">  **DUMP** or **USR1**      dumps information about open connections and circuits to our log</span>
+<span class="sd">  **DEBUG** or **USR2**     switch our logging to the DEBUG runlevel</span>
+<span class="sd">  **HALT** or **TERM**      exit tor immediately</span>
+<span class="sd">  **NEWNYM**                switch to new circuits, so new application requests don&#39;t share any circuits with old ones (this also clears our DNS cache)</span>
+<span class="sd">  **CLEARDNSCACHE**         clears cached DNS results</span>
+<span class="sd">  **HEARTBEAT**             trigger a heartbeat log message</span>
+<span class="sd">  ========================= ===========</span>
+
+<span class="sd">.. data:: Flag (enum)</span>
+
+<span class="sd">  Flag assigned to tor relays by the authorities to indicate various</span>
+<span class="sd">  characteristics.</span>
+
+<span class="sd">  **Note:** The BADDIRECTORY flag was `removed from tor &lt;https://gitweb.torproject.org/torspec.git/commit/dir-spec.txt?id=2f012f1&gt;`_.</span>
+
+<span class="sd">  .. versionchanged:: 1.5.0</span>
+<span class="sd">     Added the NO_ED_CONSENSUS flag.</span>
+
+<span class="sd">  =================== ===========</span>
+<span class="sd">  Flag                Description</span>
+<span class="sd">  =================== ===========</span>
+<span class="sd">  **AUTHORITY**       relay is a directory authority</span>
+<span class="sd">  **BADEXIT**         relay shouldn&#39;t be used as an exit due to being either problematic or malicious</span>
+<span class="sd">  **BADDIRECTORY**    relay shouldn&#39;t be used for directory information</span>
+<span class="sd">  **EXIT**            relay&#39;s exit policy makes it more useful as an exit rather than middle hop</span>
+<span class="sd">  **FAST**            relay&#39;s suitable for high-bandwidth circuits</span>
+<span class="sd">  **GUARD**           relay&#39;s suitable for being an entry guard (first hop)</span>
+<span class="sd">  **HSDIR**           relay is being used as a v2 hidden service directory</span>
+<span class="sd">  **NAMED**           relay can be referred to by its nickname</span>
+<span class="sd">  **NO_ED_CONSENSUS** relay&#39;s Ed25519 doesn&#39;t reflrect the consensus</span>
+<span class="sd">  **RUNNING**         relay is currently usable</span>
+<span class="sd">  **STABLE**          relay&#39;s suitable for long-lived circuits</span>
+<span class="sd">  **UNNAMED**         relay isn&#39;t currently bound to a nickname</span>
+<span class="sd">  **V2DIR**           relay supports the v2 directory protocol</span>
+<span class="sd">  **VALID**           relay has been validated</span>
+<span class="sd">  =================== ===========</span>
+
+<span class="sd">.. data:: CircStatus (enum)</span>
+
+<span class="sd">  Statuses that a circuit can be in. Tor may provide statuses not in this enum.</span>
+
+<span class="sd">  ============ ===========</span>
+<span class="sd">  CircStatus   Description</span>
+<span class="sd">  ============ ===========</span>
+<span class="sd">  **LAUNCHED** new circuit was created</span>
+<span class="sd">  **BUILT**    circuit finished being created and can accept traffic</span>
+<span class="sd">  **EXTENDED** circuit has been extended by a hop</span>
+<span class="sd">  **FAILED**   circuit construction failed</span>
+<span class="sd">  **CLOSED**   circuit has been closed</span>
+<span class="sd">  ============ ===========</span>
+
+<span class="sd">.. data:: CircBuildFlag (enum)</span>
+
+<span class="sd">  Attributes about how a circuit is built. These were introduced in tor version</span>
+<span class="sd">  0.2.3.11. Tor may provide flags not in this enum.</span>
+
+<span class="sd">  ================= ===========</span>
+<span class="sd">  CircBuildFlag     Description</span>
+<span class="sd">  ================= ===========</span>
+<span class="sd">  **ONEHOP_TUNNEL** single hop circuit to fetch directory information</span>
+<span class="sd">  **IS_INTERNAL**   circuit that won&#39;t be used for client traffic</span>
+<span class="sd">  **NEED_CAPACITY** circuit only includes high capacity relays</span>
+<span class="sd">  **NEED_UPTIME**   circuit only includes relays with a high uptime</span>
+<span class="sd">  ================= ===========</span>
+
+<span class="sd">.. data:: CircPurpose (enum)</span>
+
+<span class="sd">  Description of what a circuit is intended for. These were introduced in tor</span>
+<span class="sd">  version 0.2.1.6. Tor may provide purposes not in this enum.</span>
+
+<span class="sd">  ==================== ===========</span>
+<span class="sd">  CircPurpose          Description</span>
+<span class="sd">  ==================== ===========</span>
+<span class="sd">  **GENERAL**          client traffic or fetching directory information</span>
+<span class="sd">  **HS_CLIENT_INTRO**  client side introduction point for a hidden service circuit</span>
+<span class="sd">  **HS_CLIENT_REND**   client side hidden service rendezvous circuit</span>
+<span class="sd">  **HS_SERVICE_INTRO** server side introduction point for a hidden service circuit</span>
+<span class="sd">  **HS_SERVICE_REND**  server side hidden service rendezvous circuit</span>
+<span class="sd">  **TESTING**          testing to see if we&#39;re reachable, so we can be used as a relay</span>
+<span class="sd">  **CONTROLLER**       circuit that was built by a controller</span>
+<span class="sd">  **MEASURE_TIMEOUT**  circuit being kept around to see how long it takes</span>
+<span class="sd">  ==================== ===========</span>
+
+<span class="sd">.. data:: CircClosureReason (enum)</span>
+
+<span class="sd">  Reason that a circuit is being closed or failed to be established. Tor may</span>
+<span class="sd">  provide reasons not in this enum.</span>
+
+<span class="sd">  ========================= ===========</span>
+<span class="sd">  CircClosureReason         Description</span>
+<span class="sd">  ========================= ===========</span>
+<span class="sd">  **NONE**                  no reason given</span>
+<span class="sd">  **TORPROTOCOL**           violation in the tor protocol</span>
+<span class="sd">  **INTERNAL**              internal error</span>
+<span class="sd">  **REQUESTED**             requested by the client via a TRUNCATE command</span>
+<span class="sd">  **HIBERNATING**           relay is currently hibernating</span>
+<span class="sd">  **RESOURCELIMIT**         relay is out of memory, sockets, or circuit IDs</span>
+<span class="sd">  **CONNECTFAILED**         unable to contact the relay</span>
+<span class="sd">  **OR_IDENTITY**           relay had the wrong OR identification</span>
+<span class="sd">  **OR_CONN_CLOSED**        connection failed after being established</span>
+<span class="sd">  **FINISHED**              circuit has expired (see tor&#39;s MaxCircuitDirtiness config option)</span>
+<span class="sd">  **TIMEOUT**               circuit construction timed out</span>
+<span class="sd">  **DESTROYED**             circuit unexpectedly closed</span>
+<span class="sd">  **NOPATH**                not enough relays to make a circuit</span>
+<span class="sd">  **NOSUCHSERVICE**         requested hidden service does not exist</span>
+<span class="sd">  **MEASUREMENT_EXPIRED**   same as **TIMEOUT** except that it was left open for measurement purposes</span>
+<span class="sd">  ========================= ===========</span>
+
+<span class="sd">.. data:: CircEvent (enum)</span>
+
+<span class="sd">  Type of change reflected in a circuit by a CIRC_MINOR event. Tor may provide</span>
+<span class="sd">  event types not in this enum.</span>
+
+<span class="sd">  ===================== ===========</span>
+<span class="sd">  CircEvent             Description</span>
+<span class="sd">  ===================== ===========</span>
+<span class="sd">  **PURPOSE_CHANGED**   circuit purpose or hidden service state has changed</span>
+<span class="sd">  **CANNIBALIZED**      circuit connections are being reused for a different circuit</span>
+<span class="sd">  ===================== ===========</span>
+
+<span class="sd">.. data:: HiddenServiceState (enum)</span>
+
+<span class="sd">  State that a hidden service circuit can have. These were introduced in tor</span>
+<span class="sd">  version 0.2.3.11. Tor may provide states not in this enum.</span>
+
+<span class="sd">  Enumerations fall into four groups based on their prefix...</span>
+
+<span class="sd">  ======= ===========</span>
+<span class="sd">  Prefix  Description</span>
+<span class="sd">  ======= ===========</span>
+<span class="sd">  HSCI_*  client-side introduction-point</span>
+<span class="sd">  HSCR_*  client-side rendezvous-point</span>
+<span class="sd">  HSSI_*  service-side introduction-point</span>
+<span class="sd">  HSSR_*  service-side rendezvous-point</span>
+<span class="sd">  ======= ===========</span>
+
+<span class="sd">  ============================= ===========</span>
+<span class="sd">  HiddenServiceState            Description</span>
+<span class="sd">  ============================= ===========</span>
+<span class="sd">  **HSCI_CONNECTING**           connecting to the introductory point</span>
+<span class="sd">  **HSCI_INTRO_SENT**           sent INTRODUCE1 and awaiting a reply</span>
+<span class="sd">  **HSCI_DONE**                 received a reply, circuit is closing</span>
+<span class="sd">  **HSCR_CONNECTING**           connecting to the introductory point</span>
+<span class="sd">  **HSCR_ESTABLISHED_IDLE**     rendezvous-point established, awaiting an introduction</span>
+<span class="sd">  **HSCR_ESTABLISHED_WAITING**  introduction received, awaiting a rend</span>
+<span class="sd">  **HSCR_JOINED**               connected to the hidden service</span>
+<span class="sd">  **HSSI_CONNECTING**           connecting to the introductory point</span>
+<span class="sd">  **HSSI_ESTABLISHED**          established introductory point</span>
+<span class="sd">  **HSSR_CONNECTING**           connecting to the introductory point</span>
+<span class="sd">  **HSSR_JOINED**               connected to the rendezvous-point</span>
+<span class="sd">  ============================= ===========</span>
+
+<span class="sd">.. data:: RelayEndReason (enum)</span>
+
+<span class="sd">  Reasons why the stream is to be closed.</span>
+
+<span class="sd">  =================== ===========</span>
+<span class="sd">  RelayEndReason      Description</span>
+<span class="sd">  =================== ===========</span>
+<span class="sd">  **MISC**            none of the following reasons</span>
+<span class="sd">  **RESOLVEFAILED**   unable to resolve the hostname</span>
+<span class="sd">  **CONNECTREFUSED**  remote host refused the connection</span>
+<span class="sd">  **EXITPOLICY**      OR refuses to connect to the destination</span>
+<span class="sd">  **DESTROY**         circuit is being shut down</span>
+<span class="sd">  **DONE**            connection has been closed</span>
+<span class="sd">  **TIMEOUT**         connection timed out</span>
+<span class="sd">  **NOROUTE**         routing error while contacting the destination</span>
+<span class="sd">  **HIBERNATING**     relay is temporarily hibernating</span>
+<span class="sd">  **INTERNAL**        internal error at the relay</span>
+<span class="sd">  **RESOURCELIMIT**   relay has insufficient resources to service the request</span>
+<span class="sd">  **CONNRESET**       connection was unexpectedly reset</span>
+<span class="sd">  **TORPROTOCOL**     violation in the tor protocol</span>
+<span class="sd">  **NOTDIRECTORY**    directory information requested from a relay that isn&#39;t mirroring it</span>
+<span class="sd">  =================== ===========</span>
+
+<span class="sd">.. data:: StreamStatus (enum)</span>
+
+<span class="sd">  State that a stream going through tor can have. Tor may provide states not in</span>
+<span class="sd">  this enum.</span>
+
+<span class="sd">  ================= ===========</span>
+<span class="sd">  StreamStatus      Description</span>
+<span class="sd">  ================= ===========</span>
+<span class="sd">  **NEW**           request for a new connection</span>
+<span class="sd">  **NEWRESOLVE**    request to resolve an address</span>
+<span class="sd">  **REMAP**         address is being re-mapped to another</span>
+<span class="sd">  **SENTCONNECT**   sent a connect cell along a circuit</span>
+<span class="sd">  **SENTRESOLVE**   sent a resolve cell along a circuit</span>
+<span class="sd">  **SUCCEEDED**     stream has been established</span>
+<span class="sd">  **FAILED**        stream is detached, and won&#39;t be re-established</span>
+<span class="sd">  **DETACHED**      stream is detached, but might be re-established</span>
+<span class="sd">  **CLOSED**        stream has closed</span>
+<span class="sd">  ================= ===========</span>
+
+<span class="sd">.. data:: StreamClosureReason (enum)</span>
+
+<span class="sd">  Reason that a stream is being closed or failed to be established. This</span>
+<span class="sd">  includes all values in the :data:`~stem.RelayEndReason` enumeration as</span>
+<span class="sd">  well as the following. Tor may provide reasons not in this enum.</span>
+
+<span class="sd">  ===================== ===========</span>
+<span class="sd">  StreamClosureReason   Description</span>
+<span class="sd">  ===================== ===========</span>
+<span class="sd">  **END**               endpoint has sent a RELAY_END cell</span>
+<span class="sd">  **PRIVATE_ADDR**      endpoint was a private address (127.0.0.1, 10.0.0.1, etc)</span>
+<span class="sd">  ===================== ===========</span>
+
+<span class="sd">.. data:: StreamSource (enum)</span>
+
+<span class="sd">  Cause of a stream being remapped to another address. Tor may provide sources</span>
+<span class="sd">  not in this enum.</span>
+
+<span class="sd">  ============= ===========</span>
+<span class="sd">  StreamSource  Description</span>
+<span class="sd">  ============= ===========</span>
+<span class="sd">  **CACHE**     tor is remapping because of a cached answer</span>
+<span class="sd">  **EXIT**      exit relay requested the remap</span>
+<span class="sd">  ============= ===========</span>
+
+<span class="sd">.. data:: StreamPurpose (enum)</span>
+
+<span class="sd">  Purpsoe of the stream. This is only provided with new streams and tor may</span>
+<span class="sd">  provide purposes not in this enum.</span>
+
+<span class="sd">  ================= ===========</span>
+<span class="sd">  StreamPurpose     Description</span>
+<span class="sd">  ================= ===========</span>
+<span class="sd">  **DIR_FETCH**     fetching directory information (descriptors, consensus, etc)</span>
+<span class="sd">  **DIR_UPLOAD**    uploading our descriptor to an authority</span>
+<span class="sd">  **DNS_REQUEST**   user initiated DNS request</span>
+<span class="sd">  **DIRPORT_TEST**  checking that our directory port is reachable externally</span>
+<span class="sd">  **USER**          either relaying user traffic or not one of the above categories</span>
+<span class="sd">  ================= ===========</span>
+
+<span class="sd">.. data:: ORStatus (enum)</span>
+
+<span class="sd">  State that an OR connection can have. Tor may provide states not in this</span>
+<span class="sd">  enum.</span>
+
+<span class="sd">  =============== ===========</span>
+<span class="sd">  ORStatus        Description</span>
+<span class="sd">  =============== ===========</span>
+<span class="sd">  **NEW**         received OR connection, starting server-side handshake</span>
+<span class="sd">  **LAUNCHED**    launched outbound OR connection, starting client-side handshake</span>
+<span class="sd">  **CONNECTED**   OR connection has been established</span>
+<span class="sd">  **FAILED**      attempt to establish OR connection failed</span>
+<span class="sd">  **CLOSED**      OR connection has been closed</span>
+<span class="sd">  =============== ===========</span>
+
+<span class="sd">.. data:: ORClosureReason (enum)</span>
+
+<span class="sd">  Reason that an OR connection is being closed or failed to be established. Tor</span>
+<span class="sd">  may provide reasons not in this enum.</span>
+
+<span class="sd">  =================== ===========</span>
+<span class="sd">  ORClosureReason     Description</span>
+<span class="sd">  =================== ===========</span>
+<span class="sd">  **DONE**            OR connection shut down cleanly</span>
+<span class="sd">  **CONNECTREFUSED**  got a ECONNREFUSED when connecting to the relay</span>
+<span class="sd">  **IDENTITY**        identity of the relay wasn&#39;t what we expected</span>
+<span class="sd">  **CONNECTRESET**    got a ECONNRESET or similar error from relay</span>
+<span class="sd">  **TIMEOUT**         got a ETIMEOUT or similar error from relay</span>
+<span class="sd">  **NOROUTE**         got a ENOTCONN, ENETUNREACH, ENETDOWN, EHOSTUNREACH, or similar error from relay</span>
+<span class="sd">  **IOERROR**         got a different kind of error from relay</span>
+<span class="sd">  **RESOURCELIMIT**   relay has insufficient resources to service the request</span>
+<span class="sd">  **MISC**            connection refused for another reason</span>
+<span class="sd">  **PT_MISSING**      no pluggable transport was available</span>
+<span class="sd">  =================== ===========</span>
+
+<span class="sd">.. data:: AuthDescriptorAction (enum)</span>
+
+<span class="sd">  Actions that directory authorities might take with relay descriptors. Tor may</span>
+<span class="sd">  provide reasons not in this enum.</span>
+
+<span class="sd">  ===================== ===========</span>
+<span class="sd">  AuthDescriptorAction  Description</span>
+<span class="sd">  ===================== ===========</span>
+<span class="sd">  **ACCEPTED**          accepting the descriptor as the newest version</span>
+<span class="sd">  **DROPPED**           descriptor rejected without notifying the relay</span>
+<span class="sd">  **REJECTED**          relay notified that its descriptor has been rejected</span>
+<span class="sd">  ===================== ===========</span>
+
+<span class="sd">.. data:: StatusType (enum)</span>
+
+<span class="sd">  Sources for tor status events. Tor may provide types not in this enum.</span>
+
+<span class="sd">  ============= ===========</span>
+<span class="sd">  StatusType    Description</span>
+<span class="sd">  ============= ===========</span>
+<span class="sd">  **GENERAL**   general tor activity, not specifically as a client or relay</span>
+<span class="sd">  **CLIENT**    related to our activity as a tor client</span>
+<span class="sd">  **SERVER**    related to our activity as a tor relay</span>
+<span class="sd">  ============= ===========</span>
+
+<span class="sd">.. data:: GuardType (enum)</span>
+
+<span class="sd">  Use a guard relay can be for. Tor may provide types not in this enum.</span>
+
+<span class="sd">  =========== ===========</span>
+<span class="sd">  GuardType   Description</span>
+<span class="sd">  =========== ===========</span>
+<span class="sd">  **ENTRY**   used to connect to the tor network</span>
+<span class="sd">  =========== ===========</span>
+
+<span class="sd">.. data:: GuardStatus (enum)</span>
+
+<span class="sd">  Status a guard relay can have. Tor may provide types not in this enum.</span>
+
+<span class="sd">  ============= ===========</span>
+<span class="sd">  GuardStatus   Description</span>
+<span class="sd">  ============= ===========</span>
+<span class="sd">  **NEW**       new guard that we weren&#39;t previously using</span>
+<span class="sd">  **DROPPED**   removed from use as one of our guards</span>
+<span class="sd">  **UP**        guard is now reachable</span>
+<span class="sd">  **DOWN**      guard is now unreachable</span>
+<span class="sd">  **BAD**       consensus or relay considers this relay to be unusable as a guard</span>
+<span class="sd">  **GOOD**      consensus or relay considers this relay to be usable as a guard</span>
+<span class="sd">  ============= ===========</span>
+
+<span class="sd">.. data:: TimeoutSetType (enum)</span>
+
+<span class="sd">  Way in which the timeout value of a circuit is changing. Tor may provide</span>
+<span class="sd">  types not in this enum.</span>
+
+<span class="sd">  =============== ===========</span>
+<span class="sd">  TimeoutSetType  Description</span>
+<span class="sd">  =============== ===========</span>
+<span class="sd">  **COMPUTED**    tor has computed a new timeout based on prior circuits</span>
+<span class="sd">  **RESET**       timeout reverted to its default</span>
+<span class="sd">  **SUSPENDED**   timeout reverted to its default until network connectivity has recovered</span>
+<span class="sd">  **DISCARD**     throwing out timeout value from when the network was down</span>
+<span class="sd">  **RESUME**      resumed calculations to determine the proper timeout</span>
+<span class="sd">  =============== ===========</span>
+
+<span class="sd">.. data:: ConnectionType (enum)</span>
+
+<span class="sd">  Purpose for a tor connection. Tor may provide types not in this enum.</span>
+
+<span class="sd">  The meaning behind these values is a bit unclear, pending :trac:`10086`.</span>
+
+<span class="sd">  .. versionadded:: 1.2.0</span>
+
+<span class="sd">  =============== ===========</span>
+<span class="sd">  ConnectionType  Description</span>
+<span class="sd">  =============== ===========</span>
+<span class="sd">  **OR**          carrying traffic within the tor network</span>
+<span class="sd">  **DIR**         fetching or sending tor descriptor data</span>
+<span class="sd">  **EXIT**        carrying traffic between the tor network and an external destination</span>
+<span class="sd">  =============== ===========</span>
+
+<span class="sd">.. data:: TokenBucket (enum)</span>
+
+<span class="sd">  Bucket categories of TB_EMPTY events.</span>
+
+<span class="sd">  .. versionadded:: 1.2.0</span>
+
+<span class="sd">  =============== ===========</span>
+<span class="sd">  TokenBucket     Description</span>
+<span class="sd">  =============== ===========</span>
+<span class="sd">  **GLOBAL**      global token bucket</span>
+<span class="sd">  **RELAY**       relay token bucket</span>
+<span class="sd">  **ORCONN**      bucket used for OR connections</span>
+<span class="sd">  =============== ===========</span>
+
+<span class="sd">.. data:: HSDescAction (enum)</span>
+
+<span class="sd">  Action beeing taken in a HS_DESC event.</span>
+
+<span class="sd">  .. versionadded:: 1.2.0</span>
+
+<span class="sd">  .. versionchanged:: 1.4.0</span>
+<span class="sd">     Added the UPLOAD and UPLOADED actions.</span>
+
+<span class="sd">  .. versionchanged:: 1.5.0</span>
+<span class="sd">     Added the CREATED action.</span>
+
+<span class="sd">  =============== ===========</span>
+<span class="sd">  HSDescAction    Description</span>
+<span class="sd">  =============== ===========</span>
+<span class="sd">  **REQUESTED**   uncached hidden service descriptor is being requested</span>
+<span class="sd">  **UPLOAD**      descriptor is being uploaded with HSPOST</span>
+<span class="sd">  **RECEIVED**    hidden service descriptor has been retrieved</span>
+<span class="sd">  **UPLOADED**    descriptor was uploaded with HSPOST</span>
+<span class="sd">  **IGNORE**      fetched descriptor was ignored because we already have its v0 descriptor</span>
+<span class="sd">  **FAILED**      we were unable to retrieve the descriptor</span>
+<span class="sd">  **CREATED**     hidden service descriptor was just created</span>
+<span class="sd">  =============== ===========</span>
+
+<span class="sd">.. data:: HSDescReason (enum)</span>
+
+<span class="sd">  Reason for the hidden service descriptor to fail to be fetched.</span>
+
+<span class="sd">  .. versionadded:: 1.3.0</span>
+
+<span class="sd">  .. versionchanged:: 1.4.0</span>
+<span class="sd">     Added the UPLOAD_REJECTED reason.</span>
+
+<span class="sd">  =================== ===========</span>
+<span class="sd">  HSDescReason        Description</span>
+<span class="sd">  =================== ===========</span>
+<span class="sd">  **BAD_DESC**        descriptor was unparseable</span>
+<span class="sd">  **QUERY_REJECTED**  hidden service directory refused to provide the descriptor</span>
+<span class="sd">  **UPLOAD_REJECTED** descriptor was rejected by the hidden service directory</span>
+<span class="sd">  **NOT_FOUND**       descriptor with the given identifier wasn&#39;t found</span>
+<span class="sd">  **UNEXPECTED**      failure type is unknown</span>
+<span class="sd">  =================== ===========</span>
+
+<span class="sd">.. data:: HSAuth (enum)</span>
+
+<span class="sd">  Type of authentication being used for a HS_DESC event.</span>
+
+<span class="sd">  .. versionadded:: 1.2.0</span>
+
+<span class="sd">  ================= ===========</span>
+<span class="sd">  HSAuth            Description</span>
+<span class="sd">  ================= ===========</span>
+<span class="sd">  **NO_AUTH**       no authentication</span>
+<span class="sd">  **BASIC_AUTH**    general hidden service authentication</span>
+<span class="sd">  **STEALTH_AUTH**  authentication method that hides service activity from unauthorized clients</span>
+<span class="sd">  **UNKNOWN**       unrecognized method of authentication</span>
+<span class="sd">  ================= ===========</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">stem.util.enum</span>
+
+<span class="n">__version__</span> <span class="o">=</span> <span class="s">&#39;1.4.1-dev&#39;</span>
+<span class="n">__author__</span> <span class="o">=</span> <span class="s">&#39;Damian Johnson&#39;</span>
+<span class="n">__contact__</span> <span class="o">=</span> <span class="s">&#39;atagar@torproject.org&#39;</span>
+<span class="n">__url__</span> <span class="o">=</span> <span class="s">&#39;https://stem.torproject.org/&#39;</span>
+<span class="n">__license__</span> <span class="o">=</span> <span class="s">&#39;LGPLv3&#39;</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+  <span class="s">&#39;descriptor&#39;</span><span class="p">,</span>
+  <span class="s">&#39;response&#39;</span><span class="p">,</span>
+  <span class="s">&#39;util&#39;</span><span class="p">,</span>
+  <span class="s">&#39;connection&#39;</span><span class="p">,</span>
+  <span class="s">&#39;control&#39;</span><span class="p">,</span>
+  <span class="s">&#39;exit_policy&#39;</span><span class="p">,</span>
+  <span class="s">&#39;prereq&#39;</span><span class="p">,</span>
+  <span class="s">&#39;process&#39;</span><span class="p">,</span>
+  <span class="s">&#39;socket&#39;</span><span class="p">,</span>
+  <span class="s">&#39;version&#39;</span><span class="p">,</span>
+  <span class="s">&#39;ControllerError&#39;</span><span class="p">,</span>
+  <span class="s">&#39;ProtocolError&#39;</span><span class="p">,</span>
+  <span class="s">&#39;OperationFailed&#39;</span><span class="p">,</span>
+  <span class="s">&#39;UnsatisfiableRequest&#39;</span><span class="p">,</span>
+  <span class="s">&#39;CircuitExtensionFailed&#39;</span><span class="p">,</span>
+  <span class="s">&#39;DescriptorUnavailable&#39;</span><span class="p">,</span>
+  <span class="s">&#39;InvalidRequest&#39;</span><span class="p">,</span>
+  <span class="s">&#39;InvalidArguments&#39;</span><span class="p">,</span>
+  <span class="s">&#39;SocketError&#39;</span><span class="p">,</span>
+  <span class="s">&#39;SocketClosed&#39;</span><span class="p">,</span>
+  <span class="s">&#39;Runlevel&#39;</span><span class="p">,</span>
+  <span class="s">&#39;Signal&#39;</span><span class="p">,</span>
+  <span class="s">&#39;Flag&#39;</span><span class="p">,</span>
+  <span class="s">&#39;CircStatus&#39;</span><span class="p">,</span>
+  <span class="s">&#39;CircBuildFlag&#39;</span><span class="p">,</span>
+  <span class="s">&#39;CircPurpose&#39;</span><span class="p">,</span>
+  <span class="s">&#39;CircClosureReason&#39;</span><span class="p">,</span>
+  <span class="s">&#39;CircEvent&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HiddenServiceState&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HSAuth&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HSDescAction&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HSDescReason&#39;</span><span class="p">,</span>
+  <span class="s">&#39;RelayEndReason&#39;</span><span class="p">,</span>
+  <span class="s">&#39;StreamStatus&#39;</span><span class="p">,</span>
+  <span class="s">&#39;StreamClosureReason&#39;</span><span class="p">,</span>
+  <span class="s">&#39;StreamSource&#39;</span><span class="p">,</span>
+  <span class="s">&#39;StreamPurpose&#39;</span><span class="p">,</span>
+  <span class="s">&#39;ORStatus&#39;</span><span class="p">,</span>
+  <span class="s">&#39;ORClosureReason&#39;</span><span class="p">,</span>
+  <span class="s">&#39;AuthDescriptorAction&#39;</span><span class="p">,</span>
+  <span class="s">&#39;StatusType&#39;</span><span class="p">,</span>
+  <span class="s">&#39;GuardType&#39;</span><span class="p">,</span>
+  <span class="s">&#39;GuardStatus&#39;</span><span class="p">,</span>
+  <span class="s">&#39;TimeoutSetType&#39;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="c"># Constant to indicate an undefined argument default. Usually we&#39;d use None for</span>
+<span class="c"># this, but users will commonly provide None as the argument so need something</span>
+<span class="c"># else fairly unique...</span>
+
+<span class="n">UNDEFINED</span> <span class="o">=</span> <span class="s">&#39;&lt;Undefined_ &gt;&#39;</span>
+
+
+<div class="viewcode-block" id="ControllerError"><a class="viewcode-back" href="../api/control.html#stem.ControllerError">[docs]</a><span class="k">class</span> <span class="nc">ControllerError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+  <span class="s">&#39;Base error for controller communication issues.&#39;</span>
+
+</div>
+<div class="viewcode-block" id="ProtocolError"><a class="viewcode-back" href="../api/control.html#stem.ProtocolError">[docs]</a><span class="k">class</span> <span class="nc">ProtocolError</span><span class="p">(</span><span class="n">ControllerError</span><span class="p">):</span>
+  <span class="s">&#39;Malformed content from the control socket.&#39;</span>
+
+</div>
+<div class="viewcode-block" id="OperationFailed"><a class="viewcode-back" href="../api/control.html#stem.OperationFailed">[docs]</a><span class="k">class</span> <span class="nc">OperationFailed</span><span class="p">(</span><span class="n">ControllerError</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Base exception class for failed operations that return an error code</span>
+
+<span class="sd">  :var str code: error code returned by Tor</span>
+<span class="sd">  :var str message: error message returned by Tor or a human readable error</span>
+<span class="sd">    message</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">code</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">message</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">ControllerError</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">code</span> <span class="o">=</span> <span class="n">code</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">message</span>
+
+</div>
+<div class="viewcode-block" id="UnsatisfiableRequest"><a class="viewcode-back" href="../api/control.html#stem.UnsatisfiableRequest">[docs]</a><span class="k">class</span> <span class="nc">UnsatisfiableRequest</span><span class="p">(</span><span class="n">OperationFailed</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Exception raised if Tor was unable to process our request.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+</div>
+<div class="viewcode-block" id="CircuitExtensionFailed"><a class="viewcode-back" href="../api/control.html#stem.CircuitExtensionFailed">[docs]</a><span class="k">class</span> <span class="nc">CircuitExtensionFailed</span><span class="p">(</span><span class="n">UnsatisfiableRequest</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  An attempt to create or extend a circuit failed.</span>
+
+<span class="sd">  :var stem.response.CircuitEvent circ: response notifying us of the failure</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">circ</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">CircuitExtensionFailed</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">message</span> <span class="o">=</span> <span class="n">message</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">circ</span> <span class="o">=</span> <span class="n">circ</span>
+
+</div>
+<div class="viewcode-block" id="DescriptorUnavailable"><a class="viewcode-back" href="../api/control.html#stem.DescriptorUnavailable">[docs]</a><span class="k">class</span> <span class="nc">DescriptorUnavailable</span><span class="p">(</span><span class="n">OperationFailed</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Tor was unable to provide a descriptor for the given relay.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">DescriptorUnavailable</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">message</span> <span class="o">=</span> <span class="n">message</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="InvalidRequest"><a class="viewcode-back" href="../api/control.html#stem.InvalidRequest">[docs]</a><span class="k">class</span> <span class="nc">InvalidRequest</span><span class="p">(</span><span class="n">OperationFailed</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Exception raised when the request was invalid or malformed.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+</div>
+<div class="viewcode-block" id="InvalidArguments"><a class="viewcode-back" href="../api/control.html#stem.InvalidArguments">[docs]</a><span class="k">class</span> <span class="nc">InvalidArguments</span><span class="p">(</span><span class="n">InvalidRequest</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Exception class for requests which had invalid arguments.</span>
+
+<span class="sd">  :var str code: error code returned by Tor</span>
+<span class="sd">  :var str message: error message returned by Tor or a human readable error</span>
+<span class="sd">    message</span>
+<span class="sd">  :var list arguments: a list of arguments which were invalid</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">code</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">message</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">arguments</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">InvalidArguments</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span> <span class="o">=</span> <span class="n">arguments</span>
+
+</div>
+<div class="viewcode-block" id="SocketError"><a class="viewcode-back" href="../api/control.html#stem.SocketError">[docs]</a><span class="k">class</span> <span class="nc">SocketError</span><span class="p">(</span><span class="n">ControllerError</span><span class="p">):</span>
+  <span class="s">&#39;Error arose while communicating with the control socket.&#39;</span>
+
+</div>
+<div class="viewcode-block" id="SocketClosed"><a class="viewcode-back" href="../api/control.html#stem.SocketClosed">[docs]</a><span class="k">class</span> <span class="nc">SocketClosed</span><span class="p">(</span><span class="n">SocketError</span><span class="p">):</span>
+  <span class="s">&#39;Control socket was closed before completing the message.&#39;</span>
+</div>
+<span class="n">Runlevel</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;DEBUG&#39;</span><span class="p">,</span>
+  <span class="s">&#39;INFO&#39;</span><span class="p">,</span>
+  <span class="s">&#39;NOTICE&#39;</span><span class="p">,</span>
+  <span class="s">&#39;WARN&#39;</span><span class="p">,</span>
+  <span class="s">&#39;ERR&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">Flag</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">(</span>
+  <span class="p">(</span><span class="s">&#39;AUTHORITY&#39;</span><span class="p">,</span> <span class="s">&#39;Authority&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;BADEXIT&#39;</span><span class="p">,</span> <span class="s">&#39;BadExit&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;BADDIRECTORY&#39;</span><span class="p">,</span> <span class="s">&#39;BadDirectory&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;EXIT&#39;</span><span class="p">,</span> <span class="s">&#39;Exit&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;FAST&#39;</span><span class="p">,</span> <span class="s">&#39;Fast&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;GUARD&#39;</span><span class="p">,</span> <span class="s">&#39;Guard&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;HSDIR&#39;</span><span class="p">,</span> <span class="s">&#39;HSDir&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;NAMED&#39;</span><span class="p">,</span> <span class="s">&#39;Named&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;NO_ED_CONSENSUS&#39;</span><span class="p">,</span> <span class="s">&#39;NoEdConsensus&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;RUNNING&#39;</span><span class="p">,</span> <span class="s">&#39;Running&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;STABLE&#39;</span><span class="p">,</span> <span class="s">&#39;Stable&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;UNNAMED&#39;</span><span class="p">,</span> <span class="s">&#39;Unnamed&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;V2DIR&#39;</span><span class="p">,</span> <span class="s">&#39;V2Dir&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;V3DIR&#39;</span><span class="p">,</span> <span class="s">&#39;V3Dir&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;VALID&#39;</span><span class="p">,</span> <span class="s">&#39;Valid&#39;</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="n">Signal</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;RELOAD&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HUP&#39;</span><span class="p">,</span>
+  <span class="s">&#39;SHUTDOWN&#39;</span><span class="p">,</span>
+  <span class="s">&#39;INT&#39;</span><span class="p">,</span>
+  <span class="s">&#39;DUMP&#39;</span><span class="p">,</span>
+  <span class="s">&#39;USR1&#39;</span><span class="p">,</span>
+  <span class="s">&#39;DEBUG&#39;</span><span class="p">,</span>
+  <span class="s">&#39;USR2&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HALT&#39;</span><span class="p">,</span>
+  <span class="s">&#39;TERM&#39;</span><span class="p">,</span>
+  <span class="s">&#39;NEWNYM&#39;</span><span class="p">,</span>
+  <span class="s">&#39;CLEARDNSCACHE&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HEARTBEAT&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">CircStatus</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;LAUNCHED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;BUILT&#39;</span><span class="p">,</span>
+  <span class="s">&#39;EXTENDED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;FAILED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;CLOSED&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">CircBuildFlag</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;ONEHOP_TUNNEL&#39;</span><span class="p">,</span>
+  <span class="s">&#39;IS_INTERNAL&#39;</span><span class="p">,</span>
+  <span class="s">&#39;NEED_CAPACITY&#39;</span><span class="p">,</span>
+  <span class="s">&#39;NEED_UPTIME&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">CircPurpose</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;GENERAL&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HS_CLIENT_INTRO&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HS_CLIENT_REND&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HS_SERVICE_INTRO&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HS_SERVICE_REND&#39;</span><span class="p">,</span>
+  <span class="s">&#39;TESTING&#39;</span><span class="p">,</span>
+  <span class="s">&#39;CONTROLLER&#39;</span><span class="p">,</span>
+  <span class="s">&#39;MEASURE_TIMEOUT&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">CircClosureReason</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;NONE&#39;</span><span class="p">,</span>
+  <span class="s">&#39;TORPROTOCOL&#39;</span><span class="p">,</span>
+  <span class="s">&#39;INTERNAL&#39;</span><span class="p">,</span>
+  <span class="s">&#39;REQUESTED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HIBERNATING&#39;</span><span class="p">,</span>
+  <span class="s">&#39;RESOURCELIMIT&#39;</span><span class="p">,</span>
+  <span class="s">&#39;CONNECTFAILED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;OR_IDENTITY&#39;</span><span class="p">,</span>
+  <span class="s">&#39;OR_CONN_CLOSED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;FINISHED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;TIMEOUT&#39;</span><span class="p">,</span>
+  <span class="s">&#39;DESTROYED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;NOPATH&#39;</span><span class="p">,</span>
+  <span class="s">&#39;NOSUCHSERVICE&#39;</span><span class="p">,</span>
+  <span class="s">&#39;MEASUREMENT_EXPIRED&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">CircEvent</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;PURPOSE_CHANGED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;CANNIBALIZED&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">HiddenServiceState</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;HSCI_CONNECTING&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HSCI_INTRO_SENT&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HSCI_DONE&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HSCR_CONNECTING&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HSCR_ESTABLISHED_IDLE&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HSCR_ESTABLISHED_WAITING&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HSCR_JOINED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HSSI_CONNECTING&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HSSI_ESTABLISHED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HSSR_CONNECTING&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HSSR_JOINED&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">RelayEndReason</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;MISC&#39;</span><span class="p">,</span>
+  <span class="s">&#39;RESOLVEFAILED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;CONNECTREFUSED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;EXITPOLICY&#39;</span><span class="p">,</span>
+  <span class="s">&#39;DESTROY&#39;</span><span class="p">,</span>
+  <span class="s">&#39;DONE&#39;</span><span class="p">,</span>
+  <span class="s">&#39;TIMEOUT&#39;</span><span class="p">,</span>
+  <span class="s">&#39;NOROUTE&#39;</span><span class="p">,</span>
+  <span class="s">&#39;HIBERNATING&#39;</span><span class="p">,</span>
+  <span class="s">&#39;INTERNAL&#39;</span><span class="p">,</span>
+  <span class="s">&#39;RESOURCELIMIT&#39;</span><span class="p">,</span>
+  <span class="s">&#39;CONNRESET&#39;</span><span class="p">,</span>
+  <span class="s">&#39;TORPROTOCOL&#39;</span><span class="p">,</span>
+  <span class="s">&#39;NOTDIRECTORY&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">StreamStatus</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;NEW&#39;</span><span class="p">,</span>
+  <span class="s">&#39;NEWRESOLVE&#39;</span><span class="p">,</span>
+  <span class="s">&#39;REMAP&#39;</span><span class="p">,</span>
+  <span class="s">&#39;SENTCONNECT&#39;</span><span class="p">,</span>
+  <span class="s">&#39;SENTRESOLVE&#39;</span><span class="p">,</span>
+  <span class="s">&#39;SUCCEEDED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;FAILED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;DETACHED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;CLOSED&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c"># StreamClosureReason is a superset of RelayEndReason</span>
+<span class="n">StreamClosureReason</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">RelayEndReason</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="o">+</span> <span class="p">[</span>
+  <span class="s">&#39;END&#39;</span><span class="p">,</span>
+  <span class="s">&#39;PRIVATE_ADDR&#39;</span><span class="p">,</span>
+<span class="p">]))</span>
+
+<span class="n">StreamSource</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;CACHE&#39;</span><span class="p">,</span>
+  <span class="s">&#39;EXIT&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">StreamPurpose</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;DIR_FETCH&#39;</span><span class="p">,</span>
+  <span class="s">&#39;DIR_UPLOAD&#39;</span><span class="p">,</span>
+  <span class="s">&#39;DNS_REQUEST&#39;</span><span class="p">,</span>
+  <span class="s">&#39;DIRPORT_TEST&#39;</span><span class="p">,</span>
+  <span class="s">&#39;USER&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">ORStatus</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;NEW&#39;</span><span class="p">,</span>
+  <span class="s">&#39;LAUNCHED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;CONNECTED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;FAILED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;CLOSED&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">ORClosureReason</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;DONE&#39;</span><span class="p">,</span>
+  <span class="s">&#39;CONNECTREFUSED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;IDENTITY&#39;</span><span class="p">,</span>
+  <span class="s">&#39;CONNECTRESET&#39;</span><span class="p">,</span>
+  <span class="s">&#39;TIMEOUT&#39;</span><span class="p">,</span>
+  <span class="s">&#39;NOROUTE&#39;</span><span class="p">,</span>
+  <span class="s">&#39;IOERROR&#39;</span><span class="p">,</span>
+  <span class="s">&#39;RESOURCELIMIT&#39;</span><span class="p">,</span>
+  <span class="s">&#39;MISC&#39;</span><span class="p">,</span>
+  <span class="s">&#39;PT_MISSING&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">AuthDescriptorAction</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;ACCEPTED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;DROPPED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;REJECTED&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">StatusType</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;GENERAL&#39;</span><span class="p">,</span>
+  <span class="s">&#39;CLIENT&#39;</span><span class="p">,</span>
+  <span class="s">&#39;SERVER&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">GuardType</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;ENTRY&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">GuardStatus</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;NEW&#39;</span><span class="p">,</span>
+  <span class="s">&#39;UP&#39;</span><span class="p">,</span>
+  <span class="s">&#39;DOWN&#39;</span><span class="p">,</span>
+  <span class="s">&#39;BAD&#39;</span><span class="p">,</span>
+  <span class="s">&#39;GOOD&#39;</span><span class="p">,</span>
+  <span class="s">&#39;DROPPED&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">TimeoutSetType</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;COMPUTED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;RESET&#39;</span><span class="p">,</span>
+  <span class="s">&#39;SUSPENDED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;DISCARD&#39;</span><span class="p">,</span>
+  <span class="s">&#39;RESUME&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">ConnectionType</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;OR&#39;</span><span class="p">,</span>
+  <span class="s">&#39;DIR&#39;</span><span class="p">,</span>
+  <span class="s">&#39;EXIT&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">TokenBucket</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;GLOBAL&#39;</span><span class="p">,</span>
+  <span class="s">&#39;RELAY&#39;</span><span class="p">,</span>
+  <span class="s">&#39;ORCONN&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">HSDescAction</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;REQUESTED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;UPLOAD&#39;</span><span class="p">,</span>
+  <span class="s">&#39;RECEIVED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;UPLOADED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;IGNORE&#39;</span><span class="p">,</span>
+  <span class="s">&#39;FAILED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;CREATED&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">HSDescReason</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;BAD_DESC&#39;</span><span class="p">,</span>
+  <span class="s">&#39;QUERY_REJECTED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;UPLOAD_REJECTED&#39;</span><span class="p">,</span>
+  <span class="s">&#39;NOT_FOUND&#39;</span><span class="p">,</span>
+  <span class="s">&#39;UNEXPECTED&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">HSAuth</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">UppercaseEnum</span><span class="p">(</span>
+  <span class="s">&#39;NO_AUTH&#39;</span><span class="p">,</span>
+  <span class="s">&#39;BASIC_AUTH&#39;</span><span class="p">,</span>
+  <span class="s">&#39;STEALTH_AUTH&#39;</span><span class="p">,</span>
+  <span class="s">&#39;UNKNOWN&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

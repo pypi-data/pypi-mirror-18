@@ -1,0 +1,253 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.util.term &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem" href="../../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.util.term</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.util.term</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2011-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Utilities for working with the terminal.</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  encoding - provides the ANSI escape sequence for a terminal attribute</span>
+<span class="sd">  format - wrap text with ANSI for the given colors or attributes</span>
+
+<span class="sd">.. data:: Color (enum)</span>
+<span class="sd">.. data:: BgColor (enum)</span>
+
+<span class="sd">  Foreground or background terminal colors.</span>
+
+<span class="sd">  =========== ===========</span>
+<span class="sd">  Color       Description</span>
+<span class="sd">  =========== ===========</span>
+<span class="sd">  **BLACK**   black color</span>
+<span class="sd">  **BLUE**    blue color</span>
+<span class="sd">  **CYAN**    cyan color</span>
+<span class="sd">  **GREEN**   green color</span>
+<span class="sd">  **MAGENTA** magenta color</span>
+<span class="sd">  **RED**     red color</span>
+<span class="sd">  **WHITE**   white color</span>
+<span class="sd">  **YELLOW**  yellow color</span>
+<span class="sd">  =========== ===========</span>
+
+<span class="sd">.. data:: Attr (enum)</span>
+
+<span class="sd">  Terminal text attributes.</span>
+
+<span class="sd">  .. versionchanged:: 1.5.0</span>
+<span class="sd">     Added the LINES attribute.</span>
+
+<span class="sd">  =================== ===========</span>
+<span class="sd">  Attr                Description</span>
+<span class="sd">  =================== ===========</span>
+<span class="sd">  **BOLD**            heavy typeface</span>
+<span class="sd">  **HIGHLIGHT**       inverted foreground and background</span>
+<span class="sd">  **UNDERLINE**       underlined text</span>
+<span class="sd">  **READLINE_ESCAPE** wrap encodings in `RL_PROMPT_START_IGNORE and RL_PROMPT_END_IGNORE sequences &lt;https://stackoverflow.com/questions/9468435/look-how-to-fix-column-calculation-in-python-readline-if-use-color-prompt&gt;`_</span>
+<span class="sd">  **LINES**           formats lines individually</span>
+<span class="sd">  =================== ===========</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">stem.util.enum</span>
+<span class="kn">import</span> <span class="nn">stem.util.str_tools</span>
+
+<span class="n">TERM_COLORS</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;BLACK&#39;</span><span class="p">,</span> <span class="s">&#39;RED&#39;</span><span class="p">,</span> <span class="s">&#39;GREEN&#39;</span><span class="p">,</span> <span class="s">&#39;YELLOW&#39;</span><span class="p">,</span> <span class="s">&#39;BLUE&#39;</span><span class="p">,</span> <span class="s">&#39;MAGENTA&#39;</span><span class="p">,</span> <span class="s">&#39;CYAN&#39;</span><span class="p">,</span> <span class="s">&#39;WHITE&#39;</span><span class="p">)</span>
+
+<span class="c"># DISABLE_COLOR_SUPPORT is *not* being vended to Stem users. This is likely to</span>
+<span class="c"># go away if I can think of a more graceful method for color toggling.</span>
+
+<span class="n">DISABLE_COLOR_SUPPORT</span> <span class="o">=</span> <span class="bp">False</span>
+
+<span class="n">Color</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">(</span><span class="o">*</span><span class="n">TERM_COLORS</span><span class="p">)</span>
+<span class="n">BgColor</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="s">&#39;BG_&#39;</span> <span class="o">+</span> <span class="n">color</span> <span class="k">for</span> <span class="n">color</span> <span class="ow">in</span> <span class="n">TERM_COLORS</span><span class="p">])</span>
+<span class="n">Attr</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">(</span><span class="s">&#39;BOLD&#39;</span><span class="p">,</span> <span class="s">&#39;UNDERLINE&#39;</span><span class="p">,</span> <span class="s">&#39;HIGHLIGHT&#39;</span><span class="p">,</span> <span class="s">&#39;READLINE_ESCAPE&#39;</span><span class="p">,</span> <span class="s">&#39;LINES&#39;</span><span class="p">)</span>
+
+<span class="c"># mappings of terminal attribute enums to their ANSI escape encoding</span>
+<span class="n">FG_ENCODING</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="nb">list</span><span class="p">(</span><span class="n">Color</span><span class="p">)[</span><span class="n">i</span><span class="p">],</span> <span class="nb">str</span><span class="p">(</span><span class="mi">30</span> <span class="o">+</span> <span class="n">i</span><span class="p">))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">)])</span>
+<span class="n">BG_ENCODING</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="nb">list</span><span class="p">(</span><span class="n">BgColor</span><span class="p">)[</span><span class="n">i</span><span class="p">],</span> <span class="nb">str</span><span class="p">(</span><span class="mi">40</span> <span class="o">+</span> <span class="n">i</span><span class="p">))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">)])</span>
+<span class="n">ATTR_ENCODING</span> <span class="o">=</span> <span class="p">{</span><span class="n">Attr</span><span class="o">.</span><span class="n">BOLD</span><span class="p">:</span> <span class="s">&#39;1&#39;</span><span class="p">,</span> <span class="n">Attr</span><span class="o">.</span><span class="n">UNDERLINE</span><span class="p">:</span> <span class="s">&#39;4&#39;</span><span class="p">,</span> <span class="n">Attr</span><span class="o">.</span><span class="n">HIGHLIGHT</span><span class="p">:</span> <span class="s">&#39;7&#39;</span><span class="p">}</span>
+
+<span class="n">CSI</span> <span class="o">=</span> <span class="s">&#39;</span><span class="se">\x1B</span><span class="s">[</span><span class="si">%s</span><span class="s">m&#39;</span>
+<span class="n">RESET</span> <span class="o">=</span> <span class="n">CSI</span> <span class="o">%</span> <span class="s">&#39;0&#39;</span>
+
+
+<div class="viewcode-block" id="encoding"><a class="viewcode-back" href="../../../api/util/term.html#stem.util.term.encoding">[docs]</a><span class="k">def</span> <span class="nf">encoding</span><span class="p">(</span><span class="o">*</span><span class="n">attrs</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the ANSI escape sequence for these terminal color or attributes.</span>
+
+<span class="sd">  .. versionadded:: 1.5.0</span>
+
+<span class="sd">  :param list attr: :data:`~stem.util.terminal.Color`,</span>
+<span class="sd">    :data:`~stem.util.terminal.BgColor`, or :data:`~stem.util.terminal.Attr` to</span>
+<span class="sd">    provide an ecoding for</span>
+
+<span class="sd">  :return: **str** of the ANSI escape sequence, **None** no attributes are</span>
+<span class="sd">    recognized</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">term_encodings</span> <span class="o">=</span> <span class="p">[]</span>
+
+  <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">attrs</span><span class="p">:</span>
+    <span class="c"># TODO: Account for an earlier misspelled attribute. This should be dropped</span>
+    <span class="c"># in Stem. 2.0.x.</span>
+
+    <span class="k">if</span> <span class="n">attr</span> <span class="o">==</span> <span class="s">&#39;HILIGHT&#39;</span><span class="p">:</span>
+      <span class="n">attr</span> <span class="o">=</span> <span class="s">&#39;HIGHLIGHT&#39;</span>
+
+    <span class="n">attr</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_camel_case</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span>
+    <span class="n">term_encoding</span> <span class="o">=</span> <span class="n">FG_ENCODING</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+    <span class="n">term_encoding</span> <span class="o">=</span> <span class="n">BG_ENCODING</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="n">term_encoding</span><span class="p">)</span>
+    <span class="n">term_encoding</span> <span class="o">=</span> <span class="n">ATTR_ENCODING</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="n">term_encoding</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">term_encoding</span><span class="p">:</span>
+      <span class="n">term_encodings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">term_encoding</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">term_encodings</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">CSI</span> <span class="o">%</span> <span class="s">&#39;;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">term_encodings</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="format"><a class="viewcode-back" href="../../../api/util/term.html#stem.util.term.format">[docs]</a><span class="k">def</span> <span class="nf">format</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="o">*</span><span class="n">attr</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Simple terminal text formatting using `ANSI escape sequences</span>
+<span class="sd">  &lt;https://en.wikipedia.org/wiki/ANSI_escape_code#CSI_codes&gt;`_.</span>
+<span class="sd">  The following are some toolkits providing similar capabilities:</span>
+
+<span class="sd">  * `django.utils.termcolors &lt;https://github.com/django/django/blob/master/django/utils/termcolors.py&gt;`_</span>
+<span class="sd">  * `termcolor &lt;https://pypi.python.org/pypi/termcolor&gt;`_</span>
+<span class="sd">  * `colorama &lt;https://pypi.python.org/pypi/colorama&gt;`_</span>
+
+<span class="sd">  :param str msg: string to be formatted</span>
+<span class="sd">  :param str attr: text attributes, this can be :data:`~stem.util.term.Color`,</span>
+<span class="sd">    :data:`~stem.util.term.BgColor`, or :data:`~stem.util.term.Attr` enums</span>
+<span class="sd">    and are case insensitive (so strings like &#39;red&#39; are fine)</span>
+
+<span class="sd">  :returns: **str** wrapped with ANSI escape encodings, starting with the given</span>
+<span class="sd">    attributes and ending with a reset</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">DISABLE_COLOR_SUPPORT</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">msg</span>
+
+  <span class="k">if</span> <span class="n">Attr</span><span class="o">.</span><span class="n">LINES</span> <span class="ow">in</span> <span class="n">attr</span><span class="p">:</span>
+    <span class="n">attr</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span>
+    <span class="n">attr</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">Attr</span><span class="o">.</span><span class="n">LINES</span><span class="p">)</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="n">format</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="o">*</span><span class="n">attr</span><span class="p">)</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">msg</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+
+  <span class="c"># if we have reset sequences in the message then apply our attributes</span>
+  <span class="c"># after each of them</span>
+
+  <span class="k">if</span> <span class="n">RESET</span> <span class="ow">in</span> <span class="n">msg</span><span class="p">:</span>
+    <span class="k">return</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">format</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="o">*</span><span class="n">attr</span><span class="p">)</span> <span class="k">for</span> <span class="n">comp</span> <span class="ow">in</span> <span class="n">msg</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">RESET</span><span class="p">)])</span>
+
+  <span class="n">prefix</span><span class="p">,</span> <span class="n">suffix</span> <span class="o">=</span> <span class="n">encoding</span><span class="p">(</span><span class="o">*</span><span class="n">attr</span><span class="p">),</span> <span class="n">RESET</span>
+
+  <span class="k">if</span> <span class="n">prefix</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">Attr</span><span class="o">.</span><span class="n">READLINE_ESCAPE</span> <span class="ow">in</span> <span class="n">attr</span><span class="p">:</span>
+      <span class="n">prefix</span> <span class="o">=</span> <span class="s">&#39;</span><span class="se">\001</span><span class="si">%s</span><span class="se">\002</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">prefix</span>
+      <span class="n">suffix</span> <span class="o">=</span> <span class="s">&#39;</span><span class="se">\001</span><span class="si">%s</span><span class="se">\002</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">suffix</span>
+
+    <span class="k">return</span> <span class="n">prefix</span> <span class="o">+</span> <span class="n">msg</span> <span class="o">+</span> <span class="n">suffix</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">msg</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

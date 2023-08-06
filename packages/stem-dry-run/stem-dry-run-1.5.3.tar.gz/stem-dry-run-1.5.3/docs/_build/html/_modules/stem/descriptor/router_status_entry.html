@@ -1,0 +1,791 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.descriptor.router_status_entry &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem" href="../../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.descriptor.router_status_entry</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.descriptor.router_status_entry</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2012-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Parsing for router status entries, the information for individual routers</span>
+<span class="sd">within a network status document. This information is provided from a few</span>
+<span class="sd">sources...</span>
+
+<span class="sd">* control port via &#39;GETINFO ns/\*&#39; and &#39;GETINFO md/\*&#39; queries</span>
+<span class="sd">* router entries in a network status document, like the cached-consensus</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  RouterStatusEntry - Common parent for router status entries</span>
+<span class="sd">    |- RouterStatusEntryV2 - Entry for a network status v2 document</span>
+<span class="sd">    |- RouterStatusEntryV3 - Entry for a network status v3 document</span>
+<span class="sd">    +- RouterStatusEntryMicroV3 - Entry for a microdescriptor flavored v3 document</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">base64</span>
+<span class="kn">import</span> <span class="nn">binascii</span>
+
+<span class="kn">import</span> <span class="nn">stem.exit_policy</span>
+<span class="kn">import</span> <span class="nn">stem.prereq</span>
+<span class="kn">import</span> <span class="nn">stem.util.str_tools</span>
+
+<span class="kn">from</span> <span class="nn">stem.descriptor</span> <span class="kn">import</span> <span class="p">(</span>
+  <span class="n">KEYWORD_LINE</span><span class="p">,</span>
+  <span class="n">Descriptor</span><span class="p">,</span>
+  <span class="n">_value</span><span class="p">,</span>
+  <span class="n">_values</span><span class="p">,</span>
+  <span class="n">_get_descriptor_components</span><span class="p">,</span>
+  <span class="n">_read_until_keywords</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_file</span><span class="p">(</span><span class="n">document_file</span><span class="p">,</span> <span class="n">validate</span><span class="p">,</span> <span class="n">entry_class</span><span class="p">,</span> <span class="n">entry_keyword</span> <span class="o">=</span> <span class="s">&#39;r&#39;</span><span class="p">,</span> <span class="n">start_position</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">end_position</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">section_end_keywords</span> <span class="o">=</span> <span class="p">(),</span> <span class="n">extra_args</span> <span class="o">=</span> <span class="p">()):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Reads a range of the document_file containing some number of entry_class</span>
+<span class="sd">  instances. We deliminate the entry_class entries by the keyword on their</span>
+<span class="sd">  first line (entry_keyword). When finished the document is left at the</span>
+<span class="sd">  end_position.</span>
+
+<span class="sd">  Either an end_position or section_end_keywords must be provided.</span>
+
+<span class="sd">  :param file document_file: file with network status document content</span>
+<span class="sd">  :param bool validate: checks the validity of the document&#39;s contents if</span>
+<span class="sd">    **True**, skips these checks otherwise</span>
+<span class="sd">  :param class entry_class: class to construct instance for</span>
+<span class="sd">  :param str entry_keyword: first keyword for the entry instances</span>
+<span class="sd">  :param int start_position: start of the section, default is the current position</span>
+<span class="sd">  :param int end_position: end of the section</span>
+<span class="sd">  :param tuple section_end_keywords: keyword(s) that deliminate the end of the</span>
+<span class="sd">    section if no end_position was provided</span>
+<span class="sd">  :param tuple extra_args: extra arguments for the entry_class (after the</span>
+<span class="sd">    content and validate flag)</span>
+
+<span class="sd">  :returns: iterator over entry_class instances</span>
+
+<span class="sd">  :raises:</span>
+<span class="sd">    * **ValueError** if the contents is malformed and validate is **True**</span>
+<span class="sd">    * **IOError** if the file can&#39;t be read</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">start_position</span><span class="p">:</span>
+    <span class="n">document_file</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="n">start_position</span><span class="p">)</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="n">start_position</span> <span class="o">=</span> <span class="n">document_file</span><span class="o">.</span><span class="n">tell</span><span class="p">()</span>
+
+  <span class="c"># check if we&#39;re starting at the end of the section (ie, there&#39;s no entries to read)</span>
+  <span class="k">if</span> <span class="n">section_end_keywords</span><span class="p">:</span>
+    <span class="n">first_keyword</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">line_match</span> <span class="o">=</span> <span class="n">KEYWORD_LINE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">document_file</span><span class="o">.</span><span class="n">readline</span><span class="p">()))</span>
+
+    <span class="k">if</span> <span class="n">line_match</span><span class="p">:</span>
+      <span class="n">first_keyword</span> <span class="o">=</span> <span class="n">line_match</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">document_file</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="n">start_position</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">first_keyword</span> <span class="ow">in</span> <span class="n">section_end_keywords</span><span class="p">:</span>
+      <span class="k">return</span>
+
+  <span class="k">while</span> <span class="n">end_position</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">document_file</span><span class="o">.</span><span class="n">tell</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">end_position</span><span class="p">:</span>
+    <span class="n">desc_lines</span><span class="p">,</span> <span class="n">ending_keyword</span> <span class="o">=</span> <span class="n">_read_until_keywords</span><span class="p">(</span>
+      <span class="p">(</span><span class="n">entry_keyword</span><span class="p">,)</span> <span class="o">+</span> <span class="n">section_end_keywords</span><span class="p">,</span>
+      <span class="n">document_file</span><span class="p">,</span>
+      <span class="n">ignore_first</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span>
+      <span class="n">end_position</span> <span class="o">=</span> <span class="n">end_position</span><span class="p">,</span>
+      <span class="n">include_ending_keyword</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="p">)</span>
+
+    <span class="n">desc_content</span> <span class="o">=</span> <span class="nb">bytes</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">desc_lines</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">desc_content</span><span class="p">:</span>
+      <span class="k">yield</span> <span class="n">entry_class</span><span class="p">(</span><span class="n">desc_content</span><span class="p">,</span> <span class="n">validate</span><span class="p">,</span> <span class="o">*</span><span class="n">extra_args</span><span class="p">)</span>
+
+      <span class="c"># check if we stopped at the end of the section</span>
+      <span class="k">if</span> <span class="n">ending_keyword</span> <span class="ow">in</span> <span class="n">section_end_keywords</span><span class="p">:</span>
+        <span class="k">break</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">break</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_r_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># Parses a RouterStatusEntry&#39;s &#39;r&#39; line. They&#39;re very nearly identical for</span>
+  <span class="c"># all current entry types (v2, v3, and microdescriptor v3) with one little</span>
+  <span class="c"># wrinkle: only the microdescriptor flavor excludes a &#39;digest&#39; field.</span>
+  <span class="c">#</span>
+  <span class="c"># For v2 and v3 router status entries:</span>
+  <span class="c">#   &quot;r&quot; nickname identity digest publication IP ORPort DirPort</span>
+  <span class="c">#   example: r mauer BD7xbfsCFku3+tgybEZsg8Yjhvw itcuKQ6PuPLJ7m/Oi928WjO2j8g 2012-06-22 13:19:32 80.101.105.103 9001 0</span>
+  <span class="c">#</span>
+  <span class="c"># For v3 microdescriptor router status entries:</span>
+  <span class="c">#   &quot;r&quot; nickname identity publication IP ORPort DirPort</span>
+  <span class="c">#   example: r Konata ARIJF2zbqirB9IwsW0mQznccWww 2012-09-24 13:40:40 69.64.48.168 9001 9030</span>
+
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;r&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+  <span class="n">include_digest</span> <span class="o">=</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">RouterStatusEntryMicroV3</span><span class="p">)</span>
+
+  <span class="n">r_comp</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)</span>
+
+  <span class="c"># inject a None for the digest to normalize the field positioning</span>
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">include_digest</span><span class="p">:</span>
+    <span class="n">r_comp</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">r_comp</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">8</span><span class="p">:</span>
+    <span class="n">expected_field_count</span> <span class="o">=</span> <span class="s">&#39;eight&#39;</span> <span class="k">if</span> <span class="n">include_digest</span> <span class="k">else</span> <span class="s">&#39;seven&#39;</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> &#39;r&#39; line must have </span><span class="si">%s</span><span class="s"> values: r </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">expected_field_count</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">tor_tools</span><span class="o">.</span><span class="n">is_valid_nickname</span><span class="p">(</span><span class="n">r_comp</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> nickname isn&#39;t valid: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">r_comp</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+  <span class="k">elif</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="n">r_comp</span><span class="p">[</span><span class="mi">5</span><span class="p">]):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> address isn&#39;t a valid IPv4 address: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">r_comp</span><span class="p">[</span><span class="mi">5</span><span class="p">]))</span>
+  <span class="k">elif</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">r_comp</span><span class="p">[</span><span class="mi">6</span><span class="p">]):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> ORPort is invalid: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">r_comp</span><span class="p">[</span><span class="mi">6</span><span class="p">]))</span>
+  <span class="k">elif</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">r_comp</span><span class="p">[</span><span class="mi">7</span><span class="p">],</span> <span class="n">allow_zero</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> DirPort is invalid: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">r_comp</span><span class="p">[</span><span class="mi">7</span><span class="p">]))</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">nickname</span> <span class="o">=</span> <span class="n">r_comp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">fingerprint</span> <span class="o">=</span> <span class="n">_base64_to_hex</span><span class="p">(</span><span class="n">r_comp</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+  <span class="k">if</span> <span class="n">include_digest</span><span class="p">:</span>
+    <span class="n">descriptor</span><span class="o">.</span><span class="n">digest</span> <span class="o">=</span> <span class="n">_base64_to_hex</span><span class="p">(</span><span class="n">r_comp</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">address</span> <span class="o">=</span> <span class="n">r_comp</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">or_port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">r_comp</span><span class="p">[</span><span class="mi">6</span><span class="p">])</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">dir_port</span> <span class="o">=</span> <span class="bp">None</span> <span class="k">if</span> <span class="n">r_comp</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;0&#39;</span> <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">r_comp</span><span class="p">[</span><span class="mi">7</span><span class="p">])</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">published</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">r_comp</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">r_comp</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+    <span class="n">descriptor</span><span class="o">.</span><span class="n">published</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_parse_timestamp</span><span class="p">(</span><span class="n">published</span><span class="p">)</span>
+  <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Publication time time wasn&#39;t parsable: r </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_a_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;a&quot; SP address &quot;:&quot; portlist</span>
+  <span class="c"># example: a [2001:888:2133:0:82:94:251:204]:9001</span>
+
+  <span class="n">or_addresses</span> <span class="o">=</span> <span class="p">[]</span>
+
+  <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">_values</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s">&#39;:&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> &#39;a&#39; line must be of the form &#39;[address]:[ports]&#39;: a </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">value</span><span class="p">))</span>
+
+    <span class="n">address</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="n">address</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv6_address</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">allow_brackets</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> &#39;a&#39; line must start with an IPv6 address: a </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">value</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">port</span><span class="p">):</span>
+      <span class="n">or_addresses</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">address</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s">&#39;[&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s">&#39;]&#39;</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">port</span><span class="p">),</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv6_address</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">allow_brackets</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)))</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> &#39;a&#39; line had an invalid port (</span><span class="si">%s</span><span class="s">): a </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">port</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">or_addresses</span> <span class="o">=</span> <span class="n">or_addresses</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_s_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;s&quot; Flags</span>
+  <span class="c"># example: s Named Running Stable Valid</span>
+
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;s&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+  <span class="n">flags</span> <span class="o">=</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="s">&#39;&#39;</span> <span class="k">else</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">flags</span> <span class="o">=</span> <span class="n">flags</span>
+
+  <span class="k">for</span> <span class="n">flag</span> <span class="ow">in</span> <span class="n">flags</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">flags</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">flag</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> had duplicate flags: s </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">value</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="n">flag</span> <span class="o">==</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> had extra whitespace on its &#39;s&#39; line: s </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">value</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_v_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;v&quot; version</span>
+  <span class="c"># example: v Tor 0.2.2.35</span>
+  <span class="c">#</span>
+  <span class="c"># The spec says that if this starts with &quot;Tor &quot; then what follows is a</span>
+  <span class="c"># tor version. If not then it has &quot;upgraded to a more sophisticated</span>
+  <span class="c"># protocol versioning system&quot;.</span>
+
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;v&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">version_line</span> <span class="o">=</span> <span class="n">value</span>
+
+  <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;Tor &#39;</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">descriptor</span><span class="o">.</span><span class="n">version</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">_get_version</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="mi">4</span><span class="p">:])</span>
+    <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> has a malformed tor version (</span><span class="si">%s</span><span class="s">): v </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">exc</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_w_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;w&quot; &quot;Bandwidth=&quot; INT [&quot;Measured=&quot; INT] [&quot;Unmeasured=1&quot;]</span>
+  <span class="c"># example: w Bandwidth=7980</span>
+
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;w&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+  <span class="n">w_comp</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">w_comp</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> &#39;w&#39; line is blank: w </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">value</span><span class="p">))</span>
+  <span class="k">elif</span> <span class="ow">not</span> <span class="n">w_comp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;Bandwidth=&#39;</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> &#39;w&#39; line needs to start with a &#39;Bandwidth=&#39; entry: w </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">value</span><span class="p">))</span>
+
+  <span class="n">bandwidth</span> <span class="o">=</span> <span class="bp">None</span>
+  <span class="n">measured</span> <span class="o">=</span> <span class="bp">None</span>
+  <span class="n">is_unmeasured</span> <span class="o">=</span> <span class="bp">False</span>
+  <span class="n">unrecognized_bandwidth_entries</span> <span class="o">=</span> <span class="p">[]</span>
+
+  <span class="k">for</span> <span class="n">w_entry</span> <span class="ow">in</span> <span class="n">w_comp</span><span class="p">:</span>
+    <span class="k">if</span> <span class="s">&#39;=&#39;</span> <span class="ow">in</span> <span class="n">w_entry</span><span class="p">:</span>
+      <span class="n">w_key</span><span class="p">,</span> <span class="n">w_value</span> <span class="o">=</span> <span class="n">w_entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">w_key</span><span class="p">,</span> <span class="n">w_value</span> <span class="o">=</span> <span class="n">w_entry</span><span class="p">,</span> <span class="bp">None</span>
+
+    <span class="k">if</span> <span class="n">w_key</span> <span class="o">==</span> <span class="s">&#39;Bandwidth&#39;</span><span class="p">:</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">w_value</span> <span class="ow">and</span> <span class="n">w_value</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> &#39;Bandwidth=&#39; entry needs to have a numeric value: w </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">value</span><span class="p">))</span>
+
+      <span class="n">bandwidth</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">w_value</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">w_key</span> <span class="o">==</span> <span class="s">&#39;Measured&#39;</span><span class="p">:</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">w_value</span> <span class="ow">and</span> <span class="n">w_value</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> &#39;Measured=&#39; entry needs to have a numeric value: w </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">value</span><span class="p">))</span>
+
+      <span class="n">measured</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">w_value</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">w_key</span> <span class="o">==</span> <span class="s">&#39;Unmeasured&#39;</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">w_value</span> <span class="o">!=</span> <span class="s">&#39;1&#39;</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> &#39;Unmeasured=&#39; should only have the value of &#39;1&#39;: w </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">value</span><span class="p">))</span>
+
+      <span class="n">is_unmeasured</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">unrecognized_bandwidth_entries</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">w_entry</span><span class="p">)</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">bandwidth</span> <span class="o">=</span> <span class="n">bandwidth</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">measured</span> <span class="o">=</span> <span class="n">measured</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">is_unmeasured</span> <span class="o">=</span> <span class="n">is_unmeasured</span>
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">unrecognized_bandwidth_entries</span> <span class="o">=</span> <span class="n">unrecognized_bandwidth_entries</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_p_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;p&quot; (&quot;accept&quot; / &quot;reject&quot;) PortList</span>
+  <span class="c">#</span>
+  <span class="c"># examples:</span>
+  <span class="c">#</span>
+  <span class="c">#   p accept 80,110,143,443,993,995,6660-6669,6697,7000-7001</span>
+  <span class="c">#   p reject 1-65535</span>
+
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;p&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">descriptor</span><span class="o">.</span><span class="n">exit_policy</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">exit_policy</span><span class="o">.</span><span class="n">MicroExitPolicy</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+  <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> exit policy is malformed (</span><span class="si">%s</span><span class="s">): p </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">exc</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_id_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;id&quot; &quot;ed25519&quot; ed25519-identity</span>
+  <span class="c">#</span>
+  <span class="c"># examples:</span>
+  <span class="c">#</span>
+  <span class="c">#   id ed25519 none</span>
+  <span class="c">#   id ed25519 8RH34kO07Pp+XYwzdoATVyCibIvmbslUjRkAm7J4IA8</span>
+
+  <span class="n">value</span> <span class="o">=</span> <span class="n">_value</span><span class="p">(</span><span class="s">&#39;id&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">value</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">document</span> <span class="ow">and</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">document</span><span class="o">.</span><span class="n">is_vote</span><span class="p">):</span>
+      <span class="n">vote_status</span> <span class="o">=</span> <span class="s">&#39;vote&#39;</span> <span class="k">if</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">document</span> <span class="k">else</span> <span class="s">&#39;&lt;undefined document&gt;&#39;</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> &#39;id&#39; line should only appear in votes (appeared in a </span><span class="si">%s</span><span class="s">): id </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">vote_status</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+    <span class="n">value_comp</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">value_comp</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+      <span class="n">descriptor</span><span class="o">.</span><span class="n">identifier_type</span> <span class="o">=</span> <span class="n">value_comp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+      <span class="n">descriptor</span><span class="o">.</span><span class="n">identifier</span> <span class="o">=</span> <span class="n">value_comp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;id&#39; lines should contain both the key type and digest: id </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_m_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;m&quot; methods 1*(algorithm &quot;=&quot; digest)</span>
+  <span class="c"># example: m 8,9,10,11,12 sha256=g1vx9si329muxV3tquWIXXySNOIwRGMeAESKs/v4DWs</span>
+
+  <span class="n">all_hashes</span> <span class="o">=</span> <span class="p">[]</span>
+
+  <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">_values</span><span class="p">(</span><span class="s">&#39;m&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+    <span class="n">m_comp</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">document</span> <span class="ow">and</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">document</span><span class="o">.</span><span class="n">is_vote</span><span class="p">):</span>
+      <span class="n">vote_status</span> <span class="o">=</span> <span class="s">&#39;vote&#39;</span> <span class="k">if</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">document</span> <span class="k">else</span> <span class="s">&#39;&lt;undefined document&gt;&#39;</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> &#39;m&#39; line should only appear in votes (appeared in a </span><span class="si">%s</span><span class="s">): m </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">vote_status</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">m_comp</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> &#39;m&#39; line needs to start with a series of methods: m </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">value</span><span class="p">))</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">methods</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">m_comp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">)]</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> microdescriptor methods should be a series of comma separated integers: m </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">value</span><span class="p">))</span>
+
+    <span class="n">hashes</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">m_comp</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+      <span class="k">if</span> <span class="s">&#39;=&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> can only have a series of &#39;algorithm=digest&#39; mappings after the methods: m </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">_name</span><span class="p">(),</span> <span class="n">value</span><span class="p">))</span>
+
+      <span class="n">hash_name</span><span class="p">,</span> <span class="n">digest</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">hashes</span><span class="p">[</span><span class="n">hash_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">digest</span>
+
+    <span class="n">all_hashes</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">methods</span><span class="p">,</span> <span class="n">hashes</span><span class="p">))</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">microdescriptor_hashes</span> <span class="o">=</span> <span class="n">all_hashes</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_microdescriptor_m_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="c"># &quot;m&quot; digest</span>
+  <span class="c"># example: m aiUklwBrua82obG5AsTX+iEpkjQA2+AQHxZ7GwMfY70</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">digest</span> <span class="o">=</span> <span class="n">_base64_to_hex</span><span class="p">(</span><span class="n">_value</span><span class="p">(</span><span class="s">&#39;m&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">),</span> <span class="n">check_if_fingerprint</span> <span class="o">=</span> <span class="bp">False</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_base64_to_hex</span><span class="p">(</span><span class="n">identity</span><span class="p">,</span> <span class="n">check_if_fingerprint</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Decodes a base64 value to hex. For example...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    &gt;&gt;&gt; _base64_to_hex(&#39;p1aag7VwarGxqctS7/fS0y5FU+s&#39;)</span>
+<span class="sd">    &#39;A7569A83B5706AB1B1A9CB52EFF7D2D32E4553EB&#39;</span>
+
+<span class="sd">  :param str identity: encoded fingerprint from the consensus</span>
+<span class="sd">  :param bool check_if_fingerprint: asserts that the result is a fingerprint if **True**</span>
+
+<span class="sd">  :returns: **str** with the uppercase hex encoding of the relay&#39;s fingerprint</span>
+
+<span class="sd">  :raises: **ValueError** if the result isn&#39;t a valid fingerprint</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># trailing equal signs were stripped from the identity</span>
+  <span class="n">missing_padding</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">identity</span><span class="p">)</span> <span class="o">%</span> <span class="mi">4</span>
+  <span class="n">identity</span> <span class="o">+=</span> <span class="s">&#39;=&#39;</span> <span class="o">*</span> <span class="n">missing_padding</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">identity_decoded</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_bytes</span><span class="p">(</span><span class="n">identity</span><span class="p">))</span>
+  <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="n">binascii</span><span class="o">.</span><span class="n">Error</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Unable to decode identity string &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="n">identity</span><span class="p">)</span>
+
+  <span class="n">fingerprint</span> <span class="o">=</span> <span class="n">binascii</span><span class="o">.</span><span class="n">b2a_hex</span><span class="p">(</span><span class="n">identity_decoded</span><span class="p">)</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+
+  <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">prereq</span><span class="o">.</span><span class="n">is_python_3</span><span class="p">():</span>
+    <span class="n">fingerprint</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">fingerprint</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">check_if_fingerprint</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">tor_tools</span><span class="o">.</span><span class="n">is_valid_fingerprint</span><span class="p">(</span><span class="n">fingerprint</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Decoded &#39;</span><span class="si">%s</span><span class="s">&#39; to be &#39;</span><span class="si">%s</span><span class="s">&#39;, which isn&#39;t a valid fingerprint&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">identity</span><span class="p">,</span> <span class="n">fingerprint</span><span class="p">))</span>
+
+  <span class="k">return</span> <span class="n">fingerprint</span>
+
+
+<div class="viewcode-block" id="RouterStatusEntry"><a class="viewcode-back" href="../../../api/descriptor/router_status_entry.html#stem.descriptor.router_status_entry.RouterStatusEntry">[docs]</a><span class="k">class</span> <span class="nc">RouterStatusEntry</span><span class="p">(</span><span class="n">Descriptor</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Information about an individual router stored within a network status</span>
+<span class="sd">  document. This is the common parent for concrete status entry types.</span>
+
+<span class="sd">  :var stem.descriptor.networkstatus.NetworkStatusDocument document: **\*** document that this descriptor came from</span>
+
+<span class="sd">  :var str nickname: **\*** router&#39;s nickname</span>
+<span class="sd">  :var str fingerprint: **\*** router&#39;s fingerprint</span>
+<span class="sd">  :var datetime published: **\*** router&#39;s publication</span>
+<span class="sd">  :var str address: **\*** router&#39;s IP address</span>
+<span class="sd">  :var int or_port: **\*** router&#39;s ORPort</span>
+<span class="sd">  :var int dir_port: **\*** router&#39;s DirPort</span>
+
+<span class="sd">  :var list flags: **\*** list of :data:`~stem.Flag` associated with the relay</span>
+
+<span class="sd">  :var stem.version.Version version: parsed version of tor, this is **None** if</span>
+<span class="sd">    the relay&#39;s using a new versioning scheme</span>
+<span class="sd">  :var str version_line: versioning information reported by the relay</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">ATTRIBUTES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;nickname&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_r_line</span><span class="p">),</span>
+    <span class="s">&#39;fingerprint&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_r_line</span><span class="p">),</span>
+    <span class="s">&#39;published&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_r_line</span><span class="p">),</span>
+    <span class="s">&#39;address&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_r_line</span><span class="p">),</span>
+    <span class="s">&#39;or_port&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_r_line</span><span class="p">),</span>
+    <span class="s">&#39;dir_port&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_r_line</span><span class="p">),</span>
+
+    <span class="s">&#39;flags&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_s_line</span><span class="p">),</span>
+
+    <span class="s">&#39;version_line&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_v_line</span><span class="p">),</span>
+    <span class="s">&#39;version&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_v_line</span><span class="p">),</span>
+  <span class="p">}</span>
+
+  <span class="n">PARSER_FOR_LINE</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;r&#39;</span><span class="p">:</span> <span class="n">_parse_r_line</span><span class="p">,</span>
+    <span class="s">&#39;s&#39;</span><span class="p">:</span> <span class="n">_parse_s_line</span><span class="p">,</span>
+    <span class="s">&#39;v&#39;</span><span class="p">:</span> <span class="n">_parse_v_line</span><span class="p">,</span>
+  <span class="p">}</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">document</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parse a router descriptor in a network status document.</span>
+
+<span class="sd">    :param str content: router descriptor content to be parsed</span>
+<span class="sd">    :param NetworkStatusDocument document: document this descriptor came from</span>
+<span class="sd">    :param bool validate: checks the validity of the content if **True**, skips</span>
+<span class="sd">      these checks otherwise</span>
+
+<span class="sd">    :raises: **ValueError** if the descriptor data is invalid</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nb">super</span><span class="p">(</span><span class="n">RouterStatusEntry</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">lazy_load</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">validate</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">document</span> <span class="o">=</span> <span class="n">document</span>
+    <span class="n">entries</span> <span class="o">=</span> <span class="n">_get_descriptor_components</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">validate</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
+      <span class="k">for</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_required_fields</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">keyword</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> must have a &#39;</span><span class="si">%s</span><span class="s">&#39; line:</span><span class="se">\n</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_name</span><span class="p">(</span><span class="bp">True</span><span class="p">),</span> <span class="n">keyword</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)))</span>
+
+      <span class="k">for</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_single_fields</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">entries</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">entries</span><span class="p">[</span><span class="n">keyword</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> can only have a single &#39;</span><span class="si">%s</span><span class="s">&#39; line, got </span><span class="si">%i</span><span class="s">:</span><span class="se">\n</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_name</span><span class="p">(</span><span class="bp">True</span><span class="p">),</span> <span class="n">keyword</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">entries</span><span class="p">[</span><span class="n">keyword</span><span class="p">]),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)))</span>
+
+      <span class="k">if</span> <span class="s">&#39;r&#39;</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">(</span><span class="n">entries</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> are expected to start with a &#39;r&#39; line:</span><span class="se">\n</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_name</span><span class="p">(</span><span class="bp">True</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)))</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">validate</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span> <span class="o">=</span> <span class="n">entries</span>
+
+  <span class="k">def</span> <span class="nf">_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is_plural</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Name for this descriptor type.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="s">&#39;Router status entries&#39;</span> <span class="k">if</span> <span class="n">is_plural</span> <span class="k">else</span> <span class="s">&#39;Router status entry&#39;</span>
+
+  <span class="k">def</span> <span class="nf">_required_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides lines that must appear in the descriptor.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="p">()</span>
+
+  <span class="k">def</span> <span class="nf">_single_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides lines that can only appear in the descriptor once.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="p">()</span>
+
+  <span class="k">def</span> <span class="nf">_compare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">method</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">RouterStatusEntry</span><span class="p">):</span>
+      <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="k">return</span> <span class="n">method</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="nb">str</span><span class="p">(</span><span class="n">other</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+  <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+  <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">==</span> <span class="n">o</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span>
+
+  <span class="k">def</span> <span class="nf">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">&lt;</span> <span class="n">o</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__le__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">&lt;=</span> <span class="n">o</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="RouterStatusEntryV2"><a class="viewcode-back" href="../../../api/descriptor/router_status_entry.html#stem.descriptor.router_status_entry.RouterStatusEntryV2">[docs]</a><span class="k">class</span> <span class="nc">RouterStatusEntryV2</span><span class="p">(</span><span class="n">RouterStatusEntry</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Information about an individual router stored within a version 2 network</span>
+<span class="sd">  status document.</span>
+
+<span class="sd">  :var str digest: **\*** router&#39;s upper-case hex digest</span>
+
+<span class="sd">  **\*** attribute is either required when we&#39;re parsed with validation or has</span>
+<span class="sd">  a default value, others are left as **None** if undefined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">ATTRIBUTES</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">RouterStatusEntry</span><span class="o">.</span><span class="n">ATTRIBUTES</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span>
+    <span class="s">&#39;digest&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_r_line</span><span class="p">),</span>
+  <span class="p">})</span>
+
+  <span class="k">def</span> <span class="nf">_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is_plural</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&#39;Router status entries (v2)&#39;</span> <span class="k">if</span> <span class="n">is_plural</span> <span class="k">else</span> <span class="s">&#39;Router status entry (v2)&#39;</span>
+
+  <span class="k">def</span> <span class="nf">_required_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">(</span><span class="s">&#39;r&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_single_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">(</span><span class="s">&#39;r&#39;</span><span class="p">,</span> <span class="s">&#39;s&#39;</span><span class="p">,</span> <span class="s">&#39;v&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_compare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">method</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">RouterStatusEntryV2</span><span class="p">):</span>
+      <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="k">return</span> <span class="n">method</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="nb">str</span><span class="p">(</span><span class="n">other</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+  <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+  <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">==</span> <span class="n">o</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span>
+
+  <span class="k">def</span> <span class="nf">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">&lt;</span> <span class="n">o</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__le__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">&lt;=</span> <span class="n">o</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="RouterStatusEntryV3"><a class="viewcode-back" href="../../../api/descriptor/router_status_entry.html#stem.descriptor.router_status_entry.RouterStatusEntryV3">[docs]</a><span class="k">class</span> <span class="nc">RouterStatusEntryV3</span><span class="p">(</span><span class="n">RouterStatusEntry</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Information about an individual router stored within a version 3 network</span>
+<span class="sd">  status document.</span>
+
+<span class="sd">  :var list or_addresses: **\*** relay&#39;s OR addresses, this is a tuple listing</span>
+<span class="sd">    of the form (address (**str**), port (**int**), is_ipv6 (**bool**))</span>
+<span class="sd">  :var str identifier_type: identity digest key type</span>
+<span class="sd">  :var str identifier: base64 encoded identity digest</span>
+<span class="sd">  :var str digest: **\*** router&#39;s upper-case hex digest</span>
+
+<span class="sd">  :var int bandwidth: bandwidth claimed by the relay (in kb/s)</span>
+<span class="sd">  :var int measured: bandwidth measured to be available by the relay, this is a</span>
+<span class="sd">    unit-less heuristic generated by the Bandwidth authoritites to weight relay</span>
+<span class="sd">    selection</span>
+<span class="sd">  :var bool is_unmeasured: bandwidth measurement isn&#39;t based on three or more</span>
+<span class="sd">    measurements</span>
+<span class="sd">  :var list unrecognized_bandwidth_entries: **\*** bandwidth weighting</span>
+<span class="sd">    information that isn&#39;t yet recognized</span>
+
+<span class="sd">  :var stem.exit_policy.MicroExitPolicy exit_policy: router&#39;s exit policy</span>
+
+<span class="sd">  :var list microdescriptor_hashes: **\*** tuples of two values, the list of</span>
+<span class="sd">    consensus methods for generating a set of digests and the &#39;algorithm =&gt;</span>
+<span class="sd">    digest&#39; mappings</span>
+
+<span class="sd">  **\*** attribute is either required when we&#39;re parsed with validation or has</span>
+<span class="sd">  a default value, others are left as **None** if undefined</span>
+
+<span class="sd">  .. versionchanged:: 1.5.0</span>
+<span class="sd">     Added the identifier and identifier_type attributes.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">ATTRIBUTES</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">RouterStatusEntry</span><span class="o">.</span><span class="n">ATTRIBUTES</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span>
+    <span class="s">&#39;digest&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_r_line</span><span class="p">),</span>
+    <span class="s">&#39;or_addresses&#39;</span><span class="p">:</span> <span class="p">([],</span> <span class="n">_parse_a_line</span><span class="p">),</span>
+    <span class="s">&#39;identifier_type&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_id_line</span><span class="p">),</span>
+    <span class="s">&#39;identifier&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_id_line</span><span class="p">),</span>
+
+    <span class="s">&#39;bandwidth&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_w_line</span><span class="p">),</span>
+    <span class="s">&#39;measured&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_w_line</span><span class="p">),</span>
+    <span class="s">&#39;is_unmeasured&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">False</span><span class="p">,</span> <span class="n">_parse_w_line</span><span class="p">),</span>
+    <span class="s">&#39;unrecognized_bandwidth_entries&#39;</span><span class="p">:</span> <span class="p">([],</span> <span class="n">_parse_w_line</span><span class="p">),</span>
+
+    <span class="s">&#39;exit_policy&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_p_line</span><span class="p">),</span>
+    <span class="s">&#39;microdescriptor_hashes&#39;</span><span class="p">:</span> <span class="p">([],</span> <span class="n">_parse_m_line</span><span class="p">),</span>
+  <span class="p">})</span>
+
+  <span class="n">PARSER_FOR_LINE</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">RouterStatusEntry</span><span class="o">.</span><span class="n">PARSER_FOR_LINE</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span>
+    <span class="s">&#39;a&#39;</span><span class="p">:</span> <span class="n">_parse_a_line</span><span class="p">,</span>
+    <span class="s">&#39;w&#39;</span><span class="p">:</span> <span class="n">_parse_w_line</span><span class="p">,</span>
+    <span class="s">&#39;p&#39;</span><span class="p">:</span> <span class="n">_parse_p_line</span><span class="p">,</span>
+    <span class="s">&#39;id&#39;</span><span class="p">:</span> <span class="n">_parse_id_line</span><span class="p">,</span>
+    <span class="s">&#39;m&#39;</span><span class="p">:</span> <span class="n">_parse_m_line</span><span class="p">,</span>
+  <span class="p">})</span>
+
+  <span class="k">def</span> <span class="nf">_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is_plural</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&#39;Router status entries (v3)&#39;</span> <span class="k">if</span> <span class="n">is_plural</span> <span class="k">else</span> <span class="s">&#39;Router status entry (v3)&#39;</span>
+
+  <span class="k">def</span> <span class="nf">_required_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">(</span><span class="s">&#39;r&#39;</span><span class="p">,</span> <span class="s">&#39;s&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_single_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">(</span><span class="s">&#39;r&#39;</span><span class="p">,</span> <span class="s">&#39;s&#39;</span><span class="p">,</span> <span class="s">&#39;v&#39;</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">,</span> <span class="s">&#39;p&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_compare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">method</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">RouterStatusEntryV3</span><span class="p">):</span>
+      <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="k">return</span> <span class="n">method</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="nb">str</span><span class="p">(</span><span class="n">other</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+  <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+  <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">==</span> <span class="n">o</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span>
+
+  <span class="k">def</span> <span class="nf">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">&lt;</span> <span class="n">o</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__le__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">&lt;=</span> <span class="n">o</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="RouterStatusEntryMicroV3"><a class="viewcode-back" href="../../../api/descriptor/router_status_entry.html#stem.descriptor.router_status_entry.RouterStatusEntryMicroV3">[docs]</a><span class="k">class</span> <span class="nc">RouterStatusEntryMicroV3</span><span class="p">(</span><span class="n">RouterStatusEntry</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Information about an individual router stored within a microdescriptor</span>
+<span class="sd">  flavored network status document.</span>
+
+<span class="sd">  :var int bandwidth: bandwidth claimed by the relay (in kb/s)</span>
+<span class="sd">  :var int measured: bandwidth measured to be available by the relay</span>
+<span class="sd">  :var bool is_unmeasured: bandwidth measurement isn&#39;t based on three or more</span>
+<span class="sd">    measurements</span>
+<span class="sd">  :var list unrecognized_bandwidth_entries: **\*** bandwidth weighting</span>
+<span class="sd">    information that isn&#39;t yet recognized</span>
+
+<span class="sd">  :var str digest: **\*** router&#39;s hex encoded digest of our corresponding microdescriptor</span>
+
+<span class="sd">  **\*** attribute is either required when we&#39;re parsed with validation or has</span>
+<span class="sd">  a default value, others are left as **None** if undefined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">ATTRIBUTES</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">RouterStatusEntry</span><span class="o">.</span><span class="n">ATTRIBUTES</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span>
+    <span class="s">&#39;bandwidth&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_w_line</span><span class="p">),</span>
+    <span class="s">&#39;measured&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_w_line</span><span class="p">),</span>
+    <span class="s">&#39;is_unmeasured&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">False</span><span class="p">,</span> <span class="n">_parse_w_line</span><span class="p">),</span>
+    <span class="s">&#39;unrecognized_bandwidth_entries&#39;</span><span class="p">:</span> <span class="p">([],</span> <span class="n">_parse_w_line</span><span class="p">),</span>
+
+    <span class="s">&#39;digest&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_microdescriptor_m_line</span><span class="p">),</span>
+  <span class="p">})</span>
+
+  <span class="n">PARSER_FOR_LINE</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">RouterStatusEntry</span><span class="o">.</span><span class="n">PARSER_FOR_LINE</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span>
+    <span class="s">&#39;w&#39;</span><span class="p">:</span> <span class="n">_parse_w_line</span><span class="p">,</span>
+    <span class="s">&#39;m&#39;</span><span class="p">:</span> <span class="n">_parse_microdescriptor_m_line</span><span class="p">,</span>
+  <span class="p">})</span>
+
+  <span class="k">def</span> <span class="nf">_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is_plural</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&#39;Router status entries (micro v3)&#39;</span> <span class="k">if</span> <span class="n">is_plural</span> <span class="k">else</span> <span class="s">&#39;Router status entry (micro v3)&#39;</span>
+
+  <span class="k">def</span> <span class="nf">_required_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">(</span><span class="s">&#39;r&#39;</span><span class="p">,</span> <span class="s">&#39;s&#39;</span><span class="p">,</span> <span class="s">&#39;m&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_single_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">(</span><span class="s">&#39;r&#39;</span><span class="p">,</span> <span class="s">&#39;s&#39;</span><span class="p">,</span> <span class="s">&#39;v&#39;</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">,</span> <span class="s">&#39;m&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_compare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">method</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">RouterStatusEntryMicroV3</span><span class="p">):</span>
+      <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="k">return</span> <span class="n">method</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="nb">str</span><span class="p">(</span><span class="n">other</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+  <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+  <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">==</span> <span class="n">o</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span>
+
+  <span class="k">def</span> <span class="nf">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">&lt;</span> <span class="n">o</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__le__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">&lt;=</span> <span class="n">o</span><span class="p">)</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

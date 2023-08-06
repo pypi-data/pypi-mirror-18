@@ -1,0 +1,1187 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.exit_policy &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../index.html" />
+    <link rel="up" title="stem" href="../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.exit_policy</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../index.html">Home</a></li>
+          <li><a href="../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../api.html">API</a>
+            <ul>
+              <li><a href="../../api/control.html">stem.control</a></li>
+              <li><a href="../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../api/process.html">stem.process</a></li>
+              <li><a href="../../api/response.html">stem.response</a></li>
+              <li><a href="../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../api/version.html">stem.version</a></li>
+              <li><a href="../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../faq.html">FAQ</a></li>
+              <li><a href="../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.exit_policy</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2012-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Representation of tor exit policies. These can be easily used to check if</span>
+<span class="sd">exiting to a destination is permissible or not. For instance...</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  &gt;&gt;&gt; from stem.exit_policy import ExitPolicy, MicroExitPolicy</span>
+<span class="sd">  &gt;&gt;&gt; policy = ExitPolicy(&#39;accept *:80&#39;, &#39;accept *:443&#39;, &#39;reject *:*&#39;)</span>
+<span class="sd">  &gt;&gt;&gt; print(policy)</span>
+<span class="sd">  accept *:80, accept *:443, reject *:*</span>
+<span class="sd">  &gt;&gt;&gt; print(policy.summary())</span>
+<span class="sd">  accept 80, 443</span>
+<span class="sd">  &gt;&gt;&gt; policy.can_exit_to(&#39;75.119.206.243&#39;, 80)</span>
+<span class="sd">  True</span>
+
+<span class="sd">  &gt;&gt;&gt; policy = MicroExitPolicy(&#39;accept 80,443&#39;)</span>
+<span class="sd">  &gt;&gt;&gt; print(policy)</span>
+<span class="sd">  accept 80,443</span>
+<span class="sd">  &gt;&gt;&gt; policy.can_exit_to(&#39;75.119.206.243&#39;, 80)</span>
+<span class="sd">  True</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  ExitPolicy - Exit policy for a Tor relay</span>
+<span class="sd">    |- MicroExitPolicy - Microdescriptor exit policy</span>
+<span class="sd">    |</span>
+<span class="sd">    |- can_exit_to - check if exiting to this destination is allowed or not</span>
+<span class="sd">    |- is_exiting_allowed - check if any exiting is allowed</span>
+<span class="sd">    |- summary - provides a short label, similar to a microdescriptor</span>
+<span class="sd">    |- has_private - checks if policy has anything expanded from the &#39;private&#39; keyword</span>
+<span class="sd">    |- strip_private - provides a copy of the policy without &#39;private&#39; entries</span>
+<span class="sd">    |- has_default - checks if policy ends with the defaultly appended suffix</span>
+<span class="sd">    |- strip_default - provides a copy of the policy without the default suffix</span>
+<span class="sd">    |- __str__  - string representation</span>
+<span class="sd">    +- __iter__ - ExitPolicyRule entries that this contains</span>
+
+<span class="sd">  ExitPolicyRule - Single rule of an exit policy chain</span>
+<span class="sd">    |- MicroExitPolicyRule - Single rule for a microdescriptor policy</span>
+<span class="sd">    |</span>
+<span class="sd">    |- is_address_wildcard - checks if we&#39;ll accept any address</span>
+<span class="sd">    |- is_port_wildcard - checks if we&#39;ll accept any port</span>
+<span class="sd">    |- get_address_type - provides the protocol our ip address belongs to</span>
+<span class="sd">    |- is_match - checks if we match a given destination</span>
+<span class="sd">    |- get_mask - provides the address representation of our mask</span>
+<span class="sd">    |- get_masked_bits - provides the bit representation of our mask</span>
+<span class="sd">    |- is_default - flag indicating if this was part of the default end of a policy</span>
+<span class="sd">    |- is_private - flag indicating if this was expanded from a &#39;private&#39; keyword</span>
+<span class="sd">    +- __str__ - string representation for this rule</span>
+
+<span class="sd">  get_config_policy - provides the ExitPolicy based on torrc rules</span>
+
+<span class="sd">.. data:: AddressType (enum)</span>
+
+<span class="sd">  Enumerations for IP address types that can be in an exit policy.</span>
+
+<span class="sd">  ============ ===========</span>
+<span class="sd">  AddressType  Description</span>
+<span class="sd">  ============ ===========</span>
+<span class="sd">  **WILDCARD** any address of either IPv4 or IPv6</span>
+<span class="sd">  **IPv4**     IPv4 address</span>
+<span class="sd">  **IPv6**     IPv6 address</span>
+<span class="sd">  ============ ===========</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
+
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">import</span> <span class="nn">zlib</span>
+
+<span class="kn">import</span> <span class="nn">stem.prereq</span>
+<span class="kn">import</span> <span class="nn">stem.util.connection</span>
+<span class="kn">import</span> <span class="nn">stem.util.enum</span>
+<span class="kn">import</span> <span class="nn">stem.util.str_tools</span>
+
+<span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">_hash_attr</span><span class="p">,</span> <span class="n">str_type</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="c"># added in python 3.2</span>
+  <span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">lru_cache</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+  <span class="kn">from</span> <span class="nn">stem.util.lru_cache</span> <span class="kn">import</span> <span class="n">lru_cache</span>
+
+<span class="n">AddressType</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">((</span><span class="s">&#39;WILDCARD&#39;</span><span class="p">,</span> <span class="s">&#39;Wildcard&#39;</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;IPv4&#39;</span><span class="p">,</span> <span class="s">&#39;IPv4&#39;</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;IPv6&#39;</span><span class="p">,</span> <span class="s">&#39;IPv6&#39;</span><span class="p">))</span>
+
+<span class="c"># Addresses aliased by the &#39;private&#39; policy. From the tor man page...</span>
+<span class="c">#</span>
+<span class="c"># To specify all internal and link-local networks (including 0.0.0.0/8,</span>
+<span class="c"># 169.254.0.0/16, 127.0.0.0/8, 192.168.0.0/16, 10.0.0.0/8, and 172.16.0.0/12),</span>
+<span class="c"># you can use the &#39;private&#39; alias instead of an address.</span>
+
+<span class="n">PRIVATE_ADDRESSES</span> <span class="o">=</span> <span class="p">(</span>
+  <span class="s">&#39;0.0.0.0/8&#39;</span><span class="p">,</span>
+  <span class="s">&#39;169.254.0.0/16&#39;</span><span class="p">,</span>
+  <span class="s">&#39;127.0.0.0/8&#39;</span><span class="p">,</span>
+  <span class="s">&#39;192.168.0.0/16&#39;</span><span class="p">,</span>
+  <span class="s">&#39;10.0.0.0/8&#39;</span><span class="p">,</span>
+  <span class="s">&#39;172.16.0.0/12&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_config_policy"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.get_config_policy">[docs]</a><span class="k">def</span> <span class="nf">get_config_policy</span><span class="p">(</span><span class="n">rules</span><span class="p">,</span> <span class="n">ip_address</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Converts an ExitPolicy found in a torrc to a proper exit pattern. This</span>
+<span class="sd">  accounts for...</span>
+
+<span class="sd">  * ports being optional</span>
+<span class="sd">  * the &#39;private&#39; keyword</span>
+
+<span class="sd">  :param str,list rules: comma separated rules or list to be converted</span>
+<span class="sd">  :param str ip_address: this relay&#39;s IP address for the &#39;private&#39; policy if</span>
+<span class="sd">    it&#39;s present, this defaults to the local address</span>
+
+<span class="sd">  :returns: :class:`~stem.exit_policy.ExitPolicy` reflected by the rules</span>
+
+<span class="sd">  :raises: **ValueError** if input isn&#39;t a valid tor exit policy</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">ip_address</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="n">ip_address</span><span class="p">)</span> <span class="ow">or</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv6_address</span><span class="p">(</span><span class="n">ip_address</span><span class="p">)):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> isn&#39;t a valid IP address&quot;</span> <span class="o">%</span> <span class="n">ip_address</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rules</span><span class="p">,</span> <span class="p">(</span><span class="nb">bytes</span><span class="p">,</span> <span class="n">str_type</span><span class="p">)):</span>
+    <span class="n">rules</span> <span class="o">=</span> <span class="n">rules</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">)</span>
+
+  <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+
+  <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="n">rules</span><span class="p">:</span>
+    <span class="n">rule</span> <span class="o">=</span> <span class="n">rule</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">rule</span><span class="p">:</span>
+      <span class="k">continue</span>
+
+    <span class="k">if</span> <span class="s">&#39;:&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">rule</span><span class="p">:</span>
+      <span class="n">rule</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s">:*&#39;</span> <span class="o">%</span> <span class="n">rule</span>
+
+    <span class="k">if</span> <span class="s">&#39;private&#39;</span> <span class="ow">in</span> <span class="n">rule</span><span class="p">:</span>
+      <span class="n">acceptance</span> <span class="o">=</span> <span class="n">rule</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+      <span class="n">port</span> <span class="o">=</span> <span class="n">rule</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+      <span class="n">addresses</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">PRIVATE_ADDRESSES</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">ip_address</span><span class="p">:</span>
+        <span class="n">addresses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ip_address</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+          <span class="n">addresses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">gethostbyname</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">gethostname</span><span class="p">()))</span>
+        <span class="k">except</span><span class="p">:</span>
+          <span class="k">pass</span>  <span class="c"># we might not have a network connection</span>
+
+      <span class="k">for</span> <span class="n">private_addr</span> <span class="ow">in</span> <span class="n">addresses</span><span class="p">:</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ExitPolicyRule</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">:</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">acceptance</span><span class="p">,</span> <span class="n">private_addr</span><span class="p">,</span> <span class="n">port</span><span class="p">)))</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ExitPolicyRule</span><span class="p">(</span><span class="n">rule</span><span class="p">))</span>
+
+  <span class="k">return</span> <span class="n">ExitPolicy</span><span class="p">(</span><span class="o">*</span><span class="n">result</span><span class="p">)</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_flag_private_rules</span><span class="p">(</span><span class="n">rules</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Determine if part of our policy was expanded from the &#39;private&#39; keyword. This</span>
+<span class="sd">  doesn&#39;t differentiate if this actually came from the &#39;private&#39; keyword or a</span>
+<span class="sd">  series of rules exactly matching it.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">matches</span> <span class="o">=</span> <span class="p">[]</span>
+
+  <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">rule</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">rules</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">i</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">PRIVATE_ADDRESSES</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">rules</span><span class="p">):</span>
+      <span class="k">break</span>
+
+    <span class="n">rule_str</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s">/</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">rule</span><span class="o">.</span><span class="n">address</span><span class="p">,</span> <span class="n">rule</span><span class="o">.</span><span class="n">get_masked_bits</span><span class="p">())</span>
+
+    <span class="k">if</span> <span class="n">rule_str</span> <span class="o">==</span> <span class="n">PRIVATE_ADDRESSES</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+      <span class="n">matches</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+
+  <span class="k">for</span> <span class="n">start_index</span> <span class="ow">in</span> <span class="n">matches</span><span class="p">:</span>
+    <span class="c"># To match the private policy the following must all be true...</span>
+    <span class="c">#</span>
+    <span class="c">#   * series of addresses and bit masks match PRIVATE_ADDRESSES</span>
+    <span class="c">#   * all rules have the same port range and acceptance</span>
+    <span class="c">#   * all rules have the same acceptance (all accept or reject entries)</span>
+
+    <span class="n">rule_set</span> <span class="o">=</span> <span class="n">rules</span><span class="p">[</span><span class="n">start_index</span><span class="p">:</span><span class="n">start_index</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">PRIVATE_ADDRESSES</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">is_match</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="n">min_port</span><span class="p">,</span> <span class="n">max_port</span> <span class="o">=</span> <span class="n">rule_set</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">min_port</span><span class="p">,</span> <span class="n">rule_set</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max_port</span>
+    <span class="n">is_accept</span> <span class="o">=</span> <span class="n">rule_set</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">is_accept</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">rule</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">rule_set</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]):</span>
+      <span class="n">rule_str</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s">/</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">rule</span><span class="o">.</span><span class="n">address</span><span class="p">,</span> <span class="n">rule</span><span class="o">.</span><span class="n">get_masked_bits</span><span class="p">())</span>
+
+      <span class="k">if</span> <span class="n">rule_str</span> <span class="o">!=</span> <span class="n">PRIVATE_ADDRESSES</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">or</span> <span class="n">rule</span><span class="o">.</span><span class="n">min_port</span> <span class="o">!=</span> <span class="n">min_port</span> <span class="ow">or</span> <span class="n">rule</span><span class="o">.</span><span class="n">max_port</span> <span class="o">!=</span> <span class="n">max_port</span> <span class="ow">or</span> <span class="n">rule</span><span class="o">.</span><span class="n">is_accept</span> <span class="o">!=</span> <span class="n">is_accept</span><span class="p">:</span>
+        <span class="n">is_match</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">break</span>
+
+    <span class="c"># The last rule is for the relay&#39;s public address, so it&#39;s dynamic.</span>
+
+    <span class="n">last_rule</span> <span class="o">=</span> <span class="n">rule_set</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">last_rule</span><span class="o">.</span><span class="n">is_address_wildcard</span><span class="p">()</span> <span class="ow">or</span> <span class="n">last_rule</span><span class="o">.</span><span class="n">min_port</span> <span class="o">!=</span> <span class="n">min_port</span> <span class="ow">or</span> <span class="n">last_rule</span><span class="o">.</span><span class="n">max_port</span> <span class="o">!=</span> <span class="n">max_port</span> <span class="ow">or</span> <span class="n">last_rule</span><span class="o">.</span><span class="n">is_accept</span> <span class="o">!=</span> <span class="n">is_accept</span><span class="p">:</span>
+      <span class="n">is_match</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="k">if</span> <span class="n">is_match</span><span class="p">:</span>
+      <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="n">rule_set</span><span class="p">:</span>
+        <span class="n">rule</span><span class="o">.</span><span class="n">_is_private</span> <span class="o">=</span> <span class="bp">True</span>
+
+
+<span class="k">def</span> <span class="nf">_flag_default_rules</span><span class="p">(</span><span class="n">rules</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Determine if part of our policy ends with the defaultly appended suffix.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rules</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">DEFAULT_POLICY_RULES</span><span class="p">):</span>
+    <span class="n">rules_suffix</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">rules</span><span class="p">[</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">DEFAULT_POLICY_RULES</span><span class="p">):])</span>
+
+    <span class="k">if</span> <span class="n">rules_suffix</span> <span class="o">==</span> <span class="n">DEFAULT_POLICY_RULES</span><span class="p">:</span>
+      <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="n">rules_suffix</span><span class="p">:</span>
+        <span class="n">rule</span><span class="o">.</span><span class="n">_is_default_suffix</span> <span class="o">=</span> <span class="bp">True</span>
+
+
+<div class="viewcode-block" id="ExitPolicy"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.ExitPolicy">[docs]</a><span class="k">class</span> <span class="nc">ExitPolicy</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Policy for the destinations that a relay allows or denies exiting to. This</span>
+<span class="sd">  is, in effect, just a list of :class:`~stem.exit_policy.ExitPolicyRule`</span>
+<span class="sd">  entries.</span>
+
+<span class="sd">  :param list rules: **str** or :class:`~stem.exit_policy.ExitPolicyRule`</span>
+<span class="sd">    entries that make up this policy</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">rules</span><span class="p">):</span>
+    <span class="c"># sanity check the types</span>
+
+    <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="n">rules</span><span class="p">:</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rule</span><span class="p">,</span> <span class="p">(</span><span class="nb">bytes</span><span class="p">,</span> <span class="n">str_type</span><span class="p">,</span> <span class="n">ExitPolicyRule</span><span class="p">)):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;Exit policy rules can only contain strings or ExitPolicyRules, got a </span><span class="si">%s</span><span class="s"> (</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">rule</span><span class="p">),</span> <span class="n">rules</span><span class="p">))</span>
+
+    <span class="c"># Unparsed representation of the rules we were constructed with. Our</span>
+    <span class="c"># _get_rules() method consumes this to provide ExitPolicyRule instances.</span>
+    <span class="c"># This is lazily evaluated so we don&#39;t need to actually parse the exit</span>
+    <span class="c"># policy if it&#39;s never used.</span>
+
+    <span class="n">is_all_str</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="n">rules</span><span class="p">:</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rule</span><span class="p">,</span> <span class="p">(</span><span class="nb">bytes</span><span class="p">,</span> <span class="n">str_type</span><span class="p">)):</span>
+        <span class="n">is_all_str</span> <span class="o">=</span> <span class="bp">False</span>
+
+    <span class="k">if</span> <span class="n">rules</span> <span class="ow">and</span> <span class="n">is_all_str</span><span class="p">:</span>
+      <span class="n">byte_rules</span> <span class="o">=</span> <span class="p">[</span><span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_bytes</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">rules</span><span class="p">]</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_input_rules</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">byte_rules</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_input_rules</span> <span class="o">=</span> <span class="n">rules</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_rules</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="c"># Result when no rules apply. According to the spec policies default to &#39;is</span>
+    <span class="c"># allowed&#39;, but our microdescriptor policy subclass might want to change</span>
+    <span class="c"># this.</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_is_allowed_default</span> <span class="o">=</span> <span class="bp">True</span>
+
+  <span class="nd">@lru_cache</span><span class="p">()</span>
+<div class="viewcode-block" id="ExitPolicy.can_exit_to"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.ExitPolicy.can_exit_to">[docs]</a>  <span class="k">def</span> <span class="nf">can_exit_to</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">address</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">strict</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks if this policy allows exiting to a given destination or not. If the</span>
+<span class="sd">    address or port is omitted then this will check if we&#39;re allowed to exit to</span>
+<span class="sd">    any instances of the defined address or port.</span>
+
+<span class="sd">    :param str address: IPv4 or IPv6 address (with or without brackets)</span>
+<span class="sd">    :param int port: port number</span>
+<span class="sd">    :param bool strict: if the address or port is excluded then check if we can</span>
+<span class="sd">      exit to **all** instances of the defined address or port</span>
+
+<span class="sd">    :returns: **True** if exiting to this destination is allowed, **False** otherwise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_rules</span><span class="p">():</span>
+      <span class="k">if</span> <span class="n">rule</span><span class="o">.</span><span class="n">is_match</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">strict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">rule</span><span class="o">.</span><span class="n">is_accept</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_allowed_default</span>
+</div>
+  <span class="nd">@lru_cache</span><span class="p">()</span>
+<div class="viewcode-block" id="ExitPolicy.is_exiting_allowed"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.ExitPolicy.is_exiting_allowed">[docs]</a>  <span class="k">def</span> <span class="nf">is_exiting_allowed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides **True** if the policy allows exiting whatsoever, **False**</span>
+<span class="sd">    otherwise.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">rejected_ports</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_rules</span><span class="p">():</span>
+      <span class="k">if</span> <span class="n">rule</span><span class="o">.</span><span class="n">is_accept</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">port</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">rule</span><span class="o">.</span><span class="n">min_port</span><span class="p">,</span> <span class="n">rule</span><span class="o">.</span><span class="n">max_port</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+          <span class="k">if</span> <span class="n">port</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">rejected_ports</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+      <span class="k">elif</span> <span class="n">rule</span><span class="o">.</span><span class="n">is_address_wildcard</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">rule</span><span class="o">.</span><span class="n">is_port_wildcard</span><span class="p">():</span>
+          <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="n">rejected_ports</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">rule</span><span class="o">.</span><span class="n">min_port</span><span class="p">,</span> <span class="n">rule</span><span class="o">.</span><span class="n">max_port</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_allowed_default</span>
+</div>
+  <span class="nd">@lru_cache</span><span class="p">()</span>
+<div class="viewcode-block" id="ExitPolicy.summary"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.ExitPolicy.summary">[docs]</a>  <span class="k">def</span> <span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides a short description of our policy chain, similar to a</span>
+<span class="sd">    microdescriptor. This excludes entries that don&#39;t cover all IP</span>
+<span class="sd">    addresses, and is either white-list or blacklist policy based on</span>
+<span class="sd">    the final entry. For instance...</span>
+
+<span class="sd">    ::</span>
+
+<span class="sd">      &gt;&gt;&gt; policy = ExitPolicy(&#39;accept *:80&#39;, &#39;accept *:443&#39;, &#39;reject *:*&#39;)</span>
+<span class="sd">      &gt;&gt;&gt; policy.summary()</span>
+<span class="sd">      &#39;accept 80, 443&#39;</span>
+
+<span class="sd">      &gt;&gt;&gt; policy = ExitPolicy(&#39;accept *:443&#39;, &#39;reject *:1-1024&#39;, &#39;accept *:*&#39;)</span>
+<span class="sd">      &gt;&gt;&gt; policy.summary()</span>
+<span class="sd">      &#39;reject 1-442, 444-1024&#39;</span>
+
+<span class="sd">    :returns: **str** with a concise summary for our policy</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c"># determines if we&#39;re a white-list or blacklist</span>
+    <span class="n">is_whitelist</span> <span class="o">=</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_allowed_default</span>
+
+    <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_rules</span><span class="p">():</span>
+      <span class="k">if</span> <span class="n">rule</span><span class="o">.</span><span class="n">is_address_wildcard</span><span class="p">()</span> <span class="ow">and</span> <span class="n">rule</span><span class="o">.</span><span class="n">is_port_wildcard</span><span class="p">():</span>
+        <span class="n">is_whitelist</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">rule</span><span class="o">.</span><span class="n">is_accept</span>
+        <span class="k">break</span>
+
+    <span class="c"># Iterates over the policies and adds the the ports we&#39;ll return (ie,</span>
+    <span class="c"># allows if a white-list and rejects if a blacklist). Regardless of a</span>
+    <span class="c"># port&#39;s allow/reject policy, all further entries with that port are</span>
+    <span class="c"># ignored since policies respect the first matching policy.</span>
+
+    <span class="n">display_ports</span><span class="p">,</span> <span class="n">skip_ports</span> <span class="o">=</span> <span class="p">[],</span> <span class="nb">set</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_rules</span><span class="p">():</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">rule</span><span class="o">.</span><span class="n">is_address_wildcard</span><span class="p">():</span>
+        <span class="k">continue</span>
+      <span class="k">elif</span> <span class="n">rule</span><span class="o">.</span><span class="n">is_port_wildcard</span><span class="p">():</span>
+        <span class="k">break</span>
+
+      <span class="k">for</span> <span class="n">port</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">rule</span><span class="o">.</span><span class="n">min_port</span><span class="p">,</span> <span class="n">rule</span><span class="o">.</span><span class="n">max_port</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">port</span> <span class="ow">in</span> <span class="n">skip_ports</span><span class="p">:</span>
+          <span class="k">continue</span>
+
+        <span class="c"># if accept + white-list or reject + blacklist then add</span>
+        <span class="k">if</span> <span class="n">rule</span><span class="o">.</span><span class="n">is_accept</span> <span class="o">==</span> <span class="n">is_whitelist</span><span class="p">:</span>
+          <span class="n">display_ports</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+
+        <span class="c"># all further entries with this port should be ignored</span>
+        <span class="n">skip_ports</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+
+    <span class="c"># convert port list to a list of ranges (ie, [&#39;1-3&#39;] rather than [1, 2, 3])</span>
+    <span class="k">if</span> <span class="n">display_ports</span><span class="p">:</span>
+      <span class="n">display_ranges</span><span class="p">,</span> <span class="n">temp_range</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+      <span class="n">display_ports</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+      <span class="n">display_ports</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">None</span><span class="p">)</span>  <span class="c"># ending item to include last range in loop</span>
+
+      <span class="k">for</span> <span class="n">port</span> <span class="ow">in</span> <span class="n">display_ports</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">temp_range</span> <span class="ow">or</span> <span class="n">temp_range</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">==</span> <span class="n">port</span><span class="p">:</span>
+          <span class="n">temp_range</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">temp_range</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">display_ranges</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%i</span><span class="s">-</span><span class="si">%i</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">temp_range</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">temp_range</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+          <span class="k">else</span><span class="p">:</span>
+            <span class="n">display_ranges</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">temp_range</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+
+          <span class="n">temp_range</span> <span class="o">=</span> <span class="p">[</span><span class="n">port</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="c"># everything for the inverse</span>
+      <span class="n">is_whitelist</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">is_whitelist</span>
+      <span class="n">display_ranges</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;1-65535&#39;</span><span class="p">]</span>
+
+    <span class="c"># constructs the summary string</span>
+    <span class="n">label_prefix</span> <span class="o">=</span> <span class="s">&#39;accept &#39;</span> <span class="k">if</span> <span class="n">is_whitelist</span> <span class="k">else</span> <span class="s">&#39;reject &#39;</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">label_prefix</span> <span class="o">+</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">display_ranges</span><span class="p">))</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="ExitPolicy.has_private"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.ExitPolicy.has_private">[docs]</a>  <span class="k">def</span> <span class="nf">has_private</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks if we have any rules expanded from the &#39;private&#39; keyword. Tor</span>
+<span class="sd">    appends these by default to the start of the policy and includes a dynamic</span>
+<span class="sd">    address (the relay&#39;s public IP).</span>
+
+<span class="sd">    .. versionadded:: 1.3.0</span>
+
+<span class="sd">    :returns: **True** if we have any private rules expanded from the &#39;private&#39;</span>
+<span class="sd">      keyword, **False** otherwise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_rules</span><span class="p">():</span>
+      <span class="k">if</span> <span class="n">rule</span><span class="o">.</span><span class="n">is_private</span><span class="p">():</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="k">return</span> <span class="bp">False</span>
+</div>
+<div class="viewcode-block" id="ExitPolicy.strip_private"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.ExitPolicy.strip_private">[docs]</a>  <span class="k">def</span> <span class="nf">strip_private</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides a copy of this policy without &#39;private&#39; policy entries.</span>
+
+<span class="sd">    .. versionadded:: 1.3.0</span>
+
+<span class="sd">    :returns: **ExitPolicy** without private rules</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="n">ExitPolicy</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">rule</span> <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_rules</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">rule</span><span class="o">.</span><span class="n">is_private</span><span class="p">()])</span>
+</div>
+<div class="viewcode-block" id="ExitPolicy.has_default"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.ExitPolicy.has_default">[docs]</a>  <span class="k">def</span> <span class="nf">has_default</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks if we have the default policy suffix.</span>
+
+<span class="sd">    .. versionadded:: 1.3.0</span>
+
+<span class="sd">    :returns: **True** if we have the default policy suffix, **False** otherwise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_rules</span><span class="p">():</span>
+      <span class="k">if</span> <span class="n">rule</span><span class="o">.</span><span class="n">is_default</span><span class="p">():</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="k">return</span> <span class="bp">False</span>
+</div>
+<div class="viewcode-block" id="ExitPolicy.strip_default"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.ExitPolicy.strip_default">[docs]</a>  <span class="k">def</span> <span class="nf">strip_default</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides a copy of this policy without the default policy suffix.</span>
+
+<span class="sd">    .. versionadded:: 1.3.0</span>
+
+<span class="sd">    :returns: **ExitPolicy** without default rules</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="n">ExitPolicy</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">rule</span> <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_rules</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">rule</span><span class="o">.</span><span class="n">is_default</span><span class="p">()])</span>
+</div>
+  <span class="k">def</span> <span class="nf">_get_rules</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rules</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="n">rules</span> <span class="o">=</span> <span class="p">[]</span>
+      <span class="n">is_all_accept</span><span class="p">,</span> <span class="n">is_all_reject</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="bp">True</span>
+
+      <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_input_rules</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
+        <span class="n">decompressed_rules</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">decompress</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_input_rules</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;,&#39;</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">decompressed_rules</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_rules</span>
+
+      <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="n">decompressed_rules</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rule</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
+          <span class="n">rule</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">rule</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rule</span><span class="p">,</span> <span class="n">str_type</span><span class="p">):</span>
+          <span class="k">if</span> <span class="ow">not</span> <span class="n">rule</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+            <span class="k">continue</span>
+
+          <span class="n">rule</span> <span class="o">=</span> <span class="n">ExitPolicyRule</span><span class="p">(</span><span class="n">rule</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+        <span class="k">if</span> <span class="n">rule</span><span class="o">.</span><span class="n">is_accept</span><span class="p">:</span>
+          <span class="n">is_all_reject</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="n">is_all_accept</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="n">rules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rule</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">rule</span><span class="o">.</span><span class="n">is_address_wildcard</span><span class="p">()</span> <span class="ow">and</span> <span class="n">rule</span><span class="o">.</span><span class="n">is_port_wildcard</span><span class="p">():</span>
+          <span class="k">break</span>  <span class="c"># this is a catch-all, no reason to include more</span>
+
+      <span class="c"># If we only have one kind of entry *and* end with a wildcard then</span>
+      <span class="c"># we might as well use the simpler version. For instance...</span>
+      <span class="c">#</span>
+      <span class="c">#   reject *:80, reject *:443, reject *:*</span>
+      <span class="c">#</span>
+      <span class="c"># ... could also be represented as simply...</span>
+      <span class="c">#</span>
+      <span class="c">#   reject *:*</span>
+      <span class="c">#</span>
+      <span class="c"># This mostly comes up with reject-all policies because the</span>
+      <span class="c"># &#39;reject private:*&#39; appends an extra seven rules that have no</span>
+      <span class="c"># effect.</span>
+
+      <span class="k">if</span> <span class="n">rules</span> <span class="ow">and</span> <span class="p">(</span><span class="n">rules</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">is_address_wildcard</span><span class="p">()</span> <span class="ow">and</span> <span class="n">rules</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">is_port_wildcard</span><span class="p">()):</span>
+        <span class="k">if</span> <span class="n">is_all_accept</span><span class="p">:</span>
+          <span class="n">rules</span> <span class="o">=</span> <span class="p">[</span><span class="n">ExitPolicyRule</span><span class="p">(</span><span class="s">&#39;accept *:*&#39;</span><span class="p">)]</span>
+        <span class="k">elif</span> <span class="n">is_all_reject</span><span class="p">:</span>
+          <span class="n">rules</span> <span class="o">=</span> <span class="p">[</span><span class="n">ExitPolicyRule</span><span class="p">(</span><span class="s">&#39;reject *:*&#39;</span><span class="p">)]</span>
+
+      <span class="n">_flag_private_rules</span><span class="p">(</span><span class="n">rules</span><span class="p">)</span>
+      <span class="n">_flag_default_rules</span><span class="p">(</span><span class="n">rules</span><span class="p">)</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">_rules</span> <span class="o">=</span> <span class="n">rules</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_input_rules</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rules</span>
+
+  <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_rules</span><span class="p">())</span>
+
+  <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_rules</span><span class="p">():</span>
+      <span class="k">yield</span> <span class="n">rule</span>
+
+  <span class="nd">@lru_cache</span><span class="p">()</span>
+  <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">rule</span><span class="p">)</span> <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_rules</span><span class="p">()])</span>
+
+  <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="n">my_hash</span> <span class="o">=</span> <span class="mi">0</span>
+
+      <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_rules</span><span class="p">():</span>
+        <span class="n">my_hash</span> <span class="o">*=</span> <span class="mi">1024</span>
+        <span class="n">my_hash</span> <span class="o">+=</span> <span class="nb">hash</span><span class="p">(</span><span class="n">rule</span><span class="p">)</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span> <span class="o">=</span> <span class="n">my_hash</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span>
+
+  <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">==</span> <span class="nb">hash</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">ExitPolicy</span><span class="p">)</span> <span class="k">else</span> <span class="bp">False</span>
+
+  <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span>
+
+</div>
+<div class="viewcode-block" id="MicroExitPolicy"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.MicroExitPolicy">[docs]</a><span class="k">class</span> <span class="nc">MicroExitPolicy</span><span class="p">(</span><span class="n">ExitPolicy</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Exit policy provided by the microdescriptors. This is a distilled version of</span>
+<span class="sd">  a normal :class:`~stem.exit_policy.ExitPolicy` contains, just consisting of a</span>
+<span class="sd">  list of ports that are either accepted or rejected. For instance...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    accept 80,443       # only accepts common http ports</span>
+<span class="sd">    reject 1-1024       # only accepts non-privileged ports</span>
+
+<span class="sd">  Since these policies are a subset of the exit policy information (lacking IP</span>
+<span class="sd">  ranges) clients can only use them to guess if a relay will accept traffic or</span>
+<span class="sd">  not. To quote the `dir-spec &lt;https://gitweb.torproject.org/torspec.git/tree/dir-spec.txt&gt;`_ (section 3.2.1)...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    With microdescriptors, clients don&#39;t learn exact exit policies:</span>
+<span class="sd">    clients can only guess whether a relay accepts their request, try the</span>
+<span class="sd">    BEGIN request, and might get end-reason-exit-policy if they guessed</span>
+<span class="sd">    wrong, in which case they&#39;ll have to try elsewhere.</span>
+
+<span class="sd">  :var bool is_accept: **True** if these are ports that we accept, **False** if</span>
+<span class="sd">    they&#39;re ports that we reject</span>
+
+<span class="sd">  :param str policy: policy string that describes this policy</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">policy</span><span class="p">):</span>
+    <span class="c"># Microdescriptor policies are of the form...</span>
+    <span class="c">#</span>
+    <span class="c">#   MicrodescriptrPolicy ::= (&quot;accept&quot; / &quot;reject&quot;) SP PortList NL</span>
+    <span class="c">#   PortList ::= PortOrRange</span>
+    <span class="c">#   PortList ::= PortList &quot;,&quot; PortOrRange</span>
+    <span class="c">#   PortOrRange ::= INT &quot;-&quot; INT / INT</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_policy</span> <span class="o">=</span> <span class="n">policy</span>
+
+    <span class="k">if</span> <span class="n">policy</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;accept&#39;</span><span class="p">):</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">is_accept</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="k">elif</span> <span class="n">policy</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;reject&#39;</span><span class="p">):</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">is_accept</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;A microdescriptor exit policy must start with either &#39;accept&#39; or &#39;reject&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">policy</span><span class="p">)</span>
+
+    <span class="n">policy</span> <span class="o">=</span> <span class="n">policy</span><span class="p">[</span><span class="mi">6</span><span class="p">:]</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">policy</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;A microdescriptor exit policy should have a space separating accept/reject from its port list: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">_policy</span><span class="p">)</span>
+
+    <span class="n">policy</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">lstrip</span><span class="p">()</span>
+
+    <span class="c"># convert our port list into MicroExitPolicyRule</span>
+    <span class="n">rules</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">port_entry</span> <span class="ow">in</span> <span class="n">policy</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">):</span>
+      <span class="k">if</span> <span class="s">&#39;-&#39;</span> <span class="ow">in</span> <span class="n">port_entry</span><span class="p">:</span>
+        <span class="n">min_port</span><span class="p">,</span> <span class="n">max_port</span> <span class="o">=</span> <span class="n">port_entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;-&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">min_port</span> <span class="o">=</span> <span class="n">max_port</span> <span class="o">=</span> <span class="n">port_entry</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">min_port</span><span class="p">)</span> <span class="ow">or</span> \
+         <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">max_port</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; is an invalid port range&quot;</span> <span class="o">%</span> <span class="n">port_entry</span><span class="p">)</span>
+
+      <span class="n">rules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">MicroExitPolicyRule</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_accept</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">min_port</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">max_port</span><span class="p">)))</span>
+
+    <span class="nb">super</span><span class="p">(</span><span class="n">MicroExitPolicy</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">rules</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_is_allowed_default</span> <span class="o">=</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_accept</span>
+
+  <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_policy</span>
+
+  <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+
+  <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">==</span> <span class="nb">hash</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">MicroExitPolicy</span><span class="p">)</span> <span class="k">else</span> <span class="bp">False</span>
+
+  <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span>
+
+</div>
+<div class="viewcode-block" id="ExitPolicyRule"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.ExitPolicyRule">[docs]</a><span class="k">class</span> <span class="nc">ExitPolicyRule</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Single rule from the user&#39;s exit policy. These rules are chained together to</span>
+<span class="sd">  form complete policies that describe where a relay will and will not allow</span>
+<span class="sd">  traffic to exit.</span>
+
+<span class="sd">  The format of these rules are formally described in the `dir-spec</span>
+<span class="sd">  &lt;https://gitweb.torproject.org/torspec.git/tree/dir-spec.txt&gt;`_ as an</span>
+<span class="sd">  &#39;exitpattern&#39;. Note that while these are similar to tor&#39;s man page entry for</span>
+<span class="sd">  ExitPolicies, it&#39;s not the exact same. An exitpattern is better defined and</span>
+<span class="sd">  stricter in what it&#39;ll accept. For instance, ports are not optional and it</span>
+<span class="sd">  does not contain the &#39;private&#39; alias.</span>
+
+<span class="sd">  This should be treated as an immutable object.</span>
+
+<span class="sd">  .. versionchanged:: 1.5.0</span>
+<span class="sd">     Support for &#39;accept6/reject6&#39; entries and &#39;\*4/6&#39; wildcards.</span>
+
+<span class="sd">  :var bool is_accept: indicates if exiting is allowed or disallowed</span>
+
+<span class="sd">  :var str address: address that this rule is for</span>
+
+<span class="sd">  :var int min_port: lower end of the port range that we include (inclusive)</span>
+<span class="sd">  :var int max_port: upper end of the port range that we include (inclusive)</span>
+
+<span class="sd">  :param str rule: exit policy rule to be parsed</span>
+
+<span class="sd">  :raises: **ValueError** if input isn&#39;t a valid tor exit policy rule</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rule</span><span class="p">):</span>
+    <span class="c"># policy ::= &quot;accept[6]&quot; exitpattern | &quot;reject[6]&quot; exitpattern</span>
+    <span class="c"># exitpattern ::= addrspec &quot;:&quot; portspec</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">is_accept</span> <span class="o">=</span> <span class="n">rule</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;accept&#39;</span><span class="p">)</span>
+    <span class="n">is_ipv6_only</span> <span class="o">=</span> <span class="n">rule</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;accept6&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">rule</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;reject6&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">rule</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;accept6&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">rule</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;reject6&#39;</span><span class="p">):</span>
+      <span class="n">exitpattern</span> <span class="o">=</span> <span class="n">rule</span><span class="p">[</span><span class="mi">7</span><span class="p">:]</span>
+    <span class="k">elif</span> <span class="n">rule</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;accept&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">rule</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;reject&#39;</span><span class="p">):</span>
+      <span class="n">exitpattern</span> <span class="o">=</span> <span class="n">rule</span><span class="p">[</span><span class="mi">6</span><span class="p">:]</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;An exit policy must start with either &#39;accept[6]&#39; or &#39;reject[6]&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">rule</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">exitpattern</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;An exit policy should have a space separating its accept/reject from the exit pattern: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">rule</span><span class="p">)</span>
+
+    <span class="n">exitpattern</span> <span class="o">=</span> <span class="n">exitpattern</span><span class="o">.</span><span class="n">lstrip</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="s">&#39;:&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">exitpattern</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;An exitpattern must be of the form &#39;addrspec:portspec&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">rule</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">address</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_address_type</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_masked_bits</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">min_port</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_port</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="c"># Our mask in ip notation (ex. &#39;255.255.255.0&#39;). This is only set if we</span>
+    <span class="c"># either have a custom mask that can&#39;t be represented by a number of bits,</span>
+    <span class="c"># or the user has called mask(), lazily loading this.</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_mask</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="c"># Malformed exit policies are rejected, but there&#39;s an exception where it&#39;s</span>
+    <span class="c"># just skipped: when an accept6/reject6 rule has an IPv4 address...</span>
+    <span class="c">#</span>
+    <span class="c">#   &quot;Using an IPv4 address with accept6 or reject6 is ignored and generates</span>
+    <span class="c">#   a warning.&quot;</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_skip_rule</span> <span class="o">=</span> <span class="bp">False</span>
+
+    <span class="n">addrspec</span><span class="p">,</span> <span class="n">portspec</span> <span class="o">=</span> <span class="n">exitpattern</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_apply_addrspec</span><span class="p">(</span><span class="n">rule</span><span class="p">,</span> <span class="n">addrspec</span><span class="p">,</span> <span class="n">is_ipv6_only</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_apply_portspec</span><span class="p">(</span><span class="n">rule</span><span class="p">,</span> <span class="n">portspec</span><span class="p">)</span>
+
+    <span class="c"># Flags to indicate if this rule seems to be expanded from the &#39;private&#39;</span>
+    <span class="c"># keyword or tor&#39;s default policy suffix.</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_is_private</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_is_default_suffix</span> <span class="o">=</span> <span class="bp">False</span>
+
+<div class="viewcode-block" id="ExitPolicyRule.is_address_wildcard"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.ExitPolicyRule.is_address_wildcard">[docs]</a>  <span class="k">def</span> <span class="nf">is_address_wildcard</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    **True** if we&#39;ll match against **any** address, **False** otherwise.</span>
+
+<span class="sd">    Note that this is different than \*4, \*6, or &#39;/0&#39; address which are</span>
+<span class="sd">    wildcards for only either IPv4 or IPv6.</span>
+
+<span class="sd">    :returns: **bool** for if our address matching is a wildcard</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_address_type</span> <span class="o">==</span> <span class="n">_address_type_to_int</span><span class="p">(</span><span class="n">AddressType</span><span class="o">.</span><span class="n">WILDCARD</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ExitPolicyRule.is_port_wildcard"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.ExitPolicyRule.is_port_wildcard">[docs]</a>  <span class="k">def</span> <span class="nf">is_port_wildcard</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    **True** if we&#39;ll match against any port, **False** otherwise.</span>
+
+<span class="sd">    :returns: **bool** for if our port matching is a wildcard</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_port</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_port</span> <span class="o">==</span> <span class="mi">65535</span>
+</div>
+<div class="viewcode-block" id="ExitPolicyRule.is_match"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.ExitPolicyRule.is_match">[docs]</a>  <span class="k">def</span> <span class="nf">is_match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">address</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">strict</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    **True** if we match against the given destination, **False** otherwise. If</span>
+<span class="sd">    the address or port is omitted then this will check if we&#39;re allowed to</span>
+<span class="sd">    exit to any instances of the defined address or port.</span>
+
+<span class="sd">    :param str address: IPv4 or IPv6 address (with or without brackets)</span>
+<span class="sd">    :param int port: port number</span>
+<span class="sd">    :param bool strict: if the address or port is excluded then check if we can</span>
+<span class="sd">      exit to **all** instances of the defined address or port</span>
+
+<span class="sd">    :returns: **bool** indicating if we match against this destination</span>
+
+<span class="sd">    :raises: **ValueError** if provided with a malformed address or port</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_skip_rule</span><span class="p">:</span>
+      <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="c"># validate our input and check if the argument doesn&#39;t match our address type</span>
+
+    <span class="k">if</span> <span class="n">address</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="n">address_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_address_type</span><span class="p">()</span>
+
+      <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">address_type</span> <span class="o">==</span> <span class="n">AddressType</span><span class="o">.</span><span class="n">IPv6</span><span class="p">:</span>
+          <span class="k">return</span> <span class="bp">False</span>
+      <span class="k">elif</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv6_address</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">allow_brackets</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">address_type</span> <span class="o">==</span> <span class="n">AddressType</span><span class="o">.</span><span class="n">IPv4</span><span class="p">:</span>
+          <span class="k">return</span> <span class="bp">False</span>
+
+        <span class="n">address</span> <span class="o">=</span> <span class="n">address</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s">&#39;[&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s">&#39;]&#39;</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; isn&#39;t a valid IPv4 or IPv6 address&quot;</span> <span class="o">%</span> <span class="n">address</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">port</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">port</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; isn&#39;t a valid port&quot;</span> <span class="o">%</span> <span class="n">port</span><span class="p">)</span>
+
+    <span class="c"># If we&#39;re not matching against an address or port but the rule has one</span>
+    <span class="c"># then we&#39;re a fuzzy match. When that happens...</span>
+    <span class="c">#</span>
+    <span class="c"># * If strict and a reject rule then we&#39;re a match (&#39;can exit to *all* instances&#39;).</span>
+    <span class="c"># * If not strict and an accept rule then match (&#39;an exit ot *any* instance&#39;).</span>
+
+    <span class="n">fuzzy_match</span> <span class="o">=</span> <span class="bp">False</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_address_wildcard</span><span class="p">():</span>
+      <span class="c"># Already got the integer representation of our mask and our address</span>
+      <span class="c"># with the mask applied. Just need to check if this address with the</span>
+      <span class="c"># mask applied matches.</span>
+
+      <span class="k">if</span> <span class="n">address</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">fuzzy_match</span> <span class="o">=</span> <span class="bp">True</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">comparison_addr_bin</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">address_to_int</span><span class="p">(</span><span class="n">address</span><span class="p">)</span>
+        <span class="n">comparison_addr_bin</span> <span class="o">&amp;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_mask_bin</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_address_bin</span><span class="p">()</span> <span class="o">!=</span> <span class="n">comparison_addr_bin</span><span class="p">:</span>
+          <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_port_wildcard</span><span class="p">():</span>
+      <span class="k">if</span> <span class="n">port</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">fuzzy_match</span> <span class="o">=</span> <span class="bp">True</span>
+      <span class="k">elif</span> <span class="n">port</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_port</span> <span class="ow">or</span> <span class="n">port</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_port</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="k">if</span> <span class="n">fuzzy_match</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">strict</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_accept</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">return</span> <span class="bp">True</span>
+</div>
+<div class="viewcode-block" id="ExitPolicyRule.get_address_type"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.ExitPolicyRule.get_address_type">[docs]</a>  <span class="k">def</span> <span class="nf">get_address_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the :data:`~stem.exit_policy.AddressType` for our policy.</span>
+
+<span class="sd">    :returns: :data:`~stem.exit_policy.AddressType` for the type of address that we have</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="n">_int_to_address_type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_address_type</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ExitPolicyRule.get_mask"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.ExitPolicyRule.get_mask">[docs]</a>  <span class="k">def</span> <span class="nf">get_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the address represented by our mask. This is **None** if our</span>
+<span class="sd">    address type is a wildcard.</span>
+
+<span class="sd">    :param bool cache: caches the result if **True**</span>
+
+<span class="sd">    :returns: str of our subnet mask for the address (ex. &#39;255.255.255.0&#39;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c"># Lazy loading our mask because it is very infrequently requested. There&#39;s</span>
+    <span class="c"># no reason to usually use memory for it.</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mask</span><span class="p">:</span>
+      <span class="n">address_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_address_type</span><span class="p">()</span>
+
+      <span class="k">if</span> <span class="n">address_type</span> <span class="o">==</span> <span class="n">AddressType</span><span class="o">.</span><span class="n">WILDCARD</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="bp">None</span>
+      <span class="k">elif</span> <span class="n">address_type</span> <span class="o">==</span> <span class="n">AddressType</span><span class="o">.</span><span class="n">IPv4</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">get_mask_ipv4</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_masked_bits</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="n">address_type</span> <span class="o">==</span> <span class="n">AddressType</span><span class="o">.</span><span class="n">IPv6</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">get_mask_ipv6</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_masked_bits</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">cache</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">mask</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">_mask</span> <span class="o">=</span> <span class="n">mask</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mask</span>
+</div>
+<div class="viewcode-block" id="ExitPolicyRule.get_masked_bits"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.ExitPolicyRule.get_masked_bits">[docs]</a>  <span class="k">def</span> <span class="nf">get_masked_bits</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the number of bits our subnet mask represents. This is **None** if</span>
+<span class="sd">    our mask can&#39;t have a bit representation.</span>
+
+<span class="sd">    :returns: int with the bit representation of our mask</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masked_bits</span>
+</div>
+<div class="viewcode-block" id="ExitPolicyRule.is_private"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.ExitPolicyRule.is_private">[docs]</a>  <span class="k">def</span> <span class="nf">is_private</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks if this rule was expanded from the &#39;private&#39; policy keyword.</span>
+
+<span class="sd">    .. versionadded:: 1.3.0</span>
+
+<span class="sd">    :returns: **True** if this rule was expanded from the &#39;private&#39; keyword, **False** otherwise.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_private</span>
+</div>
+<div class="viewcode-block" id="ExitPolicyRule.is_default"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.ExitPolicyRule.is_default">[docs]</a>  <span class="k">def</span> <span class="nf">is_default</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks if this rule belongs to the default exit policy suffix.</span>
+
+<span class="sd">    .. versionadded:: 1.3.0</span>
+
+<span class="sd">    :returns: **True** if this rule was part of the default end of a policy, **False** otherwise.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_default_suffix</span>
+</div>
+  <span class="nd">@lru_cache</span><span class="p">()</span>
+  <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the string representation of our policy. This does not</span>
+<span class="sd">    necessarily match the rule that we were constructed from (due to things</span>
+<span class="sd">    like IPv6 address collapsing or the multiple representations that our mask</span>
+<span class="sd">    can have). However, it is a valid that would be accepted by our constructor</span>
+<span class="sd">    to re-create this rule.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">label</span> <span class="o">=</span> <span class="s">&#39;accept &#39;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_accept</span> <span class="k">else</span> <span class="s">&#39;reject &#39;</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_address_wildcard</span><span class="p">():</span>
+      <span class="n">label</span> <span class="o">+=</span> <span class="s">&#39;*:&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">address_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_address_type</span><span class="p">()</span>
+
+      <span class="k">if</span> <span class="n">address_type</span> <span class="o">==</span> <span class="n">AddressType</span><span class="o">.</span><span class="n">IPv4</span><span class="p">:</span>
+        <span class="n">label</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">address</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">label</span> <span class="o">+=</span> <span class="s">&#39;[</span><span class="si">%s</span><span class="s">]&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">address</span>
+
+      <span class="c"># Including our mask label as follows...</span>
+      <span class="c"># - exclude our mask if it doesn&#39;t do anything</span>
+      <span class="c"># - use our masked bit count if we can</span>
+      <span class="c"># - use the mask itself otherwise</span>
+
+      <span class="k">if</span> <span class="p">(</span><span class="n">address_type</span> <span class="o">==</span> <span class="n">AddressType</span><span class="o">.</span><span class="n">IPv4</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masked_bits</span> <span class="o">==</span> <span class="mi">32</span><span class="p">)</span> <span class="ow">or</span> \
+         <span class="p">(</span><span class="n">address_type</span> <span class="o">==</span> <span class="n">AddressType</span><span class="o">.</span><span class="n">IPv6</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masked_bits</span> <span class="o">==</span> <span class="mi">128</span><span class="p">):</span>
+        <span class="n">label</span> <span class="o">+=</span> <span class="s">&#39;:&#39;</span>
+      <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masked_bits</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">label</span> <span class="o">+=</span> <span class="s">&#39;/</span><span class="si">%i</span><span class="s">:&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masked_bits</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">label</span> <span class="o">+=</span> <span class="s">&#39;/</span><span class="si">%s</span><span class="s">:&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_mask</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_port_wildcard</span><span class="p">():</span>
+      <span class="n">label</span> <span class="o">+=</span> <span class="s">&#39;*&#39;</span>
+    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_port</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_port</span><span class="p">:</span>
+      <span class="n">label</span> <span class="o">+=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min_port</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">label</span> <span class="o">+=</span> <span class="s">&#39;</span><span class="si">%i</span><span class="s">-</span><span class="si">%i</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min_port</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_port</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">label</span>
+
+  <span class="nd">@lru_cache</span><span class="p">()</span>
+  <span class="k">def</span> <span class="nf">_get_mask_bin</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="c"># provides an integer representation of our mask</span>
+
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">_get_address_binary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_mask</span><span class="p">(</span><span class="bp">False</span><span class="p">)),</span> <span class="mi">2</span><span class="p">)</span>
+
+  <span class="nd">@lru_cache</span><span class="p">()</span>
+  <span class="k">def</span> <span class="nf">_get_address_bin</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="c"># provides an integer representation of our address</span>
+
+    <span class="k">return</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">address_to_int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">)</span> <span class="o">&amp;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_mask_bin</span><span class="p">()</span>
+
+  <span class="k">def</span> <span class="nf">_apply_addrspec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rule</span><span class="p">,</span> <span class="n">addrspec</span><span class="p">,</span> <span class="n">is_ipv6_only</span><span class="p">):</span>
+    <span class="c"># Parses the addrspec...</span>
+    <span class="c"># addrspec ::= &quot;*&quot; | ip4spec | ip6spec</span>
+
+    <span class="c"># Expand IPv4 and IPv6 specific wildcards into /0 entries so we have one</span>
+    <span class="c"># fewer bizarre special case headaches to deal with.</span>
+
+    <span class="k">if</span> <span class="n">addrspec</span> <span class="o">==</span> <span class="s">&#39;*4&#39;</span><span class="p">:</span>
+      <span class="n">addrspec</span> <span class="o">=</span> <span class="s">&#39;0.0.0.0/0&#39;</span>
+    <span class="k">elif</span> <span class="n">addrspec</span> <span class="o">==</span> <span class="s">&#39;*6&#39;</span> <span class="ow">or</span> <span class="p">(</span><span class="n">addrspec</span> <span class="o">==</span> <span class="s">&#39;*&#39;</span> <span class="ow">and</span> <span class="n">is_ipv6_only</span><span class="p">):</span>
+      <span class="n">addrspec</span> <span class="o">=</span> <span class="s">&#39;[0000:0000:0000:0000:0000:0000:0000:0000]/0&#39;</span>
+
+    <span class="k">if</span> <span class="s">&#39;/&#39;</span> <span class="ow">in</span> <span class="n">addrspec</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">,</span> <span class="n">addr_extra</span> <span class="o">=</span> <span class="n">addrspec</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">,</span> <span class="n">addr_extra</span> <span class="o">=</span> <span class="n">addrspec</span><span class="p">,</span> <span class="bp">None</span>
+
+    <span class="k">if</span> <span class="n">addrspec</span> <span class="o">==</span> <span class="s">&#39;*&#39;</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_address_type</span> <span class="o">=</span> <span class="n">_address_type_to_int</span><span class="p">(</span><span class="n">AddressType</span><span class="o">.</span><span class="n">WILDCARD</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">address</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masked_bits</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">elif</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">):</span>
+      <span class="c"># ipv4spec ::= ip4 | ip4 &quot;/&quot; num_ip4_bits | ip4 &quot;/&quot; ip4mask</span>
+      <span class="c"># ip4 ::= an IPv4 address in dotted-quad format</span>
+      <span class="c"># ip4mask ::= an IPv4 mask in dotted-quad format</span>
+      <span class="c"># num_ip4_bits ::= an integer between 0 and 32</span>
+
+      <span class="k">if</span> <span class="n">is_ipv6_only</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_skip_rule</span> <span class="o">=</span> <span class="bp">True</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">_address_type</span> <span class="o">=</span> <span class="n">_address_type_to_int</span><span class="p">(</span><span class="n">AddressType</span><span class="o">.</span><span class="n">IPv4</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">addr_extra</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_masked_bits</span> <span class="o">=</span> <span class="mi">32</span>
+      <span class="k">elif</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="n">addr_extra</span><span class="p">):</span>
+        <span class="c"># provided with an ip4mask</span>
+        <span class="k">try</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_masked_bits</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">_get_masked_bits</span><span class="p">(</span><span class="n">addr_extra</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+          <span class="c"># mask can&#39;t be represented as a number of bits (ex. &#39;255.255.0.255&#39;)</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_mask</span> <span class="o">=</span> <span class="n">addr_extra</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_masked_bits</span> <span class="o">=</span> <span class="bp">None</span>
+      <span class="k">elif</span> <span class="n">addr_extra</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+        <span class="c"># provided with a num_ip4_bits</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_masked_bits</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">addr_extra</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masked_bits</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masked_bits</span> <span class="o">&gt;</span> <span class="mi">32</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;IPv4 masks must be in the range of 0-32 bits&#39;</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;The &#39;</span><span class="si">%s</span><span class="s">&#39; isn&#39;t a mask nor number of bits: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">addr_extra</span><span class="p">,</span> <span class="n">rule</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;[&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;]&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+      <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv6_address</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]):</span>
+      <span class="c"># ip6spec ::= ip6 | ip6 &quot;/&quot; num_ip6_bits</span>
+      <span class="c"># ip6 ::= an IPv6 address, surrounded by square brackets.</span>
+      <span class="c"># num_ip6_bits ::= an integer between 0 and 128</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">address</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">expand_ipv6_address</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">())</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_address_type</span> <span class="o">=</span> <span class="n">_address_type_to_int</span><span class="p">(</span><span class="n">AddressType</span><span class="o">.</span><span class="n">IPv6</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">addr_extra</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_masked_bits</span> <span class="o">=</span> <span class="mi">128</span>
+      <span class="k">elif</span> <span class="n">addr_extra</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+        <span class="c"># provided with a num_ip6_bits</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_masked_bits</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">addr_extra</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masked_bits</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masked_bits</span> <span class="o">&gt;</span> <span class="mi">128</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;IPv6 masks must be in the range of 0-128 bits&#39;</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;The &#39;</span><span class="si">%s</span><span class="s">&#39; isn&#39;t a number of bits: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">addr_extra</span><span class="p">,</span> <span class="n">rule</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Address isn&#39;t a wildcard, IPv4, or IPv6 address: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">rule</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_apply_portspec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rule</span><span class="p">,</span> <span class="n">portspec</span><span class="p">):</span>
+    <span class="c"># Parses the portspec...</span>
+    <span class="c"># portspec ::= &quot;*&quot; | port | port &quot;-&quot; port</span>
+    <span class="c"># port ::= an integer between 1 and 65535, inclusive.</span>
+    <span class="c">#</span>
+    <span class="c"># Due to a tor bug the spec says that we should accept port of zero, but</span>
+    <span class="c"># connections to port zero are never permitted.</span>
+
+    <span class="k">if</span> <span class="n">portspec</span> <span class="o">==</span> <span class="s">&#39;*&#39;</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">min_port</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_port</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">65535</span>
+    <span class="k">elif</span> <span class="n">portspec</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+      <span class="c"># provided with a single port</span>
+      <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">portspec</span><span class="p">,</span> <span class="n">allow_zero</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_port</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">portspec</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; isn&#39;t within a valid port range: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">portspec</span><span class="p">,</span> <span class="n">rule</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="s">&#39;-&#39;</span> <span class="ow">in</span> <span class="n">portspec</span><span class="p">:</span>
+      <span class="c"># provided with a port range</span>
+      <span class="n">port_comp</span> <span class="o">=</span> <span class="n">portspec</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;-&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">port_comp</span><span class="p">,</span> <span class="n">allow_zero</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">port_comp</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">port_comp</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_port</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_port</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Port range has a lower bound that&#39;s greater than its upper bound: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">rule</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Malformed port range: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">rule</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Port value isn&#39;t a wildcard, integer, or range: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">rule</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span> <span class="o">=</span> <span class="n">_hash_attr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;is_accept&#39;</span><span class="p">,</span> <span class="s">&#39;address&#39;</span><span class="p">,</span> <span class="s">&#39;min_port&#39;</span><span class="p">,</span> <span class="s">&#39;max_port&#39;</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">+</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_mask</span><span class="p">(</span><span class="bp">False</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span>
+
+  <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">==</span> <span class="nb">hash</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">ExitPolicyRule</span><span class="p">)</span> <span class="k">else</span> <span class="bp">False</span>
+
+  <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_address_type_to_int</span><span class="p">(</span><span class="n">address_type</span><span class="p">):</span>
+  <span class="k">return</span> <span class="n">AddressType</span><span class="o">.</span><span class="n">index_of</span><span class="p">(</span><span class="n">address_type</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_int_to_address_type</span><span class="p">(</span><span class="n">address_type_int</span><span class="p">):</span>
+  <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">AddressType</span><span class="p">)[</span><span class="n">address_type_int</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="MicroExitPolicyRule"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.MicroExitPolicyRule">[docs]</a><span class="k">class</span> <span class="nc">MicroExitPolicyRule</span><span class="p">(</span><span class="n">ExitPolicyRule</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Lighter weight ExitPolicyRule derivative for microdescriptors.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is_accept</span><span class="p">,</span> <span class="n">min_port</span><span class="p">,</span> <span class="n">max_port</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">is_accept</span> <span class="o">=</span> <span class="n">is_accept</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">address</span> <span class="o">=</span> <span class="bp">None</span>  <span class="c"># wildcard address</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">min_port</span> <span class="o">=</span> <span class="n">min_port</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">max_port</span> <span class="o">=</span> <span class="n">max_port</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_skip_rule</span> <span class="o">=</span> <span class="bp">False</span>
+
+<div class="viewcode-block" id="MicroExitPolicyRule.is_address_wildcard"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.MicroExitPolicyRule.is_address_wildcard">[docs]</a>  <span class="k">def</span> <span class="nf">is_address_wildcard</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">True</span>
+</div>
+<div class="viewcode-block" id="MicroExitPolicyRule.get_address_type"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.MicroExitPolicyRule.get_address_type">[docs]</a>  <span class="k">def</span> <span class="nf">get_address_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">AddressType</span><span class="o">.</span><span class="n">WILDCARD</span>
+</div>
+<div class="viewcode-block" id="MicroExitPolicyRule.get_mask"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.MicroExitPolicyRule.get_mask">[docs]</a>  <span class="k">def</span> <span class="nf">get_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">None</span>
+</div>
+<div class="viewcode-block" id="MicroExitPolicyRule.get_masked_bits"><a class="viewcode-back" href="../../api/exit_policy.html#stem.exit_policy.MicroExitPolicyRule.get_masked_bits">[docs]</a>  <span class="k">def</span> <span class="nf">get_masked_bits</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">None</span>
+</div>
+  <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span> <span class="o">=</span> <span class="n">_hash_attr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;is_accept&#39;</span><span class="p">,</span> <span class="s">&#39;min_port&#39;</span><span class="p">,</span> <span class="s">&#39;max_port&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span>
+
+  <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">==</span> <span class="nb">hash</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">MicroExitPolicyRule</span><span class="p">)</span> <span class="k">else</span> <span class="bp">False</span>
+
+  <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span>
+
+</div>
+<span class="n">DEFAULT_POLICY_RULES</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="n">ExitPolicyRule</span><span class="p">(</span><span class="n">rule</span><span class="p">)</span> <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="p">(</span>
+  <span class="s">&#39;reject *:25&#39;</span><span class="p">,</span>
+  <span class="s">&#39;reject *:119&#39;</span><span class="p">,</span>
+  <span class="s">&#39;reject *:135-139&#39;</span><span class="p">,</span>
+  <span class="s">&#39;reject *:445&#39;</span><span class="p">,</span>
+  <span class="s">&#39;reject *:563&#39;</span><span class="p">,</span>
+  <span class="s">&#39;reject *:1214&#39;</span><span class="p">,</span>
+  <span class="s">&#39;reject *:4661-4666&#39;</span><span class="p">,</span>
+  <span class="s">&#39;reject *:6346-6429&#39;</span><span class="p">,</span>
+  <span class="s">&#39;reject *:6699&#39;</span><span class="p">,</span>
+  <span class="s">&#39;reject *:6881-6999&#39;</span><span class="p">,</span>
+  <span class="s">&#39;accept *:*&#39;</span><span class="p">,</span>
+<span class="p">)])</span>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

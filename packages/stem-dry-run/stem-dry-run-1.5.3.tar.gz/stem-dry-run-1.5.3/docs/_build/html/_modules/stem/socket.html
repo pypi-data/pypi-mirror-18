@@ -1,0 +1,777 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.socket &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../index.html" />
+    <link rel="up" title="stem" href="../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.socket</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../index.html">Home</a></li>
+          <li><a href="../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../api.html">API</a>
+            <ul>
+              <li><a href="../../api/control.html">stem.control</a></li>
+              <li><a href="../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../api/process.html">stem.process</a></li>
+              <li><a href="../../api/response.html">stem.response</a></li>
+              <li><a href="../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../api/version.html">stem.version</a></li>
+              <li><a href="../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../faq.html">FAQ</a></li>
+              <li><a href="../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.socket</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2011-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Supports communication with sockets speaking the Tor control protocol. This</span>
+<span class="sd">allows us to send messages as basic strings, and receive responses as</span>
+<span class="sd">:class:`~stem.response.ControlMessage` instances.</span>
+
+<span class="sd">**This module only consists of low level components, and is not intended for</span>
+<span class="sd">users.** See our `tutorials &lt;../tutorials.html&gt;`_ and `Control Module</span>
+<span class="sd">&lt;control.html&gt;`_ if you&#39;re new to Stem and looking to get started.</span>
+
+<span class="sd">With that aside, these can still be used for raw socket communication with</span>
+<span class="sd">Tor...</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  import stem</span>
+<span class="sd">  import stem.connection</span>
+<span class="sd">  import stem.socket</span>
+
+<span class="sd">  if __name__ == &#39;__main__&#39;:</span>
+<span class="sd">    try:</span>
+<span class="sd">      control_socket = stem.socket.ControlPort(port = 9051)</span>
+<span class="sd">      stem.connection.authenticate(control_socket)</span>
+<span class="sd">    except stem.SocketError as exc:</span>
+<span class="sd">      print &#39;Unable to connect to tor on port 9051: %s&#39; % exc</span>
+<span class="sd">      sys.exit(1)</span>
+<span class="sd">    except stem.connection.AuthenticationFailure as exc:</span>
+<span class="sd">      print &#39;Unable to authenticate: %s&#39; % exc</span>
+<span class="sd">      sys.exit(1)</span>
+
+<span class="sd">    print &quot;Issuing &#39;GETINFO version&#39; query...\\n&quot;</span>
+<span class="sd">    control_socket.send(&#39;GETINFO version&#39;)</span>
+<span class="sd">    print control_socket.recv()</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  % python example.py</span>
+<span class="sd">  Issuing &#39;GETINFO version&#39; query...</span>
+
+<span class="sd">  version=0.2.4.10-alpha-dev (git-8be6058d8f31e578)</span>
+<span class="sd">  OK</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  ControlSocket - Socket wrapper that speaks the tor control protocol.</span>
+<span class="sd">    |- ControlPort - Control connection via a port.</span>
+<span class="sd">    |  |- get_address - provides the ip address of our socket</span>
+<span class="sd">    |  +- get_port - provides the port of our socket</span>
+<span class="sd">    |</span>
+<span class="sd">    |- ControlSocketFile - Control connection via a local file socket.</span>
+<span class="sd">    |  +- get_socket_path - provides the path of the socket we connect to</span>
+<span class="sd">    |</span>
+<span class="sd">    |- send - sends a message to the socket</span>
+<span class="sd">    |- recv - receives a ControlMessage from the socket</span>
+<span class="sd">    |- is_alive - reports if the socket is known to be closed</span>
+<span class="sd">    |- is_localhost - returns if the socket is for the local system or not</span>
+<span class="sd">    |- connect - connects a new socket</span>
+<span class="sd">    |- close - shuts down the socket</span>
+<span class="sd">    +- __enter__ / __exit__ - manages socket connection</span>
+
+<span class="sd">  send_message - Writes a message to a control socket.</span>
+<span class="sd">  recv_message - Reads a ControlMessage from a control socket.</span>
+<span class="sd">  send_formatting - Performs the formatting expected from sent messages.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
+
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">import</span> <span class="nn">stem.prereq</span>
+<span class="kn">import</span> <span class="nn">stem.response</span>
+<span class="kn">import</span> <span class="nn">stem.util.str_tools</span>
+
+<span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">log</span>
+
+<span class="c"># lines to limit our trace logging to, you can disable this by setting it to None</span>
+
+<span class="n">TRUNCATE_LOGS</span> <span class="o">=</span> <span class="mi">10</span>
+
+
+<div class="viewcode-block" id="ControlSocket"><a class="viewcode-back" href="../../api/socket.html#stem.socket.ControlSocket">[docs]</a><span class="k">class</span> <span class="nc">ControlSocket</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Wrapper for a socket connection that speaks the Tor control protocol. To the</span>
+<span class="sd">  better part this transparently handles the formatting for sending and</span>
+<span class="sd">  receiving complete messages. All methods are thread safe.</span>
+
+<span class="sd">  Callers should not instantiate this class directly, but rather use subclasses</span>
+<span class="sd">  which are expected to implement the **_make_socket()** method.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_socket</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_socket_file</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_is_alive</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_connection_time</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c"># time when we last connected or disconnected</span>
+
+    <span class="c"># Tracks sending and receiving separately. This should be safe, and doing</span>
+    <span class="c"># so prevents deadlock where we block writes because we&#39;re waiting to read</span>
+    <span class="c"># a message that isn&#39;t coming.</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_send_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_recv_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">()</span>
+
+<div class="viewcode-block" id="ControlSocket.send"><a class="viewcode-back" href="../../api/socket.html#stem.socket.ControlSocket.send">[docs]</a>  <span class="k">def</span> <span class="nf">send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">raw</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Formats and sends a message to the control socket. For more information see</span>
+<span class="sd">    the :func:`~stem.socket.send_message` function.</span>
+
+<span class="sd">    :param str message: message to be formatted and sent to the socket</span>
+<span class="sd">    :param bool raw: leaves the message formatting untouched, passing it to the socket as-is</span>
+
+<span class="sd">    :raises:</span>
+<span class="sd">      * :class:`stem.SocketError` if a problem arises in using the socket</span>
+<span class="sd">      * :class:`stem.SocketClosed` if the socket is known to be shut down</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_lock</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
+          <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketClosed</span><span class="p">()</span>
+
+        <span class="n">send_message</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_socket_file</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">raw</span><span class="p">)</span>
+      <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketClosed</span><span class="p">:</span>
+        <span class="c"># if send_message raises a SocketClosed then we should properly shut</span>
+        <span class="c"># everything down</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="k">raise</span>
+</div>
+<div class="viewcode-block" id="ControlSocket.recv"><a class="viewcode-back" href="../../api/socket.html#stem.socket.ControlSocket.recv">[docs]</a>  <span class="k">def</span> <span class="nf">recv</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Receives a message from the control socket, blocking until we&#39;ve received</span>
+<span class="sd">    one. For more information see the :func:`~stem.socket.recv_message` function.</span>
+
+<span class="sd">    :returns: :class:`~stem.response.ControlMessage` for the message received</span>
+
+<span class="sd">    :raises:</span>
+<span class="sd">      * :class:`stem.ProtocolError` the content from the socket is malformed</span>
+<span class="sd">      * :class:`stem.SocketClosed` if the socket closes before we receive a complete message</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_recv_lock</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="c"># makes a temporary reference to the _socket_file because connect()</span>
+        <span class="c"># and close() may set or unset it</span>
+
+        <span class="n">socket_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_socket_file</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">socket_file</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketClosed</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">recv_message</span><span class="p">(</span><span class="n">socket_file</span><span class="p">)</span>
+      <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketClosed</span><span class="p">:</span>
+        <span class="c"># If recv_message raises a SocketClosed then we should properly shut</span>
+        <span class="c"># everything down. However, there&#39;s a couple cases where this will</span>
+        <span class="c"># cause deadlock...</span>
+        <span class="c">#</span>
+        <span class="c"># * this socketClosed was *caused by* a close() call, which is joining</span>
+        <span class="c">#   on our thread</span>
+        <span class="c">#</span>
+        <span class="c"># * a send() call that&#39;s currently in flight is about to call close(),</span>
+        <span class="c">#   also attempting to join on us</span>
+        <span class="c">#</span>
+        <span class="c"># To resolve this we make a non-blocking call to acquire the send lock.</span>
+        <span class="c"># If we get it then great, we can close safely. If not then one of the</span>
+        <span class="c"># above are in progress and we leave the close to them.</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
+          <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_lock</span><span class="o">.</span><span class="n">acquire</span><span class="p">(</span><span class="bp">False</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_send_lock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+
+        <span class="k">raise</span>
+</div>
+<div class="viewcode-block" id="ControlSocket.is_alive"><a class="viewcode-back" href="../../api/socket.html#stem.socket.ControlSocket.is_alive">[docs]</a>  <span class="k">def</span> <span class="nf">is_alive</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks if the socket is known to be closed. We won&#39;t be aware if it is</span>
+<span class="sd">    until we either use it or have explicitily shut it down.</span>
+
+<span class="sd">    In practice a socket derived from a port knows about its disconnection</span>
+<span class="sd">    after a failed :func:`~stem.socket.ControlSocket.recv` call. Socket file</span>
+<span class="sd">    derived connections know after either a</span>
+<span class="sd">    :func:`~stem.socket.ControlSocket.send` or</span>
+<span class="sd">    :func:`~stem.socket.ControlSocket.recv`.</span>
+
+<span class="sd">    This means that to have reliable detection for when we&#39;re disconnected</span>
+<span class="sd">    you need to continually pull from the socket (which is part of what the</span>
+<span class="sd">    :class:`~stem.control.BaseController` does).</span>
+
+<span class="sd">    :returns: **bool** that&#39;s **True** if our socket is connected and **False** otherwise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_alive</span>
+</div>
+<div class="viewcode-block" id="ControlSocket.is_localhost"><a class="viewcode-back" href="../../api/socket.html#stem.socket.ControlSocket.is_localhost">[docs]</a>  <span class="k">def</span> <span class="nf">is_localhost</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns if the connection is for the local system or not.</span>
+
+<span class="sd">    :returns: **bool** that&#39;s **True** if the connection is for the local host and **False** otherwise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">False</span>
+</div>
+<div class="viewcode-block" id="ControlSocket.connection_time"><a class="viewcode-back" href="../../api/socket.html#stem.socket.ControlSocket.connection_time">[docs]</a>  <span class="k">def</span> <span class="nf">connection_time</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the unix timestamp for when our socket was either connected or</span>
+<span class="sd">    disconnected. That is to say, the time we connected if we&#39;re currently</span>
+<span class="sd">    connected and the time we disconnected if we&#39;re not connected.</span>
+
+<span class="sd">    .. versionadded:: 1.3.0</span>
+
+<span class="sd">    :returns: **float** for when we last connected or disconnected, zero if</span>
+<span class="sd">      we&#39;ve never connected</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection_time</span>
+</div>
+<div class="viewcode-block" id="ControlSocket.connect"><a class="viewcode-back" href="../../api/socket.html#stem.socket.ControlSocket.connect">[docs]</a>  <span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Connects to a new socket, closing our previous one if we&#39;re already</span>
+<span class="sd">    attached.</span>
+
+<span class="sd">    :raises: :class:`stem.SocketError` if unable to make a socket</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_lock</span><span class="p">:</span>
+      <span class="c"># Closes the socket if we&#39;re currently attached to one. Once we&#39;re no</span>
+      <span class="c"># longer alive it&#39;ll be safe to acquire the recv lock because recv()</span>
+      <span class="c"># calls no longer block (raising SocketClosed instead).</span>
+
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+      <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_recv_lock</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_socket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_socket</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_socket_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_socket</span><span class="o">.</span><span class="n">makefile</span><span class="p">(</span><span class="n">mode</span> <span class="o">=</span> <span class="s">&#39;rwb&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_is_alive</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connection_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="c"># It&#39;s possible for this to have a transient failure...</span>
+        <span class="c"># SocketError: [Errno 4] Interrupted system call</span>
+        <span class="c">#</span>
+        <span class="c"># It&#39;s safe to retry, so give it another try if it fails.</span>
+
+        <span class="k">try</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_connect</span><span class="p">()</span>
+        <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketError</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_connect</span><span class="p">()</span>  <span class="c"># single retry</span>
+</div>
+<div class="viewcode-block" id="ControlSocket.close"><a class="viewcode-back" href="../../api/socket.html#stem.socket.ControlSocket.close">[docs]</a>  <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Shuts down the socket. If it&#39;s already closed then this is a no-op.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_lock</span><span class="p">:</span>
+      <span class="c"># Function is idempotent with one exception: we notify _close() if this</span>
+      <span class="c"># is causing our is_alive() state to change.</span>
+
+      <span class="n">is_change</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_alive</span><span class="p">()</span>
+
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_socket</span><span class="p">:</span>
+        <span class="c"># if we haven&#39;t yet established a connection then this raises an error</span>
+        <span class="c"># socket.error: [Errno 107] Transport endpoint is not connected</span>
+
+        <span class="k">try</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_socket</span><span class="o">.</span><span class="n">shutdown</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">SHUT_RDWR</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">socket</span><span class="o">.</span><span class="n">error</span><span class="p">:</span>
+          <span class="k">pass</span>
+
+        <span class="c"># Suppressing unexpected exceptions from close. For instance, if the</span>
+        <span class="c"># socket&#39;s file has already been closed then with python 2.7 that raises</span>
+        <span class="c"># with...</span>
+        <span class="c"># error: [Errno 32] Broken pipe</span>
+
+        <span class="k">try</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">except</span><span class="p">:</span>
+          <span class="k">pass</span>
+
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_socket_file</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_socket_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">except</span><span class="p">:</span>
+          <span class="k">pass</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">_socket</span> <span class="o">=</span> <span class="bp">None</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_socket_file</span> <span class="o">=</span> <span class="bp">None</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_is_alive</span> <span class="o">=</span> <span class="bp">False</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_connection_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+      <span class="k">if</span> <span class="n">is_change</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_close</span><span class="p">()</span>
+</div>
+  <span class="k">def</span> <span class="nf">_get_send_lock</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The send lock is useful to classes that interact with us at a deep level</span>
+<span class="sd">    because it&#39;s used to lock :func:`stem.socket.ControlSocket.connect` /</span>
+<span class="sd">    :func:`stem.socket.ControlSocket.close`, and by extension our</span>
+<span class="sd">    :func:`stem.socket.ControlSocket.is_alive` state changes.</span>
+
+<span class="sd">    :returns: **threading.RLock** that governs sending messages to our socket</span>
+<span class="sd">      and state changes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_lock</span>
+
+  <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span>
+
+  <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exit_type</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+  <span class="k">def</span> <span class="nf">_connect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Connection callback that can be overwritten by subclasses and wrappers.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">pass</span>
+
+  <span class="k">def</span> <span class="nf">_close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Disconnection callback that can be overwritten by subclasses and wrappers.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">pass</span>
+
+  <span class="k">def</span> <span class="nf">_make_socket</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Constructs and connects new socket. This is implemented by subclasses.</span>
+
+<span class="sd">    :returns: **socket.socket** for our configuration</span>
+
+<span class="sd">    :raises:</span>
+<span class="sd">      * :class:`stem.SocketError` if unable to make a socket</span>
+<span class="sd">      * **NotImplementedError** if not implemented by a subclass</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Unsupported Operation: this should be implemented by the ControlSocket subclass&#39;</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="ControlPort"><a class="viewcode-back" href="../../api/socket.html#stem.socket.ControlPort">[docs]</a><span class="k">class</span> <span class="nc">ControlPort</span><span class="p">(</span><span class="n">ControlSocket</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Control connection to tor. For more information see tor&#39;s ControlPort torrc</span>
+<span class="sd">  option.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">address</span> <span class="o">=</span> <span class="s">&#39;127.0.0.1&#39;</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="mi">9051</span><span class="p">,</span> <span class="n">connect</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    ControlPort constructor.</span>
+
+<span class="sd">    :param str address: ip address of the controller</span>
+<span class="sd">    :param int port: port number of the controller</span>
+<span class="sd">    :param bool connect: connects to the socket if True, leaves it unconnected otherwise</span>
+
+<span class="sd">    :raises: :class:`stem.SocketError` if connect is **True** and we&#39;re</span>
+<span class="sd">      unable to establish a connection</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nb">super</span><span class="p">(</span><span class="n">ControlPort</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_control_addr</span> <span class="o">=</span> <span class="n">address</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_control_port</span> <span class="o">=</span> <span class="n">port</span>
+
+    <span class="k">if</span> <span class="n">connect</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+
+<div class="viewcode-block" id="ControlPort.get_address"><a class="viewcode-back" href="../../api/socket.html#stem.socket.ControlPort.get_address">[docs]</a>  <span class="k">def</span> <span class="nf">get_address</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the ip address our socket connects to.</span>
+
+<span class="sd">    :returns: str with the ip address of our socket</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control_addr</span>
+</div>
+<div class="viewcode-block" id="ControlPort.get_port"><a class="viewcode-back" href="../../api/socket.html#stem.socket.ControlPort.get_port">[docs]</a>  <span class="k">def</span> <span class="nf">get_port</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the port our socket connects to.</span>
+
+<span class="sd">    :returns: int with the port of our socket</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control_port</span>
+</div>
+<div class="viewcode-block" id="ControlPort.is_localhost"><a class="viewcode-back" href="../../api/socket.html#stem.socket.ControlPort.is_localhost">[docs]</a>  <span class="k">def</span> <span class="nf">is_localhost</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control_addr</span> <span class="o">==</span> <span class="s">&#39;127.0.0.1&#39;</span>
+</div>
+  <span class="k">def</span> <span class="nf">_make_socket</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">control_socket</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+      <span class="n">control_socket</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">_control_addr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control_port</span><span class="p">))</span>
+      <span class="k">return</span> <span class="n">control_socket</span>
+    <span class="k">except</span> <span class="n">socket</span><span class="o">.</span><span class="n">error</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketError</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="ControlSocketFile"><a class="viewcode-back" href="../../api/socket.html#stem.socket.ControlSocketFile">[docs]</a><span class="k">class</span> <span class="nc">ControlSocketFile</span><span class="p">(</span><span class="n">ControlSocket</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Control connection to tor. For more information see tor&#39;s ControlSocket torrc</span>
+<span class="sd">  option.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span> <span class="o">=</span> <span class="s">&#39;/var/run/tor/control&#39;</span><span class="p">,</span> <span class="n">connect</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    ControlSocketFile constructor.</span>
+
+<span class="sd">    :param str socket_path: path where the control socket is located</span>
+<span class="sd">    :param bool connect: connects to the socket if True, leaves it unconnected otherwise</span>
+
+<span class="sd">    :raises: :class:`stem.SocketError` if connect is **True** and we&#39;re</span>
+<span class="sd">      unable to establish a connection</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nb">super</span><span class="p">(</span><span class="n">ControlSocketFile</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_socket_path</span> <span class="o">=</span> <span class="n">path</span>
+
+    <span class="k">if</span> <span class="n">connect</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+
+<div class="viewcode-block" id="ControlSocketFile.get_socket_path"><a class="viewcode-back" href="../../api/socket.html#stem.socket.ControlSocketFile.get_socket_path">[docs]</a>  <span class="k">def</span> <span class="nf">get_socket_path</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the path our socket connects to.</span>
+
+<span class="sd">    :returns: str with the path for our control socket</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_socket_path</span>
+</div>
+<div class="viewcode-block" id="ControlSocketFile.is_localhost"><a class="viewcode-back" href="../../api/socket.html#stem.socket.ControlSocketFile.is_localhost">[docs]</a>  <span class="k">def</span> <span class="nf">is_localhost</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">True</span>
+</div>
+  <span class="k">def</span> <span class="nf">_make_socket</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">control_socket</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_UNIX</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+      <span class="n">control_socket</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_socket_path</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">control_socket</span>
+    <span class="k">except</span> <span class="n">socket</span><span class="o">.</span><span class="n">error</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketError</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="send_message"><a class="viewcode-back" href="../../api/socket.html#stem.socket.send_message">[docs]</a><span class="k">def</span> <span class="nf">send_message</span><span class="p">(</span><span class="n">control_file</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">raw</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Sends a message to the control socket, adding the expected formatting for</span>
+<span class="sd">  single verses multi-line messages. Neither message type should contain an</span>
+<span class="sd">  ending newline (if so it&#39;ll be treated as a multi-line message with a blank</span>
+<span class="sd">  line at the end). If the message doesn&#39;t contain a newline then it&#39;s sent</span>
+<span class="sd">  as...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    &lt;message&gt;\\r\\n</span>
+
+<span class="sd">  and if it does contain newlines then it&#39;s split on ``\\n`` and sent as...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    +&lt;line 1&gt;\\r\\n</span>
+<span class="sd">    &lt;line 2&gt;\\r\\n</span>
+<span class="sd">    &lt;line 3&gt;\\r\\n</span>
+<span class="sd">    .\\r\\n</span>
+
+<span class="sd">  :param file control_file: file derived from the control socket (see the</span>
+<span class="sd">    socket&#39;s makefile() method for more information)</span>
+<span class="sd">  :param str message: message to be sent on the control socket</span>
+<span class="sd">  :param bool raw: leaves the message formatting untouched, passing it to the</span>
+<span class="sd">    socket as-is</span>
+
+<span class="sd">  :raises:</span>
+<span class="sd">    * :class:`stem.SocketError` if a problem arises in using the socket</span>
+<span class="sd">    * :class:`stem.SocketClosed` if the socket is known to be shut down</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">raw</span><span class="p">:</span>
+    <span class="n">message</span> <span class="o">=</span> <span class="n">send_formatting</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">control_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_bytes</span><span class="p">(</span><span class="n">message</span><span class="p">))</span>
+    <span class="n">control_file</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+
+    <span class="n">log_message</span> <span class="o">=</span> <span class="n">message</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\r\n</span><span class="s">&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="s">&#39;Sent to tor:</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">+</span> <span class="n">log_message</span><span class="p">)</span>
+  <span class="k">except</span> <span class="n">socket</span><span class="o">.</span><span class="n">error</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&#39;Failed to send message: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">exc</span><span class="p">)</span>
+
+    <span class="c"># When sending there doesn&#39;t seem to be a reliable method for</span>
+    <span class="c"># distinguishing between failures from a disconnect verses other things.</span>
+    <span class="c"># Just accounting for known disconnection responses.</span>
+
+    <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span> <span class="o">==</span> <span class="s">&#39;[Errno 32] Broken pipe&#39;</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketClosed</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketError</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+  <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+    <span class="c"># if the control_file has been closed then flush will receive:</span>
+    <span class="c"># AttributeError: &#39;NoneType&#39; object has no attribute &#39;sendall&#39;</span>
+
+    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&#39;Failed to send message: file has been closed&#39;</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketClosed</span><span class="p">(</span><span class="s">&#39;file has been closed&#39;</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="recv_message"><a class="viewcode-back" href="../../api/socket.html#stem.socket.recv_message">[docs]</a><span class="k">def</span> <span class="nf">recv_message</span><span class="p">(</span><span class="n">control_file</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Pulls from a control socket until we either have a complete message or</span>
+<span class="sd">  encounter a problem.</span>
+
+<span class="sd">  :param file control_file: file derived from the control socket (see the</span>
+<span class="sd">    socket&#39;s makefile() method for more information)</span>
+
+<span class="sd">  :returns: :class:`~stem.response.ControlMessage` read from the socket</span>
+
+<span class="sd">  :raises:</span>
+<span class="sd">    * :class:`stem.ProtocolError` the content from the socket is malformed</span>
+<span class="sd">    * :class:`stem.SocketClosed` if the socket closes before we receive</span>
+<span class="sd">      a complete message</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">parsed_content</span><span class="p">,</span> <span class="n">raw_content</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+  <span class="n">logging_prefix</span> <span class="o">=</span> <span class="s">&#39;Error while receiving a control message (</span><span class="si">%s</span><span class="s">): &#39;</span>
+
+  <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="c"># From a real socket readline() would always provide bytes, but during</span>
+      <span class="c"># tests we might be given a StringIO in which case it&#39;s unicode under</span>
+      <span class="c"># python 3.x.</span>
+
+      <span class="n">line</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_bytes</span><span class="p">(</span><span class="n">control_file</span><span class="o">.</span><span class="n">readline</span><span class="p">())</span>
+    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+      <span class="c"># if the control_file has been closed then we will receive:</span>
+      <span class="c"># AttributeError: &#39;NoneType&#39; object has no attribute &#39;recv&#39;</span>
+
+      <span class="n">prefix</span> <span class="o">=</span> <span class="n">logging_prefix</span> <span class="o">%</span> <span class="s">&#39;SocketClosed&#39;</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">prefix</span> <span class="o">+</span> <span class="s">&#39;socket file has been closed&#39;</span><span class="p">)</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketClosed</span><span class="p">(</span><span class="s">&#39;socket file has been closed&#39;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">error</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="c"># When disconnected we get...</span>
+      <span class="c">#</span>
+      <span class="c"># Python 2:</span>
+      <span class="c">#   socket.error: [Errno 107] Transport endpoint is not connected</span>
+      <span class="c">#</span>
+      <span class="c"># Python 3:</span>
+      <span class="c">#   ValueError: I/O operation on closed file.</span>
+
+      <span class="n">prefix</span> <span class="o">=</span> <span class="n">logging_prefix</span> <span class="o">%</span> <span class="s">&#39;SocketClosed&#39;</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">prefix</span> <span class="o">+</span> <span class="s">&#39;received exception &quot;</span><span class="si">%s</span><span class="s">&quot;&#39;</span> <span class="o">%</span> <span class="n">exc</span><span class="p">)</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketClosed</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+
+    <span class="n">raw_content</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+    <span class="c"># Parses the tor control lines. These are of the form...</span>
+    <span class="c"># &lt;status code&gt;&lt;divider&gt;&lt;content&gt;\r\n</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+      <span class="c"># if the socket is disconnected then the readline() method will provide</span>
+      <span class="c"># empty content</span>
+
+      <span class="n">prefix</span> <span class="o">=</span> <span class="n">logging_prefix</span> <span class="o">%</span> <span class="s">&#39;SocketClosed&#39;</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">prefix</span> <span class="o">+</span> <span class="s">&#39;empty socket content&#39;</span><span class="p">)</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketClosed</span><span class="p">(</span><span class="s">&#39;Received empty socket content.&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
+      <span class="n">prefix</span> <span class="o">=</span> <span class="n">logging_prefix</span> <span class="o">%</span> <span class="s">&#39;ProtocolError&#39;</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">prefix</span> <span class="o">+</span> <span class="s">&#39;line too short, &quot;</span><span class="si">%s</span><span class="s">&quot;&#39;</span> <span class="o">%</span> <span class="n">log</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">line</span><span class="p">))</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;Badly formatted reply line: too short&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;^[a-zA-Z0-9]{3}[-+ ]&#39;</span><span class="p">,</span> <span class="n">line</span><span class="p">):</span>
+      <span class="n">prefix</span> <span class="o">=</span> <span class="n">logging_prefix</span> <span class="o">%</span> <span class="s">&#39;ProtocolError&#39;</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">prefix</span> <span class="o">+</span> <span class="s">&#39;malformed status code/divider, &quot;</span><span class="si">%s</span><span class="s">&quot;&#39;</span> <span class="o">%</span> <span class="n">log</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">line</span><span class="p">))</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;Badly formatted reply line: beginning is malformed&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">line</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;</span><span class="se">\r\n</span><span class="s">&#39;</span><span class="p">):</span>
+      <span class="n">prefix</span> <span class="o">=</span> <span class="n">logging_prefix</span> <span class="o">%</span> <span class="s">&#39;ProtocolError&#39;</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">prefix</span> <span class="o">+</span> <span class="s">&#39;no CRLF linebreak, &quot;</span><span class="si">%s</span><span class="s">&quot;&#39;</span> <span class="o">%</span> <span class="n">log</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">line</span><span class="p">))</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;All lines should end with CRLF&#39;</span><span class="p">)</span>
+
+    <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>  <span class="c"># strips off the CRLF</span>
+    <span class="n">status_code</span><span class="p">,</span> <span class="n">divider</span><span class="p">,</span> <span class="n">content</span> <span class="o">=</span> <span class="n">line</span><span class="p">[:</span><span class="mi">3</span><span class="p">],</span> <span class="n">line</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="mi">4</span><span class="p">],</span> <span class="n">line</span><span class="p">[</span><span class="mi">4</span><span class="p">:]</span>
+    <span class="n">content_lines</span> <span class="o">=</span> <span class="p">[</span><span class="n">content</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">prereq</span><span class="o">.</span><span class="n">is_python_3</span><span class="p">():</span>
+      <span class="n">status_code</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">status_code</span><span class="p">)</span>
+      <span class="n">divider</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">divider</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">divider</span> <span class="o">==</span> <span class="s">&#39;-&#39;</span><span class="p">:</span>
+      <span class="c"># mid-reply line, keep pulling for more content</span>
+      <span class="n">parsed_content</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">status_code</span><span class="p">,</span> <span class="n">divider</span><span class="p">,</span> <span class="n">content</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="n">divider</span> <span class="o">==</span> <span class="s">&#39; &#39;</span><span class="p">:</span>
+      <span class="c"># end of the message, return the message</span>
+      <span class="n">parsed_content</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">status_code</span><span class="p">,</span> <span class="n">divider</span><span class="p">,</span> <span class="n">content</span><span class="p">))</span>
+
+      <span class="n">raw_content_str</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">raw_content</span><span class="p">)</span>
+      <span class="n">log_message</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">raw_content_str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;</span><span class="se">\r\n</span><span class="s">&#39;</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">())</span>
+
+      <span class="k">if</span> <span class="n">TRUNCATE_LOGS</span><span class="p">:</span>
+        <span class="n">log_message_lines</span> <span class="o">=</span> <span class="n">log_message</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">log_message_lines</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">TRUNCATE_LOGS</span><span class="p">:</span>
+          <span class="n">log_message</span> <span class="o">=</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">log_message_lines</span><span class="p">[:</span><span class="n">TRUNCATE_LOGS</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="s">&#39;... </span><span class="si">%i</span><span class="s"> more lines...&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">log_message_lines</span><span class="p">)</span> <span class="o">-</span> <span class="n">TRUNCATE_LOGS</span><span class="p">)])</span>
+
+      <span class="n">log</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="s">&#39;Received from tor:</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">+</span> <span class="n">log_message</span><span class="p">)</span>
+
+      <span class="k">return</span> <span class="n">stem</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">ControlMessage</span><span class="p">(</span><span class="n">parsed_content</span><span class="p">,</span> <span class="n">raw_content_str</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">divider</span> <span class="o">==</span> <span class="s">&#39;+&#39;</span><span class="p">:</span>
+      <span class="c"># data entry, all of the following lines belong to the content until we</span>
+      <span class="c"># get a line with just a period</span>
+
+      <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+          <span class="n">line</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_bytes</span><span class="p">(</span><span class="n">control_file</span><span class="o">.</span><span class="n">readline</span><span class="p">())</span>
+        <span class="k">except</span> <span class="n">socket</span><span class="o">.</span><span class="n">error</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+          <span class="n">prefix</span> <span class="o">=</span> <span class="n">logging_prefix</span> <span class="o">%</span> <span class="s">&#39;SocketClosed&#39;</span>
+          <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">prefix</span> <span class="o">+</span> <span class="s">&#39;received an exception while mid-way through a data reply (exception: &quot;</span><span class="si">%s</span><span class="s">&quot;, read content: &quot;</span><span class="si">%s</span><span class="s">&quot;)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="n">log</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">raw_content</span><span class="p">))))</span>
+          <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketClosed</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+
+        <span class="n">raw_content</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;</span><span class="se">\r\n</span><span class="s">&#39;</span><span class="p">):</span>
+          <span class="n">prefix</span> <span class="o">=</span> <span class="n">logging_prefix</span> <span class="o">%</span> <span class="s">&#39;ProtocolError&#39;</span>
+          <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">prefix</span> <span class="o">+</span> <span class="s">&#39;CRLF linebreaks missing from a data reply, &quot;</span><span class="si">%s</span><span class="s">&quot;&#39;</span> <span class="o">%</span> <span class="n">log</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">raw_content</span><span class="p">)))</span>
+          <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;All lines should end with CRLF&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">line</span> <span class="o">==</span> <span class="n">b</span><span class="s">&#39;.</span><span class="se">\r\n</span><span class="s">&#39;</span><span class="p">:</span>
+          <span class="k">break</span>  <span class="c"># data block termination</span>
+
+        <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>  <span class="c"># strips off the CRLF</span>
+
+        <span class="c"># lines starting with a period are escaped by a second period (as per</span>
+        <span class="c"># section 2.4 of the control-spec)</span>
+
+        <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;..&#39;</span><span class="p">):</span>
+          <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+        <span class="n">content_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+      <span class="c"># joins the content using a newline rather than CRLF separator (more</span>
+      <span class="c"># conventional for multi-line string content outside the windows world)</span>
+
+      <span class="n">parsed_content</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">status_code</span><span class="p">,</span> <span class="n">divider</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">content_lines</span><span class="p">)))</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="c"># this should never be reached due to the prefix regex, but might as well</span>
+      <span class="c"># be safe...</span>
+      <span class="n">prefix</span> <span class="o">=</span> <span class="n">logging_prefix</span> <span class="o">%</span> <span class="s">&#39;ProtocolError&#39;</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">prefix</span> <span class="o">+</span> <span class="s">&quot;</span><span class="se">\&quot;</span><span class="si">%s</span><span class="se">\&quot;</span><span class="s"> isn&#39;t a recognized divider type&quot;</span> <span class="o">%</span> <span class="n">divider</span><span class="p">)</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;Unrecognized divider type &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">divider</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">line</span><span class="p">)))</span>
+
+</div>
+<div class="viewcode-block" id="send_formatting"><a class="viewcode-back" href="../../api/socket.html#stem.socket.send_formatting">[docs]</a><span class="k">def</span> <span class="nf">send_formatting</span><span class="p">(</span><span class="n">message</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Performs the formatting expected from sent control messages. For more</span>
+<span class="sd">  information see the :func:`~stem.socket.send_message` function.</span>
+
+<span class="sd">  :param str message: message to be formatted</span>
+
+<span class="sd">  :returns: **str** of the message wrapped by the formatting expected from</span>
+<span class="sd">    controllers</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># From control-spec section 2.2...</span>
+  <span class="c">#   Command = Keyword OptArguments CRLF / &quot;+&quot; Keyword OptArguments CRLF CmdData</span>
+  <span class="c">#   Keyword = 1*ALPHA</span>
+  <span class="c">#   OptArguments = [ SP *(SP / VCHAR) ]</span>
+  <span class="c">#</span>
+  <span class="c"># A command is either a single line containing a Keyword and arguments, or a</span>
+  <span class="c"># multiline command whose initial keyword begins with +, and whose data</span>
+  <span class="c"># section ends with a single &quot;.&quot; on a line of its own.</span>
+
+  <span class="c"># if we already have \r\n entries then standardize on \n to start with</span>
+  <span class="n">message</span> <span class="o">=</span> <span class="n">message</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\r\n</span><span class="s">&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span> <span class="ow">in</span> <span class="n">message</span><span class="p">:</span>
+    <span class="k">return</span> <span class="s">&#39;+</span><span class="si">%s</span><span class="se">\r\n</span><span class="s">.</span><span class="se">\r\n</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">message</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="se">\r\n</span><span class="s">&#39;</span><span class="p">)</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">message</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\r\n</span><span class="s">&#39;</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

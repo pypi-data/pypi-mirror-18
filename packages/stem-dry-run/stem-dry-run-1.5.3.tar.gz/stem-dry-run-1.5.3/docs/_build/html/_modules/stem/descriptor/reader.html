@@ -1,0 +1,677 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.descriptor.reader &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem" href="../../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.descriptor.reader</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.descriptor.reader</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2012-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Utilities for reading descriptors from local directories and archives. This is</span>
+<span class="sd">mostly done through the :class:`~stem.descriptor.reader.DescriptorReader`</span>
+<span class="sd">class, which is an iterator for the descriptor data in a series of</span>
+<span class="sd">destinations. For example...</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  my_descriptors = [</span>
+<span class="sd">    &#39;/tmp/server-descriptors-2012-03.tar.bz2&#39;,</span>
+<span class="sd">    &#39;/tmp/archived_descriptors/&#39;,</span>
+<span class="sd">  ]</span>
+
+<span class="sd">  # prints the contents of all the descriptor files</span>
+<span class="sd">  with DescriptorReader(my_descriptors) as reader:</span>
+<span class="sd">    for descriptor in reader:</span>
+<span class="sd">      print descriptor</span>
+
+<span class="sd">This ignores files that cannot be processed due to read errors or unparsable</span>
+<span class="sd">content. To be notified of skipped files you can register a listener with</span>
+<span class="sd">:func:`~stem.descriptor.reader.DescriptorReader.register_skip_listener`.</span>
+
+<span class="sd">The :class:`~stem.descriptor.reader.DescriptorReader` keeps track of the last</span>
+<span class="sd">modified timestamps for descriptor files that it has read so it can skip</span>
+<span class="sd">unchanged files if run again. This listing of processed files can also be</span>
+<span class="sd">persisted and applied to other</span>
+<span class="sd">:class:`~stem.descriptor.reader.DescriptorReader` instances. For example, the</span>
+<span class="sd">following prints descriptors as they&#39;re changed over the course of a minute,</span>
+<span class="sd">and picks up where it left off if run again...</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  reader = DescriptorReader([&#39;/tmp/descriptor_data&#39;])</span>
+
+<span class="sd">  try:</span>
+<span class="sd">    processed_files = load_processed_files(&#39;/tmp/used_descriptors&#39;)</span>
+<span class="sd">    reader.set_processed_files(processed_files)</span>
+<span class="sd">  except: pass # could not load, maybe this is the first run</span>
+
+<span class="sd">  start_time = time.time()</span>
+
+<span class="sd">  while (time.time() - start_time) &lt; 60:</span>
+<span class="sd">    # prints any descriptors that have changed since last checked</span>
+<span class="sd">    with reader:</span>
+<span class="sd">      for descriptor in reader:</span>
+<span class="sd">        print descriptor</span>
+
+<span class="sd">    time.sleep(1)</span>
+
+<span class="sd">  save_processed_files(&#39;/tmp/used_descriptors&#39;, reader.get_processed_files())</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  load_processed_files - Loads a listing of processed files</span>
+<span class="sd">  save_processed_files - Saves a listing of processed files</span>
+
+<span class="sd">  DescriptorReader - Iterator for descriptor data on the local file system</span>
+<span class="sd">    |- get_processed_files - provides the listing of files that we&#39;ve processed</span>
+<span class="sd">    |- set_processed_files - sets our tracking of the files we have processed</span>
+<span class="sd">    |- register_read_listener - adds a listener for when files are read</span>
+<span class="sd">    |- register_skip_listener - adds a listener that&#39;s notified of skipped files</span>
+<span class="sd">    |- start - begins reading descriptor data</span>
+<span class="sd">    |- stop - stops reading descriptor data</span>
+<span class="sd">    |- __enter__ / __exit__ - manages the descriptor reader thread in the context</span>
+<span class="sd">    +- __iter__ - iterates over descriptor data in unread files</span>
+
+<span class="sd">  FileSkipped - Base exception for a file that was skipped</span>
+<span class="sd">    |- AlreadyRead - We&#39;ve already read a file with this last modified timestamp</span>
+<span class="sd">    |- ParsingFailure - Contents can&#39;t be parsed as descriptor data</span>
+<span class="sd">    |- UnrecognizedType - File extension indicates non-descriptor data</span>
+<span class="sd">    +- ReadFailed - Wraps an error that was raised while reading the file</span>
+<span class="sd">       +- FileMissing - File does not exist</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">mimetypes</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">tarfile</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="kn">import</span> <span class="nn">queue</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+  <span class="kn">import</span> <span class="nn">Queue</span> <span class="kn">as</span> <span class="nn">queue</span>
+
+<span class="kn">import</span> <span class="nn">stem.descriptor</span>
+<span class="kn">import</span> <span class="nn">stem.prereq</span>
+<span class="kn">import</span> <span class="nn">stem.util.system</span>
+
+<span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">str_type</span>
+
+<span class="c"># flag to indicate when the reader thread is out of descriptor files to read</span>
+<span class="n">FINISHED</span> <span class="o">=</span> <span class="s">&#39;DONE&#39;</span>
+
+
+<div class="viewcode-block" id="FileSkipped"><a class="viewcode-back" href="../../../api/descriptor/reader.html#stem.descriptor.reader.FileSkipped">[docs]</a><span class="k">class</span> <span class="nc">FileSkipped</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+  <span class="s">&quot;Base error when we can&#39;t provide descriptor data from a file.&quot;</span>
+
+</div>
+<div class="viewcode-block" id="AlreadyRead"><a class="viewcode-back" href="../../../api/descriptor/reader.html#stem.descriptor.reader.AlreadyRead">[docs]</a><span class="k">class</span> <span class="nc">AlreadyRead</span><span class="p">(</span><span class="n">FileSkipped</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Already read a file with this &#39;last modified&#39; timestamp or later.</span>
+
+<span class="sd">  :param int last_modified: unix timestamp for when the file was last modified</span>
+<span class="sd">  :param int last_modified_when_read: unix timestamp for the modification time</span>
+<span class="sd">    when we last read this file</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">last_modified</span><span class="p">,</span> <span class="n">last_modified_when_read</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">AlreadyRead</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="s">&#39;File has already been read since it was last modified. modification time: </span><span class="si">%s</span><span class="s">, last read: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">last_modified</span><span class="p">,</span> <span class="n">last_modified_when_read</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">last_modified</span> <span class="o">=</span> <span class="n">last_modified</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">last_modified_when_read</span> <span class="o">=</span> <span class="n">last_modified_when_read</span>
+
+</div>
+<div class="viewcode-block" id="ParsingFailure"><a class="viewcode-back" href="../../../api/descriptor/reader.html#stem.descriptor.reader.ParsingFailure">[docs]</a><span class="k">class</span> <span class="nc">ParsingFailure</span><span class="p">(</span><span class="n">FileSkipped</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  File contents could not be parsed as descriptor data.</span>
+
+<span class="sd">  :param ValueError exception: issue that arose when parsing</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parsing_exception</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">ParsingFailure</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">parsing_exception</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">exception</span> <span class="o">=</span> <span class="n">parsing_exception</span>
+
+</div>
+<div class="viewcode-block" id="UnrecognizedType"><a class="viewcode-back" href="../../../api/descriptor/reader.html#stem.descriptor.reader.UnrecognizedType">[docs]</a><span class="k">class</span> <span class="nc">UnrecognizedType</span><span class="p">(</span><span class="n">FileSkipped</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  File doesn&#39;t contain descriptor data. This could either be due to its file</span>
+<span class="sd">  type or because it doesn&#39;t conform to a recognizable descriptor type.</span>
+
+<span class="sd">  :param tuple mime_type: the (type, encoding) tuple provided by mimetypes.guess_type()</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mime_type</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">UnrecognizedType</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="s">&#39;Unrecognized mime type: </span><span class="si">%s</span><span class="s"> (</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="n">mime_type</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mime_type</span> <span class="o">=</span> <span class="n">mime_type</span>
+
+</div>
+<div class="viewcode-block" id="ReadFailed"><a class="viewcode-back" href="../../../api/descriptor/reader.html#stem.descriptor.reader.ReadFailed">[docs]</a><span class="k">class</span> <span class="nc">ReadFailed</span><span class="p">(</span><span class="n">FileSkipped</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  An IOError occurred while trying to read the file.</span>
+
+<span class="sd">  :param IOError exception: issue that arose when reading the file, **None** if</span>
+<span class="sd">    this arose due to the file not being present</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">read_exception</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">ReadFailed</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">read_exception</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">exception</span> <span class="o">=</span> <span class="n">read_exception</span>
+
+</div>
+<div class="viewcode-block" id="FileMissing"><a class="viewcode-back" href="../../../api/descriptor/reader.html#stem.descriptor.reader.FileMissing">[docs]</a><span class="k">class</span> <span class="nc">FileMissing</span><span class="p">(</span><span class="n">ReadFailed</span><span class="p">):</span>
+  <span class="s">&#39;File does not exist.&#39;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">FileMissing</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="s">&#39;File does not exist&#39;</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="load_processed_files"><a class="viewcode-back" href="../../../api/descriptor/reader.html#stem.descriptor.reader.load_processed_files">[docs]</a><span class="k">def</span> <span class="nf">load_processed_files</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Loads a dictionary of &#39;path =&gt; last modified timestamp&#39; mappings, as</span>
+<span class="sd">  persisted by :func:`~stem.descriptor.reader.save_processed_files`, from a</span>
+<span class="sd">  file.</span>
+
+<span class="sd">  :param str path: location to load the processed files dictionary from</span>
+
+<span class="sd">  :returns: **dict** of &#39;path (**str**) =&gt; last modified unix timestamp</span>
+<span class="sd">    (**int**)&#39; mappings</span>
+
+<span class="sd">  :raises:</span>
+<span class="sd">    * **IOError** if unable to read the file</span>
+<span class="sd">    * **TypeError** if unable to parse the file&#39;s contents</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">processed_files</span> <span class="o">=</span> <span class="p">{}</span>
+
+  <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">as</span> <span class="n">input_file</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">input_file</span><span class="o">.</span><span class="n">readlines</span><span class="p">():</span>
+      <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="p">:</span>
+        <span class="k">continue</span>  <span class="c"># skip blank lines</span>
+
+      <span class="k">if</span> <span class="s">&#39; &#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;Malformed line: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">line</span><span class="p">)</span>
+
+      <span class="n">path</span><span class="p">,</span> <span class="n">timestamp</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isabs</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; is not an absolute path&quot;</span> <span class="o">%</span> <span class="n">path</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="ow">not</span> <span class="n">timestamp</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; is not an integer timestamp&quot;</span> <span class="o">%</span> <span class="n">timestamp</span><span class="p">)</span>
+
+      <span class="n">processed_files</span><span class="p">[</span><span class="n">path</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">timestamp</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">processed_files</span>
+
+</div>
+<div class="viewcode-block" id="save_processed_files"><a class="viewcode-back" href="../../../api/descriptor/reader.html#stem.descriptor.reader.save_processed_files">[docs]</a><span class="k">def</span> <span class="nf">save_processed_files</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">processed_files</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Persists a dictionary of &#39;path =&gt; last modified timestamp&#39; mappings (as</span>
+<span class="sd">  provided by the DescriptorReader&#39;s</span>
+<span class="sd">  :func:`~stem.descriptor.reader.DescriptorReader.get_processed_files` method)</span>
+<span class="sd">  so that they can be loaded later and applied to another</span>
+<span class="sd">  :class:`~stem.descriptor.reader.DescriptorReader`.</span>
+
+<span class="sd">  :param str path: location to save the processed files dictionary to</span>
+<span class="sd">  :param dict processed_files: &#39;path =&gt; last modified&#39; mappings</span>
+
+<span class="sd">  :raises:</span>
+<span class="sd">    * **IOError** if unable to write to the file</span>
+<span class="sd">    * **TypeError** if processed_files is of the wrong type</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># makes the parent directory if it doesn&#39;t already exist</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">path_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path_dir</span><span class="p">):</span>
+      <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">path_dir</span><span class="p">)</span>
+  <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+
+  <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">output_file</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">path</span><span class="p">,</span> <span class="n">timestamp</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">processed_files</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isabs</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;Only absolute paths are acceptable: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">path</span><span class="p">)</span>
+
+      <span class="n">output_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> </span><span class="si">%i</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">))</span>
+
+</div>
+<div class="viewcode-block" id="DescriptorReader"><a class="viewcode-back" href="../../../api/descriptor/reader.html#stem.descriptor.reader.DescriptorReader">[docs]</a><span class="k">class</span> <span class="nc">DescriptorReader</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Iterator for the descriptor data on the local file system. This can process</span>
+<span class="sd">  text files, tarball archives (gzip or bzip2), or recurse directories.</span>
+
+<span class="sd">  By default this limits the number of descriptors that we&#39;ll read ahead before</span>
+<span class="sd">  waiting for our caller to fetch some of them. This is included to avoid</span>
+<span class="sd">  unbounded memory usage.</span>
+
+<span class="sd">  Our persistence_path argument is a convenient method to persist the listing</span>
+<span class="sd">  of files we have processed between runs, however it doesn&#39;t allow for error</span>
+<span class="sd">  handling. If you want that then use the</span>
+<span class="sd">  :func:`~stem.descriptor.reader.load_processed_files` and</span>
+<span class="sd">  :func:`~stem.descriptor.reader.save_processed_files` functions instead.</span>
+
+<span class="sd">  :param str,list target: path or list of paths for files or directories to be read from</span>
+<span class="sd">  :param bool validate: checks the validity of the descriptor&#39;s content if</span>
+<span class="sd">    **True**, skips these checks otherwise</span>
+<span class="sd">  :param bool follow_links: determines if we&#39;ll follow symlinks when traversing</span>
+<span class="sd">    directories (requires python 2.6)</span>
+<span class="sd">  :param int buffer_size: descriptors we&#39;ll buffer before waiting for some to</span>
+<span class="sd">    be read, this is unbounded if zero</span>
+<span class="sd">  :param str persistence_path: if set we will load and save processed file</span>
+<span class="sd">    listings from this path, errors are ignored</span>
+<span class="sd">  :param stem.descriptor.__init__.DocumentHandler document_handler: method in</span>
+<span class="sd">    which to parse :class:`~stem.descriptor.networkstatus.NetworkStatusDocument`</span>
+<span class="sd">  :param dict kwargs: additional arguments for the descriptor constructor</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">follow_links</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">buffer_size</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="n">persistence_path</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">document_handler</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">DocumentHandler</span><span class="o">.</span><span class="n">ENTRIES</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="p">(</span><span class="nb">bytes</span><span class="p">,</span> <span class="n">str_type</span><span class="p">)):</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span> <span class="o">=</span> <span class="p">[</span><span class="n">target</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span> <span class="o">=</span> <span class="n">target</span>
+
+    <span class="c"># expand any relative paths we got</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span><span class="p">))</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_validate</span> <span class="o">=</span> <span class="n">validate</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_follow_links</span> <span class="o">=</span> <span class="n">follow_links</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_persistence_path</span> <span class="o">=</span> <span class="n">persistence_path</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_document_handler</span> <span class="o">=</span> <span class="n">document_handler</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_read_listeners</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_skip_listeners</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_processed_files</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_reader_thread</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_reader_thread_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">()</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_iter_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_iter_notice</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_is_stopped</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_is_stopped</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+
+    <span class="c"># Descriptors that we have read but not yet provided to the caller. A</span>
+    <span class="c"># FINISHED entry is used by the reading thread to indicate the end.</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_unreturned_descriptors</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">Queue</span><span class="p">(</span><span class="n">buffer_size</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_persistence_path</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">processed_files</span> <span class="o">=</span> <span class="n">load_processed_files</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_persistence_path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_processed_files</span><span class="p">(</span><span class="n">processed_files</span><span class="p">)</span>
+      <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="DescriptorReader.get_processed_files"><a class="viewcode-back" href="../../../api/descriptor/reader.html#stem.descriptor.reader.DescriptorReader.get_processed_files">[docs]</a>  <span class="k">def</span> <span class="nf">get_processed_files</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    For each file that we have read descriptor data from this provides a</span>
+<span class="sd">    mapping of the form...</span>
+
+<span class="sd">    ::</span>
+
+<span class="sd">      absolute path (str) =&gt; last modified unix timestamp (int)</span>
+
+<span class="sd">    This includes entries set through the</span>
+<span class="sd">    :func:`~stem.descriptor.reader.DescriptorReader.set_processed_files`</span>
+<span class="sd">    method. Each run resets this to only the files that were present during</span>
+<span class="sd">    that run.</span>
+
+<span class="sd">    :returns: **dict** with the absolute paths and unix timestamp for the last</span>
+<span class="sd">      modified times of the files we have processed</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c"># make sure that we only provide back absolute paths</span>
+    <span class="k">return</span> <span class="nb">dict</span><span class="p">((</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">k</span><span class="p">),</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_processed_files</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span>
+</div>
+<div class="viewcode-block" id="DescriptorReader.set_processed_files"><a class="viewcode-back" href="../../../api/descriptor/reader.html#stem.descriptor.reader.DescriptorReader.set_processed_files">[docs]</a>  <span class="k">def</span> <span class="nf">set_processed_files</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">processed_files</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Sets the listing of the files we have processed. Most often this is used</span>
+<span class="sd">    with a newly created :class:`~stem.descriptor.reader.DescriptorReader` to</span>
+<span class="sd">    pre-populate the listing of descriptor files that we have seen.</span>
+
+<span class="sd">    :param dict processed_files: mapping of absolute paths (**str**) to unix</span>
+<span class="sd">      timestamps for the last modified time (**int**)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_processed_files</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">processed_files</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="DescriptorReader.register_read_listener"><a class="viewcode-back" href="../../../api/descriptor/reader.html#stem.descriptor.reader.DescriptorReader.register_read_listener">[docs]</a>  <span class="k">def</span> <span class="nf">register_read_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">listener</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Registers a listener for when files are read. This is executed prior to</span>
+<span class="sd">    processing files. Listeners are expected to be of the form...</span>
+
+<span class="sd">    ::</span>
+
+<span class="sd">      my_listener(path)</span>
+
+<span class="sd">    :param functor listener: functor to be notified when files are read</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_read_listeners</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">listener</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="DescriptorReader.register_skip_listener"><a class="viewcode-back" href="../../../api/descriptor/reader.html#stem.descriptor.reader.DescriptorReader.register_skip_listener">[docs]</a>  <span class="k">def</span> <span class="nf">register_skip_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">listener</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Registers a listener for files that are skipped. This listener is expected</span>
+<span class="sd">    to be a functor of the form...</span>
+
+<span class="sd">    ::</span>
+
+<span class="sd">      my_listener(path, exception)</span>
+
+<span class="sd">    :param functor listener: functor to be notified of files that are skipped</span>
+<span class="sd">      to read errors or because they couldn&#39;t be parsed as valid descriptor data</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_skip_listeners</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">listener</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="DescriptorReader.get_buffered_descriptor_count"><a class="viewcode-back" href="../../../api/descriptor/reader.html#stem.descriptor.reader.DescriptorReader.get_buffered_descriptor_count">[docs]</a>  <span class="k">def</span> <span class="nf">get_buffered_descriptor_count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the number of descriptors that are waiting to be iterated over.</span>
+<span class="sd">    This is limited to the buffer_size that we were constructed with.</span>
+
+<span class="sd">    :returns: **int** for the estimated number of currently enqueued</span>
+<span class="sd">      descriptors, this is not entirely reliable</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unreturned_descriptors</span><span class="o">.</span><span class="n">qsize</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="DescriptorReader.start"><a class="viewcode-back" href="../../../api/descriptor/reader.html#stem.descriptor.reader.DescriptorReader.start">[docs]</a>  <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Starts reading our descriptor files.</span>
+
+<span class="sd">    :raises: **ValueError** if we&#39;re already reading the descriptor files</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reader_thread_lock</span><span class="p">:</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reader_thread</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Already running, you need to call stop() first&#39;</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_is_stopped</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reader_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_descriptor_files</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;Descriptor Reader&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reader_thread</span><span class="o">.</span><span class="n">setDaemon</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reader_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="DescriptorReader.stop"><a class="viewcode-back" href="../../../api/descriptor/reader.html#stem.descriptor.reader.DescriptorReader.stop">[docs]</a>  <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Stops further reading of descriptor files.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reader_thread_lock</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_is_stopped</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_iter_notice</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+
+      <span class="c"># clears our queue to unblock enqueue calls</span>
+
+      <span class="k">try</span><span class="p">:</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_unreturned_descriptors</span><span class="o">.</span><span class="n">get_nowait</span><span class="p">()</span>
+      <span class="k">except</span> <span class="n">queue</span><span class="o">.</span><span class="n">Empty</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">_reader_thread</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_reader_thread</span> <span class="o">=</span> <span class="bp">None</span>
+
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_persistence_path</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+          <span class="n">processed_files</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_processed_files</span><span class="p">()</span>
+          <span class="n">save_processed_files</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_persistence_path</span><span class="p">,</span> <span class="n">processed_files</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+          <span class="k">pass</span>
+</div>
+  <span class="k">def</span> <span class="nf">_read_descriptor_files</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="n">new_processed_files</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">remaining_files</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_targets</span><span class="p">)</span>
+
+    <span class="k">while</span> <span class="n">remaining_files</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_stopped</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+      <span class="n">target</span> <span class="o">=</span> <span class="n">remaining_files</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">target</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_notify_skip_listeners</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">FileMissing</span><span class="p">())</span>
+        <span class="k">continue</span>
+
+      <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">target</span><span class="p">):</span>
+        <span class="n">walker</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">walk</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">followlinks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_follow_links</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handle_walker</span><span class="p">(</span><span class="n">walker</span><span class="p">,</span> <span class="n">new_processed_files</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handle_file</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">new_processed_files</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_processed_files</span> <span class="o">=</span> <span class="n">new_processed_files</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_stopped</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_unreturned_descriptors</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">FINISHED</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_iter_notice</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+
+  <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iter_lock</span><span class="p">:</span>
+      <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_stopped</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+        <span class="k">try</span><span class="p">:</span>
+          <span class="n">descriptor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unreturned_descriptors</span><span class="o">.</span><span class="n">get_nowait</span><span class="p">()</span>
+
+          <span class="k">if</span> <span class="n">descriptor</span> <span class="o">==</span> <span class="n">FINISHED</span><span class="p">:</span>
+            <span class="k">break</span>
+          <span class="k">else</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">descriptor</span>
+        <span class="k">except</span> <span class="n">queue</span><span class="o">.</span><span class="n">Empty</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_iter_notice</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_iter_notice</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+  <span class="k">def</span> <span class="nf">_handle_walker</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">walker</span><span class="p">,</span> <span class="n">new_processed_files</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">root</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">files</span> <span class="ow">in</span> <span class="n">walker</span><span class="p">:</span>
+      <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handle_file</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">filename</span><span class="p">),</span> <span class="n">new_processed_files</span><span class="p">)</span>
+
+        <span class="c"># this can take a while if, say, we&#39;re including the root directory</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_stopped</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+          <span class="k">return</span>
+
+  <span class="k">def</span> <span class="nf">_handle_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">new_processed_files</span><span class="p">):</span>
+    <span class="c"># This is a file. Register its last modified timestamp and check if</span>
+    <span class="c"># it&#39;s a file that we should skip.</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">last_modified</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">target</span><span class="p">)</span><span class="o">.</span><span class="n">st_mtime</span><span class="p">)</span>
+      <span class="n">last_used</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_processed_files</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+      <span class="n">new_processed_files</span><span class="p">[</span><span class="n">target</span><span class="p">]</span> <span class="o">=</span> <span class="n">last_modified</span>
+    <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_notify_skip_listeners</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">ReadFailed</span><span class="p">(</span><span class="n">exc</span><span class="p">))</span>
+      <span class="k">return</span>
+
+    <span class="k">if</span> <span class="n">last_used</span> <span class="ow">and</span> <span class="n">last_used</span> <span class="o">&gt;=</span> <span class="n">last_modified</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_notify_skip_listeners</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">AlreadyRead</span><span class="p">(</span><span class="n">last_modified</span><span class="p">,</span> <span class="n">last_used</span><span class="p">))</span>
+      <span class="k">return</span>
+
+    <span class="c"># Block devices and such are never descriptors, and can cause us to block</span>
+    <span class="c"># for quite a while so skipping anything that isn&#39;t a regular file.</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">target</span><span class="p">):</span>
+      <span class="k">return</span>
+
+    <span class="c"># The mimetypes module only checks the file extension. To actually</span>
+    <span class="c"># check the content (like the &#39;file&#39; command) we&#39;d need something like</span>
+    <span class="c"># pymagic (https://github.com/cloudburst/pymagic).</span>
+
+    <span class="n">target_type</span> <span class="o">=</span> <span class="n">mimetypes</span><span class="o">.</span><span class="n">guess_type</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">target_type</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="s">&#39;text/plain&#39;</span><span class="p">):</span>
+      <span class="c"># either &#39;.txt&#39; or an unknown type</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_handle_descriptor_file</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">target_type</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">is_tarfile</span><span class="p">(</span><span class="n">target</span><span class="p">):</span>
+      <span class="c"># handles gzip, bz2, and decompressed tarballs among others</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_handle_archive</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_notify_skip_listeners</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">UnrecognizedType</span><span class="p">(</span><span class="n">target_type</span><span class="p">))</span>
+
+  <span class="k">def</span> <span class="nf">_handle_descriptor_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">mime_type</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_notify_read_listeners</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+
+      <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="s">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">target_file</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">parse_file</span><span class="p">(</span><span class="n">target_file</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate</span><span class="p">,</span> <span class="n">document_handler</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_document_handler</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_kwargs</span><span class="p">):</span>
+          <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_stopped</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+            <span class="k">return</span>
+
+          <span class="bp">self</span><span class="o">.</span><span class="n">_unreturned_descriptors</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">desc</span><span class="p">)</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_iter_notice</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">TypeError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_notify_skip_listeners</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">UnrecognizedType</span><span class="p">(</span><span class="n">mime_type</span><span class="p">))</span>
+    <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_notify_skip_listeners</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">ParsingFailure</span><span class="p">(</span><span class="n">exc</span><span class="p">))</span>
+    <span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_notify_skip_listeners</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">ReadFailed</span><span class="p">(</span><span class="n">exc</span><span class="p">))</span>
+
+  <span class="k">def</span> <span class="nf">_handle_archive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+    <span class="c"># TODO: When dropping python 2.6 support go back to using &#39;with&#39; for</span>
+    <span class="c"># tarfiles...</span>
+    <span class="c">#</span>
+    <span class="c">#   http://bugs.python.org/issue7232</span>
+
+    <span class="n">tar_file</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_notify_read_listeners</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+      <span class="n">tar_file</span> <span class="o">=</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+
+      <span class="k">for</span> <span class="n">tar_entry</span> <span class="ow">in</span> <span class="n">tar_file</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">tar_entry</span><span class="o">.</span><span class="n">isfile</span><span class="p">():</span>
+          <span class="n">entry</span> <span class="o">=</span> <span class="n">tar_file</span><span class="o">.</span><span class="n">extractfile</span><span class="p">(</span><span class="n">tar_entry</span><span class="p">)</span>
+
+          <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">parse_file</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate</span><span class="p">,</span> <span class="n">document_handler</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_document_handler</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_kwargs</span><span class="p">):</span>
+              <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_stopped</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+                <span class="k">return</span>
+
+              <span class="n">desc</span><span class="o">.</span><span class="n">_set_path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">target</span><span class="p">))</span>
+              <span class="n">desc</span><span class="o">.</span><span class="n">_set_archive_path</span><span class="p">(</span><span class="n">tar_entry</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+              <span class="bp">self</span><span class="o">.</span><span class="n">_unreturned_descriptors</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">desc</span><span class="p">)</span>
+              <span class="bp">self</span><span class="o">.</span><span class="n">_iter_notice</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+          <span class="k">except</span> <span class="ne">TypeError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_notify_skip_listeners</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">ParsingFailure</span><span class="p">(</span><span class="n">exc</span><span class="p">))</span>
+          <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_notify_skip_listeners</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">ParsingFailure</span><span class="p">(</span><span class="n">exc</span><span class="p">))</span>
+          <span class="k">finally</span><span class="p">:</span>
+            <span class="n">entry</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_notify_skip_listeners</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">ReadFailed</span><span class="p">(</span><span class="n">exc</span><span class="p">))</span>
+    <span class="k">finally</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">tar_file</span><span class="p">:</span>
+        <span class="n">tar_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+  <span class="k">def</span> <span class="nf">_notify_read_listeners</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">listener</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_listeners</span><span class="p">:</span>
+      <span class="n">listener</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_notify_skip_listeners</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">exception</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">listener</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_skip_listeners</span><span class="p">:</span>
+      <span class="n">listener</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">exception</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+    <span class="k">return</span> <span class="bp">self</span>
+
+  <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exit_type</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

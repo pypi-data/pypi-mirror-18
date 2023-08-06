@@ -1,0 +1,224 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.response.protocolinfo &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem.response" href="../response.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.response.protocolinfo</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.response.protocolinfo</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2012-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="kn">import</span> <span class="nn">stem.response</span>
+<span class="kn">import</span> <span class="nn">stem.socket</span>
+<span class="kn">import</span> <span class="nn">stem.version</span>
+
+<span class="kn">from</span> <span class="nn">stem.connection</span> <span class="kn">import</span> <span class="n">AuthMethod</span>
+<span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">log</span>
+
+
+<div class="viewcode-block" id="ProtocolInfoResponse"><a class="viewcode-back" href="../../../api/response.html#stem.response.protocolinfo.ProtocolInfoResponse">[docs]</a><span class="k">class</span> <span class="nc">ProtocolInfoResponse</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">ControlMessage</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Version one PROTOCOLINFO query response.</span>
+
+<span class="sd">  The protocol_version is the only mandatory data for a valid PROTOCOLINFO</span>
+<span class="sd">  response, so all other values are None if undefined or empty if a collection.</span>
+
+<span class="sd">  :var int protocol_version: protocol version of the response</span>
+<span class="sd">  :var stem.version.Version tor_version: version of the tor process</span>
+<span class="sd">  :var tuple auth_methods: :data:`stem.connection.AuthMethod` types that tor will accept</span>
+<span class="sd">  :var tuple unknown_auth_methods: strings of unrecognized auth methods</span>
+<span class="sd">  :var str cookie_path: path of tor&#39;s authentication cookie</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">_parse_message</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="c"># Example:</span>
+    <span class="c">#   250-PROTOCOLINFO 1</span>
+    <span class="c">#   250-AUTH METHODS=COOKIE COOKIEFILE=&quot;/home/atagar/.tor/control_auth_cookie&quot;</span>
+    <span class="c">#   250-VERSION Tor=&quot;0.2.1.30&quot;</span>
+    <span class="c">#   250 OK</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">protocol_version</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">tor_version</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">auth_methods</span> <span class="o">=</span> <span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">unknown_auth_methods</span> <span class="o">=</span> <span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">cookie_path</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="n">auth_methods</span><span class="p">,</span> <span class="n">unknown_auth_methods</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+    <span class="n">remaining_lines</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_ok</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">remaining_lines</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;OK&#39;</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;PROTOCOLINFO response didn&#39;t have an OK status:</span><span class="se">\n</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+    <span class="c"># sanity check that we&#39;re a PROTOCOLINFO response</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">remaining_lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;PROTOCOLINFO&#39;</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;Message is not a PROTOCOLINFO response:</span><span class="se">\n</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">while</span> <span class="n">remaining_lines</span><span class="p">:</span>
+      <span class="n">line</span> <span class="o">=</span> <span class="n">remaining_lines</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+      <span class="n">line_type</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+      <span class="k">if</span> <span class="n">line_type</span> <span class="o">==</span> <span class="s">&#39;PROTOCOLINFO&#39;</span><span class="p">:</span>
+        <span class="c"># Line format:</span>
+        <span class="c">#   FirstLine = &quot;PROTOCOLINFO&quot; SP PIVERSION CRLF</span>
+        <span class="c">#   PIVERSION = 1*DIGIT</span>
+
+        <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">is_empty</span><span class="p">():</span>
+          <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;PROTOCOLINFO response&#39;s initial line is missing the protocol version: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">line</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">protocol_version</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">pop</span><span class="p">())</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&#39;PROTOCOLINFO response version is non-numeric: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">line</span><span class="p">)</span>
+
+        <span class="c"># The piversion really should be &#39;1&#39; but, according to the spec, tor</span>
+        <span class="c"># does not necessarily need to provide the PROTOCOLINFO version that we</span>
+        <span class="c"># requested. Log if it&#39;s something we aren&#39;t expecting but still make</span>
+        <span class="c"># an effort to parse like a v1 response.</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">protocol_version</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+          <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;We made a PROTOCOLINFO version 1 query but got a version </span><span class="si">%i</span><span class="s"> response instead. We&#39;ll still try to use it, but this may cause problems.&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">protocol_version</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="n">line_type</span> <span class="o">==</span> <span class="s">&#39;AUTH&#39;</span><span class="p">:</span>
+        <span class="c"># Line format:</span>
+        <span class="c">#   AuthLine = &quot;250-AUTH&quot; SP &quot;METHODS=&quot; AuthMethod *(&quot;,&quot; AuthMethod)</span>
+        <span class="c">#              *(SP &quot;COOKIEFILE=&quot; AuthCookieFile) CRLF</span>
+        <span class="c">#   AuthMethod = &quot;NULL&quot; / &quot;HASHEDPASSWORD&quot; / &quot;COOKIE&quot;</span>
+        <span class="c">#   AuthCookieFile = QuotedString</span>
+
+        <span class="c"># parse AuthMethod mapping</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="o">.</span><span class="n">is_next_mapping</span><span class="p">(</span><span class="s">&#39;METHODS&#39;</span><span class="p">):</span>
+          <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;PROTOCOLINFO response&#39;s AUTH line is missing its mandatory &#39;METHODS&#39; mapping: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">line</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">method</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">pop_mapping</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">):</span>
+          <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s">&#39;NULL&#39;</span><span class="p">:</span>
+            <span class="n">auth_methods</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AuthMethod</span><span class="o">.</span><span class="n">NONE</span><span class="p">)</span>
+          <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s">&#39;HASHEDPASSWORD&#39;</span><span class="p">:</span>
+            <span class="n">auth_methods</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AuthMethod</span><span class="o">.</span><span class="n">PASSWORD</span><span class="p">)</span>
+          <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s">&#39;COOKIE&#39;</span><span class="p">:</span>
+            <span class="n">auth_methods</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AuthMethod</span><span class="o">.</span><span class="n">COOKIE</span><span class="p">)</span>
+          <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s">&#39;SAFECOOKIE&#39;</span><span class="p">:</span>
+            <span class="n">auth_methods</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AuthMethod</span><span class="o">.</span><span class="n">SAFECOOKIE</span><span class="p">)</span>
+          <span class="k">else</span><span class="p">:</span>
+            <span class="n">unknown_auth_methods</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">method</span><span class="p">)</span>
+            <span class="n">message_id</span> <span class="o">=</span> <span class="s">&#39;stem.response.protocolinfo.unknown_auth_</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">method</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">log_once</span><span class="p">(</span><span class="n">message_id</span><span class="p">,</span> <span class="n">log</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="s">&quot;PROTOCOLINFO response included a type of authentication that we don&#39;t recognize: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">method</span><span class="p">)</span>
+
+            <span class="c"># our auth_methods should have a single AuthMethod.UNKNOWN entry if</span>
+            <span class="c"># any unknown authentication methods exist</span>
+            <span class="k">if</span> <span class="n">AuthMethod</span><span class="o">.</span><span class="n">UNKNOWN</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">auth_methods</span><span class="p">:</span>
+              <span class="n">auth_methods</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AuthMethod</span><span class="o">.</span><span class="n">UNKNOWN</span><span class="p">)</span>
+
+        <span class="c"># parse optional COOKIEFILE mapping (quoted and can have escapes)</span>
+        <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">is_next_mapping</span><span class="p">(</span><span class="s">&#39;COOKIEFILE&#39;</span><span class="p">,</span> <span class="bp">True</span><span class="p">,</span> <span class="bp">True</span><span class="p">):</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">cookie_path</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">pop_mapping</span><span class="p">(</span><span class="bp">True</span><span class="p">,</span> <span class="bp">True</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+      <span class="k">elif</span> <span class="n">line_type</span> <span class="o">==</span> <span class="s">&#39;VERSION&#39;</span><span class="p">:</span>
+        <span class="c"># Line format:</span>
+        <span class="c">#   VersionLine = &quot;250-VERSION&quot; SP &quot;Tor=&quot; TorVersion OptArguments CRLF</span>
+        <span class="c">#   TorVersion = QuotedString</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="o">.</span><span class="n">is_next_mapping</span><span class="p">(</span><span class="s">&#39;Tor&#39;</span><span class="p">,</span> <span class="bp">True</span><span class="p">):</span>
+          <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="s">&quot;PROTOCOLINFO response&#39;s VERSION line is missing its mandatory tor version mapping: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">line</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">tor_version</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">Version</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">pop_mapping</span><span class="p">(</span><span class="bp">True</span><span class="p">)[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Unrecognized PROTOCOLINFO line type &#39;</span><span class="si">%s</span><span class="s">&#39;, ignoring it: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">line_type</span><span class="p">,</span> <span class="n">line</span><span class="p">))</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">auth_methods</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">auth_methods</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">unknown_auth_methods</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">unknown_auth_methods</span><span class="p">)</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

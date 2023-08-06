@@ -1,0 +1,866 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.util.conf &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem" href="../../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.util.conf</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.util.conf</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2011-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Handlers for text configuration files. Configurations are simple string to</span>
+<span class="sd">string mappings, with the configuration files using the following rules...</span>
+
+<span class="sd">* the key/value is separated by a space</span>
+<span class="sd">* anything after a &#39;#&#39; is ignored as a comment</span>
+<span class="sd">* excess whitespace is trimmed</span>
+<span class="sd">* empty lines are ignored</span>
+<span class="sd">* multi-line values can be defined by following the key with lines starting</span>
+<span class="sd">  with a &#39;|&#39;</span>
+
+<span class="sd">For instance...</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  # This is my sample config</span>
+<span class="sd">  user.name Galen</span>
+<span class="sd">  user.password yabba1234 # here&#39;s an inline comment</span>
+<span class="sd">  user.notes takes a fancy to pepperjack cheese</span>
+<span class="sd">  blankEntry.example</span>
+
+<span class="sd">  msg.greeting</span>
+<span class="sd">  |Multi-line message exclaiming of the</span>
+<span class="sd">  |wonder and awe that is pepperjack!</span>
+
+<span class="sd">... would be loaded as...</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  config = {</span>
+<span class="sd">    &#39;user.name&#39;: &#39;Galen&#39;,</span>
+<span class="sd">    &#39;user.password&#39;: &#39;yabba1234&#39;,</span>
+<span class="sd">    &#39;user.notes&#39;: &#39;takes a fancy to pepperjack cheese&#39;,</span>
+<span class="sd">    &#39;blankEntry.example&#39;: &#39;&#39;,</span>
+<span class="sd">    &#39;msg.greeting&#39;: &#39;Multi-line message exclaiming of the\\nwonder and awe that is pepperjack!&#39;,</span>
+<span class="sd">  }</span>
+
+<span class="sd">Configurations are managed via the :class:`~stem.util.conf.Config` class. The</span>
+<span class="sd">:class:`~stem.util.conf.Config` can be be used directly with its</span>
+<span class="sd">:func:`~stem.util.conf.Config.get` and :func:`~stem.util.conf.Config.set`</span>
+<span class="sd">methods, but usually modules will want a local dictionary with just the</span>
+<span class="sd">configurations that it cares about.</span>
+
+<span class="sd">To do this use the :func:`~stem.util.conf.config_dict` function. For example...</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  import getpass</span>
+<span class="sd">  from stem.util import conf, connection</span>
+
+<span class="sd">  def config_validator(key, value):</span>
+<span class="sd">    if key == &#39;timeout&#39;:</span>
+<span class="sd">      # require at least a one second timeout</span>
+<span class="sd">      return max(1, value)</span>
+<span class="sd">    elif key == &#39;endpoint&#39;:</span>
+<span class="sd">      if not connection.is_valid_ipv4_address(value):</span>
+<span class="sd">        raise ValueError(&quot;&#39;%s&#39; isn&#39;t a valid IPv4 address&quot; % value)</span>
+<span class="sd">    elif key == &#39;port&#39;:</span>
+<span class="sd">      if not connection.is_valid_port(value):</span>
+<span class="sd">        raise ValueError(&quot;&#39;%s&#39; isn&#39;t a valid port&quot; % value)</span>
+<span class="sd">    elif key == &#39;retries&#39;:</span>
+<span class="sd">      # negative retries really don&#39;t make sense</span>
+<span class="sd">      return max(0, value)</span>
+
+<span class="sd">  CONFIG = conf.config_dict(&#39;ssh_login&#39;, {</span>
+<span class="sd">    &#39;username&#39;: getpass.getuser(),</span>
+<span class="sd">    &#39;password&#39;: &#39;&#39;,</span>
+<span class="sd">    &#39;timeout&#39;: 10,</span>
+<span class="sd">    &#39;endpoint&#39;: &#39;263.12.8.0&#39;,</span>
+<span class="sd">    &#39;port&#39;: 22,</span>
+<span class="sd">    &#39;reconnect&#39;: False,</span>
+<span class="sd">    &#39;retries&#39;: 3,</span>
+<span class="sd">  }, config_validator)</span>
+
+<span class="sd">There&#39;s several things going on here so lets take it step by step...</span>
+
+<span class="sd">* The :func:`~stem.util.conf.config_dict` provides a dictionary that&#39;s bound</span>
+<span class="sd">  to a given configuration. If the &quot;ssh_proxy_config&quot; configuration changes</span>
+<span class="sd">  then so will the contents of CONFIG.</span>
+
+<span class="sd">* The dictionary we&#39;re passing to :func:`~stem.util.conf.config_dict` provides</span>
+<span class="sd">  two important pieces of information: default values and their types. See the</span>
+<span class="sd">  Config&#39;s :func:`~stem.util.conf.Config.get` method for how these type</span>
+<span class="sd">  inferences work.</span>
+
+<span class="sd">* The config_validator is a hook we&#39;re adding to make sure CONFIG only gets</span>
+<span class="sd">  values we think are valid. In this case it ensures that our timeout value</span>
+<span class="sd">  is at least one second, and rejects endpoints or ports that are invalid.</span>
+
+<span class="sd">Now lets say our user has the following configuration file...</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  username waddle_doo</span>
+<span class="sd">  password jabberwocky</span>
+<span class="sd">  timeout -15</span>
+<span class="sd">  port 9000000</span>
+<span class="sd">  retries lots</span>
+<span class="sd">  reconnect true</span>
+<span class="sd">  logging debug</span>
+
+<span class="sd">... and we load it as follows...</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  &gt;&gt;&gt; from stem.util import conf</span>
+<span class="sd">  &gt;&gt;&gt; our_config = conf.get_config(&#39;ssh_login&#39;)</span>
+<span class="sd">  &gt;&gt;&gt; our_config.load(&#39;/home/atagar/user_config&#39;)</span>
+<span class="sd">  &gt;&gt;&gt; print CONFIG  # doctest: +SKIP</span>
+<span class="sd">  {</span>
+<span class="sd">    &quot;username&quot;: &quot;waddle_doo&quot;,</span>
+<span class="sd">    &quot;password&quot;: &quot;jabberwocky&quot;,</span>
+<span class="sd">    &quot;timeout&quot;: 1,</span>
+<span class="sd">    &quot;endpoint&quot;: &quot;263.12.8.0&quot;,</span>
+<span class="sd">    &quot;port&quot;: 22,</span>
+<span class="sd">    &quot;reconnect&quot;: True,</span>
+<span class="sd">    &quot;retries&quot;: 3,</span>
+<span class="sd">  }</span>
+
+<span class="sd">Here&#39;s an expanation of what happened...</span>
+
+<span class="sd">* the username, password, and reconnect attributes took the values in the</span>
+<span class="sd">  configuration file</span>
+
+<span class="sd">* the &#39;config_validator&#39; we added earlier allows for a minimum timeout of one</span>
+<span class="sd">  and rejected the invalid port (with a log message)</span>
+
+<span class="sd">* we weren&#39;t able to convert the retries&#39; &quot;lots&quot; value to an integer so it kept</span>
+<span class="sd">  its default value and logged a warning</span>
+
+<span class="sd">* the user didn&#39;t supply an endpoint so that remained unchanged</span>
+
+<span class="sd">* our CONFIG didn&#39;t have a &#39;logging&#39; attribute so it was ignored</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  config_dict - provides a dictionary that&#39;s kept in sync with our config</span>
+<span class="sd">  get_config - singleton for getting configurations</span>
+<span class="sd">  uses_settings - provides an annotation for functions that use configurations</span>
+<span class="sd">  parse_enum_csv - helper funcion for parsing confguration entries for enums</span>
+
+<span class="sd">  Config - Custom configuration</span>
+<span class="sd">    |- load - reads a configuration file</span>
+<span class="sd">    |- save - writes the current configuration to a file</span>
+<span class="sd">    |- clear - empties our loaded configuration contents</span>
+<span class="sd">    |- add_listener - notifies the given listener when an update occurs</span>
+<span class="sd">    |- clear_listeners - removes any attached listeners</span>
+<span class="sd">    |- keys - provides keys in the loaded configuration</span>
+<span class="sd">    |- set - sets the given key/value pair</span>
+<span class="sd">    |- unused_keys - provides keys that have never been requested</span>
+<span class="sd">    |- get - provides the value for a given key, with type inference</span>
+<span class="sd">    +- get_value - provides the value for a given key as a string</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+
+<span class="kn">import</span> <span class="nn">stem.prereq</span>
+
+<span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">log</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="c"># added in python 2.7</span>
+  <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+  <span class="kn">from</span> <span class="nn">stem.util.ordereddict</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+
+<span class="n">CONFS</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c"># mapping of identifier to singleton instances of configs</span>
+
+
+<span class="k">class</span> <span class="nc">_SyncListener</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config_dict</span><span class="p">,</span> <span class="n">interceptor</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">config_dict</span> <span class="o">=</span> <span class="n">config_dict</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">interceptor</span> <span class="o">=</span> <span class="n">interceptor</span>
+
+  <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_dict</span><span class="p">:</span>
+      <span class="n">new_value</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_dict</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+
+      <span class="k">if</span> <span class="n">new_value</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]:</span>
+        <span class="k">return</span>  <span class="c"># no change</span>
+
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">interceptor</span><span class="p">:</span>
+        <span class="n">interceptor_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interceptor</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">new_value</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">interceptor_value</span><span class="p">:</span>
+          <span class="n">new_value</span> <span class="o">=</span> <span class="n">interceptor_value</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">config_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_value</span>
+
+
+<div class="viewcode-block" id="config_dict"><a class="viewcode-back" href="../../../api/util/conf.html#stem.util.conf.config_dict">[docs]</a><span class="k">def</span> <span class="nf">config_dict</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="n">conf_mappings</span><span class="p">,</span> <span class="n">handler</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Makes a dictionary that stays synchronized with a configuration.</span>
+
+<span class="sd">  This takes a dictionary of &#39;config_key =&gt; default_value&#39; mappings and</span>
+<span class="sd">  changes the values to reflect our current configuration. This will leave</span>
+<span class="sd">  the previous values alone if...</span>
+
+<span class="sd">  * we don&#39;t have a value for that config_key</span>
+<span class="sd">  * we can&#39;t convert our value to be the same type as the default_value</span>
+
+<span class="sd">  If a handler is provided then this is called just prior to assigning new</span>
+<span class="sd">  values to the config_dict. The handler function is expected to accept the</span>
+<span class="sd">  (key, value) for the new values and return what we should actually insert</span>
+<span class="sd">  into the dictionary. If this returns None then the value is updated as</span>
+<span class="sd">  normal.</span>
+
+<span class="sd">  For more information about how we convert types see our</span>
+<span class="sd">  :func:`~stem.util.conf.Config.get` method.</span>
+
+<span class="sd">  **The dictionary you get from this is manged by the Config class and should</span>
+<span class="sd">  be treated as being read-only.**</span>
+
+<span class="sd">  :param str handle: unique identifier for a config instance</span>
+<span class="sd">  :param dict conf_mappings: config key/value mappings used as our defaults</span>
+<span class="sd">  :param functor handler: function referred to prior to assigning values</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">selected_config</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">(</span><span class="n">handle</span><span class="p">)</span>
+  <span class="n">selected_config</span><span class="o">.</span><span class="n">add_listener</span><span class="p">(</span><span class="n">_SyncListener</span><span class="p">(</span><span class="n">conf_mappings</span><span class="p">,</span> <span class="n">handler</span><span class="p">)</span><span class="o">.</span><span class="n">update</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">conf_mappings</span>
+
+</div>
+<div class="viewcode-block" id="get_config"><a class="viewcode-back" href="../../../api/util/conf.html#stem.util.conf.get_config">[docs]</a><span class="k">def</span> <span class="nf">get_config</span><span class="p">(</span><span class="n">handle</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Singleton constructor for configuration file instances. If a configuration</span>
+<span class="sd">  already exists for the handle then it&#39;s returned. Otherwise a fresh instance</span>
+<span class="sd">  is constructed.</span>
+
+<span class="sd">  :param str handle: unique identifier used to access this config instance</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">handle</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">CONFS</span><span class="p">:</span>
+    <span class="n">CONFS</span><span class="p">[</span><span class="n">handle</span><span class="p">]</span> <span class="o">=</span> <span class="n">Config</span><span class="p">()</span>
+
+  <span class="k">return</span> <span class="n">CONFS</span><span class="p">[</span><span class="n">handle</span><span class="p">]</span>
+
+</div>
+<div class="viewcode-block" id="uses_settings"><a class="viewcode-back" href="../../../api/util/conf.html#stem.util.conf.uses_settings">[docs]</a><span class="k">def</span> <span class="nf">uses_settings</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">lazy_load</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides a function that can be used as a decorator for other functions that</span>
+<span class="sd">  require settings to be loaded. Functions with this decorator will be provided</span>
+<span class="sd">  with the configuration as its &#39;config&#39; keyword argument.</span>
+
+<span class="sd">  .. versionchanged:: 1.3.0</span>
+<span class="sd">     Omits the &#39;config&#39; argument if the funcion we&#39;re decorating doesn&#39;t accept</span>
+<span class="sd">     it.</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    uses_settings = stem.util.conf.uses_settings(&#39;my_app&#39;, &#39;/path/to/settings.cfg&#39;)</span>
+
+<span class="sd">    @uses_settings</span>
+<span class="sd">    def my_function(config):</span>
+<span class="sd">      print &#39;hello %s!&#39; % config.get(&#39;username&#39;, &#39;&#39;)</span>
+
+<span class="sd">  :param str handle: hande for the configuration</span>
+<span class="sd">  :param str path: path where the configuration should be loaded from</span>
+<span class="sd">  :param bool lazy_load: loads the configuration file when the decorator is</span>
+<span class="sd">    used if true, otherwise it&#39;s loaded right away</span>
+
+<span class="sd">  :returns: **function** that can be used as a decorator to provide the</span>
+<span class="sd">    configuration</span>
+
+<span class="sd">  :raises: **IOError** if we fail to read the configuration file, if</span>
+<span class="sd">    **lazy_load** is true then this arises when we use the decorator</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">config</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">(</span><span class="n">handle</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">lazy_load</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">config</span><span class="o">.</span><span class="n">_settings_loaded</span><span class="p">:</span>
+    <span class="n">config</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="n">config</span><span class="o">.</span><span class="n">_settings_loaded</span> <span class="o">=</span> <span class="bp">True</span>
+
+  <span class="k">def</span> <span class="nf">decorator</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">wrapped</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+      <span class="k">if</span> <span class="n">lazy_load</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">config</span><span class="o">.</span><span class="n">_settings_loaded</span><span class="p">:</span>
+        <span class="n">config</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">config</span><span class="o">.</span><span class="n">_settings_loaded</span> <span class="o">=</span> <span class="bp">True</span>
+
+      <span class="k">if</span> <span class="s">&#39;config&#39;</span> <span class="ow">in</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getargspec</span><span class="p">(</span><span class="n">func</span><span class="p">)</span><span class="o">.</span><span class="n">args</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">config</span> <span class="o">=</span> <span class="n">config</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">wrapped</span>
+
+  <span class="k">return</span> <span class="n">decorator</span>
+
+</div>
+<div class="viewcode-block" id="parse_enum"><a class="viewcode-back" href="../../../api/util/conf.html#stem.util.conf.parse_enum">[docs]</a><span class="k">def</span> <span class="nf">parse_enum</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">enumeration</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the enumeration value for a given key. This is a case insensitive</span>
+<span class="sd">  lookup and raises an exception if the enum key doesn&#39;t exist.</span>
+
+<span class="sd">  :param str key: configuration key being looked up</span>
+<span class="sd">  :param str value: value to be parsed</span>
+<span class="sd">  :param stem.util.enum.Enum enumeration: enumeration the values should be in</span>
+
+<span class="sd">  :returns: enumeration value</span>
+
+<span class="sd">  :raises: **ValueError** if the **value** isn&#39;t among the enumeration keys</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">return</span> <span class="n">parse_enum_csv</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">enumeration</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+</div>
+<div class="viewcode-block" id="parse_enum_csv"><a class="viewcode-back" href="../../../api/util/conf.html#stem.util.conf.parse_enum_csv">[docs]</a><span class="k">def</span> <span class="nf">parse_enum_csv</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">enumeration</span><span class="p">,</span> <span class="n">count</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Parses a given value as being a comma separated listing of enumeration keys,</span>
+<span class="sd">  returning the corresponding enumeration values. This is intended to be a</span>
+<span class="sd">  helper for config handlers. The checks this does are case insensitive.</span>
+
+<span class="sd">  The **count** attribute can be used to make assertions based on the number of</span>
+<span class="sd">  values. This can be...</span>
+
+<span class="sd">  * None to indicate that there&#39;s no restrictions.</span>
+<span class="sd">  * An int to indicate that we should have this many values.</span>
+<span class="sd">  * An (int, int) tuple to indicate the range that values can be in. This range</span>
+<span class="sd">    is inclusive and either can be None to indicate the lack of a lower or</span>
+<span class="sd">    upper bound.</span>
+
+<span class="sd">  :param str key: configuration key being looked up</span>
+<span class="sd">  :param str value: value to be parsed</span>
+<span class="sd">  :param stem.util.enum.Enum enumeration: enumeration the values should be in</span>
+<span class="sd">  :param int,tuple count: validates that we have this many items</span>
+
+<span class="sd">  :returns: list with the enumeration values</span>
+
+<span class="sd">  :raises: **ValueError** if the count assertion fails or the **value** entries</span>
+<span class="sd">    don&#39;t match the enumeration keys</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="n">val</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">)]</span>
+
+  <span class="k">if</span> <span class="n">values</span> <span class="o">==</span> <span class="p">[</span><span class="s">&#39;&#39;</span><span class="p">]:</span>
+    <span class="k">return</span> <span class="p">[]</span>
+
+  <span class="k">if</span> <span class="n">count</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="k">pass</span>  <span class="c"># no count validateion checks to do</span>
+  <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">!=</span> <span class="n">count</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Config entry &#39;</span><span class="si">%s</span><span class="s">&#39; is expected to be </span><span class="si">%i</span><span class="s"> comma separated values, got &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+  <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">count</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+    <span class="n">minimum</span><span class="p">,</span> <span class="n">maximum</span> <span class="o">=</span> <span class="n">count</span>
+
+    <span class="k">if</span> <span class="n">minimum</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">minimum</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Config entry &#39;</span><span class="si">%s</span><span class="s">&#39; must have at least </span><span class="si">%i</span><span class="s"> comma separated values, got &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">minimum</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">maximum</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">maximum</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Config entry &#39;</span><span class="si">%s</span><span class="s">&#39; can have at most </span><span class="si">%i</span><span class="s"> comma separated values, got &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">maximum</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;The count must be None, an int, or two value tuple. Got &#39;</span><span class="si">%s</span><span class="s">&#39; (</span><span class="si">%s</span><span class="s">)&#39;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">count</span><span class="p">)))</span>
+
+  <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+  <span class="n">enum_keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">enumeration</span><span class="o">.</span><span class="n">keys</span><span class="p">())]</span>
+  <span class="n">enum_values</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">enumeration</span><span class="p">)</span>
+
+  <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">enum_keys</span><span class="p">:</span>
+      <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">enum_values</span><span class="p">[</span><span class="n">enum_keys</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">val</span><span class="p">)])</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;The &#39;</span><span class="si">%s</span><span class="s">&#39; entry of config entry &#39;</span><span class="si">%s</span><span class="s">&#39; wasn&#39;t in the enumeration (expected </span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">enum_keys</span><span class="p">)))</span>
+
+  <span class="k">return</span> <span class="n">result</span>
+
+</div>
+<div class="viewcode-block" id="Config"><a class="viewcode-back" href="../../../api/util/conf.html#stem.util.conf.Config">[docs]</a><span class="k">class</span> <span class="nc">Config</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Handler for easily working with custom configurations, providing persistence</span>
+<span class="sd">  to and from files. All operations are thread safe.</span>
+
+<span class="sd">  **Example usage:**</span>
+
+<span class="sd">  User has a file at &#39;/home/atagar/myConfig&#39; with...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    destination.ip 1.2.3.4</span>
+<span class="sd">    destination.port blarg</span>
+
+<span class="sd">    startup.run export PATH=$PATH:~/bin</span>
+<span class="sd">    startup.run alias l=ls</span>
+
+<span class="sd">  And they have a script with...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    from stem.util import conf</span>
+
+<span class="sd">    # Configuration values we&#39;ll use in this file. These are mappings of</span>
+<span class="sd">    # configuration keys to the default values we&#39;ll use if the user doesn&#39;t</span>
+<span class="sd">    # have something different in their config file (or it doesn&#39;t match this</span>
+<span class="sd">    # type).</span>
+
+<span class="sd">    ssh_config = conf.config_dict(&#39;ssh_login&#39;, {</span>
+<span class="sd">      &#39;login.user&#39;: &#39;atagar&#39;,</span>
+<span class="sd">      &#39;login.password&#39;: &#39;pepperjack_is_awesome!&#39;,</span>
+<span class="sd">      &#39;destination.ip&#39;: &#39;127.0.0.1&#39;,</span>
+<span class="sd">      &#39;destination.port&#39;: 22,</span>
+<span class="sd">      &#39;startup.run&#39;: [],</span>
+<span class="sd">    })</span>
+
+<span class="sd">    # Makes an empty config instance with the handle of &#39;ssh_login&#39;. This is</span>
+<span class="sd">    # a singleton so other classes can fetch this same configuration from</span>
+<span class="sd">    # this handle.</span>
+
+<span class="sd">    user_config = conf.get_config(&#39;ssh_login&#39;)</span>
+
+<span class="sd">    # Loads the user&#39;s configuration file, warning if this fails.</span>
+
+<span class="sd">    try:</span>
+<span class="sd">      user_config.load(&quot;/home/atagar/myConfig&quot;)</span>
+<span class="sd">    except IOError as exc:</span>
+<span class="sd">      print &quot;Unable to load the user&#39;s config: %s&quot; % exc</span>
+
+<span class="sd">    # This replace the contents of ssh_config with the values from the user&#39;s</span>
+<span class="sd">    # config file if...</span>
+<span class="sd">    #</span>
+<span class="sd">    # * the key is present in the config file</span>
+<span class="sd">    # * we&#39;re able to convert the configuration file&#39;s value to the same type</span>
+<span class="sd">    #   as what&#39;s in the mapping (see the Config.get() method for how these</span>
+<span class="sd">    #   type inferences work)</span>
+<span class="sd">    #</span>
+<span class="sd">    # For instance in this case...</span>
+<span class="sd">    #</span>
+<span class="sd">    # * the login values are left alone because they aren&#39;t in the user&#39;s</span>
+<span class="sd">    #   config file</span>
+<span class="sd">    #</span>
+<span class="sd">    # * the &#39;destination.port&#39; is also left with the value of 22 because we</span>
+<span class="sd">    #   can&#39;t turn &quot;blarg&quot; into an integer</span>
+<span class="sd">    #</span>
+<span class="sd">    # The other values are replaced, so ssh_config now becomes...</span>
+<span class="sd">    #</span>
+<span class="sd">    # {&#39;login.user&#39;: &#39;atagar&#39;,</span>
+<span class="sd">    #  &#39;login.password&#39;: &#39;pepperjack_is_awesome!&#39;,</span>
+<span class="sd">    #  &#39;destination.ip&#39;: &#39;1.2.3.4&#39;,</span>
+<span class="sd">    #  &#39;destination.port&#39;: 22,</span>
+<span class="sd">    #  &#39;startup.run&#39;: [&#39;export PATH=$PATH:~/bin&#39;, &#39;alias l=ls&#39;]}</span>
+<span class="sd">    #</span>
+<span class="sd">    # Information for what values fail to load and why are reported to</span>
+<span class="sd">    # &#39;stem.util.log&#39;.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_path</span> <span class="o">=</span> <span class="bp">None</span>        <span class="c"># location we last loaded from or saved to</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_contents</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>  <span class="c"># configuration key/value pairs</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span> <span class="o">=</span> <span class="p">[]</span>     <span class="c"># functors to be notified of config changes</span>
+
+    <span class="c"># used for accessing _contents</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_contents_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">()</span>
+
+    <span class="c"># keys that have been requested (used to provide unused config contents)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_requested_keys</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+    <span class="c"># flag to support lazy loading in uses_settings()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_settings_loaded</span> <span class="o">=</span> <span class="bp">False</span>
+
+<div class="viewcode-block" id="Config.load"><a class="viewcode-back" href="../../../api/util/conf.html#stem.util.conf.Config.load">[docs]</a>  <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">commenting</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Reads in the contents of the given path, adding its configuration values</span>
+<span class="sd">    to our current contents. If the path is a directory then this loads each</span>
+<span class="sd">    of the files, recursively.</span>
+
+<span class="sd">    .. versionchanged:: 1.3.0</span>
+<span class="sd">       Added support for directories.</span>
+
+<span class="sd">    .. versionchanged:: 1.3.0</span>
+<span class="sd">       Added the **commenting** argument.</span>
+
+<span class="sd">    :param str path: file or directory path to be loaded, this uses the last</span>
+<span class="sd">      loaded path if not provided</span>
+<span class="sd">    :param bool commenting: ignore line content after a &#39;#&#39; if **True**, read</span>
+<span class="sd">      otherwise</span>
+
+<span class="sd">    :raises:</span>
+<span class="sd">      * **IOError** if we fail to read the file (it doesn&#39;t exist, insufficient</span>
+<span class="sd">        permissions, etc)</span>
+<span class="sd">      * **ValueError** if no path was provided and we&#39;ve never been provided one</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_path</span> <span class="o">=</span> <span class="n">path</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Unable to load configuration: no path provided&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">):</span>
+      <span class="k">for</span> <span class="n">root</span><span class="p">,</span> <span class="n">dirnames</span><span class="p">,</span> <span class="n">filenames</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">walk</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">filenames</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">filename</span><span class="p">))</span>
+
+      <span class="k">return</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">,</span> <span class="s">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">config_file</span><span class="p">:</span>
+      <span class="n">read_contents</span> <span class="o">=</span> <span class="n">config_file</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contents_lock</span><span class="p">:</span>
+      <span class="k">while</span> <span class="n">read_contents</span><span class="p">:</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="n">read_contents</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c"># strips any commenting or excess whitespace</span>
+        <span class="n">comment_start</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;#&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="n">commenting</span> <span class="k">else</span> <span class="o">-</span><span class="mi">1</span>
+
+        <span class="k">if</span> <span class="n">comment_start</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+          <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="p">[:</span><span class="n">comment_start</span><span class="p">]</span>
+
+        <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+        <span class="c"># parse the key/value pair</span>
+        <span class="k">if</span> <span class="n">line</span><span class="p">:</span>
+          <span class="k">if</span> <span class="s">&#39; &#39;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+            <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="bp">False</span><span class="p">)</span>
+          <span class="k">else</span><span class="p">:</span>
+            <span class="c"># this might be a multi-line entry, try processing it as such</span>
+            <span class="n">multiline_buffer</span> <span class="o">=</span> <span class="p">[]</span>
+
+            <span class="k">while</span> <span class="n">read_contents</span> <span class="ow">and</span> <span class="n">read_contents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">lstrip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;|&#39;</span><span class="p">):</span>
+              <span class="n">content</span> <span class="o">=</span> <span class="n">read_contents</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">lstrip</span><span class="p">()[</span><span class="mi">1</span><span class="p">:]</span>  <span class="c"># removes &#39;\s+|&#39; prefix</span>
+              <span class="n">content</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>  <span class="c"># trailing newline</span>
+              <span class="n">multiline_buffer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">multiline_buffer</span><span class="p">:</span>
+              <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">multiline_buffer</span><span class="p">),</span> <span class="bp">False</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+              <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>  <span class="c"># default to a key =&gt; &#39;&#39; mapping</span>
+</div>
+<div class="viewcode-block" id="Config.save"><a class="viewcode-back" href="../../../api/util/conf.html#stem.util.conf.Config.save">[docs]</a>  <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Saves configuration contents to disk. If a path is provided then it</span>
+<span class="sd">    replaces the configuration location that we track.</span>
+
+<span class="sd">    :param str path: location to be saved to</span>
+
+<span class="sd">    :raises:</span>
+<span class="sd">      * **IOError** if we fail to save the file (insufficient permissions, etc)</span>
+<span class="sd">      * **ValueError** if no path was provided and we&#39;ve never been provided one</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_path</span> <span class="o">=</span> <span class="n">path</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Unable to save configuration: no path provided&#39;</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contents_lock</span><span class="p">:</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">)):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">))</span>
+
+      <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">output_file</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">entry_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+          <span class="k">for</span> <span class="n">entry_value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">entry_key</span><span class="p">,</span> <span class="n">multiple</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+            <span class="c"># check for multi line entries</span>
+            <span class="k">if</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span> <span class="ow">in</span> <span class="n">entry_value</span><span class="p">:</span>
+              <span class="n">entry_value</span> <span class="o">=</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">|&#39;</span> <span class="o">+</span> <span class="n">entry_value</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">|&#39;</span><span class="p">)</span>
+
+            <span class="n">output_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">entry_key</span><span class="p">,</span> <span class="n">entry_value</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="Config.clear"><a class="viewcode-back" href="../../../api/util/conf.html#stem.util.conf.Config.clear">[docs]</a>  <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Drops the configuration contents and reverts back to a blank, unloaded</span>
+<span class="sd">    state.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contents_lock</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_contents</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_requested_keys</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="Config.add_listener"><a class="viewcode-back" href="../../../api/util/conf.html#stem.util.conf.Config.add_listener">[docs]</a>  <span class="k">def</span> <span class="nf">add_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">listener</span><span class="p">,</span> <span class="n">backfill</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Registers the function to be notified of configuration updates. Listeners</span>
+<span class="sd">    are expected to be functors which accept (config, key).</span>
+
+<span class="sd">    :param functor listener: function to be notified when our configuration is changed</span>
+<span class="sd">    :param bool backfill: calls the function with our current values if **True**</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contents_lock</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">listener</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">backfill</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+          <span class="n">listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Config.clear_listeners"><a class="viewcode-back" href="../../../api/util/conf.html#stem.util.conf.Config.clear_listeners">[docs]</a>  <span class="k">def</span> <span class="nf">clear_listeners</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Removes all attached listeners.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span> <span class="o">=</span> <span class="p">[]</span>
+</div>
+<div class="viewcode-block" id="Config.keys"><a class="viewcode-back" href="../../../api/util/conf.html#stem.util.conf.Config.keys">[docs]</a>  <span class="k">def</span> <span class="nf">keys</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides all keys in the currently loaded configuration.</span>
+
+<span class="sd">    :returns: **list** if strings for the configuration keys we&#39;ve loaded</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_contents</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+</div>
+<div class="viewcode-block" id="Config.unused_keys"><a class="viewcode-back" href="../../../api/util/conf.html#stem.util.conf.Config.unused_keys">[docs]</a>  <span class="k">def</span> <span class="nf">unused_keys</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the configuration keys that have never been provided to a caller</span>
+<span class="sd">    via :func:`~stem.util.conf.config_dict` or the</span>
+<span class="sd">    :func:`~stem.util.conf.Config.get` and</span>
+<span class="sd">    :func:`~stem.util.conf.Config.get_value` methods.</span>
+
+<span class="sd">    :returns: **set** of configuration keys we&#39;ve loaded but have never been requested</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_requested_keys</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Config.set"><a class="viewcode-back" href="../../../api/util/conf.html#stem.util.conf.Config.set">[docs]</a>  <span class="k">def</span> <span class="nf">set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">overwrite</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Appends the given key/value configuration mapping, behaving the same as if</span>
+<span class="sd">    we&#39;d loaded this from a configuration file.</span>
+
+<span class="sd">    .. versionchanged:: 1.5.0</span>
+<span class="sd">       Allow removal of values by overwriting with a **None** value.</span>
+
+<span class="sd">    :param str key: key for the configuration mapping</span>
+<span class="sd">    :param str,list value: value we&#39;re setting the mapping to</span>
+<span class="sd">    :param bool overwrite: replaces the previous value if **True**, otherwise</span>
+<span class="sd">      the values are appended</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contents_lock</span><span class="p">:</span>
+      <span class="n">unicode_type</span> <span class="o">=</span> <span class="nb">str</span> <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">prereq</span><span class="o">.</span><span class="n">is_python_3</span><span class="p">()</span> <span class="k">else</span> <span class="nb">unicode</span>
+
+      <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">overwrite</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contents</span><span class="p">:</span>
+          <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contents</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="k">pass</span>  <span class="c"># no value so this is a no-op</span>
+      <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">bytes</span><span class="p">,</span> <span class="n">unicode_type</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">overwrite</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contents</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_contents</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_contents</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">value</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">listener</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">:</span>
+          <span class="n">listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">overwrite</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contents</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_contents</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">+=</span> <span class="n">value</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_contents</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="k">for</span> <span class="n">listener</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">:</span>
+          <span class="n">listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Config.set() only accepts str (bytes or unicode), list, or tuple. Provided value was a &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="Config.get"><a class="viewcode-back" href="../../../api/util/conf.html#stem.util.conf.Config.get">[docs]</a>  <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">default</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Fetches the given configuration, using the key and default value to</span>
+<span class="sd">    determine the type it should be. Recognized inferences are:</span>
+
+<span class="sd">    * **default is a boolean =&gt; boolean**</span>
+
+<span class="sd">      * values are case insensitive</span>
+<span class="sd">      * provides the default if the value isn&#39;t &quot;true&quot; or &quot;false&quot;</span>
+
+<span class="sd">    * **default is an integer =&gt; int**</span>
+
+<span class="sd">      * provides the default if the value can&#39;t be converted to an int</span>
+
+<span class="sd">    * **default is a float =&gt; float**</span>
+
+<span class="sd">      * provides the default if the value can&#39;t be converted to a float</span>
+
+<span class="sd">    * **default is a list =&gt; list**</span>
+
+<span class="sd">      * string contents for all configuration values with this key</span>
+
+<span class="sd">    * **default is a tuple =&gt; tuple**</span>
+
+<span class="sd">      * string contents for all configuration values with this key</span>
+
+<span class="sd">    * **default is a dictionary =&gt; dict**</span>
+
+<span class="sd">      * values without &quot;=&gt;&quot; in them are ignored</span>
+<span class="sd">      * values are split into key/value pairs on &quot;=&gt;&quot; with extra whitespace</span>
+<span class="sd">        stripped</span>
+
+<span class="sd">    :param str key: config setting to be fetched</span>
+<span class="sd">    :param default object: value provided if no such key exists or fails to be converted</span>
+
+<span class="sd">    :returns: given configuration value with its type inferred with the above rules</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">is_multivalue</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">default</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="nb">dict</span><span class="p">))</span>
+    <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="p">,</span> <span class="n">is_multivalue</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">val</span> <span class="o">==</span> <span class="n">default</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">val</span>  <span class="c"># don&#39;t try to infer undefined values</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">default</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+      <span class="k">if</span> <span class="n">val</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;true&#39;</span><span class="p">:</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="bp">True</span>
+      <span class="k">elif</span> <span class="n">val</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;false&#39;</span><span class="p">:</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="bp">False</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Config entry &#39;</span><span class="si">%s</span><span class="s">&#39; is expected to be a boolean, defaulting to &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">default</span><span class="p">)))</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="n">default</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">default</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+      <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Config entry &#39;</span><span class="si">%s</span><span class="s">&#39; is expected to be an integer, defaulting to &#39;</span><span class="si">%i</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="p">))</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="n">default</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">default</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+      <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Config entry &#39;</span><span class="si">%s</span><span class="s">&#39; is expected to be a float, defaulting to &#39;</span><span class="si">%f</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="p">))</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="n">default</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">default</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+      <span class="n">val</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>  <span class="c"># make a shallow copy</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">default</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+      <span class="n">val</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">default</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+      <span class="n">val_map</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+      <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">val</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s">&#39;=&gt;&#39;</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>
+          <span class="n">entry_key</span><span class="p">,</span> <span class="n">entry_val</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&gt;&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+          <span class="n">val_map</span><span class="p">[</span><span class="n">entry_key</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span> <span class="o">=</span> <span class="n">entry_val</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;Ignoring invalid </span><span class="si">%s</span><span class="s"> config entry (expected a mapping, but &quot;</span><span class="si">%s</span><span class="s">&quot; was missing &quot;=&gt;&quot;)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">entry</span><span class="p">))</span>
+      <span class="n">val</span> <span class="o">=</span> <span class="n">val_map</span>
+
+    <span class="k">return</span> <span class="n">val</span>
+</div>
+<div class="viewcode-block" id="Config.get_value"><a class="viewcode-back" href="../../../api/util/conf.html#stem.util.conf.Config.get_value">[docs]</a>  <span class="k">def</span> <span class="nf">get_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">default</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">multiple</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This provides the current value associated with a given key.</span>
+
+<span class="sd">    :param str key: config setting to be fetched</span>
+<span class="sd">    :param object default: value provided if no such key exists</span>
+<span class="sd">    :param bool multiple: provides back a list of all values if **True**,</span>
+<span class="sd">      otherwise this returns the last loaded configuration value</span>
+
+<span class="sd">    :returns: **str** or **list** of string configuration values associated</span>
+<span class="sd">      with the given key, providing the default if no such key exists</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contents_lock</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contents</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_requested_keys</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">multiple</span><span class="p">:</span>
+          <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contents</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contents</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">message_id</span> <span class="o">=</span> <span class="s">&#39;stem.util.conf.missing_config_key_</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">key</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">log_once</span><span class="p">(</span><span class="n">message_id</span><span class="p">,</span> <span class="n">log</span><span class="o">.</span><span class="n">TRACE</span><span class="p">,</span> <span class="s">&quot;config entry &#39;</span><span class="si">%s</span><span class="s">&#39; not found, defaulting to &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">default</span></div></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

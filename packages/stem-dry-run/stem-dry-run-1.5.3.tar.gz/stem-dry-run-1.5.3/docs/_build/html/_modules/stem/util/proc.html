@@ -1,0 +1,685 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.util.proc &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem" href="../../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.util.proc</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.util.proc</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2011-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Helper functions for querying process and system information from the /proc</span>
+<span class="sd">contents. Fetching information this way provides huge performance benefits</span>
+<span class="sd">over lookups via system utilities (ps, netstat, etc). For instance, resolving</span>
+<span class="sd">connections this way cuts the runtime by around 90% verses the alternatives.</span>
+<span class="sd">These functions may not work on all platforms (only Linux?).</span>
+
+<span class="sd">The method for reading these files (and a little code) are borrowed from</span>
+<span class="sd">`psutil &lt;https://code.google.com/p/psutil/&gt;`_, which was written by Jay Loden,</span>
+<span class="sd">Dave Daeschler, Giampaolo Rodola&#39; and is under the BSD license.</span>
+
+<span class="sd">**These functions are not being vended to stem users. They may change in the</span>
+<span class="sd">future, use them at your own risk.**</span>
+
+<span class="sd">.. versionchanged:: 1.3.0</span>
+<span class="sd">   Dropped the get_* prefix from several function names. The old names still</span>
+<span class="sd">   work, but are deprecated aliases.</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  is_available - checks if proc utilities can be used on this system</span>
+<span class="sd">  system_start_time - unix timestamp for when the system started</span>
+<span class="sd">  physical_memory - memory available on this system</span>
+<span class="sd">  cwd - provides the current working directory for a process</span>
+<span class="sd">  uid - provides the user id a process is running under</span>
+<span class="sd">  memory_usage - provides the memory usage of a process</span>
+<span class="sd">  stats - queries statistics about a process</span>
+<span class="sd">  file_descriptors_used - number of file descriptors used by a process</span>
+<span class="sd">  connections - provides the connections made by a process</span>
+
+<span class="sd">.. data:: Stat (enum)</span>
+
+<span class="sd">  Types of data available via the :func:`~stem.util.proc.stats` function.</span>
+
+<span class="sd">  ============== ===========</span>
+<span class="sd">  Stat           Description</span>
+<span class="sd">  ============== ===========</span>
+<span class="sd">  **COMMAND**    command name under which the process is running</span>
+<span class="sd">  **CPU_UTIME**  total user time spent on the process</span>
+<span class="sd">  **CPU_STIME**  total system time spent on the process</span>
+<span class="sd">  **START_TIME** when this process began, in unix time</span>
+<span class="sd">  ============== ===========</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">base64</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">platform</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">import</span> <span class="nn">stem.util.connection</span>
+<span class="kn">import</span> <span class="nn">stem.util.enum</span>
+<span class="kn">import</span> <span class="nn">stem.util.str_tools</span>
+
+<span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">log</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="c"># unavailable on windows (#19823)</span>
+  <span class="kn">import</span> <span class="nn">pwd</span>
+  <span class="n">IS_PWD_AVAILABLE</span> <span class="o">=</span> <span class="bp">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+  <span class="n">IS_PWD_AVAILABLE</span> <span class="o">=</span> <span class="bp">False</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="c"># added in python 3.2</span>
+  <span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">lru_cache</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+  <span class="kn">from</span> <span class="nn">stem.util.lru_cache</span> <span class="kn">import</span> <span class="n">lru_cache</span>
+
+<span class="c"># os.sysconf is only defined on unix</span>
+<span class="k">try</span><span class="p">:</span>
+  <span class="n">CLOCK_TICKS</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">sysconf</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">sysconf_names</span><span class="p">[</span><span class="s">&#39;SC_CLK_TCK&#39;</span><span class="p">])</span>
+<span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+  <span class="n">CLOCK_TICKS</span> <span class="o">=</span> <span class="bp">None</span>
+
+<span class="n">Stat</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">(</span>
+  <span class="p">(</span><span class="s">&#39;COMMAND&#39;</span><span class="p">,</span> <span class="s">&#39;command&#39;</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;CPU_UTIME&#39;</span><span class="p">,</span> <span class="s">&#39;utime&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="s">&#39;CPU_STIME&#39;</span><span class="p">,</span> <span class="s">&#39;stime&#39;</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;START_TIME&#39;</span><span class="p">,</span> <span class="s">&#39;start time&#39;</span><span class="p">)</span>
+<span class="p">)</span>
+
+
+<span class="nd">@lru_cache</span><span class="p">()</span>
+<div class="viewcode-block" id="is_available"><a class="viewcode-back" href="../../../api/util/proc.html#stem.util.proc.is_available">[docs]</a><span class="k">def</span> <span class="nf">is_available</span><span class="p">():</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks if proc information is available on this platform.</span>
+
+<span class="sd">  :returns: **True** if proc contents exist on this platform, **False** otherwise</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">!=</span> <span class="s">&#39;Linux&#39;</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">False</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="c"># list of process independent proc paths we use</span>
+    <span class="n">proc_paths</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;/proc/stat&#39;</span><span class="p">,</span> <span class="s">&#39;/proc/meminfo&#39;</span><span class="p">,</span> <span class="s">&#39;/proc/net/tcp&#39;</span><span class="p">,</span> <span class="s">&#39;/proc/net/udp&#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">proc_paths</span><span class="p">:</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="k">return</span> <span class="bp">True</span>
+
+</div>
+<span class="nd">@lru_cache</span><span class="p">()</span>
+<div class="viewcode-block" id="system_start_time"><a class="viewcode-back" href="../../../api/util/proc.html#stem.util.proc.system_start_time">[docs]</a><span class="k">def</span> <span class="nf">system_start_time</span><span class="p">():</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the unix time (seconds since epoch) when the system started.</span>
+
+<span class="sd">  :returns: **float** for the unix time of when the system started</span>
+
+<span class="sd">  :raises: **IOError** if it can&#39;t be determined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">start_time</span><span class="p">,</span> <span class="n">parameter</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="s">&#39;system start time&#39;</span>
+  <span class="n">btime_line</span> <span class="o">=</span> <span class="n">_get_line</span><span class="p">(</span><span class="s">&#39;/proc/stat&#39;</span><span class="p">,</span> <span class="s">&#39;btime&#39;</span><span class="p">,</span> <span class="n">parameter</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">btime_line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">_log_runtime</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="s">&#39;/proc/stat[btime]&#39;</span><span class="p">,</span> <span class="n">start_time</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
+  <span class="k">except</span><span class="p">:</span>
+    <span class="n">exc</span> <span class="o">=</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;unable to parse the /proc/stat btime entry: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">btime_line</span><span class="p">)</span>
+    <span class="n">_log_failure</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="n">exc</span>
+
+</div>
+<span class="nd">@lru_cache</span><span class="p">()</span>
+<div class="viewcode-block" id="physical_memory"><a class="viewcode-back" href="../../../api/util/proc.html#stem.util.proc.physical_memory">[docs]</a><span class="k">def</span> <span class="nf">physical_memory</span><span class="p">():</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the total physical memory on the system in bytes.</span>
+
+<span class="sd">  :returns: **int** for the bytes of physical memory this system has</span>
+
+<span class="sd">  :raises: **IOError** if it can&#39;t be determined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">start_time</span><span class="p">,</span> <span class="n">parameter</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="s">&#39;system physical memory&#39;</span>
+  <span class="n">mem_total_line</span> <span class="o">=</span> <span class="n">_get_line</span><span class="p">(</span><span class="s">&#39;/proc/meminfo&#39;</span><span class="p">,</span> <span class="s">&#39;MemTotal:&#39;</span><span class="p">,</span> <span class="n">parameter</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">mem_total_line</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">1</span><span class="p">])</span> <span class="o">*</span> <span class="mi">1024</span>
+    <span class="n">_log_runtime</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="s">&#39;/proc/meminfo[MemTotal]&#39;</span><span class="p">,</span> <span class="n">start_time</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
+  <span class="k">except</span><span class="p">:</span>
+    <span class="n">exc</span> <span class="o">=</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;unable to parse the /proc/meminfo MemTotal entry: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">mem_total_line</span><span class="p">)</span>
+    <span class="n">_log_failure</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="n">exc</span>
+
+</div>
+<div class="viewcode-block" id="cwd"><a class="viewcode-back" href="../../../api/util/proc.html#stem.util.proc.cwd">[docs]</a><span class="k">def</span> <span class="nf">cwd</span><span class="p">(</span><span class="n">pid</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the current working directory for the given process.</span>
+
+<span class="sd">  :param int pid: process id of the process to be queried</span>
+
+<span class="sd">  :returns: **str** with the path of the working directory for the process</span>
+
+<span class="sd">  :raises: **IOError** if it can&#39;t be determined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">start_time</span><span class="p">,</span> <span class="n">parameter</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="s">&#39;cwd&#39;</span>
+  <span class="n">proc_cwd_link</span> <span class="o">=</span> <span class="s">&#39;/proc/</span><span class="si">%s</span><span class="s">/cwd&#39;</span> <span class="o">%</span> <span class="n">pid</span>
+
+  <span class="k">if</span> <span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="n">cwd</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">cwd</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">readlink</span><span class="p">(</span><span class="n">proc_cwd_link</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+      <span class="n">exc</span> <span class="o">=</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;unable to read </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">proc_cwd_link</span><span class="p">)</span>
+      <span class="n">_log_failure</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+      <span class="k">raise</span> <span class="n">exc</span>
+
+  <span class="n">_log_runtime</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="n">proc_cwd_link</span><span class="p">,</span> <span class="n">start_time</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">cwd</span>
+
+</div>
+<div class="viewcode-block" id="uid"><a class="viewcode-back" href="../../../api/util/proc.html#stem.util.proc.uid">[docs]</a><span class="k">def</span> <span class="nf">uid</span><span class="p">(</span><span class="n">pid</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the user ID the given process is running under.</span>
+
+<span class="sd">  :param int pid: process id of the process to be queried</span>
+
+<span class="sd">  :returns: **int** with the user id for the owner of the process</span>
+
+<span class="sd">  :raises: **IOError** if it can&#39;t be determined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">start_time</span><span class="p">,</span> <span class="n">parameter</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="s">&#39;uid&#39;</span>
+  <span class="n">status_path</span> <span class="o">=</span> <span class="s">&#39;/proc/</span><span class="si">%s</span><span class="s">/status&#39;</span> <span class="o">%</span> <span class="n">pid</span>
+  <span class="n">uid_line</span> <span class="o">=</span> <span class="n">_get_line</span><span class="p">(</span><span class="n">status_path</span><span class="p">,</span> <span class="s">&#39;Uid:&#39;</span><span class="p">,</span> <span class="n">parameter</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">uid_line</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">_log_runtime</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s">[Uid]&#39;</span> <span class="o">%</span> <span class="n">status_path</span><span class="p">,</span> <span class="n">start_time</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
+  <span class="k">except</span><span class="p">:</span>
+    <span class="n">exc</span> <span class="o">=</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;unable to parse the </span><span class="si">%s</span><span class="s"> Uid entry: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">status_path</span><span class="p">,</span> <span class="n">uid_line</span><span class="p">))</span>
+    <span class="n">_log_failure</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="n">exc</span>
+
+</div>
+<div class="viewcode-block" id="memory_usage"><a class="viewcode-back" href="../../../api/util/proc.html#stem.util.proc.memory_usage">[docs]</a><span class="k">def</span> <span class="nf">memory_usage</span><span class="p">(</span><span class="n">pid</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the memory usage in bytes for the given process.</span>
+
+<span class="sd">  :param int pid: process id of the process to be queried</span>
+
+<span class="sd">  :returns: **tuple** of two ints with the memory usage of the process, of the</span>
+<span class="sd">    form **(resident_size, virtual_size)**</span>
+
+<span class="sd">  :raises: **IOError** if it can&#39;t be determined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># checks if this is the kernel process</span>
+
+  <span class="k">if</span> <span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">return</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+  <span class="n">start_time</span><span class="p">,</span> <span class="n">parameter</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="s">&#39;memory usage&#39;</span>
+  <span class="n">status_path</span> <span class="o">=</span> <span class="s">&#39;/proc/</span><span class="si">%s</span><span class="s">/status&#39;</span> <span class="o">%</span> <span class="n">pid</span>
+  <span class="n">mem_lines</span> <span class="o">=</span> <span class="n">_get_lines</span><span class="p">(</span><span class="n">status_path</span><span class="p">,</span> <span class="p">(</span><span class="s">&#39;VmRSS:&#39;</span><span class="p">,</span> <span class="s">&#39;VmSize:&#39;</span><span class="p">),</span> <span class="n">parameter</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">residentSize</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">mem_lines</span><span class="p">[</span><span class="s">&#39;VmRSS:&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">1</span><span class="p">])</span> <span class="o">*</span> <span class="mi">1024</span>
+    <span class="n">virtualSize</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">mem_lines</span><span class="p">[</span><span class="s">&#39;VmSize:&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">1</span><span class="p">])</span> <span class="o">*</span> <span class="mi">1024</span>
+
+    <span class="n">_log_runtime</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s">[VmRSS|VmSize]&#39;</span> <span class="o">%</span> <span class="n">status_path</span><span class="p">,</span> <span class="n">start_time</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">residentSize</span><span class="p">,</span> <span class="n">virtualSize</span><span class="p">)</span>
+  <span class="k">except</span><span class="p">:</span>
+    <span class="n">exc</span> <span class="o">=</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;unable to parse the </span><span class="si">%s</span><span class="s"> VmRSS and VmSize entries: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">status_path</span><span class="p">,</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">mem_lines</span><span class="p">)))</span>
+    <span class="n">_log_failure</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="n">exc</span>
+
+</div>
+<div class="viewcode-block" id="stats"><a class="viewcode-back" href="../../../api/util/proc.html#stem.util.proc.stats">[docs]</a><span class="k">def</span> <span class="nf">stats</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="o">*</span><span class="n">stat_types</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides process specific information. See the :data:`~stem.util.proc.Stat`</span>
+<span class="sd">  enum for valid options.</span>
+
+<span class="sd">  :param int pid: process id of the process to be queried</span>
+<span class="sd">  :param Stat stat_types: information to be provided back</span>
+
+<span class="sd">  :returns: **tuple** with all of the requested statistics as strings</span>
+
+<span class="sd">  :raises: **IOError** if it can&#39;t be determined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">CLOCK_TICKS</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;Unable to look up SC_CLK_TCK&#39;</span><span class="p">)</span>
+
+  <span class="n">start_time</span><span class="p">,</span> <span class="n">parameter</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="s">&#39;process </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">stat_types</span><span class="p">)</span>
+
+  <span class="c"># the stat file contains a single line, of the form...</span>
+  <span class="c"># 8438 (tor) S 8407 8438 8407 34818 8438 4202496...</span>
+  <span class="n">stat_path</span> <span class="o">=</span> <span class="s">&#39;/proc/</span><span class="si">%s</span><span class="s">/stat&#39;</span> <span class="o">%</span> <span class="n">pid</span>
+  <span class="n">stat_line</span> <span class="o">=</span> <span class="n">_get_line</span><span class="p">(</span><span class="n">stat_path</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">pid</span><span class="p">),</span> <span class="n">parameter</span><span class="p">)</span>
+
+  <span class="c"># breaks line into component values</span>
+  <span class="n">stat_comp</span> <span class="o">=</span> <span class="p">[]</span>
+  <span class="n">cmd_start</span><span class="p">,</span> <span class="n">cmd_end</span> <span class="o">=</span> <span class="n">stat_line</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;(&#39;</span><span class="p">),</span> <span class="n">stat_line</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;)&#39;</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">cmd_start</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">cmd_end</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+    <span class="n">stat_comp</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stat_line</span><span class="p">[:</span><span class="n">cmd_start</span><span class="p">])</span>
+    <span class="n">stat_comp</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stat_line</span><span class="p">[</span><span class="n">cmd_start</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span><span class="n">cmd_end</span><span class="p">])</span>
+    <span class="n">stat_comp</span> <span class="o">+=</span> <span class="n">stat_line</span><span class="p">[</span><span class="n">cmd_end</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+  <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">stat_comp</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">44</span> <span class="ow">and</span> <span class="n">_is_float</span><span class="p">(</span><span class="n">stat_comp</span><span class="p">[</span><span class="mi">13</span><span class="p">],</span> <span class="n">stat_comp</span><span class="p">[</span><span class="mi">14</span><span class="p">],</span> <span class="n">stat_comp</span><span class="p">[</span><span class="mi">21</span><span class="p">]):</span>
+    <span class="n">exc</span> <span class="o">=</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;stat file had an unexpected format: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">stat_path</span><span class="p">)</span>
+    <span class="n">_log_failure</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="n">exc</span>
+
+  <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+  <span class="k">for</span> <span class="n">stat_type</span> <span class="ow">in</span> <span class="n">stat_types</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">stat_type</span> <span class="o">==</span> <span class="n">Stat</span><span class="o">.</span><span class="n">COMMAND</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;sched&#39;</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stat_comp</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">elif</span> <span class="n">stat_type</span> <span class="o">==</span> <span class="n">Stat</span><span class="o">.</span><span class="n">CPU_UTIME</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;0&#39;</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">stat_comp</span><span class="p">[</span><span class="mi">13</span><span class="p">])</span> <span class="o">/</span> <span class="n">CLOCK_TICKS</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="n">stat_type</span> <span class="o">==</span> <span class="n">Stat</span><span class="o">.</span><span class="n">CPU_STIME</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;0&#39;</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">stat_comp</span><span class="p">[</span><span class="mi">14</span><span class="p">])</span> <span class="o">/</span> <span class="n">CLOCK_TICKS</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="n">stat_type</span> <span class="o">==</span> <span class="n">Stat</span><span class="o">.</span><span class="n">START_TIME</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">pid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">system_start_time</span><span class="p">()</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="c"># According to documentation, starttime is in field 21 and the unit is</span>
+        <span class="c"># jiffies (clock ticks). We divide it for clock ticks, then add the</span>
+        <span class="c"># uptime to get the seconds since the epoch.</span>
+        <span class="n">p_start_time</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">stat_comp</span><span class="p">[</span><span class="mi">21</span><span class="p">])</span> <span class="o">/</span> <span class="n">CLOCK_TICKS</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">p_start_time</span> <span class="o">+</span> <span class="n">system_start_time</span><span class="p">()))</span>
+
+  <span class="n">_log_runtime</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="n">stat_path</span><span class="p">,</span> <span class="n">start_time</span><span class="p">)</span>
+  <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="file_descriptors_used"><a class="viewcode-back" href="../../../api/util/proc.html#stem.util.proc.file_descriptors_used">[docs]</a><span class="k">def</span> <span class="nf">file_descriptors_used</span><span class="p">(</span><span class="n">pid</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the number of file descriptors currently being used by a process.</span>
+
+<span class="sd">  .. versionadded:: 1.3.0</span>
+
+<span class="sd">  :param int pid: process id of the process to be queried</span>
+
+<span class="sd">  :returns: **int** of the number of file descriptors used</span>
+
+<span class="sd">  :raises: **IOError** if it can&#39;t be determined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">pid</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">pid</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;Process pids can&#39;t be negative: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">pid</span><span class="p">)</span>
+  <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;Process pid was non-numeric: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">pid</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="s">&#39;/proc/</span><span class="si">%i</span><span class="s">/fd&#39;</span> <span class="o">%</span> <span class="n">pid</span><span class="p">))</span>
+  <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;Unable to check number of file descriptors used: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">exc</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="connections"><a class="viewcode-back" href="../../../api/util/proc.html#stem.util.proc.connections">[docs]</a><span class="k">def</span> <span class="nf">connections</span><span class="p">(</span><span class="n">pid</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">user</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Queries connections from the proc contents. This matches netstat, lsof, and</span>
+<span class="sd">  friends but is much faster. If no **pid** or **user** are provided this</span>
+<span class="sd">  provides all present connections.</span>
+
+<span class="sd">  :param int pid: pid to provide connections for</span>
+<span class="sd">  :param str user: username to look up connections for</span>
+
+<span class="sd">  :returns: **list** of :class:`~stem.util.connection.Connection` instances</span>
+
+<span class="sd">  :raises: **IOError** if it can&#39;t be determined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">start_time</span><span class="p">,</span> <span class="n">conn</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="p">[]</span>
+
+  <span class="k">if</span> <span class="n">pid</span><span class="p">:</span>
+    <span class="n">parameter</span> <span class="o">=</span> <span class="s">&#39;connections for pid </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">pid</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">pid</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">pid</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;Process pids can&#39;t be negative: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">pid</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;Process pid was non-numeric: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">pid</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="n">user</span><span class="p">:</span>
+    <span class="n">parameter</span> <span class="o">=</span> <span class="s">&#39;connections for user </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">user</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="n">parameter</span> <span class="o">=</span> <span class="s">&#39;all connections&#39;</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">IS_PWD_AVAILABLE</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;This requires python&#39;s pwd module, which is unavailable on Windows.&quot;</span><span class="p">)</span>
+
+    <span class="n">inodes</span> <span class="o">=</span> <span class="n">_inodes_for_sockets</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span> <span class="k">if</span> <span class="n">pid</span> <span class="k">else</span> <span class="p">[]</span>
+    <span class="n">process_uid</span> <span class="o">=</span> <span class="n">pwd</span><span class="o">.</span><span class="n">getpwnam</span><span class="p">(</span><span class="n">user</span><span class="p">)</span><span class="o">.</span><span class="n">pw_uid</span> <span class="k">if</span> <span class="n">user</span> <span class="k">else</span> <span class="bp">None</span>
+
+    <span class="k">for</span> <span class="n">proc_file_path</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;/proc/net/tcp&#39;</span><span class="p">,</span> <span class="s">&#39;/proc/net/tcp6&#39;</span><span class="p">,</span> <span class="s">&#39;/proc/net/udp&#39;</span><span class="p">,</span> <span class="s">&#39;/proc/net/udp6&#39;</span><span class="p">):</span>
+      <span class="k">if</span> <span class="n">proc_file_path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;6&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">proc_file_path</span><span class="p">):</span>
+        <span class="k">continue</span>  <span class="c"># ipv6 proc contents are optional</span>
+
+      <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">proc_file_path</span><span class="p">,</span> <span class="s">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">proc_file</span><span class="p">:</span>
+          <span class="n">proc_file</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>  <span class="c"># skip the first line</span>
+
+          <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">proc_file</span><span class="p">:</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">l_addr</span><span class="p">,</span> <span class="n">f_addr</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">uid</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">inode</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()[:</span><span class="mi">10</span><span class="p">]</span>
+            <span class="n">protocol</span> <span class="o">=</span> <span class="n">proc_file_path</span><span class="p">[</span><span class="mi">10</span><span class="p">:]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s">&#39;6&#39;</span><span class="p">)</span>  <span class="c"># &#39;tcp&#39; or &#39;udp&#39;</span>
+            <span class="n">is_ipv6</span> <span class="o">=</span> <span class="n">proc_file_path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;6&#39;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">inodes</span> <span class="ow">and</span> <span class="n">inode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">inodes</span><span class="p">:</span>
+              <span class="k">continue</span>
+            <span class="k">elif</span> <span class="n">process_uid</span> <span class="ow">and</span> <span class="nb">int</span><span class="p">(</span><span class="n">uid</span><span class="p">)</span> <span class="o">!=</span> <span class="n">process_uid</span><span class="p">:</span>
+              <span class="k">continue</span>
+            <span class="k">elif</span> <span class="n">protocol</span> <span class="o">==</span> <span class="s">&#39;tcp&#39;</span> <span class="ow">and</span> <span class="n">status</span> <span class="o">!=</span> <span class="n">b</span><span class="s">&#39;01&#39;</span><span class="p">:</span>
+              <span class="k">continue</span>  <span class="c"># skip tcp connections that aren&#39;t yet established</span>
+            <span class="k">elif</span> <span class="n">protocol</span> <span class="o">==</span> <span class="s">&#39;udp&#39;</span> <span class="ow">and</span> <span class="p">(</span><span class="n">f_addr</span> <span class="o">==</span> <span class="s">&#39;00000000:0000&#39;</span> <span class="ow">or</span> <span class="n">f_addr</span> <span class="o">==</span> <span class="s">&#39;00000000000000000000000000000000:0000&#39;</span><span class="p">):</span>
+              <span class="k">continue</span>  <span class="c"># skip udp connections with a blank destination</span>
+
+            <span class="n">local_ip</span><span class="p">,</span> <span class="n">local_port</span> <span class="o">=</span> <span class="n">_decode_proc_address_encoding</span><span class="p">(</span><span class="n">l_addr</span><span class="p">,</span> <span class="n">is_ipv6</span><span class="p">)</span>
+            <span class="n">foreign_ip</span><span class="p">,</span> <span class="n">foreign_port</span> <span class="o">=</span> <span class="n">_decode_proc_address_encoding</span><span class="p">(</span><span class="n">f_addr</span><span class="p">,</span> <span class="n">is_ipv6</span><span class="p">)</span>
+            <span class="n">conn</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">Connection</span><span class="p">(</span><span class="n">local_ip</span><span class="p">,</span> <span class="n">local_port</span><span class="p">,</span> <span class="n">foreign_ip</span><span class="p">,</span> <span class="n">foreign_port</span><span class="p">,</span> <span class="n">protocol</span><span class="p">,</span> <span class="n">is_ipv6</span><span class="p">))</span>
+      <span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;unable to read &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">proc_file_path</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
+      <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;unable to parse &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">proc_file_path</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
+
+    <span class="n">_log_runtime</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="s">&#39;/proc/net/[tcp|udp]&#39;</span><span class="p">,</span> <span class="n">start_time</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">conn</span>
+  <span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="n">_log_failure</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+    <span class="k">raise</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_inodes_for_sockets</span><span class="p">(</span><span class="n">pid</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides inodes in use by a process for its sockets.</span>
+
+<span class="sd">  :param int pid: process id of the process to be queried</span>
+
+<span class="sd">  :returns: **list** with inodes for its sockets</span>
+
+<span class="sd">  :raises: **IOError** if it can&#39;t be determined</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">inodes</span> <span class="o">=</span> <span class="p">[]</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">fd_contents</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="s">&#39;/proc/</span><span class="si">%s</span><span class="s">/fd&#39;</span> <span class="o">%</span> <span class="n">pid</span><span class="p">)</span>
+  <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;Unable to read our file descriptors: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">exc</span><span class="p">)</span>
+
+  <span class="k">for</span> <span class="n">fd</span> <span class="ow">in</span> <span class="n">fd_contents</span><span class="p">:</span>
+    <span class="n">fd_path</span> <span class="o">=</span> <span class="s">&#39;/proc/</span><span class="si">%s</span><span class="s">/fd/</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="n">fd</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="c"># File descriptor link, such as &#39;socket:[30899]&#39;</span>
+
+      <span class="n">fd_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">readlink</span><span class="p">(</span><span class="n">fd_path</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">fd_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;socket:[&#39;</span><span class="p">):</span>
+        <span class="n">inodes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_bytes</span><span class="p">(</span><span class="n">fd_name</span><span class="p">[</span><span class="mi">8</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">fd_path</span><span class="p">):</span>
+        <span class="k">continue</span>  <span class="c"># descriptors may shift while we&#39;re in the middle of iterating over them</span>
+
+      <span class="c"># most likely couldn&#39;t be read due to permissions</span>
+      <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;unable to determine file descriptor destination (</span><span class="si">%s</span><span class="s">): </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="n">fd_path</span><span class="p">))</span>
+
+  <span class="k">return</span> <span class="n">inodes</span>
+
+
+<span class="k">def</span> <span class="nf">_decode_proc_address_encoding</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">is_ipv6</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Translates an address entry in the /proc/net/* contents to a human readable</span>
+<span class="sd">  form (`reference &lt;http://linuxdevcenter.com/pub/a/linux/2000/11/16/LinuxAdmin.html&gt;`_,</span>
+<span class="sd">  for instance:</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    &quot;0500000A:0016&quot; -&gt; (&quot;10.0.0.5&quot;, 22)</span>
+<span class="sd">    &quot;F804012A4A5190010000000002000000:01BB&quot; -&gt; (&quot;2a01:4f8:190:514a::2&quot;, 443)</span>
+
+<span class="sd">  :param str addr: proc address entry to be decoded</span>
+<span class="sd">  :param bool is_ipv6: if we should treat the address as ipv6</span>
+
+<span class="sd">  :returns: **tuple** of the form **(addr, port)**, with addr as a string and port an int</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">ip</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="n">addr</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;:&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+  <span class="n">port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">port</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>  <span class="c"># the port is represented as a two-byte hexadecimal number</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">is_ipv6</span><span class="p">:</span>
+    <span class="n">ip_encoded</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b16decode</span><span class="p">(</span><span class="n">ip</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">byteorder</span> <span class="o">==</span> <span class="s">&#39;little&#39;</span> <span class="k">else</span> <span class="n">base64</span><span class="o">.</span><span class="n">b16decode</span><span class="p">(</span><span class="n">ip</span><span class="p">)</span>
+    <span class="n">ip</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">inet_ntop</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">ip_encoded</span><span class="p">)</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">byteorder</span> <span class="o">==</span> <span class="s">&#39;little&#39;</span><span class="p">:</span>
+      <span class="c"># Group into eight characters, then invert in pairs...</span>
+      <span class="c">#</span>
+      <span class="c">#   https://trac.torproject.org/projects/tor/ticket/18079#comment:24</span>
+
+      <span class="n">inverted</span> <span class="o">=</span> <span class="p">[]</span>
+
+      <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+        <span class="n">grouping</span> <span class="o">=</span> <span class="n">ip</span><span class="p">[</span><span class="mi">8</span> <span class="o">*</span> <span class="n">i</span><span class="p">:</span><span class="mi">8</span> <span class="o">*</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span>
+        <span class="n">inverted</span> <span class="o">+=</span> <span class="p">[</span><span class="n">grouping</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">i</span><span class="p">:</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)][::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+      <span class="n">ip</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">inverted</span><span class="p">)</span>
+
+    <span class="n">ip</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">expand_ipv6_address</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">inet_ntop</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET6</span><span class="p">,</span> <span class="n">base64</span><span class="o">.</span><span class="n">b16decode</span><span class="p">(</span><span class="n">ip</span><span class="p">)))</span>
+
+  <span class="k">return</span> <span class="p">(</span><span class="n">ip</span><span class="p">,</span> <span class="n">port</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_is_float</span><span class="p">(</span><span class="o">*</span><span class="n">value</span><span class="p">):</span>
+  <span class="k">try</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+      <span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="bp">True</span>
+  <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">False</span>
+
+
+<span class="k">def</span> <span class="nf">_get_line</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">line_prefix</span><span class="p">,</span> <span class="n">parameter</span><span class="p">):</span>
+  <span class="k">return</span> <span class="n">_get_lines</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="p">(</span><span class="n">line_prefix</span><span class="p">,</span> <span class="p">),</span> <span class="n">parameter</span><span class="p">)[</span><span class="n">line_prefix</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">_get_lines</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">line_prefixes</span><span class="p">,</span> <span class="n">parameter</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Fetches lines with the given prefixes from a file. This only provides back</span>
+<span class="sd">  the first instance of each prefix.</span>
+
+<span class="sd">  :param str file_path: path of the file to read</span>
+<span class="sd">  :param tuple line_prefixes: string prefixes of the lines to return</span>
+<span class="sd">  :param str parameter: description of the proc attribute being fetch</span>
+
+<span class="sd">  :returns: mapping of prefixes to the matching line</span>
+
+<span class="sd">  :raises: **IOError** if unable to read the file or can&#39;t find all of the prefixes</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">remaining_prefixes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">line_prefixes</span><span class="p">)</span>
+    <span class="n">proc_file</span><span class="p">,</span> <span class="n">results</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">),</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">proc_file</span><span class="p">:</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">remaining_prefixes</span><span class="p">:</span>
+        <span class="k">break</span>  <span class="c"># found everything we&#39;re looking for</span>
+
+      <span class="k">for</span> <span class="n">prefix</span> <span class="ow">in</span> <span class="n">remaining_prefixes</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">prefix</span><span class="p">):</span>
+          <span class="n">results</span><span class="p">[</span><span class="n">prefix</span><span class="p">]</span> <span class="o">=</span> <span class="n">line</span>
+          <span class="n">remaining_prefixes</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span>
+          <span class="k">break</span>
+
+    <span class="n">proc_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">remaining_prefixes</span><span class="p">:</span>
+      <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">remaining_prefixes</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s"> did not contain a </span><span class="si">%s</span><span class="s"> entry&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">remaining_prefixes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s"> did not contain </span><span class="si">%s</span><span class="s"> entries&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">remaining_prefixes</span><span class="p">))</span>
+
+      <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">results</span>
+  <span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="n">_log_failure</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+    <span class="k">raise</span>
+
+
+<span class="k">def</span> <span class="nf">_log_runtime</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="n">proc_location</span><span class="p">,</span> <span class="n">start_time</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Logs a message indicating a successful proc query.</span>
+
+<span class="sd">  :param str parameter: description of the proc attribute being fetch</span>
+<span class="sd">  :param str proc_location: proc files we were querying</span>
+<span class="sd">  :param int start_time: unix time for when this query was started</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">runtime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+  <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;proc call (</span><span class="si">%s</span><span class="s">): </span><span class="si">%s</span><span class="s"> (runtime: </span><span class="si">%0.4f</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="n">proc_location</span><span class="p">,</span> <span class="n">runtime</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">_log_failure</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Logs a message indicating that the proc query failed.</span>
+
+<span class="sd">  :param str parameter: description of the proc attribute being fetch</span>
+<span class="sd">  :param Exception exc: exception that we&#39;re raising</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;proc call failed (</span><span class="si">%s</span><span class="s">): </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
+
+<span class="c"># TODO: drop with stem 2.x</span>
+<span class="c"># We renamed our methods to drop a redundant &#39;get_*&#39; prefix, so alias the old</span>
+<span class="c"># names for backward compatability.</span>
+
+<span class="n">get_system_start_time</span> <span class="o">=</span> <span class="n">system_start_time</span>
+<span class="n">get_physical_memory</span> <span class="o">=</span> <span class="n">physical_memory</span>
+<span class="n">get_cwd</span> <span class="o">=</span> <span class="n">cwd</span>
+<span class="n">get_uid</span> <span class="o">=</span> <span class="n">uid</span>
+<span class="n">get_memory_usage</span> <span class="o">=</span> <span class="n">memory_usage</span>
+<span class="n">get_stats</span> <span class="o">=</span> <span class="n">stats</span>
+<span class="n">get_connections</span> <span class="o">=</span> <span class="n">connections</span>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

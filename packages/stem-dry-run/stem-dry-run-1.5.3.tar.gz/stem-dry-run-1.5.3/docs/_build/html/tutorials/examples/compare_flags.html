@@ -1,0 +1,162 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Comparing Directory Authority Flags &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>Comparing Directory Authority Flags</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../index.html">Home</a></li>
+          <li><a href="../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../over_the_river.html">Hidden Services</a></li>
+              <li><a href="../mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../api.html">API</a>
+            <ul>
+              <li><a href="../../api/control.html">stem.control</a></li>
+              <li><a href="../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../api/process.html">stem.process</a></li>
+              <li><a href="../../api/response.html">stem.response</a></li>
+              <li><a href="../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../api/version.html">stem.version</a></li>
+              <li><a href="../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../faq.html">FAQ</a></li>
+              <li><a href="../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="comparing-directory-authority-flags">
+<h1>Comparing Directory Authority Flags<a class="headerlink" href="#comparing-directory-authority-flags" title="Permalink to this headline">¶</a></h1>
+<a class="reference external image-reference" href="../double_double_toil_and_trouble.html"><img alt="../../_images/back.png" src="../../_images/back.png" /></a>
+<p>Compares the votes of two directory authorities, in this case moria1 and
+maatuska, with a special interest in the 'Running' flag.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+<span class="kn">from</span> <span class="nn">stem.descriptor</span> <span class="kn">import</span> <span class="n">DocumentHandler</span><span class="p">,</span> <span class="n">remote</span>
+
+<span class="c"># Query all authority votes asynchronously.</span>
+
+<span class="n">downloader</span> <span class="o">=</span> <span class="n">remote</span><span class="o">.</span><span class="n">DescriptorDownloader</span><span class="p">(</span><span class="n">document_handler</span><span class="o">=</span><span class="n">DocumentHandler</span><span class="o">.</span><span class="n">DOCUMENT</span><span class="p">)</span>
+
+<span class="c"># An ordered dictionary ensures queries are finished in the order they were</span>
+<span class="c"># added.</span>
+
+<span class="n">queries</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+
+<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">authority</span> <span class="ow">in</span> <span class="n">remote</span><span class="o">.</span><span class="n">get_authorities</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+  <span class="k">if</span> <span class="n">authority</span><span class="o">.</span><span class="n">v3ident</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="k">continue</span>  <span class="c"># authority doesn&#39;t vote if it lacks a v3ident</span>
+
+  <span class="n">queries</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">downloader</span><span class="o">.</span><span class="n">get_vote</span><span class="p">(</span><span class="n">authority</span><span class="p">)</span>
+
+<span class="c"># Wait for the votes to finish being downloaded, this produces a dictionary of</span>
+<span class="c"># authority nicknames to their vote.</span>
+
+<span class="n">votes</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="n">query</span><span class="o">.</span><span class="n">run</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">query</span><span class="p">)</span> <span class="ow">in</span> <span class="n">queries</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+
+<span class="c"># Get a superset of all the fingerprints in all the votes.</span>
+
+<span class="n">all_fingerprints</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+<span class="k">for</span> <span class="n">vote</span> <span class="ow">in</span> <span class="n">votes</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+  <span class="n">all_fingerprints</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">vote</span><span class="o">.</span><span class="n">routers</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+<span class="c"># Finally, compare moria1&#39;s votes to maatuska&#39;s votes.</span>
+
+<span class="k">for</span> <span class="n">fingerprint</span> <span class="ow">in</span> <span class="n">all_fingerprints</span><span class="p">:</span>
+  <span class="n">moria1_vote</span> <span class="o">=</span> <span class="n">votes</span><span class="p">[</span><span class="s">&#39;moria1&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">routers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">fingerprint</span><span class="p">)</span>
+  <span class="n">maatuska_vote</span> <span class="o">=</span> <span class="n">votes</span><span class="p">[</span><span class="s">&#39;maatuska&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">routers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">fingerprint</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">moria1_vote</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">maatuska_vote</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;both moria1 and maatuska haven&#39;t voted about </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">fingerprint</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="ow">not</span> <span class="n">moria1_vote</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;moria1 hasn&#39;t voted about </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">fingerprint</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="ow">not</span> <span class="n">maatuska_vote</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;maatuska hasn&#39;t voted about </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">fingerprint</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="s">&#39;Running&#39;</span> <span class="ow">in</span> <span class="n">moria1_vote</span><span class="o">.</span><span class="n">flags</span> <span class="ow">and</span> <span class="s">&#39;Running&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">maatuska_vote</span><span class="o">.</span><span class="n">flags</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;moria1 has the Running flag but maatuska doesn&#39;t: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">fingerprint</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="s">&#39;Running&#39;</span> <span class="ow">in</span> <span class="n">maatuska_vote</span><span class="o">.</span><span class="n">flags</span> <span class="ow">and</span> <span class="s">&#39;Running&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">moria1_vote</span><span class="o">.</span><span class="n">flags</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;maatuska has the Running flag but moria1 doesn&#39;t: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">fingerprint</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-python"><pre>% python compare_flags.py
+maatuska has the Running flag but moria1 doesn't: 92FCB6748A40E6088E22FBAB943AB2DD743EA818
+maatuska has the Running flag but moria1 doesn't: 6871F682350BA931838C0EC1E4A23044DAE06A73
+maatuska has the Running flag but moria1 doesn't: E2BB13AA2F6960CD93ABE5257A825687F3973C62
+moria1 has the Running flag but maatuska doesn't: 546C54E2A89D88E0794D04AECBF1AC8AC9DA81DE
+moria1 has the Running flag but maatuska doesn't: DCAEC3D069DC39AAE43D13C8AF31B5645E05ED61
+...</pre>
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

@@ -1,0 +1,253 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.util.tor_tools &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem" href="../../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.util.tor_tools</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.util.tor_tools</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2012-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Miscellaneous utility functions for working with tor.</span>
+
+<span class="sd">.. versionadded:: 1.2.0</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  is_valid_fingerprint - checks if a string is a valid tor relay fingerprint</span>
+<span class="sd">  is_valid_nickname - checks if a string is a valid tor relay nickname</span>
+<span class="sd">  is_valid_circuit_id - checks if a string is a valid tor circuit id</span>
+<span class="sd">  is_valid_stream_id - checks if a string is a valid tor stream id</span>
+<span class="sd">  is_valid_connection_id - checks if a string is a valid tor connection id</span>
+<span class="sd">  is_valid_hidden_service_address - checks if a string is a valid hidden service address</span>
+<span class="sd">  is_hex_digits - checks if a string is only made up of hex digits</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">re</span>
+
+<span class="c"># The control-spec defines the following as...</span>
+<span class="c">#</span>
+<span class="c">#   Fingerprint = &quot;$&quot; 40*HEXDIG</span>
+<span class="c">#   NicknameChar = &quot;a&quot;-&quot;z&quot; / &quot;A&quot;-&quot;Z&quot; / &quot;0&quot; - &quot;9&quot;</span>
+<span class="c">#   Nickname = 1*19 NicknameChar</span>
+<span class="c">#</span>
+<span class="c">#   CircuitID = 1*16 IDChar</span>
+<span class="c">#   IDChar = ALPHA / DIGIT</span>
+<span class="c">#</span>
+<span class="c"># HEXDIG is defined in RFC 5234 as being uppercase and used in RFC 5987 as</span>
+<span class="c"># case insensitive. Tor doesn&#39;t define this in the spec so flipping a coin</span>
+<span class="c"># and going with case insensitive.</span>
+
+<span class="n">NICKNAME_PATTERN</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^[a-zA-Z0-9]{1,19}$&#39;</span><span class="p">)</span>
+<span class="n">CIRC_ID_PATTERN</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^[a-zA-Z0-9]{1,16}$&#39;</span><span class="p">)</span>
+
+<span class="c"># Hidden service addresses are sixteen base32 characters.</span>
+
+<span class="n">HS_ADDRESS_PATTERN</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^[a-z2-7]{16}$&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="is_valid_fingerprint"><a class="viewcode-back" href="../../../api/util/tor_tools.html#stem.util.tor_tools.is_valid_fingerprint">[docs]</a><span class="k">def</span> <span class="nf">is_valid_fingerprint</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">check_prefix</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks if a string is a properly formatted relay fingerprint. This checks for</span>
+<span class="sd">  a &#39;$&#39; prefix if check_prefix is true, otherwise this only validates the hex</span>
+<span class="sd">  digits.</span>
+
+<span class="sd">  :param str entry: string to be checked</span>
+<span class="sd">  :param bool check_prefix: checks for a &#39;$&#39; prefix</span>
+
+<span class="sd">  :returns: **True** if the string could be a relay fingerprint, **False** otherwise</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">check_prefix</span><span class="p">:</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">entry</span> <span class="ow">or</span> <span class="n">entry</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&#39;$&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+      <span class="n">entry</span> <span class="o">=</span> <span class="n">entry</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+    <span class="k">return</span> <span class="n">is_hex_digits</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="mi">40</span><span class="p">)</span>
+  <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">False</span>
+
+</div>
+<div class="viewcode-block" id="is_valid_nickname"><a class="viewcode-back" href="../../../api/util/tor_tools.html#stem.util.tor_tools.is_valid_nickname">[docs]</a><span class="k">def</span> <span class="nf">is_valid_nickname</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks if a string is a valid format for being a nickname.</span>
+
+<span class="sd">  :param str entry: string to be checked</span>
+
+<span class="sd">  :returns: **True** if the string could be a nickname, **False** otherwise</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">NICKNAME_PATTERN</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">entry</span><span class="p">))</span>
+  <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">False</span>
+
+</div>
+<div class="viewcode-block" id="is_valid_circuit_id"><a class="viewcode-back" href="../../../api/util/tor_tools.html#stem.util.tor_tools.is_valid_circuit_id">[docs]</a><span class="k">def</span> <span class="nf">is_valid_circuit_id</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks if a string is a valid format for being a circuit identifier.</span>
+
+<span class="sd">  :returns: **True** if the string could be a circuit id, **False** otherwise</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">CIRC_ID_PATTERN</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">entry</span><span class="p">))</span>
+  <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">False</span>
+
+</div>
+<div class="viewcode-block" id="is_valid_stream_id"><a class="viewcode-back" href="../../../api/util/tor_tools.html#stem.util.tor_tools.is_valid_stream_id">[docs]</a><span class="k">def</span> <span class="nf">is_valid_stream_id</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks if a string is a valid format for being a stream identifier.</span>
+<span class="sd">  Currently, this is just an alias to :func:`~stem.util.tor_tools.is_valid_circuit_id`.</span>
+
+<span class="sd">  :returns: **True** if the string could be a stream id, **False** otherwise</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">return</span> <span class="n">is_valid_circuit_id</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="is_valid_connection_id"><a class="viewcode-back" href="../../../api/util/tor_tools.html#stem.util.tor_tools.is_valid_connection_id">[docs]</a><span class="k">def</span> <span class="nf">is_valid_connection_id</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks if a string is a valid format for being a connection identifier.</span>
+<span class="sd">  Currently, this is just an alias to :func:`~stem.util.tor_tools.is_valid_circuit_id`.</span>
+
+<span class="sd">  :returns: **True** if the string could be a connection id, **False** otherwise</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">return</span> <span class="n">is_valid_circuit_id</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="is_valid_hidden_service_address"><a class="viewcode-back" href="../../../api/util/tor_tools.html#stem.util.tor_tools.is_valid_hidden_service_address">[docs]</a><span class="k">def</span> <span class="nf">is_valid_hidden_service_address</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks if a string is a valid format for being a hidden service address (not</span>
+<span class="sd">  including the &#39;.onion&#39; suffix).</span>
+
+<span class="sd">  :returns: **True** if the string could be a hidden service address, **False** otherwise</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">HS_ADDRESS_PATTERN</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">entry</span><span class="p">))</span>
+  <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">False</span>
+
+</div>
+<div class="viewcode-block" id="is_hex_digits"><a class="viewcode-back" href="../../../api/util/tor_tools.html#stem.util.tor_tools.is_hex_digits">[docs]</a><span class="k">def</span> <span class="nf">is_hex_digits</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">count</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks if a string is the given number of hex digits. Digits represented by</span>
+<span class="sd">  letters are case insensitive.</span>
+
+<span class="sd">  :param str entry: string to be checked</span>
+<span class="sd">  :param int count: number of hex digits to be checked for</span>
+
+<span class="sd">  :returns: **True** if the given number of hex digits, **False** otherwise</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="o">!=</span> <span class="n">count</span><span class="p">:</span>
+      <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>  <span class="c"># attempt to convert it as hex</span>
+    <span class="k">return</span> <span class="bp">True</span>
+  <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">False</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

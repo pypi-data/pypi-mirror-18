@@ -1,0 +1,478 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Extrainfo Descriptor &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>Extrainfo Descriptor</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../index.html">Home</a></li>
+          <li><a href="../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../api.html">API</a>
+            <ul>
+              <li><a href="../control.html">stem.control</a></li>
+              <li><a href="../connection.html">stem.connection</a></li>
+              <li><a href="../socket.html">stem.socket</a></li>
+              <li><a href="../process.html">stem.process</a></li>
+              <li><a href="../response.html">stem.response</a></li>
+              <li><a href="../exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../version.html">stem.version</a></li>
+              <li><a href="../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../faq.html">FAQ</a></li>
+              <li><a href="../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="module-stem.descriptor.extrainfo_descriptor">
+<span id="extrainfo-descriptor"></span><h1>Extrainfo Descriptor<a class="headerlink" href="#module-stem.descriptor.extrainfo_descriptor" title="Permalink to this headline">¶</a></h1>
+<p>Parsing for Tor extra-info descriptors. These are published by relays whenever
+their server descriptor is published and have a similar format. However, unlike
+server descriptors these don't contain information that Tor clients require to
+function and as such aren't fetched by default.</p>
+<p>Defined in section 2.1.2 of the <a class="reference external" href="https://gitweb.torproject.org/torspec.git/tree/dir-spec.txt">dir-spec</a>,
+extra-info descriptors contain interesting but non-vital information such as
+usage statistics. Tor clients cannot request these documents for bridges.</p>
+<p>Extra-info descriptors are available from a few sources...</p>
+<ul class="simple">
+<li>If you have 'DownloadExtraInfo 1' in your torrc...</li>
+</ul>
+<blockquote>
+<div><ul class="simple">
+<li>control port via 'GETINFO extra-info/digest/*' queries</li>
+<li>the 'cached-extrainfo' file in tor's data directory</li>
+</ul>
+</div></blockquote>
+<ul class="simple">
+<li>Archived descriptors provided by CollecTor
+(<a class="reference external" href="https://collector.torproject.org/">https://collector.torproject.org/</a>).</li>
+<li>Directory authorities and mirrors via their DirPort.</li>
+</ul>
+<p><strong>Module Overview:</strong></p>
+<div class="highlight-python"><pre>ExtraInfoDescriptor - Tor extra-info descriptor.
+  |- RelayExtraInfoDescriptor - Extra-info descriptor for a relay.
+  |- BridgeExtraInfoDescriptor - Extra-info descriptor for a bridge.
+  |
+  +- digest - calculates the upper-case hex digest value for our content</pre>
+</div>
+<dl class="data">
+<dt id="stem.descriptor.extrainfo_descriptor.DirResponse">
+<tt class="descclassname">stem.descriptor.extrainfo_descriptor.</tt><tt class="descname">DirResponse</tt><big>(</big><em>enum</em><big>)</big><a class="headerlink" href="#stem.descriptor.extrainfo_descriptor.DirResponse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Enumeration for known statuses for ExtraInfoDescriptor's dir_*_responses.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="26%" />
+<col width="74%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">DirResponse</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><strong>OK</strong></td>
+<td>network status requests that were answered</td>
+</tr>
+<tr class="row-odd"><td><strong>NOT_ENOUGH_SIGS</strong></td>
+<td>network status wasn't signed by enough authorities</td>
+</tr>
+<tr class="row-even"><td><strong>UNAVAILABLE</strong></td>
+<td>requested network status was unavailable</td>
+</tr>
+<tr class="row-odd"><td><strong>NOT_FOUND</strong></td>
+<td>requested network status was not found</td>
+</tr>
+<tr class="row-even"><td><strong>NOT_MODIFIED</strong></td>
+<td>network status unmodified since If-Modified-Since time</td>
+</tr>
+<tr class="row-odd"><td><strong>BUSY</strong></td>
+<td>directory was busy</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="data">
+<dt id="stem.descriptor.extrainfo_descriptor.DirStat">
+<tt class="descclassname">stem.descriptor.extrainfo_descriptor.</tt><tt class="descname">DirStat</tt><big>(</big><em>enum</em><big>)</big><a class="headerlink" href="#stem.descriptor.extrainfo_descriptor.DirStat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Enumeration for known stats for ExtraInfoDescriptor's dir_*_direct_dl and
+dir_*_tunneled_dl.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="26%" />
+<col width="74%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">DirStat</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><strong>COMPLETE</strong></td>
+<td>requests that completed successfully</td>
+</tr>
+<tr class="row-odd"><td><strong>TIMEOUT</strong></td>
+<td>requests that didn't complete within a ten minute timeout</td>
+</tr>
+<tr class="row-even"><td><strong>RUNNING</strong></td>
+<td>requests still in process when measurement's taken</td>
+</tr>
+<tr class="row-odd"><td><strong>MIN</strong></td>
+<td>smallest rate at which a descriptor was downloaded in B/s</td>
+</tr>
+<tr class="row-even"><td><strong>MAX</strong></td>
+<td>largest rate at which a descriptor was downloaded in B/s</td>
+</tr>
+<tr class="row-odd"><td><strong>D1-4</strong> and <strong>D6-9</strong></td>
+<td>rate of the slowest x/10 download rates in B/s</td>
+</tr>
+<tr class="row-even"><td><strong>Q1</strong> and <strong>Q3</strong></td>
+<td>rate of the slowest and fastest quarter download rates in B/s</td>
+</tr>
+<tr class="row-odd"><td><strong>MD</strong></td>
+<td>median download rate in B/s</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.descriptor.extrainfo_descriptor.ExtraInfoDescriptor">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.extrainfo_descriptor.</tt><tt class="descname">ExtraInfoDescriptor</tt><big>(</big><em>raw_contents</em>, <em>validate=False</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/extrainfo_descriptor.html#ExtraInfoDescriptor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.extrainfo_descriptor.ExtraInfoDescriptor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.Descriptor</span></tt></p>
+<p>Extra-info descriptor document.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>nickname</strong> (<em>str</em>) -- <strong>*</strong> relay's nickname</li>
+<li><strong>fingerprint</strong> (<em>str</em>) -- <strong>*</strong> identity key fingerprint</li>
+<li><strong>published</strong> (<em>datetime</em>) -- <strong>*</strong> time in UTC when this descriptor was made</li>
+<li><strong>geoip_db_digest</strong> (<em>str</em>) -- sha1 of the geoIP database file for IPv4 addresses</li>
+<li><strong>geoip6_db_digest</strong> (<em>str</em>) -- sha1 of the geoIP database file for IPv6 addresses</li>
+<li><strong>transport</strong> (<em>dict</em>) -- <strong>*</strong> mapping of transport methods to their (address,
+port, args) tuple, these usually appear on bridges in which case all of
+those are <strong>None</strong></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Bi-directional connection usage:</strong></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>conn_bi_direct_end</strong> (<em>datetime</em>) -- end of the sampling interval</li>
+<li><strong>conn_bi_direct_interval</strong> (<em>int</em>) -- seconds per interval</li>
+<li><strong>conn_bi_direct_below</strong> (<em>int</em>) -- connections that read/wrote less than 20 KiB</li>
+<li><strong>conn_bi_direct_read</strong> (<em>int</em>) -- connections that read at least 10x more than wrote</li>
+<li><strong>conn_bi_direct_write</strong> (<em>int</em>) -- connections that wrote at least 10x more than read</li>
+<li><strong>conn_bi_direct_both</strong> (<em>int</em>) -- remaining connections</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Bytes read/written for relayed traffic:</strong></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>read_history_end</strong> (<em>datetime</em>) -- end of the sampling interval</li>
+<li><strong>read_history_interval</strong> (<em>int</em>) -- seconds per interval</li>
+<li><strong>read_history_values</strong> (<em>list</em>) -- bytes read during each interval</li>
+<li><strong>write_history_end</strong> (<em>datetime</em>) -- end of the sampling interval</li>
+<li><strong>write_history_interval</strong> (<em>int</em>) -- seconds per interval</li>
+<li><strong>write_history_values</strong> (<em>list</em>) -- bytes written during each interval</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Cell relaying statistics:</strong></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>cell_stats_end</strong> (<em>datetime</em>) -- end of the period when stats were gathered</li>
+<li><strong>cell_stats_interval</strong> (<em>int</em>) -- length in seconds of the interval</li>
+<li><strong>cell_processed_cells</strong> (<em>list</em>) -- measurement of processed cells per circuit</li>
+<li><strong>cell_queued_cells</strong> (<em>list</em>) -- measurement of queued cells per circuit</li>
+<li><strong>cell_time_in_queue</strong> (<em>list</em>) -- mean enqueued time in milliseconds for cells</li>
+<li><strong>cell_circuits_per_decile</strong> (<em>int</em>) -- mean number of circuits in a decile</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Directory Mirror Attributes:</strong></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>dir_stats_end</strong> (<em>datetime</em>) -- end of the period when stats were gathered</li>
+<li><strong>dir_stats_interval</strong> (<em>int</em>) -- length in seconds of the interval</li>
+<li><strong>dir_v2_ips</strong> (<em>dict</em>) -- mapping of locales to rounded count of requester ips</li>
+<li><strong>dir_v3_ips</strong> (<em>dict</em>) -- mapping of locales to rounded count of requester ips</li>
+<li><strong>dir_v2_share</strong> (<em>float</em>) -- percent of total directory traffic it expects to serve</li>
+<li><strong>dir_v3_share</strong> (<em>float</em>) -- percent of total directory traffic it expects to serve</li>
+<li><strong>dir_v2_requests</strong> (<em>dict</em>) -- mapping of locales to rounded count of requests</li>
+<li><strong>dir_v3_requests</strong> (<em>dict</em>) -- mapping of locales to rounded count of requests</li>
+<li><strong>dir_v2_responses</strong> (<em>dict</em>) -- mapping of <a class="reference internal" href="#stem.descriptor.extrainfo_descriptor.DirResponse" title="stem.descriptor.extrainfo_descriptor.DirResponse"><tt class="xref py py-data docutils literal"><span class="pre">DirResponse</span></tt></a> to their rounded count</li>
+<li><strong>dir_v3_responses</strong> (<em>dict</em>) -- mapping of <a class="reference internal" href="#stem.descriptor.extrainfo_descriptor.DirResponse" title="stem.descriptor.extrainfo_descriptor.DirResponse"><tt class="xref py py-data docutils literal"><span class="pre">DirResponse</span></tt></a> to their rounded count</li>
+<li><strong>dir_v2_responses_unknown</strong> (<em>dict</em>) -- mapping of unrecognized statuses to their count</li>
+<li><strong>dir_v3_responses_unknown</strong> (<em>dict</em>) -- mapping of unrecognized statuses to their count</li>
+<li><strong>dir_v2_direct_dl</strong> (<em>dict</em>) -- mapping of <a class="reference internal" href="#stem.descriptor.extrainfo_descriptor.DirStat" title="stem.descriptor.extrainfo_descriptor.DirStat"><tt class="xref py py-data docutils literal"><span class="pre">DirStat</span></tt></a> to measurement over DirPort</li>
+<li><strong>dir_v3_direct_dl</strong> (<em>dict</em>) -- mapping of <a class="reference internal" href="#stem.descriptor.extrainfo_descriptor.DirStat" title="stem.descriptor.extrainfo_descriptor.DirStat"><tt class="xref py py-data docutils literal"><span class="pre">DirStat</span></tt></a> to measurement over DirPort</li>
+<li><strong>dir_v2_direct_dl_unknown</strong> (<em>dict</em>) -- mapping of unrecognized stats to their measurement</li>
+<li><strong>dir_v3_direct_dl_unknown</strong> (<em>dict</em>) -- mapping of unrecognized stats to their measurement</li>
+<li><strong>dir_v2_tunneled_dl</strong> (<em>dict</em>) -- mapping of <a class="reference internal" href="#stem.descriptor.extrainfo_descriptor.DirStat" title="stem.descriptor.extrainfo_descriptor.DirStat"><tt class="xref py py-data docutils literal"><span class="pre">DirStat</span></tt></a> to measurement over ORPort</li>
+<li><strong>dir_v3_tunneled_dl</strong> (<em>dict</em>) -- mapping of <a class="reference internal" href="#stem.descriptor.extrainfo_descriptor.DirStat" title="stem.descriptor.extrainfo_descriptor.DirStat"><tt class="xref py py-data docutils literal"><span class="pre">DirStat</span></tt></a> to measurement over ORPort</li>
+<li><strong>dir_v2_tunneled_dl_unknown</strong> (<em>dict</em>) -- mapping of unrecognized stats to their measurement</li>
+<li><strong>dir_v3_tunneled_dl_unknown</strong> (<em>dict</em>) -- mapping of unrecognized stats to their measurement</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Bytes read/written for directory mirroring:</strong></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>dir_read_history_end</strong> (<em>datetime</em>) -- end of the sampling interval</li>
+<li><strong>dir_read_history_interval</strong> (<em>int</em>) -- seconds per interval</li>
+<li><strong>dir_read_history_values</strong> (<em>list</em>) -- bytes read during each interval</li>
+<li><strong>dir_write_history_end</strong> (<em>datetime</em>) -- end of the sampling interval</li>
+<li><strong>dir_write_history_interval</strong> (<em>int</em>) -- seconds per interval</li>
+<li><strong>dir_write_history_values</strong> (<em>list</em>) -- bytes read during each interval</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Guard Attributes:</strong></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>entry_stats_end</strong> (<em>datetime</em>) -- end of the period when stats were gathered</li>
+<li><strong>entry_stats_interval</strong> (<em>int</em>) -- length in seconds of the interval</li>
+<li><strong>entry_ips</strong> (<em>dict</em>) -- mapping of locales to rounded count of unique user ips</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit Attributes:</strong></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>exit_stats_end</strong> (<em>datetime</em>) -- end of the period when stats were gathered</li>
+<li><strong>exit_stats_interval</strong> (<em>int</em>) -- length in seconds of the interval</li>
+<li><strong>exit_kibibytes_written</strong> (<em>dict</em>) -- traffic per port (keys are ints or 'other')</li>
+<li><strong>exit_kibibytes_read</strong> (<em>dict</em>) -- traffic per port (keys are ints or 'other')</li>
+<li><strong>exit_streams_opened</strong> (<em>dict</em>) -- streams per port (keys are ints or 'other')</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Hidden Service Attributes:</strong></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>hs_stats_end</strong> (<em>datetime</em>) -- end of the sampling interval</li>
+<li><strong>hs_rend_cells</strong> (<em>int</em>) -- rounded count of the RENDEZVOUS1 cells seen</li>
+<li><strong>hs_rend_cells_attr</strong> (<em>int</em>) -- <strong>*</strong> attributes provided for the hs_rend_cells</li>
+<li><strong>hs_dir_onions_seen</strong> (<em>int</em>) -- rounded count of the identities seen</li>
+<li><strong>hs_dir_onions_seen_attr</strong> (<em>int</em>) -- <strong>*</strong> attributes provided for the hs_dir_onions_seen</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Bridge Attributes:</strong></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>bridge_stats_end</strong> (<em>datetime</em>) -- end of the period when stats were gathered</li>
+<li><strong>bridge_stats_interval</strong> (<em>int</em>) -- length in seconds of the interval</li>
+<li><strong>bridge_ips</strong> (<em>dict</em>) -- mapping of locales to rounded count of unique user ips</li>
+<li><strong>geoip_start_time</strong> (<em>datetime</em>) -- replaced by bridge_stats_end (deprecated)</li>
+<li><strong>geoip_client_origins</strong> (<em>dict</em>) -- replaced by bridge_ips (deprecated)</li>
+<li><strong>ip_versions</strong> (<em>dict</em>) -- mapping of ip protocols to a rounded count for the number of users</li>
+<li><strong>ip_versions</strong> -- mapping of ip transports to a count for the number of users</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>*</strong> attribute is either required when we're parsed with validation or has
+a default value, others are left as <strong>None</strong> if undefined</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.4.0: </span>Added the hs_stats_end, hs_rend_cells, hs_rend_cells_attr,
+hs_dir_onions_seen, and hs_dir_onions_seen_attr attributes.</p>
+<dl class="method">
+<dt id="stem.descriptor.extrainfo_descriptor.ExtraInfoDescriptor.digest">
+<tt class="descname">digest</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/extrainfo_descriptor.html#ExtraInfoDescriptor.digest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.extrainfo_descriptor.ExtraInfoDescriptor.digest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the upper-case hex encoded sha1 of our content. This value is part
+of the server descriptor entry for this relay.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>str</strong> with the upper-case hex digest value for this server
+descriptor</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.descriptor.extrainfo_descriptor.RelayExtraInfoDescriptor">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.extrainfo_descriptor.</tt><tt class="descname">RelayExtraInfoDescriptor</tt><big>(</big><em>raw_contents</em>, <em>validate=False</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/extrainfo_descriptor.html#RelayExtraInfoDescriptor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.extrainfo_descriptor.RelayExtraInfoDescriptor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.descriptor.extrainfo_descriptor.ExtraInfoDescriptor" title="stem.descriptor.extrainfo_descriptor.ExtraInfoDescriptor"><tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.extrainfo_descriptor.ExtraInfoDescriptor</span></tt></a></p>
+<p>Relay extra-info descriptor, constructed from data such as that provided by
+'GETINFO extra-info/digest/*', cached descriptors, and metrics
+(<a class="reference external" href="https://gitweb.torproject.org/torspec.git/tree/dir-spec.txt">specification</a>).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>str</strong> (<em>ed25519_signature</em>) -- base64 encoded ed25519 certificate</li>
+<li><strong>str</strong> -- signature of this document using ed25519</li>
+<li><strong>signature</strong> (<em>str</em>) -- <strong>*</strong> signature for this extrainfo descriptor</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>*</strong> attribute is required when we're parsed with validation</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.5.0: </span>Added the ed25519_certificate and ed25519_signature attributes.</p>
+<dl class="method">
+<dt id="stem.descriptor.extrainfo_descriptor.RelayExtraInfoDescriptor.digest">
+<tt class="descname">digest</tt><big>(</big><em>*args</em>, <em>**kwds</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/extrainfo_descriptor.html#RelayExtraInfoDescriptor.digest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.extrainfo_descriptor.RelayExtraInfoDescriptor.digest" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.descriptor.extrainfo_descriptor.BridgeExtraInfoDescriptor">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.extrainfo_descriptor.</tt><tt class="descname">BridgeExtraInfoDescriptor</tt><big>(</big><em>raw_contents</em>, <em>validate=False</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/extrainfo_descriptor.html#BridgeExtraInfoDescriptor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.extrainfo_descriptor.BridgeExtraInfoDescriptor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.descriptor.extrainfo_descriptor.ExtraInfoDescriptor" title="stem.descriptor.extrainfo_descriptor.ExtraInfoDescriptor"><tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.extrainfo_descriptor.ExtraInfoDescriptor</span></tt></a></p>
+<p>Bridge extra-info descriptor (<a class="reference external" href="https://collector.torproject.org/formats.html#bridge-descriptors">bridge descriptor specification</a>)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>ed25519_certificate_hash</strong> (<em>str</em>) -- sha256 hash of the original identity-ed25519</li>
+<li><strong>router_digest_sha256</strong> (<em>str</em>) -- sha256 digest of this document</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.5.0: </span>Added the ed25519_certificate_hash and router_digest_sha256 attributes.</p>
+<dl class="method">
+<dt id="stem.descriptor.extrainfo_descriptor.BridgeExtraInfoDescriptor.digest">
+<tt class="descname">digest</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/extrainfo_descriptor.html#BridgeExtraInfoDescriptor.digest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.extrainfo_descriptor.BridgeExtraInfoDescriptor.digest" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

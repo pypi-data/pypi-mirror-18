@@ -1,0 +1,444 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Control Socket &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>Control Socket</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../api.html">API</a>
+            <ul>
+              <li><a href="control.html">stem.control</a></li>
+              <li><a href="connection.html">stem.connection</a></li>
+              <li><a href="#">stem.socket</a></li>
+              <li><a href="process.html">stem.process</a></li>
+              <li><a href="response.html">stem.response</a></li>
+              <li><a href="exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="version.html">stem.version</a></li>
+              <li><a href="../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../faq.html">FAQ</a></li>
+              <li><a href="../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="module-stem.socket">
+<span id="control-socket"></span><h1>Control Socket<a class="headerlink" href="#module-stem.socket" title="Permalink to this headline">¶</a></h1>
+<p>Supports communication with sockets speaking the Tor control protocol. This
+allows us to send messages as basic strings, and receive responses as
+<a class="reference internal" href="response.html#stem.response.ControlMessage" title="stem.response.ControlMessage"><tt class="xref py py-class docutils literal"><span class="pre">ControlMessage</span></tt></a> instances.</p>
+<p><strong>This module only consists of low level components, and is not intended for
+users.</strong> See our <a class="reference external" href="../tutorials.html">tutorials</a> and <a class="reference external" href="control.html">Control Module</a> if you're new to Stem and looking to get started.</p>
+<p>With that aside, these can still be used for raw socket communication with
+Tor...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">stem</span>
+<span class="kn">import</span> <span class="nn">stem.connection</span>
+<span class="kn">import</span> <span class="nn">stem.socket</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">control_socket</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">ControlPort</span><span class="p">(</span><span class="n">port</span> <span class="o">=</span> <span class="mi">9051</span><span class="p">)</span>
+    <span class="n">stem</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">authenticate</span><span class="p">(</span><span class="n">control_socket</span><span class="p">)</span>
+  <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">print</span> <span class="s">&#39;Unable to connect to tor on port 9051: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">exc</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+  <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">AuthenticationFailure</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">print</span> <span class="s">&#39;Unable to authenticate: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">exc</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+  <span class="k">print</span> <span class="s">&quot;Issuing &#39;GETINFO version&#39; query...</span><span class="se">\n</span><span class="s">&quot;</span>
+  <span class="n">control_socket</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;GETINFO version&#39;</span><span class="p">)</span>
+  <span class="k">print</span> <span class="n">control_socket</span><span class="o">.</span><span class="n">recv</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="highlight-python"><pre>% python example.py
+Issuing 'GETINFO version' query...
+
+version=0.2.4.10-alpha-dev (git-8be6058d8f31e578)
+OK</pre>
+</div>
+<p><strong>Module Overview:</strong></p>
+<div class="highlight-python"><pre>ControlSocket - Socket wrapper that speaks the tor control protocol.
+  |- ControlPort - Control connection via a port.
+  |  |- get_address - provides the ip address of our socket
+  |  +- get_port - provides the port of our socket
+  |
+  |- ControlSocketFile - Control connection via a local file socket.
+  |  +- get_socket_path - provides the path of the socket we connect to
+  |
+  |- send - sends a message to the socket
+  |- recv - receives a ControlMessage from the socket
+  |- is_alive - reports if the socket is known to be closed
+  |- is_localhost - returns if the socket is for the local system or not
+  |- connect - connects a new socket
+  |- close - shuts down the socket
+  +- __enter__ / __exit__ - manages socket connection
+
+send_message - Writes a message to a control socket.
+recv_message - Reads a ControlMessage from a control socket.
+send_formatting - Performs the formatting expected from sent messages.</pre>
+</div>
+<dl class="class">
+<dt id="stem.socket.ControlSocket">
+<em class="property">class </em><tt class="descclassname">stem.socket.</tt><tt class="descname">ControlSocket</tt><a class="reference internal" href="../_modules/stem/socket.html#ControlSocket"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.socket.ControlSocket" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Wrapper for a socket connection that speaks the Tor control protocol. To the
+better part this transparently handles the formatting for sending and
+receiving complete messages. All methods are thread safe.</p>
+<p>Callers should not instantiate this class directly, but rather use subclasses
+which are expected to implement the <strong>_make_socket()</strong> method.</p>
+<dl class="method">
+<dt id="stem.socket.ControlSocket.send">
+<tt class="descname">send</tt><big>(</big><em>message</em>, <em>raw=False</em><big>)</big><a class="reference internal" href="../_modules/stem/socket.html#ControlSocket.send"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.socket.ControlSocket.send" title="Permalink to this definition">¶</a></dt>
+<dd><p>Formats and sends a message to the control socket. For more information see
+the <a class="reference internal" href="#stem.socket.send_message" title="stem.socket.send_message"><tt class="xref py py-func docutils literal"><span class="pre">send_message()</span></tt></a> function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>message</strong> (<em>str</em>) -- message to be formatted and sent to the socket</li>
+<li><strong>raw</strong> (<em>bool</em>) -- leaves the message formatting untouched, passing it to the socket as-is</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference internal" href="control.html#stem.SocketError" title="stem.SocketError"><tt class="xref py py-class docutils literal"><span class="pre">stem.SocketError</span></tt></a> if a problem arises in using the socket</li>
+<li><a class="reference internal" href="control.html#stem.SocketClosed" title="stem.SocketClosed"><tt class="xref py py-class docutils literal"><span class="pre">stem.SocketClosed</span></tt></a> if the socket is known to be shut down</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.socket.ControlSocket.recv">
+<tt class="descname">recv</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/socket.html#ControlSocket.recv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.socket.ControlSocket.recv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Receives a message from the control socket, blocking until we've received
+one. For more information see the <a class="reference internal" href="#stem.socket.recv_message" title="stem.socket.recv_message"><tt class="xref py py-func docutils literal"><span class="pre">recv_message()</span></tt></a> function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><a class="reference internal" href="response.html#stem.response.ControlMessage" title="stem.response.ControlMessage"><tt class="xref py py-class docutils literal"><span class="pre">ControlMessage</span></tt></a> for the message received</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference internal" href="control.html#stem.ProtocolError" title="stem.ProtocolError"><tt class="xref py py-class docutils literal"><span class="pre">stem.ProtocolError</span></tt></a> the content from the socket is malformed</li>
+<li><a class="reference internal" href="control.html#stem.SocketClosed" title="stem.SocketClosed"><tt class="xref py py-class docutils literal"><span class="pre">stem.SocketClosed</span></tt></a> if the socket closes before we receive a complete message</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.socket.ControlSocket.is_alive">
+<tt class="descname">is_alive</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/socket.html#ControlSocket.is_alive"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.socket.ControlSocket.is_alive" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if the socket is known to be closed. We won't be aware if it is
+until we either use it or have explicitily shut it down.</p>
+<p>In practice a socket derived from a port knows about its disconnection
+after a failed <a class="reference internal" href="#stem.socket.ControlSocket.recv" title="stem.socket.ControlSocket.recv"><tt class="xref py py-func docutils literal"><span class="pre">recv()</span></tt></a> call. Socket file
+derived connections know after either a
+<a class="reference internal" href="#stem.socket.ControlSocket.send" title="stem.socket.ControlSocket.send"><tt class="xref py py-func docutils literal"><span class="pre">send()</span></tt></a> or
+<a class="reference internal" href="#stem.socket.ControlSocket.recv" title="stem.socket.ControlSocket.recv"><tt class="xref py py-func docutils literal"><span class="pre">recv()</span></tt></a>.</p>
+<p>This means that to have reliable detection for when we're disconnected
+you need to continually pull from the socket (which is part of what the
+<a class="reference internal" href="control.html#stem.control.BaseController" title="stem.control.BaseController"><tt class="xref py py-class docutils literal"><span class="pre">BaseController</span></tt></a> does).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>bool</strong> that's <strong>True</strong> if our socket is connected and <strong>False</strong> otherwise</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.socket.ControlSocket.is_localhost">
+<tt class="descname">is_localhost</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/socket.html#ControlSocket.is_localhost"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.socket.ControlSocket.is_localhost" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns if the connection is for the local system or not.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>bool</strong> that's <strong>True</strong> if the connection is for the local host and <strong>False</strong> otherwise</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.socket.ControlSocket.connection_time">
+<tt class="descname">connection_time</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/socket.html#ControlSocket.connection_time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.socket.ControlSocket.connection_time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the unix timestamp for when our socket was either connected or
+disconnected. That is to say, the time we connected if we're currently
+connected and the time we disconnected if we're not connected.</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.3.0.</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>float</strong> for when we last connected or disconnected, zero if
+we've never connected</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.socket.ControlSocket.connect">
+<tt class="descname">connect</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/socket.html#ControlSocket.connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.socket.ControlSocket.connect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Connects to a new socket, closing our previous one if we're already
+attached.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><a class="reference internal" href="control.html#stem.SocketError" title="stem.SocketError"><tt class="xref py py-class docutils literal"><span class="pre">stem.SocketError</span></tt></a> if unable to make a socket</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.socket.ControlSocket.close">
+<tt class="descname">close</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/socket.html#ControlSocket.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.socket.ControlSocket.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shuts down the socket. If it's already closed then this is a no-op.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.socket.ControlPort">
+<em class="property">class </em><tt class="descclassname">stem.socket.</tt><tt class="descname">ControlPort</tt><big>(</big><em>address='127.0.0.1'</em>, <em>port=9051</em>, <em>connect=True</em><big>)</big><a class="reference internal" href="../_modules/stem/socket.html#ControlPort"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.socket.ControlPort" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.socket.ControlSocket" title="stem.socket.ControlSocket"><tt class="xref py py-class docutils literal"><span class="pre">stem.socket.ControlSocket</span></tt></a></p>
+<p>Control connection to tor. For more information see tor's ControlPort torrc
+option.</p>
+<dl class="method">
+<dt id="stem.socket.ControlPort.get_address">
+<tt class="descname">get_address</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/socket.html#ControlPort.get_address"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.socket.ControlPort.get_address" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the ip address our socket connects to.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">str with the ip address of our socket</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.socket.ControlPort.get_port">
+<tt class="descname">get_port</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/socket.html#ControlPort.get_port"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.socket.ControlPort.get_port" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the port our socket connects to.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">int with the port of our socket</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.socket.ControlPort.is_localhost">
+<tt class="descname">is_localhost</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/socket.html#ControlPort.is_localhost"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.socket.ControlPort.is_localhost" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.socket.ControlSocketFile">
+<em class="property">class </em><tt class="descclassname">stem.socket.</tt><tt class="descname">ControlSocketFile</tt><big>(</big><em>path='/var/run/tor/control'</em>, <em>connect=True</em><big>)</big><a class="reference internal" href="../_modules/stem/socket.html#ControlSocketFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.socket.ControlSocketFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.socket.ControlSocket" title="stem.socket.ControlSocket"><tt class="xref py py-class docutils literal"><span class="pre">stem.socket.ControlSocket</span></tt></a></p>
+<p>Control connection to tor. For more information see tor's ControlSocket torrc
+option.</p>
+<dl class="method">
+<dt id="stem.socket.ControlSocketFile.get_socket_path">
+<tt class="descname">get_socket_path</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/socket.html#ControlSocketFile.get_socket_path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.socket.ControlSocketFile.get_socket_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the path our socket connects to.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">str with the path for our control socket</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.socket.ControlSocketFile.is_localhost">
+<tt class="descname">is_localhost</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/socket.html#ControlSocketFile.is_localhost"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.socket.ControlSocketFile.is_localhost" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.socket.send_message">
+<tt class="descclassname">stem.socket.</tt><tt class="descname">send_message</tt><big>(</big><em>control_file</em>, <em>message</em>, <em>raw=False</em><big>)</big><a class="reference internal" href="../_modules/stem/socket.html#send_message"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.socket.send_message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sends a message to the control socket, adding the expected formatting for
+single verses multi-line messages. Neither message type should contain an
+ending newline (if so it'll be treated as a multi-line message with a blank
+line at the end). If the message doesn't contain a newline then it's sent
+as...</p>
+<div class="highlight-python"><pre>&lt;message&gt;\r\n</pre>
+</div>
+<p>and if it does contain newlines then it's split on <tt class="docutils literal"><span class="pre">\n</span></tt> and sent as...</p>
+<div class="highlight-python"><pre>+&lt;line 1&gt;\r\n
+&lt;line 2&gt;\r\n
+&lt;line 3&gt;\r\n
+.\r\n</pre>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>control_file</strong> (<em>file</em>) -- file derived from the control socket (see the
+socket's makefile() method for more information)</li>
+<li><strong>message</strong> (<em>str</em>) -- message to be sent on the control socket</li>
+<li><strong>raw</strong> (<em>bool</em>) -- leaves the message formatting untouched, passing it to the
+socket as-is</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference internal" href="control.html#stem.SocketError" title="stem.SocketError"><tt class="xref py py-class docutils literal"><span class="pre">stem.SocketError</span></tt></a> if a problem arises in using the socket</li>
+<li><a class="reference internal" href="control.html#stem.SocketClosed" title="stem.SocketClosed"><tt class="xref py py-class docutils literal"><span class="pre">stem.SocketClosed</span></tt></a> if the socket is known to be shut down</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.socket.recv_message">
+<tt class="descclassname">stem.socket.</tt><tt class="descname">recv_message</tt><big>(</big><em>control_file</em><big>)</big><a class="reference internal" href="../_modules/stem/socket.html#recv_message"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.socket.recv_message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pulls from a control socket until we either have a complete message or
+encounter a problem.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>control_file</strong> (<em>file</em>) -- file derived from the control socket (see the
+socket's makefile() method for more information)</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><a class="reference internal" href="response.html#stem.response.ControlMessage" title="stem.response.ControlMessage"><tt class="xref py py-class docutils literal"><span class="pre">ControlMessage</span></tt></a> read from the socket</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference internal" href="control.html#stem.ProtocolError" title="stem.ProtocolError"><tt class="xref py py-class docutils literal"><span class="pre">stem.ProtocolError</span></tt></a> the content from the socket is malformed</li>
+<li><a class="reference internal" href="control.html#stem.SocketClosed" title="stem.SocketClosed"><tt class="xref py py-class docutils literal"><span class="pre">stem.SocketClosed</span></tt></a> if the socket closes before we receive
+a complete message</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.socket.send_formatting">
+<tt class="descclassname">stem.socket.</tt><tt class="descname">send_formatting</tt><big>(</big><em>message</em><big>)</big><a class="reference internal" href="../_modules/stem/socket.html#send_formatting"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.socket.send_formatting" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs the formatting expected from sent control messages. For more
+information see the <a class="reference internal" href="#stem.socket.send_message" title="stem.socket.send_message"><tt class="xref py py-func docutils literal"><span class="pre">send_message()</span></tt></a> function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>message</strong> (<em>str</em>) -- message to be formatted</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>str</strong> of the message wrapped by the formatting expected from
+controllers</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

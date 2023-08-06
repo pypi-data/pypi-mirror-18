@@ -1,0 +1,468 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Proc Utilities &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>Proc Utilities</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../index.html">Home</a></li>
+          <li><a href="../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../api.html">API</a>
+            <ul>
+              <li><a href="../control.html">stem.control</a></li>
+              <li><a href="../connection.html">stem.connection</a></li>
+              <li><a href="../socket.html">stem.socket</a></li>
+              <li><a href="../process.html">stem.process</a></li>
+              <li><a href="../response.html">stem.response</a></li>
+              <li><a href="../exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../version.html">stem.version</a></li>
+              <li><a href="../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../faq.html">FAQ</a></li>
+              <li><a href="../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="module-stem.util.proc">
+<span id="proc-utilities"></span><h1>Proc Utilities<a class="headerlink" href="#module-stem.util.proc" title="Permalink to this headline">¶</a></h1>
+<p>Helper functions for querying process and system information from the /proc
+contents. Fetching information this way provides huge performance benefits
+over lookups via system utilities (ps, netstat, etc). For instance, resolving
+connections this way cuts the runtime by around 90% verses the alternatives.
+These functions may not work on all platforms (only Linux?).</p>
+<p>The method for reading these files (and a little code) are borrowed from
+<a class="reference external" href="https://code.google.com/p/psutil/">psutil</a>, which was written by Jay Loden,
+Dave Daeschler, Giampaolo Rodola' and is under the BSD license.</p>
+<p><strong>These functions are not being vended to stem users. They may change in the
+future, use them at your own risk.</strong></p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.3.0: </span>Dropped the get_* prefix from several function names. The old names still
+work, but are deprecated aliases.</p>
+<p><strong>Module Overview:</strong></p>
+<div class="highlight-python"><pre>is_available - checks if proc utilities can be used on this system
+system_start_time - unix timestamp for when the system started
+physical_memory - memory available on this system
+cwd - provides the current working directory for a process
+uid - provides the user id a process is running under
+memory_usage - provides the memory usage of a process
+stats - queries statistics about a process
+file_descriptors_used - number of file descriptors used by a process
+connections - provides the connections made by a process</pre>
+</div>
+<dl class="data">
+<dt id="stem.util.proc.Stat">
+<tt class="descclassname">stem.util.proc.</tt><tt class="descname">Stat</tt><big>(</big><em>enum</em><big>)</big><a class="headerlink" href="#stem.util.proc.Stat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Types of data available via the <a class="reference internal" href="#stem.util.proc.stats" title="stem.util.proc.stats"><tt class="xref py py-func docutils literal"><span class="pre">stats()</span></tt></a> function.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="23%" />
+<col width="77%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Stat</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><strong>COMMAND</strong></td>
+<td>command name under which the process is running</td>
+</tr>
+<tr class="row-odd"><td><strong>CPU_UTIME</strong></td>
+<td>total user time spent on the process</td>
+</tr>
+<tr class="row-even"><td><strong>CPU_STIME</strong></td>
+<td>total system time spent on the process</td>
+</tr>
+<tr class="row-odd"><td><strong>START_TIME</strong></td>
+<td>when this process began, in unix time</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.util.proc.is_available">
+<tt class="descclassname">stem.util.proc.</tt><tt class="descname">is_available</tt><big>(</big><em>*args</em>, <em>**kwds</em><big>)</big><a class="reference internal" href="../../_modules/stem/util/proc.html#is_available"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.proc.is_available" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if proc information is available on this platform.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>True</strong> if proc contents exist on this platform, <strong>False</strong> otherwise</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.util.proc.system_start_time">
+<tt class="descclassname">stem.util.proc.</tt><tt class="descname">system_start_time</tt><big>(</big><em>*args</em>, <em>**kwds</em><big>)</big><a class="reference internal" href="../../_modules/stem/util/proc.html#system_start_time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.proc.system_start_time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the unix time (seconds since epoch) when the system started.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>float</strong> for the unix time of when the system started</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><strong>IOError</strong> if it can't be determined</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.util.proc.physical_memory">
+<tt class="descclassname">stem.util.proc.</tt><tt class="descname">physical_memory</tt><big>(</big><em>*args</em>, <em>**kwds</em><big>)</big><a class="reference internal" href="../../_modules/stem/util/proc.html#physical_memory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.proc.physical_memory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the total physical memory on the system in bytes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>int</strong> for the bytes of physical memory this system has</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><strong>IOError</strong> if it can't be determined</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.util.proc.cwd">
+<tt class="descclassname">stem.util.proc.</tt><tt class="descname">cwd</tt><big>(</big><em>pid</em><big>)</big><a class="reference internal" href="../../_modules/stem/util/proc.html#cwd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.proc.cwd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the current working directory for the given process.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>pid</strong> (<em>int</em>) -- process id of the process to be queried</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>str</strong> with the path of the working directory for the process</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><strong>IOError</strong> if it can't be determined</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.util.proc.uid">
+<tt class="descclassname">stem.util.proc.</tt><tt class="descname">uid</tt><big>(</big><em>pid</em><big>)</big><a class="reference internal" href="../../_modules/stem/util/proc.html#uid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.proc.uid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the user ID the given process is running under.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>pid</strong> (<em>int</em>) -- process id of the process to be queried</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>int</strong> with the user id for the owner of the process</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><strong>IOError</strong> if it can't be determined</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.util.proc.memory_usage">
+<tt class="descclassname">stem.util.proc.</tt><tt class="descname">memory_usage</tt><big>(</big><em>pid</em><big>)</big><a class="reference internal" href="../../_modules/stem/util/proc.html#memory_usage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.proc.memory_usage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the memory usage in bytes for the given process.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>pid</strong> (<em>int</em>) -- process id of the process to be queried</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>tuple</strong> of two ints with the memory usage of the process, of the
+form <strong>(resident_size, virtual_size)</strong></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><strong>IOError</strong> if it can't be determined</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.util.proc.stats">
+<tt class="descclassname">stem.util.proc.</tt><tt class="descname">stats</tt><big>(</big><em>pid</em>, <em>*stat_types</em><big>)</big><a class="reference internal" href="../../_modules/stem/util/proc.html#stats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.proc.stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides process specific information. See the <a class="reference internal" href="#stem.util.proc.Stat" title="stem.util.proc.Stat"><tt class="xref py py-data docutils literal"><span class="pre">Stat</span></tt></a>
+enum for valid options.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>pid</strong> (<em>int</em>) -- process id of the process to be queried</li>
+<li><strong>stat_types</strong> (<em>Stat</em>) -- information to be provided back</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>tuple</strong> with all of the requested statistics as strings</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last"><strong>IOError</strong> if it can't be determined</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.util.proc.file_descriptors_used">
+<tt class="descclassname">stem.util.proc.</tt><tt class="descname">file_descriptors_used</tt><big>(</big><em>pid</em><big>)</big><a class="reference internal" href="../../_modules/stem/util/proc.html#file_descriptors_used"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.proc.file_descriptors_used" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the number of file descriptors currently being used by a process.</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.3.0.</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>pid</strong> (<em>int</em>) -- process id of the process to be queried</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>int</strong> of the number of file descriptors used</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><strong>IOError</strong> if it can't be determined</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.util.proc.connections">
+<tt class="descclassname">stem.util.proc.</tt><tt class="descname">connections</tt><big>(</big><em>pid=None</em>, <em>user=None</em><big>)</big><a class="reference internal" href="../../_modules/stem/util/proc.html#connections"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.proc.connections" title="Permalink to this definition">¶</a></dt>
+<dd><p>Queries connections from the proc contents. This matches netstat, lsof, and
+friends but is much faster. If no <strong>pid</strong> or <strong>user</strong> are provided this
+provides all present connections.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>pid</strong> (<em>int</em>) -- pid to provide connections for</li>
+<li><strong>user</strong> (<em>str</em>) -- username to look up connections for</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>list</strong> of <a class="reference internal" href="connection.html#stem.util.connection.Connection" title="stem.util.connection.Connection"><tt class="xref py py-class docutils literal"><span class="pre">Connection</span></tt></a> instances</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last"><strong>IOError</strong> if it can't be determined</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.util.proc.get_system_start_time">
+<tt class="descclassname">stem.util.proc.</tt><tt class="descname">get_system_start_time</tt><big>(</big><em>*args</em>, <em>**kwds</em><big>)</big><a class="headerlink" href="#stem.util.proc.get_system_start_time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the unix time (seconds since epoch) when the system started.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>float</strong> for the unix time of when the system started</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><strong>IOError</strong> if it can't be determined</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.util.proc.get_physical_memory">
+<tt class="descclassname">stem.util.proc.</tt><tt class="descname">get_physical_memory</tt><big>(</big><em>*args</em>, <em>**kwds</em><big>)</big><a class="headerlink" href="#stem.util.proc.get_physical_memory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the total physical memory on the system in bytes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>int</strong> for the bytes of physical memory this system has</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><strong>IOError</strong> if it can't be determined</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.util.proc.get_cwd">
+<tt class="descclassname">stem.util.proc.</tt><tt class="descname">get_cwd</tt><big>(</big><em>pid</em><big>)</big><a class="headerlink" href="#stem.util.proc.get_cwd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the current working directory for the given process.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>pid</strong> (<em>int</em>) -- process id of the process to be queried</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>str</strong> with the path of the working directory for the process</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><strong>IOError</strong> if it can't be determined</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.util.proc.get_uid">
+<tt class="descclassname">stem.util.proc.</tt><tt class="descname">get_uid</tt><big>(</big><em>pid</em><big>)</big><a class="headerlink" href="#stem.util.proc.get_uid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the user ID the given process is running under.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>pid</strong> (<em>int</em>) -- process id of the process to be queried</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>int</strong> with the user id for the owner of the process</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><strong>IOError</strong> if it can't be determined</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.util.proc.get_memory_usage">
+<tt class="descclassname">stem.util.proc.</tt><tt class="descname">get_memory_usage</tt><big>(</big><em>pid</em><big>)</big><a class="headerlink" href="#stem.util.proc.get_memory_usage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the memory usage in bytes for the given process.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>pid</strong> (<em>int</em>) -- process id of the process to be queried</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>tuple</strong> of two ints with the memory usage of the process, of the
+form <strong>(resident_size, virtual_size)</strong></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><strong>IOError</strong> if it can't be determined</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.util.proc.get_stats">
+<tt class="descclassname">stem.util.proc.</tt><tt class="descname">get_stats</tt><big>(</big><em>pid</em>, <em>*stat_types</em><big>)</big><a class="headerlink" href="#stem.util.proc.get_stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides process specific information. See the <a class="reference internal" href="#stem.util.proc.Stat" title="stem.util.proc.Stat"><tt class="xref py py-data docutils literal"><span class="pre">Stat</span></tt></a>
+enum for valid options.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>pid</strong> (<em>int</em>) -- process id of the process to be queried</li>
+<li><strong>stat_types</strong> (<em>Stat</em>) -- information to be provided back</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>tuple</strong> with all of the requested statistics as strings</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last"><strong>IOError</strong> if it can't be determined</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.util.proc.get_connections">
+<tt class="descclassname">stem.util.proc.</tt><tt class="descname">get_connections</tt><big>(</big><em>pid=None</em>, <em>user=None</em><big>)</big><a class="headerlink" href="#stem.util.proc.get_connections" title="Permalink to this definition">¶</a></dt>
+<dd><p>Queries connections from the proc contents. This matches netstat, lsof, and
+friends but is much faster. If no <strong>pid</strong> or <strong>user</strong> are provided this
+provides all present connections.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>pid</strong> (<em>int</em>) -- pid to provide connections for</li>
+<li><strong>user</strong> (<em>str</em>) -- username to look up connections for</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>list</strong> of <a class="reference internal" href="connection.html#stem.util.connection.Connection" title="stem.util.connection.Connection"><tt class="xref py py-class docutils literal"><span class="pre">Connection</span></tt></a> instances</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last"><strong>IOError</strong> if it can't be determined</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

@@ -1,0 +1,1418 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.connection &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../index.html" />
+    <link rel="up" title="stem" href="../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.connection</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../index.html">Home</a></li>
+          <li><a href="../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../api.html">API</a>
+            <ul>
+              <li><a href="../../api/control.html">stem.control</a></li>
+              <li><a href="../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../api/process.html">stem.process</a></li>
+              <li><a href="../../api/response.html">stem.response</a></li>
+              <li><a href="../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../api/version.html">stem.version</a></li>
+              <li><a href="../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../faq.html">FAQ</a></li>
+              <li><a href="../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.connection</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2011-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Functions for connecting and authenticating to the tor process.</span>
+
+<span class="sd">The :func:`~stem.connection.connect` function give an easy, one line</span>
+<span class="sd">method for getting an authenticated control connection. This is handy for CLI</span>
+<span class="sd">applications and the python interactive interpreter, but does several things</span>
+<span class="sd">that makes it undesirable for applications (uses stdin/stdout, suppresses</span>
+<span class="sd">exceptions, etc).</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  import sys</span>
+
+<span class="sd">  from stem.connection import connect</span>
+
+<span class="sd">  if __name__ == &#39;__main__&#39;:</span>
+<span class="sd">    controller = connect()</span>
+
+<span class="sd">    if not controller:</span>
+<span class="sd">      sys.exit(1)  # unable to get a connection</span>
+
+<span class="sd">    print &#39;Tor is running version %s&#39; % controller.get_version()</span>
+<span class="sd">    controller.close()</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  % python example.py</span>
+<span class="sd">  Tor is running version 0.2.4.10-alpha-dev (git-8be6058d8f31e578)</span>
+
+<span class="sd">... or if Tor isn&#39;t running...</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  % python example.py</span>
+<span class="sd">  [Errno 111] Connection refused</span>
+
+<span class="sd">The :func:`~stem.connection.authenticate` function, however, gives easy but</span>
+<span class="sd">fine-grained control over the authentication process. For instance...</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  import sys</span>
+<span class="sd">  import getpass</span>
+<span class="sd">  import stem.connection</span>
+<span class="sd">  import stem.socket</span>
+
+<span class="sd">  try:</span>
+<span class="sd">    control_socket = stem.socket.ControlPort(port = 9051)</span>
+<span class="sd">  except stem.SocketError as exc:</span>
+<span class="sd">    print &#39;Unable to connect to port 9051 (%s)&#39; % exc</span>
+<span class="sd">    sys.exit(1)</span>
+
+<span class="sd">  try:</span>
+<span class="sd">    stem.connection.authenticate(control_socket)</span>
+<span class="sd">  except stem.connection.IncorrectSocketType:</span>
+<span class="sd">    print &#39;Please check in your torrc that 9051 is the ControlPort.&#39;</span>
+<span class="sd">    print &#39;Maybe you configured it to be the ORPort or SocksPort instead?&#39;</span>
+<span class="sd">    sys.exit(1)</span>
+<span class="sd">  except stem.connection.MissingPassword:</span>
+<span class="sd">    controller_password = getpass.getpass(&#39;Controller password: &#39;)</span>
+
+<span class="sd">    try:</span>
+<span class="sd">      stem.connection.authenticate_password(control_socket, controller_password)</span>
+<span class="sd">    except stem.connection.PasswordAuthFailed:</span>
+<span class="sd">      print &#39;Unable to authenticate, password is incorrect&#39;</span>
+<span class="sd">      sys.exit(1)</span>
+<span class="sd">  except stem.connection.AuthenticationFailure as exc:</span>
+<span class="sd">    print &#39;Unable to authenticate: %s&#39; % exc</span>
+<span class="sd">    sys.exit(1)</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  connect - Simple method for getting authenticated control connection</span>
+
+<span class="sd">  authenticate - Main method for authenticating to a control socket</span>
+<span class="sd">  authenticate_none - Authenticates to an open control socket</span>
+<span class="sd">  authenticate_password - Authenticates to a socket supporting password auth</span>
+<span class="sd">  authenticate_cookie - Authenticates to a socket supporting cookie auth</span>
+<span class="sd">  authenticate_safecookie - Authenticates to a socket supporting safecookie auth</span>
+
+<span class="sd">  get_protocolinfo - Issues a PROTOCOLINFO query</span>
+
+<span class="sd">  AuthenticationFailure - Base exception raised for authentication failures</span>
+<span class="sd">    |- UnrecognizedAuthMethods - Authentication methods are unsupported</span>
+<span class="sd">    |- IncorrectSocketType - Socket does not speak the tor control protocol</span>
+<span class="sd">    |</span>
+<span class="sd">    |- OpenAuthFailed - Failure when authenticating by an open socket</span>
+<span class="sd">    |  +- OpenAuthRejected - Tor rejected this method of authentication</span>
+<span class="sd">    |</span>
+<span class="sd">    |- PasswordAuthFailed - Failure when authenticating by a password</span>
+<span class="sd">    |  |- PasswordAuthRejected - Tor rejected this method of authentication</span>
+<span class="sd">    |  |- IncorrectPassword - Password was rejected</span>
+<span class="sd">    |  +- MissingPassword - Socket supports password auth but wasn&#39;t attempted</span>
+<span class="sd">    |</span>
+<span class="sd">    |- CookieAuthFailed - Failure when authenticating by a cookie</span>
+<span class="sd">    |  |- CookieAuthRejected - Tor rejected this method of authentication</span>
+<span class="sd">    |  |- IncorrectCookieValue - Authentication cookie was rejected</span>
+<span class="sd">    |  |- IncorrectCookieSize - Size of the cookie file is incorrect</span>
+<span class="sd">    |  |- UnreadableCookieFile - Unable to read the contents of the auth cookie</span>
+<span class="sd">    |  +- AuthChallengeFailed - Failure completing the authchallenge request</span>
+<span class="sd">    |     |- AuthChallengeUnsupported - Tor doesn&#39;t recognize the AUTHCHALLENGE command</span>
+<span class="sd">    |     |- AuthSecurityFailure - Server provided the wrong nonce credentials</span>
+<span class="sd">    |     |- InvalidClientNonce - The client nonce is invalid</span>
+<span class="sd">    |     +- UnrecognizedAuthChallengeMethod - AUTHCHALLENGE does not support the given methods.</span>
+<span class="sd">    |</span>
+<span class="sd">    +- MissingAuthInfo - Unexpected PROTOCOLINFO response, missing auth info</span>
+<span class="sd">       |- NoAuthMethods - Missing any methods for authenticating</span>
+<span class="sd">       +- NoAuthCookie - Supports cookie auth but doesn&#39;t have its path</span>
+
+<span class="sd">.. data:: AuthMethod (enum)</span>
+
+<span class="sd">  Enumeration of PROTOCOLINFO responses for supported authentication methods.</span>
+
+<span class="sd">  ============== ===========</span>
+<span class="sd">  AuthMethod     Description</span>
+<span class="sd">  ============== ===========</span>
+<span class="sd">  **NONE**       No authentication required.</span>
+<span class="sd">  **PASSWORD**   Password required, see tor&#39;s HashedControlPassword option.</span>
+<span class="sd">  **COOKIE**     Contents of the cookie file required, see tor&#39;s CookieAuthentication option.</span>
+<span class="sd">  **SAFECOOKIE** Need to reply to a hmac challenge using the contents of the cookie file.</span>
+<span class="sd">  **UNKNOWN**    Tor provided one or more authentication methods that we don&#39;t recognize, probably something new.</span>
+<span class="sd">  ============== ===========</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">binascii</span>
+<span class="kn">import</span> <span class="nn">getpass</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">import</span> <span class="nn">stem.control</span>
+<span class="kn">import</span> <span class="nn">stem.response</span>
+<span class="kn">import</span> <span class="nn">stem.socket</span>
+<span class="kn">import</span> <span class="nn">stem.util.connection</span>
+<span class="kn">import</span> <span class="nn">stem.util.enum</span>
+<span class="kn">import</span> <span class="nn">stem.util.str_tools</span>
+<span class="kn">import</span> <span class="nn">stem.util.system</span>
+<span class="kn">import</span> <span class="nn">stem.version</span>
+
+<span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">log</span>
+
+<span class="n">AuthMethod</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">(</span><span class="s">&#39;NONE&#39;</span><span class="p">,</span> <span class="s">&#39;PASSWORD&#39;</span><span class="p">,</span> <span class="s">&#39;COOKIE&#39;</span><span class="p">,</span> <span class="s">&#39;SAFECOOKIE&#39;</span><span class="p">,</span> <span class="s">&#39;UNKNOWN&#39;</span><span class="p">)</span>
+
+<span class="n">CLIENT_HASH_CONSTANT</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;Tor safe cookie authentication controller-to-server hash&#39;</span>
+<span class="n">SERVER_HASH_CONSTANT</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;Tor safe cookie authentication server-to-controller hash&#39;</span>
+
+<span class="n">MISSING_PASSWORD_BUG_MSG</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">BUG: You provided a password but despite this stem reported that it was</span>
+<span class="s">missing. This shouldn&#39;t happen - please let us know about it!</span>
+
+<span class="s">  http://bugs.torproject.org</span>
+<span class="s">&quot;&quot;&quot;</span>
+
+<span class="n">UNRECOGNIZED_AUTH_TYPE_MSG</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">Tor is using a type of authentication we do not recognize...</span>
+
+<span class="s">  {auth_methods}</span>
+
+<span class="s">Please check that stem is up to date and if there is an existing issue on</span>
+<span class="s">&#39;http://bugs.torproject.org&#39;. If there isn&#39;t one then let us know!</span>
+<span class="s">&quot;&quot;&quot;</span>
+
+
+<span class="n">UNREADABLE_COOKIE_FILE_MSG</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">We were unable to read tor&#39;s authentication cookie...</span>
+
+<span class="s">  Path: {path}</span>
+<span class="s">  Issue: {issue}</span>
+<span class="s">&quot;&quot;&quot;</span>
+
+<span class="n">WRONG_PORT_TYPE_MSG</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">Please check in your torrc that {port} is the ControlPort. Maybe you</span>
+<span class="s">configured it to be the ORPort or SocksPort instead?</span>
+<span class="s">&quot;&quot;&quot;</span>
+
+<span class="n">WRONG_SOCKET_TYPE_MSG</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">Unable to connect to tor. Are you sure the interface you specified belongs to</span>
+<span class="s">tor?</span>
+<span class="s">&quot;&quot;&quot;</span>
+
+<span class="n">CONNECT_MESSAGES</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="s">&#39;general_auth_failure&#39;</span><span class="p">:</span> <span class="s">&#39;Unable to authenticate: {error}&#39;</span><span class="p">,</span>
+  <span class="s">&#39;incorrect_password&#39;</span><span class="p">:</span> <span class="s">&#39;Incorrect password&#39;</span><span class="p">,</span>
+  <span class="s">&#39;no_control_port&#39;</span><span class="p">:</span> <span class="s">&quot;Unable to connect to tor. Maybe it&#39;s running without a ControlPort?&quot;</span><span class="p">,</span>
+  <span class="s">&#39;password_prompt&#39;</span><span class="p">:</span> <span class="s">&#39;Tor controller password:&#39;</span><span class="p">,</span>
+  <span class="s">&#39;needs_password&#39;</span><span class="p">:</span> <span class="s">&#39;Tor requires a password to authenticate&#39;</span><span class="p">,</span>
+  <span class="s">&#39;socket_doesnt_exist&#39;</span><span class="p">:</span> <span class="s">&quot;The socket file you specified ({path}) doesn&#39;t exist&quot;</span><span class="p">,</span>
+  <span class="s">&#39;tor_isnt_running&#39;</span><span class="p">:</span> <span class="s">&quot;Unable to connect to tor. Are you sure it&#39;s running?&quot;</span><span class="p">,</span>
+  <span class="s">&#39;unable_to_use_port&#39;</span><span class="p">:</span> <span class="s">&#39;Unable to connect to {address}:{port}: {error}&#39;</span><span class="p">,</span>
+  <span class="s">&#39;unable_to_use_socket&#39;</span><span class="p">:</span> <span class="s">&quot;Unable to connect to &#39;{path}&#39;: {error}&quot;</span><span class="p">,</span>
+  <span class="s">&#39;missing_password_bug&#39;</span><span class="p">:</span> <span class="n">MISSING_PASSWORD_BUG_MSG</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span>
+  <span class="s">&#39;uncrcognized_auth_type&#39;</span><span class="p">:</span> <span class="n">UNRECOGNIZED_AUTH_TYPE_MSG</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span>
+  <span class="s">&#39;unreadable_cookie_file&#39;</span><span class="p">:</span> <span class="n">UNREADABLE_COOKIE_FILE_MSG</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span>
+  <span class="s">&#39;wrong_port_type&#39;</span><span class="p">:</span> <span class="n">WRONG_PORT_TYPE_MSG</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span>
+  <span class="s">&#39;wrong_socket_type&#39;</span><span class="p">:</span> <span class="n">WRONG_SOCKET_TYPE_MSG</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="connect"><a class="viewcode-back" href="../../api/connection.html#stem.connection.connect">[docs]</a><span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="n">control_port</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;127.0.0.1&#39;</span><span class="p">,</span> <span class="s">&#39;default&#39;</span><span class="p">),</span> <span class="n">control_socket</span> <span class="o">=</span> <span class="s">&#39;/var/run/tor/control&#39;</span><span class="p">,</span> <span class="n">password</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">password_prompt</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">chroot_path</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">controller</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">control</span><span class="o">.</span><span class="n">Controller</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Convenience function for quickly getting a control connection. This is very</span>
+<span class="sd">  handy for debugging or CLI setup, handling setup and prompting for a password</span>
+<span class="sd">  if necessary (and none is provided). If any issues arise this prints a</span>
+<span class="sd">  description of the problem and returns **None**.</span>
+
+<span class="sd">  If both a **control_port** and **control_socket** are provided then the</span>
+<span class="sd">  **control_socket** is tried first, and this provides a generic error message</span>
+<span class="sd">  if they&#39;re both unavailable.</span>
+
+<span class="sd">  In much the same vein as git porcelain commands, users should not rely on</span>
+<span class="sd">  details of how this works. Messages and details of this function&#39;s behavior</span>
+<span class="sd">  could change in the future.</span>
+
+<span class="sd">  If the **port** is **&#39;default&#39;** then this checks on both 9051 (default for</span>
+<span class="sd">  relays) and 9151 (default for the Tor Browser). This default may change in</span>
+<span class="sd">  the future.</span>
+
+<span class="sd">  .. versionadded:: 1.2.0</span>
+
+<span class="sd">  .. versionchanged:: 1.5.0</span>
+<span class="sd">     Use both port 9051 and 9151 by default.</span>
+
+<span class="sd">  :param tuple contol_port: address and port tuple, for instance **(&#39;127.0.0.1&#39;, 9051)**</span>
+<span class="sd">  :param str path: path where the control socket is located</span>
+<span class="sd">  :param str password: passphrase to authenticate to the socket</span>
+<span class="sd">  :param bool password_prompt: prompt for the controller password if it wasn&#39;t</span>
+<span class="sd">    supplied</span>
+<span class="sd">  :param str chroot_path: path prefix if in a chroot environment</span>
+<span class="sd">  :param Class controller: :class:`~stem.control.BaseController` subclass to be</span>
+<span class="sd">    returned, this provides a :class:`~stem.socket.ControlSocket` if **None**</span>
+
+<span class="sd">  :returns: authenticated control connection, the type based on the controller argument</span>
+
+<span class="sd">  :raises: **ValueError** if given an invalid control_port, or both</span>
+<span class="sd">    **control_port** and **control_socket** are **None**</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">control_port</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">control_socket</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Neither a control port nor control socket were provided. Nothing to connect to.&#39;</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="n">control_port</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">control_port</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;The control_port argument for connect() should be an (address, port) tuple.&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="n">control_port</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; isn&#39;t a vaid IPv4 address&quot;</span> <span class="o">%</span> <span class="n">control_port</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">elif</span> <span class="n">control_port</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&#39;default&#39;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">control_port</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; isn&#39;t a valid port&quot;</span> <span class="o">%</span> <span class="n">control_port</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+  <span class="n">control_connection</span><span class="p">,</span> <span class="n">error_msg</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="s">&#39;&#39;</span>
+
+  <span class="k">if</span> <span class="n">control_socket</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">control_socket</span><span class="p">):</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">control_connection</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">ControlSocketFile</span><span class="p">(</span><span class="n">control_socket</span><span class="p">)</span>
+      <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="n">error_msg</span> <span class="o">=</span> <span class="n">CONNECT_MESSAGES</span><span class="p">[</span><span class="s">&#39;unable_to_use_socket&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">path</span> <span class="o">=</span> <span class="n">control_socket</span><span class="p">,</span> <span class="n">error</span> <span class="o">=</span> <span class="n">exc</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">error_msg</span> <span class="o">=</span> <span class="n">CONNECT_MESSAGES</span><span class="p">[</span><span class="s">&#39;socket_doesnt_exist&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">path</span> <span class="o">=</span> <span class="n">control_socket</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">control_port</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">control_connection</span><span class="p">:</span>
+    <span class="n">address</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="n">control_port</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">port</span> <span class="o">==</span> <span class="s">&#39;default&#39;</span><span class="p">:</span>
+        <span class="n">control_connection</span> <span class="o">=</span> <span class="n">_connection_for_default_port</span><span class="p">(</span><span class="n">address</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">control_connection</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">ControlPort</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">port</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="n">error_msg</span> <span class="o">=</span> <span class="n">CONNECT_MESSAGES</span><span class="p">[</span><span class="s">&#39;unable_to_use_port&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">address</span> <span class="o">=</span> <span class="n">address</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="n">port</span><span class="p">,</span> <span class="n">error</span> <span class="o">=</span> <span class="n">exc</span><span class="p">)</span>
+
+  <span class="c"># If unable to connect to either a control socket or port then finally fail</span>
+  <span class="c"># out. If we only attempted to connect to one of them then provide the error</span>
+  <span class="c"># output from that. Otherwise we provide a more generic error message.</span>
+  <span class="c">#</span>
+  <span class="c"># We check for a &#39;tor.real&#39; process name because that&#39;s what TBB uses.</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">control_connection</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">control_socket</span> <span class="ow">and</span> <span class="n">control_port</span><span class="p">:</span>
+      <span class="n">is_tor_running</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">is_running</span><span class="p">(</span><span class="s">&#39;tor&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">is_running</span><span class="p">(</span><span class="s">&#39;tor.real&#39;</span><span class="p">)</span>
+      <span class="n">error_msg</span> <span class="o">=</span> <span class="n">CONNECT_MESSAGES</span><span class="p">[</span><span class="s">&#39;no_control_port&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="n">is_tor_running</span> <span class="k">else</span> <span class="n">CONNECT_MESSAGES</span><span class="p">[</span><span class="s">&#39;tor_isnt_running&#39;</span><span class="p">]</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="n">error_msg</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">None</span>
+
+  <span class="k">return</span> <span class="n">_connect_auth</span><span class="p">(</span><span class="n">control_connection</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">password_prompt</span><span class="p">,</span> <span class="n">chroot_path</span><span class="p">,</span> <span class="n">controller</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="connect_port"><a class="viewcode-back" href="../../api/connection.html#stem.connection.connect_port">[docs]</a><span class="k">def</span> <span class="nf">connect_port</span><span class="p">(</span><span class="n">address</span> <span class="o">=</span> <span class="s">&#39;127.0.0.1&#39;</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="mi">9051</span><span class="p">,</span> <span class="n">password</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">chroot_path</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">controller</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">control</span><span class="o">.</span><span class="n">Controller</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Convenience function for quickly getting a control connection. This is very</span>
+<span class="sd">  handy for debugging or CLI setup, handling setup and prompting for a password</span>
+<span class="sd">  if necessary (and none is provided). If any issues arise this prints a</span>
+<span class="sd">  description of the problem and returns **None**.</span>
+
+<span class="sd">  .. deprecated:: 1.2.0</span>
+<span class="sd">     Use :func:`~stem.connection.connect` instead.</span>
+
+<span class="sd">  :param str address: ip address of the controller</span>
+<span class="sd">  :param int port: port number of the controller</span>
+<span class="sd">  :param str password: passphrase to authenticate to the socket</span>
+<span class="sd">  :param str chroot_path: path prefix if in a chroot environment</span>
+<span class="sd">  :param Class controller: :class:`~stem.control.BaseController` subclass to be</span>
+<span class="sd">    returned, this provides a :class:`~stem.socket.ControlSocket` if **None**</span>
+
+<span class="sd">  :returns: authenticated control connection, the type based on the controller argument</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">control_port</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">ControlPort</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">port</span><span class="p">)</span>
+  <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">None</span>
+
+  <span class="k">return</span> <span class="n">_connect_auth</span><span class="p">(</span><span class="n">control_port</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="bp">True</span><span class="p">,</span> <span class="n">chroot_path</span><span class="p">,</span> <span class="n">controller</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="connect_socket_file"><a class="viewcode-back" href="../../api/connection.html#stem.connection.connect_socket_file">[docs]</a><span class="k">def</span> <span class="nf">connect_socket_file</span><span class="p">(</span><span class="n">path</span> <span class="o">=</span> <span class="s">&#39;/var/run/tor/control&#39;</span><span class="p">,</span> <span class="n">password</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">chroot_path</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">controller</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">control</span><span class="o">.</span><span class="n">Controller</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Convenience function for quickly getting a control connection. For more</span>
+<span class="sd">  information see the :func:`~stem.connection.connect_port` function.</span>
+
+<span class="sd">  In much the same vein as git porcelain commands, users should not rely on</span>
+<span class="sd">  details of how this works. Messages or details of this function&#39;s behavior</span>
+<span class="sd">  might change in the future.</span>
+
+<span class="sd">  .. deprecated:: 1.2.0</span>
+<span class="sd">     Use :func:`~stem.connection.connect` instead.</span>
+
+<span class="sd">  :param str path: path where the control socket is located</span>
+<span class="sd">  :param str password: passphrase to authenticate to the socket</span>
+<span class="sd">  :param str chroot_path: path prefix if in a chroot environment</span>
+<span class="sd">  :param Class controller: :class:`~stem.control.BaseController` subclass to be</span>
+<span class="sd">    returned, this provides a :class:`~stem.socket.ControlSocket` if **None**</span>
+
+<span class="sd">  :returns: authenticated control connection, the type based on the controller argument</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">control_socket</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">ControlSocketFile</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+  <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">None</span>
+
+  <span class="k">return</span> <span class="n">_connect_auth</span><span class="p">(</span><span class="n">control_socket</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="bp">True</span><span class="p">,</span> <span class="n">chroot_path</span><span class="p">,</span> <span class="n">controller</span><span class="p">)</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_connect_auth</span><span class="p">(</span><span class="n">control_socket</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">password_prompt</span><span class="p">,</span> <span class="n">chroot_path</span><span class="p">,</span> <span class="n">controller</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Helper for the connect_* functions that authenticates the socket and</span>
+<span class="sd">  constructs the controller.</span>
+
+<span class="sd">  :param stem.socket.ControlSocket control_socket: socket being authenticated to</span>
+<span class="sd">  :param str password: passphrase to authenticate to the socket</span>
+<span class="sd">  :param bool password_prompt: prompt for the controller password if it wasn&#39;t</span>
+<span class="sd">    supplied</span>
+<span class="sd">  :param str chroot_path: path prefix if in a chroot environment</span>
+<span class="sd">  :param Class controller: :class:`~stem.control.BaseController` subclass to be</span>
+<span class="sd">    returned, this provides a :class:`~stem.socket.ControlSocket` if **None**</span>
+
+<span class="sd">  :returns: authenticated control connection, the type based on the controller argument</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">authenticate</span><span class="p">(</span><span class="n">control_socket</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">chroot_path</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">controller</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">control_socket</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">controller</span><span class="p">(</span><span class="n">control_socket</span><span class="p">,</span> <span class="n">is_authenticated</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+  <span class="k">except</span> <span class="n">IncorrectSocketType</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">control_socket</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">ControlPort</span><span class="p">):</span>
+      <span class="k">print</span><span class="p">(</span><span class="n">CONNECT_MESSAGES</span><span class="p">[</span><span class="s">&#39;wrong_port_type&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">port</span> <span class="o">=</span> <span class="n">control_socket</span><span class="o">.</span><span class="n">get_port</span><span class="p">()))</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">print</span><span class="p">(</span><span class="n">CONNECT_MESSAGES</span><span class="p">[</span><span class="s">&#39;wrong_socket_type&#39;</span><span class="p">])</span>
+
+    <span class="n">control_socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">return</span> <span class="bp">None</span>
+  <span class="k">except</span> <span class="n">UnrecognizedAuthMethods</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">CONNECT_MESSAGES</span><span class="p">[</span><span class="s">&#39;uncrcognized_auth_type&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">auth_methods</span> <span class="o">=</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">exc</span><span class="o">.</span><span class="n">unknown_auth_methods</span><span class="p">)))</span>
+    <span class="n">control_socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">return</span> <span class="bp">None</span>
+  <span class="k">except</span> <span class="n">IncorrectPassword</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">CONNECT_MESSAGES</span><span class="p">[</span><span class="s">&#39;incorrect_password&#39;</span><span class="p">])</span>
+    <span class="n">control_socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">return</span> <span class="bp">None</span>
+  <span class="k">except</span> <span class="n">MissingPassword</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">password</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="n">control_socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">CONNECT_MESSAGES</span><span class="p">[</span><span class="s">&#39;missing_password_bug&#39;</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">password_prompt</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">password</span> <span class="o">=</span> <span class="n">getpass</span><span class="o">.</span><span class="n">getpass</span><span class="p">(</span><span class="n">CONNECT_MESSAGES</span><span class="p">[</span><span class="s">&#39;password_prompt&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39; &#39;</span><span class="p">)</span>
+      <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+        <span class="n">control_socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">None</span>
+
+      <span class="k">return</span> <span class="n">_connect_auth</span><span class="p">(</span><span class="n">control_socket</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">password_prompt</span><span class="p">,</span> <span class="n">chroot_path</span><span class="p">,</span> <span class="n">controller</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">print</span><span class="p">(</span><span class="n">CONNECT_MESSAGES</span><span class="p">[</span><span class="s">&#39;needs_password&#39;</span><span class="p">])</span>
+      <span class="n">control_socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+      <span class="k">return</span> <span class="bp">None</span>
+  <span class="k">except</span> <span class="n">UnreadableCookieFile</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">CONNECT_MESSAGES</span><span class="p">[</span><span class="s">&#39;unreadable_cookie_file&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">path</span> <span class="o">=</span> <span class="n">exc</span><span class="o">.</span><span class="n">cookie_path</span><span class="p">,</span> <span class="n">issue</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)))</span>
+    <span class="n">control_socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">return</span> <span class="bp">None</span>
+  <span class="k">except</span> <span class="n">AuthenticationFailure</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">CONNECT_MESSAGES</span><span class="p">[</span><span class="s">&#39;general_auth_failure&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">error</span> <span class="o">=</span> <span class="n">exc</span><span class="p">))</span>
+    <span class="n">control_socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">return</span> <span class="bp">None</span>
+
+
+<div class="viewcode-block" id="authenticate"><a class="viewcode-back" href="../../api/connection.html#stem.connection.authenticate">[docs]</a><span class="k">def</span> <span class="nf">authenticate</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="n">password</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">chroot_path</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">protocolinfo_response</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Authenticates to a control socket using the information provided by a</span>
+<span class="sd">  PROTOCOLINFO response. In practice this will often be all we need to</span>
+<span class="sd">  authenticate, raising an exception if all attempts to authenticate fail.</span>
+
+<span class="sd">  All exceptions are subclasses of AuthenticationFailure so, in practice,</span>
+<span class="sd">  callers should catch the types of authentication failure that they care</span>
+<span class="sd">  about, then have a :class:`~stem.connection.AuthenticationFailure` catch-all</span>
+<span class="sd">  at the end.</span>
+
+<span class="sd">  This can authenticate to either a :class:`~stem.control.BaseController` or</span>
+<span class="sd">  :class:`~stem.socket.ControlSocket`.</span>
+
+<span class="sd">  :param controller: tor controller or socket to be authenticated</span>
+<span class="sd">  :param str password: passphrase to present to the socket if it uses password</span>
+<span class="sd">    authentication (skips password auth if **None**)</span>
+<span class="sd">  :param str chroot_path: path prefix if in a chroot environment</span>
+<span class="sd">  :param stem.response.protocolinfo.ProtocolInfoResponse protocolinfo_response:</span>
+<span class="sd">    tor protocolinfo response, this is retrieved on our own if **None**</span>
+
+<span class="sd">  :raises: If all attempts to authenticate fails then this will raise a</span>
+<span class="sd">    :class:`~stem.connection.AuthenticationFailure` subclass. Since this may</span>
+<span class="sd">    try multiple authentication methods it may encounter multiple exceptions.</span>
+<span class="sd">    If so then the exception this raises is prioritized as follows...</span>
+
+<span class="sd">    * :class:`stem.connection.IncorrectSocketType`</span>
+
+<span class="sd">      The controller does not speak the tor control protocol. Most often this</span>
+<span class="sd">      happened because the user confused the SocksPort or ORPort with the</span>
+<span class="sd">      ControlPort.</span>
+
+<span class="sd">    * :class:`stem.connection.UnrecognizedAuthMethods`</span>
+
+<span class="sd">      All of the authentication methods tor will accept are new and</span>
+<span class="sd">      unrecognized. Please upgrade stem and, if that doesn&#39;t work, file a</span>
+<span class="sd">      ticket on &#39;trac.torproject.org&#39; and I&#39;d be happy to add support.</span>
+
+<span class="sd">    * :class:`stem.connection.MissingPassword`</span>
+
+<span class="sd">      We were unable to authenticate but didn&#39;t attempt password authentication</span>
+<span class="sd">      because none was provided. You should prompt the user for a password and</span>
+<span class="sd">      try again via &#39;authenticate_password&#39;.</span>
+
+<span class="sd">    * :class:`stem.connection.IncorrectPassword`</span>
+
+<span class="sd">      We were provided with a password but it was incorrect.</span>
+
+<span class="sd">    * :class:`stem.connection.IncorrectCookieSize`</span>
+
+<span class="sd">      Tor allows for authentication by reading it a cookie file, but that file</span>
+<span class="sd">      is the wrong size to be an authentication cookie.</span>
+
+<span class="sd">    * :class:`stem.connection.UnreadableCookieFile`</span>
+
+<span class="sd">      Tor allows for authentication by reading it a cookie file, but we can&#39;t</span>
+<span class="sd">      read that file (probably due to permissions).</span>
+
+<span class="sd">    * **\***:class:`stem.connection.IncorrectCookieValue`</span>
+
+<span class="sd">      Tor allows for authentication by reading it a cookie file, but rejected</span>
+<span class="sd">      the contents of that file.</span>
+
+<span class="sd">    * **\***:class:`stem.connection.AuthChallengeUnsupported`</span>
+
+<span class="sd">      Tor doesn&#39;t recognize the AUTHCHALLENGE command. This is probably a Tor</span>
+<span class="sd">      version prior to SAFECOOKIE being implement, but this exception shouldn&#39;t</span>
+<span class="sd">      arise because we won&#39;t attempt SAFECOOKIE auth unless Tor claims to</span>
+<span class="sd">      support it.</span>
+
+<span class="sd">    * **\***:class:`stem.connection.UnrecognizedAuthChallengeMethod`</span>
+
+<span class="sd">      Tor couldn&#39;t recognize the AUTHCHALLENGE method Stem sent to it. This</span>
+<span class="sd">      shouldn&#39;t happen at all.</span>
+
+<span class="sd">    * **\***:class:`stem.connection.InvalidClientNonce`</span>
+
+<span class="sd">      Tor says that the client nonce provided by Stem during the AUTHCHALLENGE</span>
+<span class="sd">      process is invalid.</span>
+
+<span class="sd">    * **\***:class:`stem.connection.AuthSecurityFailure`</span>
+
+<span class="sd">      Nonce value provided by the server was invalid.</span>
+
+<span class="sd">    * **\***:class:`stem.connection.OpenAuthRejected`</span>
+
+<span class="sd">      Tor says that it allows for authentication without any credentials, but</span>
+<span class="sd">      then rejected our authentication attempt.</span>
+
+<span class="sd">    * **\***:class:`stem.connection.MissingAuthInfo`</span>
+
+<span class="sd">      Tor provided us with a PROTOCOLINFO reply that is technically valid, but</span>
+<span class="sd">      missing the information we need to authenticate.</span>
+
+<span class="sd">    * **\***:class:`stem.connection.AuthenticationFailure`</span>
+
+<span class="sd">      There are numerous other ways that authentication could have failed</span>
+<span class="sd">      including socket failures, malformed controller responses, etc. These</span>
+<span class="sd">      mostly constitute transient failures or bugs.</span>
+
+<span class="sd">    **\*** In practice it is highly unusual for this to occur, being more of a</span>
+<span class="sd">    theoretical possibility rather than something you should expect. It&#39;s fine</span>
+<span class="sd">    to treat these as errors. If you have a use case where this commonly</span>
+<span class="sd">    happens, please file a ticket on &#39;trac.torproject.org&#39;.</span>
+
+<span class="sd">    In the future new :class:`~stem.connection.AuthenticationFailure`</span>
+<span class="sd">    subclasses may be added to allow for better error handling.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">protocolinfo_response</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">protocolinfo_response</span> <span class="o">=</span> <span class="n">get_protocolinfo</span><span class="p">(</span><span class="n">controller</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">IncorrectSocketType</span><span class="p">(</span><span class="s">&#39;unable to use the control socket&#39;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">AuthenticationFailure</span><span class="p">(</span><span class="s">&#39;socket connection failed (</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="n">exc</span><span class="p">)</span>
+
+  <span class="n">auth_methods</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">protocolinfo_response</span><span class="o">.</span><span class="n">auth_methods</span><span class="p">)</span>
+  <span class="n">auth_exceptions</span> <span class="o">=</span> <span class="p">[]</span>
+
+  <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">auth_methods</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="n">NoAuthMethods</span><span class="p">(</span><span class="s">&#39;our PROTOCOLINFO response did not have any methods for authenticating&#39;</span><span class="p">)</span>
+
+  <span class="c"># remove authentication methods that are either unknown or for which we don&#39;t</span>
+  <span class="c"># have an input</span>
+  <span class="k">if</span> <span class="n">AuthMethod</span><span class="o">.</span><span class="n">UNKNOWN</span> <span class="ow">in</span> <span class="n">auth_methods</span><span class="p">:</span>
+    <span class="n">auth_methods</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">AuthMethod</span><span class="o">.</span><span class="n">UNKNOWN</span><span class="p">)</span>
+
+    <span class="n">unknown_methods</span> <span class="o">=</span> <span class="n">protocolinfo_response</span><span class="o">.</span><span class="n">unknown_auth_methods</span>
+    <span class="n">plural_label</span> <span class="o">=</span> <span class="s">&#39;s&#39;</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">unknown_methods</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="s">&#39;&#39;</span>
+    <span class="n">methods_label</span> <span class="o">=</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">unknown_methods</span><span class="p">)</span>
+
+    <span class="c"># we... er, can&#39;t do anything with only unrecognized auth types</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">auth_methods</span><span class="p">:</span>
+      <span class="n">exc_msg</span> <span class="o">=</span> <span class="s">&#39;unrecognized authentication method</span><span class="si">%s</span><span class="s"> (</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">plural_label</span><span class="p">,</span> <span class="n">methods_label</span><span class="p">)</span>
+      <span class="n">auth_exceptions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">UnrecognizedAuthMethods</span><span class="p">(</span><span class="n">exc_msg</span><span class="p">,</span> <span class="n">unknown_methods</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;Authenticating to a socket with unrecognized auth method</span><span class="si">%s</span><span class="s">, ignoring them: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">plural_label</span><span class="p">,</span> <span class="n">methods_label</span><span class="p">))</span>
+
+  <span class="k">if</span> <span class="n">protocolinfo_response</span><span class="o">.</span><span class="n">cookie_path</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">cookie_auth_method</span> <span class="ow">in</span> <span class="p">(</span><span class="n">AuthMethod</span><span class="o">.</span><span class="n">COOKIE</span><span class="p">,</span> <span class="n">AuthMethod</span><span class="o">.</span><span class="n">SAFECOOKIE</span><span class="p">):</span>
+      <span class="k">if</span> <span class="n">cookie_auth_method</span> <span class="ow">in</span> <span class="n">auth_methods</span><span class="p">:</span>
+        <span class="n">auth_methods</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">cookie_auth_method</span><span class="p">)</span>
+
+        <span class="n">exc_msg</span> <span class="o">=</span> <span class="s">&#39;our PROTOCOLINFO response did not have the location of our authentication cookie&#39;</span>
+        <span class="n">auth_exceptions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">NoAuthCookie</span><span class="p">(</span><span class="n">exc_msg</span><span class="p">,</span> <span class="n">cookie_auth_method</span> <span class="o">==</span> <span class="n">AuthMethod</span><span class="o">.</span><span class="n">SAFECOOKIE</span><span class="p">))</span>
+
+  <span class="k">if</span> <span class="n">AuthMethod</span><span class="o">.</span><span class="n">PASSWORD</span> <span class="ow">in</span> <span class="n">auth_methods</span> <span class="ow">and</span> <span class="n">password</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="n">auth_methods</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">AuthMethod</span><span class="o">.</span><span class="n">PASSWORD</span><span class="p">)</span>
+    <span class="n">auth_exceptions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">MissingPassword</span><span class="p">(</span><span class="s">&#39;no passphrase provided&#39;</span><span class="p">))</span>
+
+  <span class="c"># iterating over AuthMethods so we can try them in this order</span>
+  <span class="k">for</span> <span class="n">auth_type</span> <span class="ow">in</span> <span class="p">(</span><span class="n">AuthMethod</span><span class="o">.</span><span class="n">NONE</span><span class="p">,</span> <span class="n">AuthMethod</span><span class="o">.</span><span class="n">PASSWORD</span><span class="p">,</span> <span class="n">AuthMethod</span><span class="o">.</span><span class="n">SAFECOOKIE</span><span class="p">,</span> <span class="n">AuthMethod</span><span class="o">.</span><span class="n">COOKIE</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">auth_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">auth_methods</span><span class="p">:</span>
+      <span class="k">continue</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">auth_type</span> <span class="o">==</span> <span class="n">AuthMethod</span><span class="o">.</span><span class="n">NONE</span><span class="p">:</span>
+        <span class="n">authenticate_none</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="n">auth_type</span> <span class="o">==</span> <span class="n">AuthMethod</span><span class="o">.</span><span class="n">PASSWORD</span><span class="p">:</span>
+        <span class="n">authenticate_password</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="n">auth_type</span> <span class="ow">in</span> <span class="p">(</span><span class="n">AuthMethod</span><span class="o">.</span><span class="n">COOKIE</span><span class="p">,</span> <span class="n">AuthMethod</span><span class="o">.</span><span class="n">SAFECOOKIE</span><span class="p">):</span>
+        <span class="n">cookie_path</span> <span class="o">=</span> <span class="n">protocolinfo_response</span><span class="o">.</span><span class="n">cookie_path</span>
+
+        <span class="k">if</span> <span class="n">chroot_path</span><span class="p">:</span>
+          <span class="n">cookie_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">chroot_path</span><span class="p">,</span> <span class="n">cookie_path</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">auth_type</span> <span class="o">==</span> <span class="n">AuthMethod</span><span class="o">.</span><span class="n">SAFECOOKIE</span><span class="p">:</span>
+          <span class="n">authenticate_safecookie</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="n">authenticate_cookie</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+
+      <span class="k">return</span>  <span class="c"># success!</span>
+    <span class="k">except</span> <span class="n">OpenAuthRejected</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="n">auth_exceptions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">IncorrectPassword</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="n">auth_exceptions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">PasswordAuthRejected</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="c"># Since the PROTOCOLINFO says password auth is available we can assume</span>
+      <span class="c"># that if PasswordAuthRejected is raised it&#39;s being raised in error.</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;The authenticate_password method raised a PasswordAuthRejected when password auth should be available. Stem may need to be corrected to recognize this response: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">exc</span><span class="p">)</span>
+      <span class="n">auth_exceptions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">IncorrectPassword</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)))</span>
+    <span class="k">except</span> <span class="n">AuthSecurityFailure</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&#39;Tor failed to provide the nonce expected for safecookie authentication. (</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="n">exc</span><span class="p">)</span>
+      <span class="n">auth_exceptions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">InvalidClientNonce</span><span class="p">,</span> <span class="n">UnrecognizedAuthChallengeMethod</span><span class="p">,</span> <span class="n">AuthChallengeFailed</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="n">auth_exceptions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">IncorrectCookieSize</span><span class="p">,</span> <span class="n">UnreadableCookieFile</span><span class="p">,</span> <span class="n">IncorrectCookieValue</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="n">auth_exceptions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">CookieAuthRejected</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="n">auth_func</span> <span class="o">=</span> <span class="s">&#39;authenticate_safecookie&#39;</span> <span class="k">if</span> <span class="n">exc</span><span class="o">.</span><span class="n">is_safecookie</span> <span class="k">else</span> <span class="s">&#39;authenticate_cookie&#39;</span>
+
+      <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;The </span><span class="si">%s</span><span class="s"> method raised a CookieAuthRejected when cookie auth should be available. Stem may need to be corrected to recognize this response: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">auth_func</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
+      <span class="n">auth_exceptions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">IncorrectCookieValue</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">),</span> <span class="n">exc</span><span class="o">.</span><span class="n">cookie_path</span><span class="p">,</span> <span class="n">exc</span><span class="o">.</span><span class="n">is_safecookie</span><span class="p">))</span>
+    <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">ControllerError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="n">auth_exceptions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AuthenticationFailure</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)))</span>
+
+  <span class="c"># All authentication attempts failed. Raise the exception that takes priority</span>
+  <span class="c"># according to our pydocs.</span>
+
+  <span class="k">for</span> <span class="n">exc_type</span> <span class="ow">in</span> <span class="n">AUTHENTICATE_EXCEPTIONS</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">auth_exc</span> <span class="ow">in</span> <span class="n">auth_exceptions</span><span class="p">:</span>
+      <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">auth_exc</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">auth_exc</span>
+
+  <span class="c"># We really, really shouldn&#39;t get here. It means that auth_exceptions is</span>
+  <span class="c"># either empty or contains something that isn&#39;t an AuthenticationFailure.</span>
+
+  <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="s">&#39;BUG: Authentication failed without providing a recognized exception: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">auth_exceptions</span><span class="p">))</span>
+
+</div>
+<div class="viewcode-block" id="authenticate_none"><a class="viewcode-back" href="../../api/connection.html#stem.connection.authenticate_none">[docs]</a><span class="k">def</span> <span class="nf">authenticate_none</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="n">suppress_ctl_errors</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Authenticates to an open control socket. All control connections need to</span>
+<span class="sd">  authenticate before they can be used, even if tor hasn&#39;t been configured to</span>
+<span class="sd">  use any authentication.</span>
+
+<span class="sd">  If authentication fails tor will disconnect and we&#39;ll make a best effort</span>
+<span class="sd">  attempt to re-establish the connection. This may not succeed, so check</span>
+<span class="sd">  :func:`~stem.socket.ControlSocket.is_alive` before using the socket further.</span>
+
+<span class="sd">  This can authenticate to either a :class:`~stem.control.BaseController` or</span>
+<span class="sd">  :class:`~stem.socket.ControlSocket`.</span>
+
+<span class="sd">  For general usage use the :func:`~stem.connection.authenticate` function</span>
+<span class="sd">  instead.</span>
+
+<span class="sd">  :param controller: tor controller or socket to be authenticated</span>
+<span class="sd">  :param bool suppress_ctl_errors: reports raised</span>
+<span class="sd">    :class:`~stem.ControllerError` as authentication rejection if</span>
+<span class="sd">    **True**, otherwise they&#39;re re-raised</span>
+
+<span class="sd">  :raises: :class:`stem.connection.OpenAuthRejected` if the empty authentication credentials aren&#39;t accepted</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">auth_response</span> <span class="o">=</span> <span class="n">_msg</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="s">&#39;AUTHENTICATE&#39;</span><span class="p">)</span>
+
+    <span class="c"># if we got anything but an OK response then error</span>
+    <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">auth_response</span><span class="p">)</span> <span class="o">!=</span> <span class="s">&#39;OK&#39;</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">controller</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+      <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+      <span class="k">raise</span> <span class="n">OpenAuthRejected</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">auth_response</span><span class="p">),</span> <span class="n">auth_response</span><span class="p">)</span>
+  <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">ControllerError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">controller</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+    <span class="k">except</span><span class="p">:</span>
+      <span class="k">pass</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">suppress_ctl_errors</span><span class="p">:</span>
+      <span class="k">raise</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">OpenAuthRejected</span><span class="p">(</span><span class="s">&#39;Socket failed (</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="n">exc</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="authenticate_password"><a class="viewcode-back" href="../../api/connection.html#stem.connection.authenticate_password">[docs]</a><span class="k">def</span> <span class="nf">authenticate_password</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">suppress_ctl_errors</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Authenticates to a control socket that uses a password (via the</span>
+<span class="sd">  HashedControlPassword torrc option). Quotes in the password are escaped.</span>
+
+<span class="sd">  If authentication fails tor will disconnect and we&#39;ll make a best effort</span>
+<span class="sd">  attempt to re-establish the connection. This may not succeed, so check</span>
+<span class="sd">  :func:`~stem.socket.ControlSocket.is_alive` before using the socket further.</span>
+
+<span class="sd">  If you use this function directly, rather than</span>
+<span class="sd">  :func:`~stem.connection.authenticate`, we may mistakenly raise a</span>
+<span class="sd">  PasswordAuthRejected rather than IncorrectPassword. This is because we rely</span>
+<span class="sd">  on tor&#39;s error messaging which is liable to change in future versions</span>
+<span class="sd">  (:trac:`4817`).</span>
+
+<span class="sd">  This can authenticate to either a :class:`~stem.control.BaseController` or</span>
+<span class="sd">  :class:`~stem.socket.ControlSocket`.</span>
+
+<span class="sd">  For general usage use the :func:`~stem.connection.authenticate` function</span>
+<span class="sd">  instead.</span>
+
+<span class="sd">  :param controller: tor controller or socket to be authenticated</span>
+<span class="sd">  :param str password: passphrase to present to the socket</span>
+<span class="sd">  :param bool suppress_ctl_errors: reports raised</span>
+<span class="sd">    :class:`~stem.ControllerError` as authentication rejection if</span>
+<span class="sd">    **True**, otherwise they&#39;re re-raised</span>
+
+<span class="sd">  :raises:</span>
+<span class="sd">    * :class:`stem.connection.PasswordAuthRejected` if the socket doesn&#39;t</span>
+<span class="sd">      accept password authentication</span>
+<span class="sd">    * :class:`stem.connection.IncorrectPassword` if the authentication</span>
+<span class="sd">      credentials aren&#39;t accepted</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># Escapes quotes. Tor can include those in the password hash, in which case</span>
+  <span class="c"># it expects escaped quotes from the controller. For more information see...</span>
+  <span class="c"># https://trac.torproject.org/projects/tor/ticket/4600</span>
+
+  <span class="n">password</span> <span class="o">=</span> <span class="n">password</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;&quot;&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="se">\\</span><span class="s">&quot;&#39;</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">auth_response</span> <span class="o">=</span> <span class="n">_msg</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="s">&#39;AUTHENTICATE &quot;</span><span class="si">%s</span><span class="s">&quot;&#39;</span> <span class="o">%</span> <span class="n">password</span><span class="p">)</span>
+
+    <span class="c"># if we got anything but an OK response then error</span>
+    <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">auth_response</span><span class="p">)</span> <span class="o">!=</span> <span class="s">&#39;OK&#39;</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">controller</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+      <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+      <span class="c"># all we have to go on is the error message from tor...</span>
+      <span class="c"># Password did not match HashedControlPassword value value from configuration...</span>
+      <span class="c"># Password did not match HashedControlPassword *or*...</span>
+
+      <span class="k">if</span> <span class="s">&#39;Password did not match HashedControlPassword&#39;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">auth_response</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">IncorrectPassword</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">auth_response</span><span class="p">),</span> <span class="n">auth_response</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">PasswordAuthRejected</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">auth_response</span><span class="p">),</span> <span class="n">auth_response</span><span class="p">)</span>
+  <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">ControllerError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">controller</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+    <span class="k">except</span><span class="p">:</span>
+      <span class="k">pass</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">suppress_ctl_errors</span><span class="p">:</span>
+      <span class="k">raise</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">PasswordAuthRejected</span><span class="p">(</span><span class="s">&#39;Socket failed (</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="n">exc</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="authenticate_cookie"><a class="viewcode-back" href="../../api/connection.html#stem.connection.authenticate_cookie">[docs]</a><span class="k">def</span> <span class="nf">authenticate_cookie</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">,</span> <span class="n">suppress_ctl_errors</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Authenticates to a control socket that uses the contents of an authentication</span>
+<span class="sd">  cookie (generated via the CookieAuthentication torrc option). This does basic</span>
+<span class="sd">  validation that this is a cookie before presenting the contents to the</span>
+<span class="sd">  socket.</span>
+
+<span class="sd">  The :class:`~stem.connection.IncorrectCookieSize` and</span>
+<span class="sd">  :class:`~stem.connection.UnreadableCookieFile` exceptions take precedence</span>
+<span class="sd">  over the other types.</span>
+
+<span class="sd">  If authentication fails tor will disconnect and we&#39;ll make a best effort</span>
+<span class="sd">  attempt to re-establish the connection. This may not succeed, so check</span>
+<span class="sd">  :func:`~stem.socket.ControlSocket.is_alive` before using the socket further.</span>
+
+<span class="sd">  If you use this function directly, rather than</span>
+<span class="sd">  :func:`~stem.connection.authenticate`, we may mistakenly raise a</span>
+<span class="sd">  :class:`~stem.connection.CookieAuthRejected` rather than</span>
+<span class="sd">  :class:`~stem.connection.IncorrectCookieValue`. This is because we rely on</span>
+<span class="sd">  tor&#39;s error messaging which is liable to change in future versions</span>
+<span class="sd">  (:trac:`4817`).</span>
+
+<span class="sd">  This can authenticate to either a :class:`~stem.control.BaseController` or</span>
+<span class="sd">  :class:`~stem.socket.ControlSocket`.</span>
+
+<span class="sd">  For general usage use the :func:`~stem.connection.authenticate` function</span>
+<span class="sd">  instead.</span>
+
+<span class="sd">  :param controller: tor controller or socket to be authenticated</span>
+<span class="sd">  :param str cookie_path: path of the authentication cookie to send to tor</span>
+<span class="sd">  :param bool suppress_ctl_errors: reports raised</span>
+<span class="sd">    :class:`~stem.ControllerError` as authentication rejection if</span>
+<span class="sd">    **True**, otherwise they&#39;re re-raised</span>
+
+<span class="sd">  :raises:</span>
+<span class="sd">    * :class:`stem.connection.IncorrectCookieSize` if the cookie file&#39;s size</span>
+<span class="sd">      is wrong</span>
+<span class="sd">    * :class:`stem.connection.UnreadableCookieFile` if the cookie file doesn&#39;t</span>
+<span class="sd">      exist or we&#39;re unable to read it</span>
+<span class="sd">    * :class:`stem.connection.CookieAuthRejected` if cookie authentication is</span>
+<span class="sd">      attempted but the socket doesn&#39;t accept it</span>
+<span class="sd">    * :class:`stem.connection.IncorrectCookieValue` if the cookie file&#39;s value</span>
+<span class="sd">      is rejected</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">cookie_data</span> <span class="o">=</span> <span class="n">_read_cookie</span><span class="p">(</span><span class="n">cookie_path</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="c"># binascii.b2a_hex() takes a byte string and returns one too. With python 3</span>
+    <span class="c"># this is a problem because string formatting for byte strings includes the</span>
+    <span class="c"># b&#39;&#39; wrapper...</span>
+    <span class="c">#</span>
+    <span class="c">#   &gt;&gt;&gt; &quot;AUTHENTICATE %s&quot; % b&#39;content&#39;</span>
+    <span class="c">#   &quot;AUTHENTICATE b&#39;content&#39;&quot;</span>
+    <span class="c">#</span>
+    <span class="c"># This seems dumb but oh well. Converting the result to unicode so it won&#39;t</span>
+    <span class="c"># misbehave.</span>
+
+    <span class="n">auth_token_hex</span> <span class="o">=</span> <span class="n">binascii</span><span class="o">.</span><span class="n">b2a_hex</span><span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_bytes</span><span class="p">(</span><span class="n">cookie_data</span><span class="p">))</span>
+    <span class="n">msg</span> <span class="o">=</span> <span class="s">&#39;AUTHENTICATE </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">auth_token_hex</span><span class="p">)</span>
+    <span class="n">auth_response</span> <span class="o">=</span> <span class="n">_msg</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span>
+
+    <span class="c"># if we got anything but an OK response then error</span>
+    <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">auth_response</span><span class="p">)</span> <span class="o">!=</span> <span class="s">&#39;OK&#39;</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">controller</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+      <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+      <span class="c"># all we have to go on is the error message from tor...</span>
+      <span class="c"># ... Authentication cookie did not match expected value.</span>
+      <span class="c"># ... *or* authentication cookie.</span>
+
+      <span class="k">if</span> <span class="s">&#39;*or* authentication cookie.&#39;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">auth_response</span><span class="p">)</span> <span class="ow">or</span> \
+         <span class="s">&#39;Authentication cookie did not match expected value.&#39;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">auth_response</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">IncorrectCookieValue</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">auth_response</span><span class="p">),</span> <span class="n">cookie_path</span><span class="p">,</span> <span class="bp">False</span><span class="p">,</span> <span class="n">auth_response</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CookieAuthRejected</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">auth_response</span><span class="p">),</span> <span class="n">cookie_path</span><span class="p">,</span> <span class="bp">False</span><span class="p">,</span> <span class="n">auth_response</span><span class="p">)</span>
+  <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">ControllerError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">controller</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+    <span class="k">except</span><span class="p">:</span>
+      <span class="k">pass</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">suppress_ctl_errors</span><span class="p">:</span>
+      <span class="k">raise</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">CookieAuthRejected</span><span class="p">(</span><span class="s">&#39;Socket failed (</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="n">exc</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="authenticate_safecookie"><a class="viewcode-back" href="../../api/connection.html#stem.connection.authenticate_safecookie">[docs]</a><span class="k">def</span> <span class="nf">authenticate_safecookie</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">,</span> <span class="n">suppress_ctl_errors</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Authenticates to a control socket using the safe cookie method, which is</span>
+<span class="sd">  enabled by setting the CookieAuthentication torrc option on Tor client&#39;s which</span>
+<span class="sd">  support it.</span>
+
+<span class="sd">  Authentication with this is a two-step process...</span>
+
+<span class="sd">  1. send a nonce to the server and receives a challenge from the server for</span>
+<span class="sd">     the cookie&#39;s contents</span>
+<span class="sd">  2. generate a hash digest using the challenge received in the first step, and</span>
+<span class="sd">     use it to authenticate the controller</span>
+
+<span class="sd">  The :class:`~stem.connection.IncorrectCookieSize` and</span>
+<span class="sd">  :class:`~stem.connection.UnreadableCookieFile` exceptions take precedence</span>
+<span class="sd">  over the other exception types.</span>
+
+<span class="sd">  The :class:`~stem.connection.AuthChallengeUnsupported`,</span>
+<span class="sd">  :class:`~stem.connection.UnrecognizedAuthChallengeMethod`,</span>
+<span class="sd">  :class:`~stem.connection.InvalidClientNonce` and</span>
+<span class="sd">  :class:`~stem.connection.CookieAuthRejected` exceptions are next in the order</span>
+<span class="sd">  of precedence. Depending on the reason, one of these is raised if the first</span>
+<span class="sd">  (AUTHCHALLENGE) step fails.</span>
+
+<span class="sd">  In the second (AUTHENTICATE) step,</span>
+<span class="sd">  :class:`~stem.connection.IncorrectCookieValue` or</span>
+<span class="sd">  :class:`~stem.connection.CookieAuthRejected` maybe raised.</span>
+
+<span class="sd">  If authentication fails tor will disconnect and we&#39;ll make a best effort</span>
+<span class="sd">  attempt to re-establish the connection. This may not succeed, so check</span>
+<span class="sd">  :func:`~stem.socket.ControlSocket.is_alive` before using the socket further.</span>
+
+<span class="sd">  For general usage use the :func:`~stem.connection.authenticate` function</span>
+<span class="sd">  instead.</span>
+
+<span class="sd">  :param controller: tor controller or socket to be authenticated</span>
+<span class="sd">  :param str cookie_path: path of the authentication cookie to send to tor</span>
+<span class="sd">  :param bool suppress_ctl_errors: reports raised</span>
+<span class="sd">    :class:`~stem.ControllerError` as authentication rejection if</span>
+<span class="sd">    **True**, otherwise they&#39;re re-raised</span>
+
+<span class="sd">  :raises:</span>
+<span class="sd">    * :class:`stem.connection.IncorrectCookieSize` if the cookie file&#39;s size</span>
+<span class="sd">      is wrong</span>
+<span class="sd">    * :class:`stem.connection.UnreadableCookieFile` if the cookie file doesn&#39;t</span>
+<span class="sd">      exist or we&#39;re unable to read it</span>
+<span class="sd">    * :class:`stem.connection.CookieAuthRejected` if cookie authentication is</span>
+<span class="sd">      attempted but the socket doesn&#39;t accept it</span>
+<span class="sd">    * :class:`stem.connection.IncorrectCookieValue` if the cookie file&#39;s value</span>
+<span class="sd">      is rejected</span>
+<span class="sd">    * :class:`stem.connection.UnrecognizedAuthChallengeMethod` if the Tor</span>
+<span class="sd">      client fails to recognize the AuthChallenge method</span>
+<span class="sd">    * :class:`stem.connection.AuthChallengeUnsupported` if AUTHCHALLENGE is</span>
+<span class="sd">      unimplemented, or if unable to parse AUTHCHALLENGE response</span>
+<span class="sd">    * :class:`stem.connection.AuthSecurityFailure` if AUTHCHALLENGE&#39;s response</span>
+<span class="sd">      looks like a security attack</span>
+<span class="sd">    * :class:`stem.connection.InvalidClientNonce` if stem&#39;s AUTHCHALLENGE</span>
+<span class="sd">      client nonce is rejected for being invalid</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">cookie_data</span> <span class="o">=</span> <span class="n">_read_cookie</span><span class="p">(</span><span class="n">cookie_path</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+  <span class="n">client_nonce</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">urandom</span><span class="p">(</span><span class="mi">32</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">client_nonce_hex</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">binascii</span><span class="o">.</span><span class="n">b2a_hex</span><span class="p">(</span><span class="n">client_nonce</span><span class="p">))</span>
+    <span class="n">authchallenge_response</span> <span class="o">=</span> <span class="n">_msg</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="s">&#39;AUTHCHALLENGE SAFECOOKIE </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">client_nonce_hex</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">authchallenge_response</span><span class="o">.</span><span class="n">is_ok</span><span class="p">():</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">controller</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+      <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+      <span class="n">authchallenge_response_str</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">authchallenge_response</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="s">&#39;Authentication required.&#39;</span> <span class="ow">in</span> <span class="n">authchallenge_response_str</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">AuthChallengeUnsupported</span><span class="p">(</span><span class="s">&quot;SAFECOOKIE authentication isn&#39;t supported&quot;</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="s">&#39;AUTHCHALLENGE only supports&#39;</span> <span class="ow">in</span> <span class="n">authchallenge_response_str</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">UnrecognizedAuthChallengeMethod</span><span class="p">(</span><span class="n">authchallenge_response_str</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="s">&#39;Invalid base16 client nonce&#39;</span> <span class="ow">in</span> <span class="n">authchallenge_response_str</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">InvalidClientNonce</span><span class="p">(</span><span class="n">authchallenge_response_str</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="s">&#39;Cookie authentication is disabled&#39;</span> <span class="ow">in</span> <span class="n">authchallenge_response_str</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CookieAuthRejected</span><span class="p">(</span><span class="n">authchallenge_response_str</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">AuthChallengeFailed</span><span class="p">(</span><span class="n">authchallenge_response</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">)</span>
+  <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">ControllerError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">controller</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+    <span class="k">except</span><span class="p">:</span>
+      <span class="k">pass</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">suppress_ctl_errors</span><span class="p">:</span>
+      <span class="k">raise</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">AuthChallengeFailed</span><span class="p">(</span><span class="s">&#39;Socket failed (</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="n">exc</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">stem</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="s">&#39;AUTHCHALLENGE&#39;</span><span class="p">,</span> <span class="n">authchallenge_response</span><span class="p">)</span>
+  <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">ProtocolError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">suppress_ctl_errors</span><span class="p">:</span>
+      <span class="k">raise</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">AuthChallengeFailed</span><span class="p">(</span><span class="s">&#39;Unable to parse AUTHCHALLENGE response: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">exc</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">)</span>
+
+  <span class="n">expected_server_hash</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">_hmac_sha256</span><span class="p">(</span>
+    <span class="n">SERVER_HASH_CONSTANT</span><span class="p">,</span>
+    <span class="n">cookie_data</span> <span class="o">+</span> <span class="n">client_nonce</span> <span class="o">+</span> <span class="n">authchallenge_response</span><span class="o">.</span><span class="n">server_nonce</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">_cryptovariables_equal</span><span class="p">(</span><span class="n">authchallenge_response</span><span class="o">.</span><span class="n">server_hash</span><span class="p">,</span> <span class="n">expected_server_hash</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="n">AuthSecurityFailure</span><span class="p">(</span><span class="s">&#39;Tor provided the wrong server nonce&#39;</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">client_hash</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">_hmac_sha256</span><span class="p">(</span>
+      <span class="n">CLIENT_HASH_CONSTANT</span><span class="p">,</span>
+      <span class="n">cookie_data</span> <span class="o">+</span> <span class="n">client_nonce</span> <span class="o">+</span> <span class="n">authchallenge_response</span><span class="o">.</span><span class="n">server_nonce</span><span class="p">)</span>
+
+    <span class="n">auth_response</span> <span class="o">=</span> <span class="n">_msg</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="s">&#39;AUTHENTICATE </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">binascii</span><span class="o">.</span><span class="n">b2a_hex</span><span class="p">(</span><span class="n">client_hash</span><span class="p">)))</span>
+  <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">ControllerError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">controller</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+    <span class="k">except</span><span class="p">:</span>
+      <span class="k">pass</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">suppress_ctl_errors</span><span class="p">:</span>
+      <span class="k">raise</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">CookieAuthRejected</span><span class="p">(</span><span class="s">&#39;Socket failed (</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="n">exc</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">,</span> <span class="bp">True</span><span class="p">,</span> <span class="n">auth_response</span><span class="p">)</span>
+
+  <span class="c"># if we got anything but an OK response then err</span>
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">auth_response</span><span class="o">.</span><span class="n">is_ok</span><span class="p">():</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">controller</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+    <span class="k">except</span><span class="p">:</span>
+      <span class="k">pass</span>
+
+    <span class="c"># all we have to go on is the error message from tor...</span>
+    <span class="c"># ... Safe cookie response did not match expected value</span>
+    <span class="c"># ... *or* authentication cookie.</span>
+
+    <span class="k">if</span> <span class="s">&#39;*or* authentication cookie.&#39;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">auth_response</span><span class="p">)</span> <span class="ow">or</span> \
+       <span class="s">&#39;Safe cookie response did not match expected value&#39;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">auth_response</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="n">IncorrectCookieValue</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">auth_response</span><span class="p">),</span> <span class="n">cookie_path</span><span class="p">,</span> <span class="bp">True</span><span class="p">,</span> <span class="n">auth_response</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">CookieAuthRejected</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">auth_response</span><span class="p">),</span> <span class="n">cookie_path</span><span class="p">,</span> <span class="bp">True</span><span class="p">,</span> <span class="n">auth_response</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="get_protocolinfo"><a class="viewcode-back" href="../../api/connection.html#stem.connection.get_protocolinfo">[docs]</a><span class="k">def</span> <span class="nf">get_protocolinfo</span><span class="p">(</span><span class="n">controller</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Issues a PROTOCOLINFO query to a control socket, getting information about</span>
+<span class="sd">  the tor process running on it. If the socket is already closed then it is</span>
+<span class="sd">  first reconnected.</span>
+
+<span class="sd">  According to the control spec the cookie_file is an absolute path. However,</span>
+<span class="sd">  this often is not the case (especially for the Tor Browser Bundle). If the</span>
+<span class="sd">  path is relative then we&#39;ll make an attempt (which may not work) to correct</span>
+<span class="sd">  this (:trac:`1101`).</span>
+
+<span class="sd">  This can authenticate to either a :class:`~stem.control.BaseController` or</span>
+<span class="sd">  :class:`~stem.socket.ControlSocket`.</span>
+
+<span class="sd">  :param controller: tor controller or socket to be queried</span>
+
+<span class="sd">  :returns: :class:`~stem.response.protocolinfo.ProtocolInfoResponse` provided by tor</span>
+
+<span class="sd">  :raises:</span>
+<span class="sd">    * :class:`stem.ProtocolError` if the PROTOCOLINFO response is</span>
+<span class="sd">      malformed</span>
+<span class="sd">    * :class:`stem.SocketError` if problems arise in establishing or</span>
+<span class="sd">      using the socket</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">protocolinfo_response</span> <span class="o">=</span> <span class="n">_msg</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="s">&#39;PROTOCOLINFO 1&#39;</span><span class="p">)</span>
+  <span class="k">except</span><span class="p">:</span>
+    <span class="n">protocolinfo_response</span> <span class="o">=</span> <span class="bp">None</span>
+
+  <span class="c"># Tor hangs up on sockets after receiving a PROTOCOLINFO query if it isn&#39;t</span>
+  <span class="c"># next followed by authentication. Transparently reconnect if that happens.</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">protocolinfo_response</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">(</span><span class="n">protocolinfo_response</span><span class="p">)</span> <span class="o">==</span> <span class="s">&#39;Authentication required.&#39;</span><span class="p">:</span>
+    <span class="n">controller</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">protocolinfo_response</span> <span class="o">=</span> <span class="n">_msg</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="s">&#39;PROTOCOLINFO 1&#39;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketClosed</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketError</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+
+  <span class="n">stem</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="s">&#39;PROTOCOLINFO&#39;</span><span class="p">,</span> <span class="n">protocolinfo_response</span><span class="p">)</span>
+
+  <span class="c"># attempt to expand relative cookie paths</span>
+
+  <span class="k">if</span> <span class="n">protocolinfo_response</span><span class="o">.</span><span class="n">cookie_path</span><span class="p">:</span>
+    <span class="n">_expand_cookie_path</span><span class="p">(</span><span class="n">protocolinfo_response</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">pid_by_name</span><span class="p">,</span> <span class="s">&#39;tor&#39;</span><span class="p">)</span>
+
+  <span class="c"># attempt to expand relative cookie paths via the control port or socket file</span>
+
+  <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">ControlSocket</span><span class="p">):</span>
+    <span class="n">control_socket</span> <span class="o">=</span> <span class="n">controller</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="n">control_socket</span> <span class="o">=</span> <span class="n">controller</span><span class="o">.</span><span class="n">get_socket</span><span class="p">()</span>
+
+  <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">control_socket</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">ControlPort</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">control_socket</span><span class="o">.</span><span class="n">get_address</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;127.0.0.1&#39;</span><span class="p">:</span>
+      <span class="n">pid_method</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">pid_by_port</span>
+      <span class="n">_expand_cookie_path</span><span class="p">(</span><span class="n">protocolinfo_response</span><span class="p">,</span> <span class="n">pid_method</span><span class="p">,</span> <span class="n">control_socket</span><span class="o">.</span><span class="n">get_port</span><span class="p">())</span>
+  <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">control_socket</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">ControlSocketFile</span><span class="p">):</span>
+    <span class="n">pid_method</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">pid_by_open_file</span>
+    <span class="n">_expand_cookie_path</span><span class="p">(</span><span class="n">protocolinfo_response</span><span class="p">,</span> <span class="n">pid_method</span><span class="p">,</span> <span class="n">control_socket</span><span class="o">.</span><span class="n">get_socket_path</span><span class="p">())</span>
+
+  <span class="k">return</span> <span class="n">protocolinfo_response</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_msg</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Sends and receives a message with either a</span>
+<span class="sd">  :class:`~stem.socket.ControlSocket` or :class:`~stem.control.BaseController`.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">ControlSocket</span><span class="p">):</span>
+    <span class="n">controller</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">controller</span><span class="o">.</span><span class="n">recv</span><span class="p">()</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">controller</span><span class="o">.</span><span class="n">msg</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_connection_for_default_port</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Attempts to provide a controller connection for either port 9051 (default for</span>
+<span class="sd">  relays) or 9151 (default for Tor Browser). If both fail then this raises the</span>
+<span class="sd">  exception for port 9051.</span>
+
+<span class="sd">  :param str address: address to connect to</span>
+
+<span class="sd">  :returns: :class:`~stem.socket.ControlPort` for the controller conneciton</span>
+
+<span class="sd">  :raises: :class:`stem.SocketError` if we&#39;re unable to establish a connection</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">stem</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">ControlPort</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="mi">9051</span><span class="p">)</span>
+  <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">stem</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">ControlPort</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="mi">9151</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketError</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">exc</span>
+
+
+<span class="k">def</span> <span class="nf">_read_cookie</span><span class="p">(</span><span class="n">cookie_path</span><span class="p">,</span> <span class="n">is_safecookie</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the contents of a given cookie file.</span>
+
+<span class="sd">  :param str cookie_path: absolute path of the cookie file</span>
+<span class="sd">  :param bool is_safecookie: **True** if this was for SAFECOOKIE</span>
+<span class="sd">    authentication, **False** if for COOKIE</span>
+
+<span class="sd">  :raises:</span>
+<span class="sd">    * :class:`stem.connection.UnreadableCookieFile` if the cookie file is</span>
+<span class="sd">      unreadable</span>
+<span class="sd">    * :class:`stem.connection.IncorrectCookieSize` if the cookie size is</span>
+<span class="sd">      incorrect (not 32 bytes)</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">cookie_path</span><span class="p">):</span>
+    <span class="n">exc_msg</span> <span class="o">=</span> <span class="s">&quot;Authentication failed: &#39;</span><span class="si">%s</span><span class="s">&#39; doesn&#39;t exist&quot;</span> <span class="o">%</span> <span class="n">cookie_path</span>
+    <span class="k">raise</span> <span class="n">UnreadableCookieFile</span><span class="p">(</span><span class="n">exc_msg</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">,</span> <span class="n">is_safecookie</span><span class="p">)</span>
+
+  <span class="c"># Abort if the file isn&#39;t 32 bytes long. This is to avoid exposing arbitrary</span>
+  <span class="c"># file content to the port.</span>
+  <span class="c">#</span>
+  <span class="c"># Without this a malicious socket could, for instance, claim that</span>
+  <span class="c"># &#39;~/.bash_history&#39; or &#39;~/.ssh/id_rsa&#39; was its authentication cookie to trick</span>
+  <span class="c"># us into reading it for them with our current permissions.</span>
+  <span class="c">#</span>
+  <span class="c"># https://trac.torproject.org/projects/tor/ticket/4303</span>
+
+  <span class="n">auth_cookie_size</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="n">cookie_path</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">auth_cookie_size</span> <span class="o">!=</span> <span class="mi">32</span><span class="p">:</span>
+    <span class="n">exc_msg</span> <span class="o">=</span> <span class="s">&quot;Authentication failed: authentication cookie &#39;</span><span class="si">%s</span><span class="s">&#39; is the wrong size (</span><span class="si">%i</span><span class="s"> bytes instead of 32)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">cookie_path</span><span class="p">,</span> <span class="n">auth_cookie_size</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="n">IncorrectCookieSize</span><span class="p">(</span><span class="n">exc_msg</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">,</span> <span class="n">is_safecookie</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">cookie_path</span><span class="p">,</span> <span class="s">&#39;rb&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+  <span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="n">exc_msg</span> <span class="o">=</span> <span class="s">&quot;Authentication failed: unable to read &#39;</span><span class="si">%s</span><span class="s">&#39; (</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">cookie_path</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="n">UnreadableCookieFile</span><span class="p">(</span><span class="n">exc_msg</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">,</span> <span class="n">is_safecookie</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_expand_cookie_path</span><span class="p">(</span><span class="n">protocolinfo_response</span><span class="p">,</span> <span class="n">pid_resolver</span><span class="p">,</span> <span class="n">pid_resolution_arg</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Attempts to expand a relative cookie path with the given pid resolver. This</span>
+<span class="sd">  leaves the cookie_path alone if it&#39;s already absolute, **None**, or the</span>
+<span class="sd">  system calls fail.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">cookie_path</span> <span class="o">=</span> <span class="n">protocolinfo_response</span><span class="o">.</span><span class="n">cookie_path</span>
+  <span class="k">if</span> <span class="n">cookie_path</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isabs</span><span class="p">(</span><span class="n">cookie_path</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">tor_pid</span> <span class="o">=</span> <span class="n">pid_resolver</span><span class="p">(</span><span class="n">pid_resolution_arg</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">tor_pid</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;pid lookup failed&#39;</span><span class="p">)</span>
+
+      <span class="n">tor_cwd</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">cwd</span><span class="p">(</span><span class="n">tor_pid</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">tor_cwd</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;cwd lookup failed&#39;</span><span class="p">)</span>
+
+      <span class="n">cookie_path</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">expand_path</span><span class="p">(</span><span class="n">cookie_path</span><span class="p">,</span> <span class="n">tor_cwd</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+      <span class="n">resolver_labels</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">pid_by_name</span><span class="p">:</span> <span class="s">&#39; by name&#39;</span><span class="p">,</span>
+        <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">pid_by_port</span><span class="p">:</span> <span class="s">&#39; by port&#39;</span><span class="p">,</span>
+        <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">pid_by_open_file</span><span class="p">:</span> <span class="s">&#39; by socket file&#39;</span><span class="p">,</span>
+      <span class="p">}</span>
+
+      <span class="n">pid_resolver_label</span> <span class="o">=</span> <span class="n">resolver_labels</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pid_resolver</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">)</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;unable to expand relative tor cookie path</span><span class="si">%s</span><span class="s">: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">pid_resolver_label</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
+
+  <span class="n">protocolinfo_response</span><span class="o">.</span><span class="n">cookie_path</span> <span class="o">=</span> <span class="n">cookie_path</span>
+
+
+<div class="viewcode-block" id="AuthenticationFailure"><a class="viewcode-back" href="../../api/connection.html#stem.connection.AuthenticationFailure">[docs]</a><span class="k">class</span> <span class="nc">AuthenticationFailure</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Base error for authentication failures.</span>
+
+<span class="sd">  :var stem.socket.ControlMessage auth_response: AUTHENTICATE response from the</span>
+<span class="sd">    control socket, **None** if one wasn&#39;t received</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">auth_response</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">AuthenticationFailure</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">auth_response</span> <span class="o">=</span> <span class="n">auth_response</span>
+
+</div>
+<div class="viewcode-block" id="UnrecognizedAuthMethods"><a class="viewcode-back" href="../../api/connection.html#stem.connection.UnrecognizedAuthMethods">[docs]</a><span class="k">class</span> <span class="nc">UnrecognizedAuthMethods</span><span class="p">(</span><span class="n">AuthenticationFailure</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  All methods for authenticating aren&#39;t recognized.</span>
+
+<span class="sd">  :var list unknown_auth_methods: authentication methods that weren&#39;t recognized</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">unknown_auth_methods</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">UnrecognizedAuthMethods</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">unknown_auth_methods</span> <span class="o">=</span> <span class="n">unknown_auth_methods</span>
+
+</div>
+<div class="viewcode-block" id="IncorrectSocketType"><a class="viewcode-back" href="../../api/connection.html#stem.connection.IncorrectSocketType">[docs]</a><span class="k">class</span> <span class="nc">IncorrectSocketType</span><span class="p">(</span><span class="n">AuthenticationFailure</span><span class="p">):</span>
+  <span class="s">&#39;Socket does not speak the control protocol.&#39;</span>
+
+</div>
+<div class="viewcode-block" id="OpenAuthFailed"><a class="viewcode-back" href="../../api/connection.html#stem.connection.OpenAuthFailed">[docs]</a><span class="k">class</span> <span class="nc">OpenAuthFailed</span><span class="p">(</span><span class="n">AuthenticationFailure</span><span class="p">):</span>
+  <span class="s">&#39;Failure to authenticate to an open socket.&#39;</span>
+
+</div>
+<div class="viewcode-block" id="OpenAuthRejected"><a class="viewcode-back" href="../../api/connection.html#stem.connection.OpenAuthRejected">[docs]</a><span class="k">class</span> <span class="nc">OpenAuthRejected</span><span class="p">(</span><span class="n">OpenAuthFailed</span><span class="p">):</span>
+  <span class="s">&#39;Attempt to connect to an open control socket was rejected.&#39;</span>
+
+</div>
+<div class="viewcode-block" id="PasswordAuthFailed"><a class="viewcode-back" href="../../api/connection.html#stem.connection.PasswordAuthFailed">[docs]</a><span class="k">class</span> <span class="nc">PasswordAuthFailed</span><span class="p">(</span><span class="n">AuthenticationFailure</span><span class="p">):</span>
+  <span class="s">&#39;Failure to authenticate with a password.&#39;</span>
+
+</div>
+<div class="viewcode-block" id="PasswordAuthRejected"><a class="viewcode-back" href="../../api/connection.html#stem.connection.PasswordAuthRejected">[docs]</a><span class="k">class</span> <span class="nc">PasswordAuthRejected</span><span class="p">(</span><span class="n">PasswordAuthFailed</span><span class="p">):</span>
+  <span class="s">&#39;Socket does not support password authentication.&#39;</span>
+
+</div>
+<div class="viewcode-block" id="IncorrectPassword"><a class="viewcode-back" href="../../api/connection.html#stem.connection.IncorrectPassword">[docs]</a><span class="k">class</span> <span class="nc">IncorrectPassword</span><span class="p">(</span><span class="n">PasswordAuthFailed</span><span class="p">):</span>
+  <span class="s">&#39;Authentication password incorrect.&#39;</span>
+
+</div>
+<div class="viewcode-block" id="MissingPassword"><a class="viewcode-back" href="../../api/connection.html#stem.connection.MissingPassword">[docs]</a><span class="k">class</span> <span class="nc">MissingPassword</span><span class="p">(</span><span class="n">PasswordAuthFailed</span><span class="p">):</span>
+  <span class="s">&quot;Password authentication is supported but we weren&#39;t provided with one.&quot;</span>
+
+</div>
+<div class="viewcode-block" id="CookieAuthFailed"><a class="viewcode-back" href="../../api/connection.html#stem.connection.CookieAuthFailed">[docs]</a><span class="k">class</span> <span class="nc">CookieAuthFailed</span><span class="p">(</span><span class="n">AuthenticationFailure</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Failure to authenticate with an authentication cookie.</span>
+
+<span class="sd">  :param str cookie_path: location of the authentication cookie we attempted</span>
+<span class="sd">  :param bool is_safecookie: **True** if this was for SAFECOOKIE</span>
+<span class="sd">    authentication, **False** if for COOKIE</span>
+<span class="sd">  :param stem.response.ControlMessage auth_response: reply to our</span>
+<span class="sd">    authentication attempt</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">,</span> <span class="n">is_safecookie</span><span class="p">,</span> <span class="n">auth_response</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">CookieAuthFailed</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">auth_response</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">is_safecookie</span> <span class="o">=</span> <span class="n">is_safecookie</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">cookie_path</span> <span class="o">=</span> <span class="n">cookie_path</span>
+
+</div>
+<div class="viewcode-block" id="CookieAuthRejected"><a class="viewcode-back" href="../../api/connection.html#stem.connection.CookieAuthRejected">[docs]</a><span class="k">class</span> <span class="nc">CookieAuthRejected</span><span class="p">(</span><span class="n">CookieAuthFailed</span><span class="p">):</span>
+  <span class="s">&#39;Socket does not support password authentication.&#39;</span>
+
+</div>
+<div class="viewcode-block" id="IncorrectCookieValue"><a class="viewcode-back" href="../../api/connection.html#stem.connection.IncorrectCookieValue">[docs]</a><span class="k">class</span> <span class="nc">IncorrectCookieValue</span><span class="p">(</span><span class="n">CookieAuthFailed</span><span class="p">):</span>
+  <span class="s">&#39;Authentication cookie value was rejected.&#39;</span>
+
+</div>
+<div class="viewcode-block" id="IncorrectCookieSize"><a class="viewcode-back" href="../../api/connection.html#stem.connection.IncorrectCookieSize">[docs]</a><span class="k">class</span> <span class="nc">IncorrectCookieSize</span><span class="p">(</span><span class="n">CookieAuthFailed</span><span class="p">):</span>
+  <span class="s">&#39;Aborted because the cookie file is the wrong size.&#39;</span>
+
+</div>
+<div class="viewcode-block" id="UnreadableCookieFile"><a class="viewcode-back" href="../../api/connection.html#stem.connection.UnreadableCookieFile">[docs]</a><span class="k">class</span> <span class="nc">UnreadableCookieFile</span><span class="p">(</span><span class="n">CookieAuthFailed</span><span class="p">):</span>
+  <span class="s">&#39;Error arose in reading the authentication cookie.&#39;</span>
+
+</div>
+<div class="viewcode-block" id="AuthChallengeFailed"><a class="viewcode-back" href="../../api/connection.html#stem.connection.AuthChallengeFailed">[docs]</a><span class="k">class</span> <span class="nc">AuthChallengeFailed</span><span class="p">(</span><span class="n">CookieAuthFailed</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  AUTHCHALLENGE command has failed.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">AuthChallengeFailed</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="AuthChallengeUnsupported"><a class="viewcode-back" href="../../api/connection.html#stem.connection.AuthChallengeUnsupported">[docs]</a><span class="k">class</span> <span class="nc">AuthChallengeUnsupported</span><span class="p">(</span><span class="n">AuthChallengeFailed</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  AUTHCHALLENGE isn&#39;t implemented.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+</div>
+<div class="viewcode-block" id="UnrecognizedAuthChallengeMethod"><a class="viewcode-back" href="../../api/connection.html#stem.connection.UnrecognizedAuthChallengeMethod">[docs]</a><span class="k">class</span> <span class="nc">UnrecognizedAuthChallengeMethod</span><span class="p">(</span><span class="n">AuthChallengeFailed</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Tor couldn&#39;t recognize our AUTHCHALLENGE method.</span>
+
+<span class="sd">  :var str authchallenge_method: AUTHCHALLENGE method that Tor couldn&#39;t recognize</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">,</span> <span class="n">authchallenge_method</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">UnrecognizedAuthChallengeMethod</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">cookie_path</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">authchallenge_method</span> <span class="o">=</span> <span class="n">authchallenge_method</span>
+
+</div>
+<div class="viewcode-block" id="AuthSecurityFailure"><a class="viewcode-back" href="../../api/connection.html#stem.connection.AuthSecurityFailure">[docs]</a><span class="k">class</span> <span class="nc">AuthSecurityFailure</span><span class="p">(</span><span class="n">AuthChallengeFailed</span><span class="p">):</span>
+  <span class="s">&#39;AUTHCHALLENGE response is invalid.&#39;</span>
+
+</div>
+<div class="viewcode-block" id="InvalidClientNonce"><a class="viewcode-back" href="../../api/connection.html#stem.connection.InvalidClientNonce">[docs]</a><span class="k">class</span> <span class="nc">InvalidClientNonce</span><span class="p">(</span><span class="n">AuthChallengeFailed</span><span class="p">):</span>
+  <span class="s">&#39;AUTHCHALLENGE request contains an invalid client nonce.&#39;</span>
+
+</div>
+<div class="viewcode-block" id="MissingAuthInfo"><a class="viewcode-back" href="../../api/connection.html#stem.connection.MissingAuthInfo">[docs]</a><span class="k">class</span> <span class="nc">MissingAuthInfo</span><span class="p">(</span><span class="n">AuthenticationFailure</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  The PROTOCOLINFO response didn&#39;t have enough information to authenticate.</span>
+<span class="sd">  These are valid control responses but really shouldn&#39;t happen in practice.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+</div>
+<div class="viewcode-block" id="NoAuthMethods"><a class="viewcode-back" href="../../api/connection.html#stem.connection.NoAuthMethods">[docs]</a><span class="k">class</span> <span class="nc">NoAuthMethods</span><span class="p">(</span><span class="n">MissingAuthInfo</span><span class="p">):</span>
+  <span class="s">&quot;PROTOCOLINFO response didn&#39;t have any methods for authenticating.&quot;</span>
+
+</div>
+<div class="viewcode-block" id="NoAuthCookie"><a class="viewcode-back" href="../../api/connection.html#stem.connection.NoAuthCookie">[docs]</a><span class="k">class</span> <span class="nc">NoAuthCookie</span><span class="p">(</span><span class="n">MissingAuthInfo</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  PROTOCOLINFO response supports cookie auth but doesn&#39;t have its path.</span>
+
+<span class="sd">  :param bool is_safecookie: **True** if this was for SAFECOOKIE</span>
+<span class="sd">    authentication, **False** if for COOKIE</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">is_safecookie</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">NoAuthCookie</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">is_safecookie</span> <span class="o">=</span> <span class="n">is_safecookie</span>
+
+<span class="c"># authentication exceptions ordered as per the authenticate function&#39;s pydocs</span></div>
+<span class="n">AUTHENTICATE_EXCEPTIONS</span> <span class="o">=</span> <span class="p">(</span>
+  <span class="n">IncorrectSocketType</span><span class="p">,</span>
+  <span class="n">UnrecognizedAuthMethods</span><span class="p">,</span>
+  <span class="n">MissingPassword</span><span class="p">,</span>
+  <span class="n">IncorrectPassword</span><span class="p">,</span>
+  <span class="n">IncorrectCookieSize</span><span class="p">,</span>
+  <span class="n">UnreadableCookieFile</span><span class="p">,</span>
+  <span class="n">IncorrectCookieValue</span><span class="p">,</span>
+  <span class="n">AuthChallengeUnsupported</span><span class="p">,</span>
+  <span class="n">UnrecognizedAuthChallengeMethod</span><span class="p">,</span>
+  <span class="n">InvalidClientNonce</span><span class="p">,</span>
+  <span class="n">AuthSecurityFailure</span><span class="p">,</span>
+  <span class="n">OpenAuthRejected</span><span class="p">,</span>
+  <span class="n">MissingAuthInfo</span><span class="p">,</span>
+  <span class="n">AuthenticationFailure</span>
+<span class="p">)</span>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

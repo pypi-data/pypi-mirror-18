@@ -1,0 +1,458 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.util.test_tools &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem" href="../../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.util.test_tools</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.util.test_tools</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2015-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Helper functions for testing.</span>
+
+<span class="sd">.. versionadded:: 1.2.0</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  clean_orphaned_pyc - delete *.pyc files without corresponding *.py</span>
+
+<span class="sd">  is_pyflakes_available - checks if pyflakes is available</span>
+<span class="sd">  is_pep8_available - checks if pep8 is available</span>
+
+<span class="sd">  stylistic_issues - checks for PEP8 and other stylistic issues</span>
+<span class="sd">  pyflakes_issues - static checks for problems via pyflakes</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">linecache</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+
+<span class="kn">import</span> <span class="nn">stem.util.conf</span>
+<span class="kn">import</span> <span class="nn">stem.util.system</span>
+
+<span class="n">CONFIG</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">conf</span><span class="o">.</span><span class="n">config_dict</span><span class="p">(</span><span class="s">&#39;test&#39;</span><span class="p">,</span> <span class="p">{</span>
+  <span class="s">&#39;pep8.ignore&#39;</span><span class="p">:</span> <span class="p">[],</span>
+  <span class="s">&#39;pyflakes.ignore&#39;</span><span class="p">:</span> <span class="p">[],</span>
+  <span class="s">&#39;exclude_paths&#39;</span><span class="p">:</span> <span class="p">[],</span>
+<span class="p">})</span>
+
+
+<div class="viewcode-block" id="Issue"><a class="viewcode-back" href="../../../api/util/test_tools.html#stem.util.test_tools.Issue">[docs]</a><span class="k">class</span> <span class="nc">Issue</span><span class="p">(</span><span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s">&#39;Issue&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;line_number&#39;</span><span class="p">,</span> <span class="s">&#39;message&#39;</span><span class="p">,</span> <span class="s">&#39;line&#39;</span><span class="p">])):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Issue encountered by pyflakes or pep8.</span>
+
+<span class="sd">  :var int line_number: line number the issue occured on</span>
+<span class="sd">  :var str message: description of the issue</span>
+<span class="sd">  :var str line: content of the line the issue is about</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+</div>
+<div class="viewcode-block" id="clean_orphaned_pyc"><a class="viewcode-back" href="../../../api/util/test_tools.html#stem.util.test_tools.clean_orphaned_pyc">[docs]</a><span class="k">def</span> <span class="nf">clean_orphaned_pyc</span><span class="p">(</span><span class="n">paths</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Deletes any file with a \*.pyc extention without a corresponding \*.py. This</span>
+<span class="sd">  helps to address a common gotcha when deleting python files...</span>
+
+<span class="sd">  * You delete module &#39;foo.py&#39; and run the tests to ensure that you haven&#39;t</span>
+<span class="sd">    broken anything. They pass, however there *are* still some &#39;import foo&#39;</span>
+<span class="sd">    statements that still work because the bytecode (foo.pyc) is still around.</span>
+
+<span class="sd">  * You push your change.</span>
+
+<span class="sd">  * Another developer clones our repository and is confused because we have a</span>
+<span class="sd">    bunch of ImportErrors.</span>
+
+<span class="sd">  :param list paths: paths to search for orphaned pyc files</span>
+
+<span class="sd">  :returns: list of absolute paths that were deleted</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">orphaned_pyc</span> <span class="o">=</span> <span class="p">[]</span>
+
+  <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">paths</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">pyc_path</span> <span class="ow">in</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">files_with_suffix</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s">&#39;.pyc&#39;</span><span class="p">):</span>
+      <span class="n">py_path</span> <span class="o">=</span> <span class="n">pyc_path</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+      <span class="c"># If we&#39;re running python 3 then the *.pyc files are no longer bundled</span>
+      <span class="c"># with the *.py. Rather, they&#39;re in a __pycache__ directory.</span>
+
+      <span class="n">pycache</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s">__pycache__</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">pycache</span> <span class="ow">in</span> <span class="n">pyc_path</span><span class="p">:</span>
+        <span class="n">directory</span><span class="p">,</span> <span class="n">pycache_filename</span> <span class="o">=</span> <span class="n">pyc_path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">pycache</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">pycache_filename</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;.pyc&#39;</span><span class="p">):</span>
+          <span class="k">continue</span>  <span class="c"># should look like &#39;test_tools.cpython-32.pyc&#39;</span>
+
+        <span class="n">py_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">pycache_filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;.py&#39;</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">py_path</span><span class="p">):</span>
+        <span class="n">orphaned_pyc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pyc_path</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">pyc_path</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">orphaned_pyc</span>
+
+</div>
+<div class="viewcode-block" id="is_pyflakes_available"><a class="viewcode-back" href="../../../api/util/test_tools.html#stem.util.test_tools.is_pyflakes_available">[docs]</a><span class="k">def</span> <span class="nf">is_pyflakes_available</span><span class="p">():</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks if pyflakes is availalbe.</span>
+
+<span class="sd">  :returns: **True** if we can use pyflakes and **False** otherwise</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">pyflakes.api</span>
+    <span class="kn">import</span> <span class="nn">pyflakes.reporter</span>
+    <span class="k">return</span> <span class="bp">True</span>
+  <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">False</span>
+
+</div>
+<div class="viewcode-block" id="is_pep8_available"><a class="viewcode-back" href="../../../api/util/test_tools.html#stem.util.test_tools.is_pep8_available">[docs]</a><span class="k">def</span> <span class="nf">is_pep8_available</span><span class="p">():</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks if pep8 is availalbe.</span>
+
+<span class="sd">  :returns: **True** if we can use pep8 and **False** otherwise</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">pep8</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pep8</span><span class="p">,</span> <span class="s">&#39;BaseReport&#39;</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="bp">True</span>
+  <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">False</span>
+
+</div>
+<div class="viewcode-block" id="stylistic_issues"><a class="viewcode-back" href="../../../api/util/test_tools.html#stem.util.test_tools.stylistic_issues">[docs]</a><span class="k">def</span> <span class="nf">stylistic_issues</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="n">check_newlines</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">check_exception_keyword</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">prefer_single_quotes</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Checks for stylistic issues that are an issue according to the parts of PEP8</span>
+<span class="sd">  we conform to. You can suppress PEP8 issues by making a &#39;test&#39; configuration</span>
+<span class="sd">  that sets &#39;pep8.ignore&#39;.</span>
+
+<span class="sd">  For example, with a &#39;test/settings.cfg&#39; of...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    # PEP8 compliance issues that we&#39;re ignoreing...</span>
+<span class="sd">    #</span>
+<span class="sd">    # * E111 and E121 four space indentations</span>
+<span class="sd">    # * E501 line is over 79 characters</span>
+
+<span class="sd">    pep8.ignore E111</span>
+<span class="sd">    pep8.ignore E121</span>
+<span class="sd">    pep8.ignore E501</span>
+
+<span class="sd">    pep8.ignore run_tests.py =&gt; E402: import stem.util.enum</span>
+
+<span class="sd">  ... you can then run tests with...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    import stem.util.conf</span>
+
+<span class="sd">    test_config = stem.util.conf.get_config(&#39;test&#39;)</span>
+<span class="sd">    test_config.load(&#39;test/settings.cfg&#39;)</span>
+
+<span class="sd">    issues = stylistic_issues(&#39;my_project&#39;)</span>
+
+<span class="sd">  If a &#39;exclude_paths&#39; was set in our test config then we exclude any absolute</span>
+<span class="sd">  paths matching those regexes.</span>
+
+<span class="sd">  .. versionchanged:: 1.3.0</span>
+<span class="sd">     Renamed from get_stylistic_issues() to stylistic_issues(). The old name</span>
+<span class="sd">     still works as an alias, but will be dropped in Stem version 2.0.0.</span>
+
+<span class="sd">  .. versionchanged:: 1.4.0</span>
+<span class="sd">     Changing tuples in return value to be namedtuple instances, and adding the</span>
+<span class="sd">     line that had the issue.</span>
+
+<span class="sd">  .. versionchanged:: 1.4.0</span>
+<span class="sd">     Added the prefer_single_quotes option.</span>
+
+<span class="sd">  :param list paths: paths to search for stylistic issues</span>
+<span class="sd">  :param bool check_newlines: check that we have standard newlines (\\n), not</span>
+<span class="sd">    windows (\\r\\n) nor classic mac (\\r)</span>
+<span class="sd">  :param bool check_exception_keyword: checks that we&#39;re using &#39;as&#39; for</span>
+<span class="sd">    exceptions rather than a comma</span>
+<span class="sd">  :param bool prefer_single_quotes: standardize on using single rather than</span>
+<span class="sd">    double quotes for strings, when reasonable</span>
+
+<span class="sd">  :returns: dict of paths list of :class:`stem.util.test_tools.Issue` instances</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">issues</span> <span class="o">=</span> <span class="p">{}</span>
+
+  <span class="n">ignore_rules</span> <span class="o">=</span> <span class="p">[]</span>
+  <span class="n">ignore_for_file</span> <span class="o">=</span> <span class="p">[]</span>
+
+  <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="n">CONFIG</span><span class="p">[</span><span class="s">&#39;pep8.ignore&#39;</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="s">&#39;=&gt;&#39;</span> <span class="ow">in</span> <span class="n">rule</span><span class="p">:</span>
+      <span class="n">path</span><span class="p">,</span> <span class="n">rule_entry</span> <span class="o">=</span> <span class="n">rule</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&gt;&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="s">&#39;:&#39;</span> <span class="ow">in</span> <span class="n">rule_entry</span><span class="p">:</span>
+        <span class="n">rule</span><span class="p">,</span> <span class="n">code</span> <span class="o">=</span> <span class="n">rule_entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">ignore_for_file</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">path</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="n">rule</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="n">code</span><span class="o">.</span><span class="n">strip</span><span class="p">()))</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">ignore_rules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rule</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">is_ignored</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">rule</span><span class="p">,</span> <span class="n">code</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">ignored_path</span><span class="p">,</span> <span class="n">ignored_rule</span><span class="p">,</span> <span class="n">ignored_code</span> <span class="ow">in</span> <span class="n">ignore_for_file</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">ignored_path</span><span class="p">)</span> <span class="ow">and</span> <span class="n">ignored_rule</span> <span class="o">==</span> <span class="n">rule</span> <span class="ow">and</span> <span class="n">ignored_code</span> <span class="o">==</span> <span class="n">code</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="k">return</span> <span class="bp">False</span>
+
+  <span class="k">if</span> <span class="n">is_pep8_available</span><span class="p">():</span>
+    <span class="kn">import</span> <span class="nn">pep8</span>
+
+    <span class="k">class</span> <span class="nc">StyleReport</span><span class="p">(</span><span class="n">pep8</span><span class="o">.</span><span class="n">BaseReport</span><span class="p">):</span>
+      <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">options</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">StyleReport</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">options</span><span class="p">)</span>
+
+      <span class="k">def</span> <span class="nf">error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">line_number</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">check</span><span class="p">):</span>
+        <span class="n">code</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">StyleReport</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">line_number</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">check</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">code</span><span class="p">:</span>
+          <span class="n">line</span> <span class="o">=</span> <span class="n">linecache</span><span class="o">.</span><span class="n">getline</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="n">line_number</span><span class="p">)</span>
+
+          <span class="k">if</span> <span class="ow">not</span> <span class="n">is_ignored</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="n">code</span><span class="p">,</span> <span class="n">line</span><span class="p">):</span>
+            <span class="n">issues</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Issue</span><span class="p">(</span><span class="n">line_number</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">line</span><span class="p">))</span>
+
+    <span class="n">style_checker</span> <span class="o">=</span> <span class="n">pep8</span><span class="o">.</span><span class="n">StyleGuide</span><span class="p">(</span><span class="n">ignore</span> <span class="o">=</span> <span class="n">ignore_rules</span><span class="p">,</span> <span class="n">reporter</span> <span class="o">=</span> <span class="n">StyleReport</span><span class="p">)</span>
+    <span class="n">style_checker</span><span class="o">.</span><span class="n">check_files</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">_python_files</span><span class="p">(</span><span class="n">paths</span><span class="p">)))</span>
+
+  <span class="k">if</span> <span class="n">check_newlines</span> <span class="ow">or</span> <span class="n">check_exception_keyword</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">_python_files</span><span class="p">(</span><span class="n">paths</span><span class="p">):</span>
+      <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">file_contents</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+      <span class="n">lines</span> <span class="o">=</span> <span class="n">file_contents</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+      <span class="n">is_block_comment</span> <span class="o">=</span> <span class="bp">False</span>
+
+      <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
+        <span class="k">if</span> <span class="s">&#39;&quot;&quot;&quot;&#39;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+          <span class="n">is_block_comment</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">is_block_comment</span>
+
+        <span class="k">if</span> <span class="n">check_newlines</span> <span class="ow">and</span> <span class="s">&#39;</span><span class="se">\r</span><span class="s">&#39;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+          <span class="n">issues</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Issue</span><span class="p">(</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&#39;contains a windows newline&#39;</span><span class="p">,</span> <span class="n">line</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">check_exception_keyword</span> <span class="ow">and</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;except&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;, exc:&#39;</span><span class="p">):</span>
+          <span class="c"># Python 2.6 - 2.7 supports two forms for exceptions...</span>
+          <span class="c">#</span>
+          <span class="c">#   except ValueError, exc:</span>
+          <span class="c">#   except ValueError as exc:</span>
+          <span class="c">#</span>
+          <span class="c"># The former is the old method and no longer supported in python 3</span>
+          <span class="c"># going forward.</span>
+
+          <span class="c"># TODO: This check only works if the exception variable is called</span>
+          <span class="c"># &#39;exc&#39;. We should generalize this via a regex so other names work</span>
+          <span class="c"># too.</span>
+
+          <span class="n">issues</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Issue</span><span class="p">(</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&quot;except clause should use &#39;as&#39;, not comma&quot;</span><span class="p">,</span> <span class="n">line</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">prefer_single_quotes</span> <span class="ow">and</span> <span class="n">line</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_block_comment</span><span class="p">:</span>
+          <span class="n">content</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;#&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+          <span class="k">if</span> <span class="s">&#39;&quot;&#39;</span> <span class="ow">in</span> <span class="n">content</span> <span class="ow">and</span> <span class="s">&quot;&#39;&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">content</span> <span class="ow">and</span> <span class="s">&#39;&quot;&quot;&quot;&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">content</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">content</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\\</span><span class="s">&#39;</span><span class="p">):</span>
+            <span class="c"># Checking if the line already has any single quotes since that</span>
+            <span class="c"># usually means double quotes are preferable for the content (for</span>
+            <span class="c"># instance &quot;I&#39;m hungry&quot;). Also checking for &#39;\&#39; at the end since</span>
+            <span class="c"># that can indicate a multi-line string.</span>
+
+            <span class="n">issues</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Issue</span><span class="p">(</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&#39;use single rather than double quotes&#39;</span><span class="p">,</span> <span class="n">line</span><span class="p">))</span>
+
+  <span class="k">return</span> <span class="n">issues</span>
+
+</div>
+<div class="viewcode-block" id="pyflakes_issues"><a class="viewcode-back" href="../../../api/util/test_tools.html#stem.util.test_tools.pyflakes_issues">[docs]</a><span class="k">def</span> <span class="nf">pyflakes_issues</span><span class="p">(</span><span class="n">paths</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Performs static checks via pyflakes. False positives can be ignored via</span>
+<span class="sd">  &#39;pyflakes.ignore&#39; entries in our &#39;test&#39; config. For instance...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    pyflakes.ignore stem/util/test_tools.py =&gt; &#39;pyflakes&#39; imported but unused</span>
+<span class="sd">    pyflakes.ignore stem/util/test_tools.py =&gt; &#39;pep8&#39; imported but unused</span>
+
+<span class="sd">  If a &#39;exclude_paths&#39; was set in our test config then we exclude any absolute</span>
+<span class="sd">  paths matching those regexes.</span>
+
+<span class="sd">  .. versionchanged:: 1.3.0</span>
+<span class="sd">     Renamed from get_pyflakes_issues() to pyflakes_issues(). The old name</span>
+<span class="sd">     still works as an alias, but will be dropped in Stem version 2.0.0.</span>
+
+<span class="sd">  .. versionchanged:: 1.4.0</span>
+<span class="sd">     Changing tuples in return value to be namedtuple instances, and adding the</span>
+<span class="sd">     line that had the issue.</span>
+
+<span class="sd">  :param list paths: paths to search for problems</span>
+
+<span class="sd">  :returns: dict of paths list of :class:`stem.util.test_tools.Issue` instances</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">issues</span> <span class="o">=</span> <span class="p">{}</span>
+
+  <span class="k">if</span> <span class="n">is_pyflakes_available</span><span class="p">():</span>
+    <span class="kn">import</span> <span class="nn">pyflakes.api</span>
+    <span class="kn">import</span> <span class="nn">pyflakes.reporter</span>
+
+    <span class="k">class</span> <span class="nc">Reporter</span><span class="p">(</span><span class="n">pyflakes</span><span class="o">.</span><span class="n">reporter</span><span class="o">.</span><span class="n">Reporter</span><span class="p">):</span>
+      <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ignored_issues</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">CONFIG</span><span class="p">[</span><span class="s">&#39;pyflakes.ignore&#39;</span><span class="p">]:</span>
+          <span class="n">path</span><span class="p">,</span> <span class="n">issue</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&gt;&#39;</span><span class="p">)</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_ignored_issues</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">issue</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+      <span class="k">def</span> <span class="nf">unexpectedError</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_register_issue</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+      <span class="k">def</span> <span class="nf">syntaxError</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_register_issue</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
+
+      <span class="k">def</span> <span class="nf">flake</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_register_issue</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">lineno</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">message</span> <span class="o">%</span> <span class="n">msg</span><span class="o">.</span><span class="n">message_args</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+      <span class="k">def</span> <span class="nf">_is_ignored</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">issue</span><span class="p">):</span>
+        <span class="c"># Paths in pyflakes_ignore are relative, so we need to check to see if our</span>
+        <span class="c"># path ends with any of them.</span>
+
+        <span class="k">for</span> <span class="n">ignored_path</span><span class="p">,</span> <span class="n">ignored_issues</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ignored_issues</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+          <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">ignored_path</span><span class="p">)</span> <span class="ow">and</span> <span class="n">issue</span> <span class="ow">in</span> <span class="n">ignored_issues</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+
+        <span class="k">return</span> <span class="bp">False</span>
+
+      <span class="k">def</span> <span class="nf">_register_issue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">line_number</span><span class="p">,</span> <span class="n">issue</span><span class="p">,</span> <span class="n">line</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_ignored</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">issue</span><span class="p">):</span>
+          <span class="k">if</span> <span class="n">path</span> <span class="ow">and</span> <span class="n">line_number</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">line</span><span class="p">:</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="n">linecache</span><span class="o">.</span><span class="n">getline</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">line_number</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+          <span class="n">issues</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Issue</span><span class="p">(</span><span class="n">line_number</span><span class="p">,</span> <span class="n">issue</span><span class="p">,</span> <span class="n">line</span><span class="p">))</span>
+
+    <span class="n">reporter</span> <span class="o">=</span> <span class="n">Reporter</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">_python_files</span><span class="p">(</span><span class="n">paths</span><span class="p">):</span>
+      <span class="n">pyflakes</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">checkPath</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">reporter</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">issues</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_python_files</span><span class="p">(</span><span class="n">paths</span><span class="p">):</span>
+  <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">paths</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">file_path</span> <span class="ow">in</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">files_with_suffix</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s">&#39;.py&#39;</span><span class="p">):</span>
+      <span class="n">skip</span> <span class="o">=</span> <span class="bp">False</span>
+
+      <span class="k">for</span> <span class="n">exclude_path</span> <span class="ow">in</span> <span class="n">CONFIG</span><span class="p">[</span><span class="s">&#39;exclude_paths&#39;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">exclude_path</span><span class="p">,</span> <span class="n">file_path</span><span class="p">):</span>
+          <span class="n">skip</span> <span class="o">=</span> <span class="bp">True</span>
+          <span class="k">break</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">skip</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">file_path</span>
+
+<span class="c"># TODO: drop with stem 2.x</span>
+<span class="c"># We renamed our methods to drop a redundant &#39;get_*&#39; prefix, so alias the old</span>
+<span class="c"># names for backward compatability.</span>
+
+<span class="n">get_stylistic_issues</span> <span class="o">=</span> <span class="n">stylistic_issues</span>
+<span class="n">get_pyflakes_issues</span> <span class="o">=</span> <span class="n">pyflakes_issues</span>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

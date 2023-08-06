@@ -1,0 +1,875 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Controller Connection &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>Controller Connection</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../api.html">API</a>
+            <ul>
+              <li><a href="control.html">stem.control</a></li>
+              <li><a href="#">stem.connection</a></li>
+              <li><a href="socket.html">stem.socket</a></li>
+              <li><a href="process.html">stem.process</a></li>
+              <li><a href="response.html">stem.response</a></li>
+              <li><a href="exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="version.html">stem.version</a></li>
+              <li><a href="../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../faq.html">FAQ</a></li>
+              <li><a href="../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="module-stem.connection">
+<span id="controller-connection"></span><h1>Controller Connection<a class="headerlink" href="#module-stem.connection" title="Permalink to this headline">¶</a></h1>
+<p>Functions for connecting and authenticating to the tor process.</p>
+<p>The <a class="reference internal" href="#stem.connection.connect" title="stem.connection.connect"><tt class="xref py py-func docutils literal"><span class="pre">connect()</span></tt></a> function give an easy, one line
+method for getting an authenticated control connection. This is handy for CLI
+applications and the python interactive interpreter, but does several things
+that makes it undesirable for applications (uses stdin/stdout, suppresses
+exceptions, etc).</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">from</span> <span class="nn">stem.connection</span> <span class="kn">import</span> <span class="n">connect</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+  <span class="n">controller</span> <span class="o">=</span> <span class="n">connect</span><span class="p">()</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">controller</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>  <span class="c"># unable to get a connection</span>
+
+  <span class="k">print</span> <span class="s">&#39;Tor is running version </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">controller</span><span class="o">.</span><span class="n">get_version</span><span class="p">()</span>
+  <span class="n">controller</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="highlight-python"><pre>% python example.py
+Tor is running version 0.2.4.10-alpha-dev (git-8be6058d8f31e578)</pre>
+</div>
+<p>... or if Tor isn't running...</p>
+<div class="highlight-python"><pre>% python example.py
+[Errno 111] Connection refused</pre>
+</div>
+<p>The <a class="reference internal" href="#stem.connection.authenticate" title="stem.connection.authenticate"><tt class="xref py py-func docutils literal"><span class="pre">authenticate()</span></tt></a> function, however, gives easy but
+fine-grained control over the authentication process. For instance...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">getpass</span>
+<span class="kn">import</span> <span class="nn">stem.connection</span>
+<span class="kn">import</span> <span class="nn">stem.socket</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="n">control_socket</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">ControlPort</span><span class="p">(</span><span class="n">port</span> <span class="o">=</span> <span class="mi">9051</span><span class="p">)</span>
+<span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">SocketError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+  <span class="k">print</span> <span class="s">&#39;Unable to connect to port 9051 (</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="n">exc</span>
+  <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="n">stem</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">authenticate</span><span class="p">(</span><span class="n">control_socket</span><span class="p">)</span>
+<span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">IncorrectSocketType</span><span class="p">:</span>
+  <span class="k">print</span> <span class="s">&#39;Please check in your torrc that 9051 is the ControlPort.&#39;</span>
+  <span class="k">print</span> <span class="s">&#39;Maybe you configured it to be the ORPort or SocksPort instead?&#39;</span>
+  <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">MissingPassword</span><span class="p">:</span>
+  <span class="n">controller_password</span> <span class="o">=</span> <span class="n">getpass</span><span class="o">.</span><span class="n">getpass</span><span class="p">(</span><span class="s">&#39;Controller password: &#39;</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">stem</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">authenticate_password</span><span class="p">(</span><span class="n">control_socket</span><span class="p">,</span> <span class="n">controller_password</span><span class="p">)</span>
+  <span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">PasswordAuthFailed</span><span class="p">:</span>
+    <span class="k">print</span> <span class="s">&#39;Unable to authenticate, password is incorrect&#39;</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="k">except</span> <span class="n">stem</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">AuthenticationFailure</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+  <span class="k">print</span> <span class="s">&#39;Unable to authenticate: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">exc</span>
+  <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Module Overview:</strong></p>
+<div class="highlight-python"><pre>connect - Simple method for getting authenticated control connection
+
+authenticate - Main method for authenticating to a control socket
+authenticate_none - Authenticates to an open control socket
+authenticate_password - Authenticates to a socket supporting password auth
+authenticate_cookie - Authenticates to a socket supporting cookie auth
+authenticate_safecookie - Authenticates to a socket supporting safecookie auth
+
+get_protocolinfo - Issues a PROTOCOLINFO query
+
+AuthenticationFailure - Base exception raised for authentication failures
+  |- UnrecognizedAuthMethods - Authentication methods are unsupported
+  |- IncorrectSocketType - Socket does not speak the tor control protocol
+  |
+  |- OpenAuthFailed - Failure when authenticating by an open socket
+  |  +- OpenAuthRejected - Tor rejected this method of authentication
+  |
+  |- PasswordAuthFailed - Failure when authenticating by a password
+  |  |- PasswordAuthRejected - Tor rejected this method of authentication
+  |  |- IncorrectPassword - Password was rejected
+  |  +- MissingPassword - Socket supports password auth but wasn't attempted
+  |
+  |- CookieAuthFailed - Failure when authenticating by a cookie
+  |  |- CookieAuthRejected - Tor rejected this method of authentication
+  |  |- IncorrectCookieValue - Authentication cookie was rejected
+  |  |- IncorrectCookieSize - Size of the cookie file is incorrect
+  |  |- UnreadableCookieFile - Unable to read the contents of the auth cookie
+  |  +- AuthChallengeFailed - Failure completing the authchallenge request
+  |     |- AuthChallengeUnsupported - Tor doesn't recognize the AUTHCHALLENGE command
+  |     |- AuthSecurityFailure - Server provided the wrong nonce credentials
+  |     |- InvalidClientNonce - The client nonce is invalid
+  |     +- UnrecognizedAuthChallengeMethod - AUTHCHALLENGE does not support the given methods.
+  |
+  +- MissingAuthInfo - Unexpected PROTOCOLINFO response, missing auth info
+     |- NoAuthMethods - Missing any methods for authenticating
+     +- NoAuthCookie - Supports cookie auth but doesn't have its path</pre>
+</div>
+<dl class="data">
+<dt id="stem.connection.AuthMethod">
+<tt class="descclassname">stem.connection.</tt><tt class="descname">AuthMethod</tt><big>(</big><em>enum</em><big>)</big><a class="headerlink" href="#stem.connection.AuthMethod" title="Permalink to this definition">¶</a></dt>
+<dd><p>Enumeration of PROTOCOLINFO responses for supported authentication methods.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="13%" />
+<col width="87%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">AuthMethod</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><strong>NONE</strong></td>
+<td>No authentication required.</td>
+</tr>
+<tr class="row-odd"><td><strong>PASSWORD</strong></td>
+<td>Password required, see tor's HashedControlPassword option.</td>
+</tr>
+<tr class="row-even"><td><strong>COOKIE</strong></td>
+<td>Contents of the cookie file required, see tor's CookieAuthentication option.</td>
+</tr>
+<tr class="row-odd"><td><strong>SAFECOOKIE</strong></td>
+<td>Need to reply to a hmac challenge using the contents of the cookie file.</td>
+</tr>
+<tr class="row-even"><td><strong>UNKNOWN</strong></td>
+<td>Tor provided one or more authentication methods that we don't recognize, probably something new.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.connection.connect">
+<tt class="descclassname">stem.connection.</tt><tt class="descname">connect</tt><big>(</big><em>control_port=('127.0.0.1'</em>, <em>'default')</em>, <em>control_socket='/var/run/tor/control'</em>, <em>password=None</em>, <em>password_prompt=False</em>, <em>chroot_path=None</em>, <em>controller=&lt;class 'stem.control.Controller'&gt;</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.connect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience function for quickly getting a control connection. This is very
+handy for debugging or CLI setup, handling setup and prompting for a password
+if necessary (and none is provided). If any issues arise this prints a
+description of the problem and returns <strong>None</strong>.</p>
+<p>If both a <strong>control_port</strong> and <strong>control_socket</strong> are provided then the
+<strong>control_socket</strong> is tried first, and this provides a generic error message
+if they're both unavailable.</p>
+<p>In much the same vein as git porcelain commands, users should not rely on
+details of how this works. Messages and details of this function's behavior
+could change in the future.</p>
+<p>If the <strong>port</strong> is <strong>'default'</strong> then this checks on both 9051 (default for
+relays) and 9151 (default for the Tor Browser). This default may change in
+the future.</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.2.0.</span></p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.5.0: </span>Use both port 9051 and 9151 by default.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>contol_port</strong> (<em>tuple</em>) -- address and port tuple, for instance <strong>('127.0.0.1', 9051)</strong></li>
+<li><strong>path</strong> (<em>str</em>) -- path where the control socket is located</li>
+<li><strong>password</strong> (<em>str</em>) -- passphrase to authenticate to the socket</li>
+<li><strong>password_prompt</strong> (<em>bool</em>) -- prompt for the controller password if it wasn't
+supplied</li>
+<li><strong>chroot_path</strong> (<em>str</em>) -- path prefix if in a chroot environment</li>
+<li><strong>controller</strong> (<em>Class</em>) -- <a class="reference internal" href="control.html#stem.control.BaseController" title="stem.control.BaseController"><tt class="xref py py-class docutils literal"><span class="pre">BaseController</span></tt></a> subclass to be
+returned, this provides a <a class="reference internal" href="socket.html#stem.socket.ControlSocket" title="stem.socket.ControlSocket"><tt class="xref py py-class docutils literal"><span class="pre">ControlSocket</span></tt></a> if <strong>None</strong></li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">authenticated control connection, the type based on the controller argument</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last"><strong>ValueError</strong> if given an invalid control_port, or both
+<strong>control_port</strong> and <strong>control_socket</strong> are <strong>None</strong></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.connection.connect_port">
+<tt class="descclassname">stem.connection.</tt><tt class="descname">connect_port</tt><big>(</big><em>address='127.0.0.1'</em>, <em>port=9051</em>, <em>password=None</em>, <em>chroot_path=None</em>, <em>controller=&lt;class 'stem.control.Controller'&gt;</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#connect_port"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.connect_port" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience function for quickly getting a control connection. This is very
+handy for debugging or CLI setup, handling setup and prompting for a password
+if necessary (and none is provided). If any issues arise this prints a
+description of the problem and returns <strong>None</strong>.</p>
+<p class="deprecated">
+<span class="versionmodified">Deprecated since version 1.2.0: </span>Use <a class="reference internal" href="#stem.connection.connect" title="stem.connection.connect"><tt class="xref py py-func docutils literal"><span class="pre">connect()</span></tt></a> instead.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>address</strong> (<em>str</em>) -- ip address of the controller</li>
+<li><strong>port</strong> (<em>int</em>) -- port number of the controller</li>
+<li><strong>password</strong> (<em>str</em>) -- passphrase to authenticate to the socket</li>
+<li><strong>chroot_path</strong> (<em>str</em>) -- path prefix if in a chroot environment</li>
+<li><strong>controller</strong> (<em>Class</em>) -- <a class="reference internal" href="control.html#stem.control.BaseController" title="stem.control.BaseController"><tt class="xref py py-class docutils literal"><span class="pre">BaseController</span></tt></a> subclass to be
+returned, this provides a <a class="reference internal" href="socket.html#stem.socket.ControlSocket" title="stem.socket.ControlSocket"><tt class="xref py py-class docutils literal"><span class="pre">ControlSocket</span></tt></a> if <strong>None</strong></li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">authenticated control connection, the type based on the controller argument</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.connection.connect_socket_file">
+<tt class="descclassname">stem.connection.</tt><tt class="descname">connect_socket_file</tt><big>(</big><em>path='/var/run/tor/control'</em>, <em>password=None</em>, <em>chroot_path=None</em>, <em>controller=&lt;class 'stem.control.Controller'&gt;</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#connect_socket_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.connect_socket_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience function for quickly getting a control connection. For more
+information see the <a class="reference internal" href="#stem.connection.connect_port" title="stem.connection.connect_port"><tt class="xref py py-func docutils literal"><span class="pre">connect_port()</span></tt></a> function.</p>
+<p>In much the same vein as git porcelain commands, users should not rely on
+details of how this works. Messages or details of this function's behavior
+might change in the future.</p>
+<p class="deprecated">
+<span class="versionmodified">Deprecated since version 1.2.0: </span>Use <a class="reference internal" href="#stem.connection.connect" title="stem.connection.connect"><tt class="xref py py-func docutils literal"><span class="pre">connect()</span></tt></a> instead.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>path</strong> (<em>str</em>) -- path where the control socket is located</li>
+<li><strong>password</strong> (<em>str</em>) -- passphrase to authenticate to the socket</li>
+<li><strong>chroot_path</strong> (<em>str</em>) -- path prefix if in a chroot environment</li>
+<li><strong>controller</strong> (<em>Class</em>) -- <a class="reference internal" href="control.html#stem.control.BaseController" title="stem.control.BaseController"><tt class="xref py py-class docutils literal"><span class="pre">BaseController</span></tt></a> subclass to be
+returned, this provides a <a class="reference internal" href="socket.html#stem.socket.ControlSocket" title="stem.socket.ControlSocket"><tt class="xref py py-class docutils literal"><span class="pre">ControlSocket</span></tt></a> if <strong>None</strong></li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">authenticated control connection, the type based on the controller argument</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.connection.authenticate">
+<tt class="descclassname">stem.connection.</tt><tt class="descname">authenticate</tt><big>(</big><em>controller</em>, <em>password=None</em>, <em>chroot_path=None</em>, <em>protocolinfo_response=None</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#authenticate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.authenticate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Authenticates to a control socket using the information provided by a
+PROTOCOLINFO response. In practice this will often be all we need to
+authenticate, raising an exception if all attempts to authenticate fail.</p>
+<p>All exceptions are subclasses of AuthenticationFailure so, in practice,
+callers should catch the types of authentication failure that they care
+about, then have a <a class="reference internal" href="#stem.connection.AuthenticationFailure" title="stem.connection.AuthenticationFailure"><tt class="xref py py-class docutils literal"><span class="pre">AuthenticationFailure</span></tt></a> catch-all
+at the end.</p>
+<p>This can authenticate to either a <a class="reference internal" href="control.html#stem.control.BaseController" title="stem.control.BaseController"><tt class="xref py py-class docutils literal"><span class="pre">BaseController</span></tt></a> or
+<a class="reference internal" href="socket.html#stem.socket.ControlSocket" title="stem.socket.ControlSocket"><tt class="xref py py-class docutils literal"><span class="pre">ControlSocket</span></tt></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>controller</strong> -- tor controller or socket to be authenticated</li>
+<li><strong>password</strong> (<em>str</em>) -- passphrase to present to the socket if it uses password
+authentication (skips password auth if <strong>None</strong>)</li>
+<li><strong>chroot_path</strong> (<em>str</em>) -- path prefix if in a chroot environment</li>
+<li><strong>protocolinfo_response</strong> (<a class="reference internal" href="response.html#stem.response.protocolinfo.ProtocolInfoResponse" title="stem.response.protocolinfo.ProtocolInfoResponse"><em>stem.response.protocolinfo.ProtocolInfoResponse</em></a>) -- tor protocolinfo response, this is retrieved on our own if <strong>None</strong></li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><p class="first">If all attempts to authenticate fails then this will raise a
+<a class="reference internal" href="#stem.connection.AuthenticationFailure" title="stem.connection.AuthenticationFailure"><tt class="xref py py-class docutils literal"><span class="pre">AuthenticationFailure</span></tt></a> subclass. Since this may
+try multiple authentication methods it may encounter multiple exceptions.
+If so then the exception this raises is prioritized as follows...</p>
+<ul>
+<li><p class="first"><a class="reference internal" href="#stem.connection.IncorrectSocketType" title="stem.connection.IncorrectSocketType"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.IncorrectSocketType</span></tt></a></p>
+<p>The controller does not speak the tor control protocol. Most often this
+happened because the user confused the SocksPort or ORPort with the
+ControlPort.</p>
+</li>
+<li><p class="first"><a class="reference internal" href="#stem.connection.UnrecognizedAuthMethods" title="stem.connection.UnrecognizedAuthMethods"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.UnrecognizedAuthMethods</span></tt></a></p>
+<p>All of the authentication methods tor will accept are new and
+unrecognized. Please upgrade stem and, if that doesn't work, file a
+ticket on 'trac.torproject.org' and I'd be happy to add support.</p>
+</li>
+<li><p class="first"><a class="reference internal" href="#stem.connection.MissingPassword" title="stem.connection.MissingPassword"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.MissingPassword</span></tt></a></p>
+<p>We were unable to authenticate but didn't attempt password authentication
+because none was provided. You should prompt the user for a password and
+try again via 'authenticate_password'.</p>
+</li>
+<li><p class="first"><a class="reference internal" href="#stem.connection.IncorrectPassword" title="stem.connection.IncorrectPassword"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.IncorrectPassword</span></tt></a></p>
+<p>We were provided with a password but it was incorrect.</p>
+</li>
+<li><p class="first"><a class="reference internal" href="#stem.connection.IncorrectCookieSize" title="stem.connection.IncorrectCookieSize"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.IncorrectCookieSize</span></tt></a></p>
+<p>Tor allows for authentication by reading it a cookie file, but that file
+is the wrong size to be an authentication cookie.</p>
+</li>
+<li><p class="first"><a class="reference internal" href="#stem.connection.UnreadableCookieFile" title="stem.connection.UnreadableCookieFile"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.UnreadableCookieFile</span></tt></a></p>
+<p>Tor allows for authentication by reading it a cookie file, but we can't
+read that file (probably due to permissions).</p>
+</li>
+<li><p class="first"><strong>*</strong><a class="reference internal" href="#stem.connection.IncorrectCookieValue" title="stem.connection.IncorrectCookieValue"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.IncorrectCookieValue</span></tt></a></p>
+<p>Tor allows for authentication by reading it a cookie file, but rejected
+the contents of that file.</p>
+</li>
+<li><p class="first"><strong>*</strong><a class="reference internal" href="#stem.connection.AuthChallengeUnsupported" title="stem.connection.AuthChallengeUnsupported"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.AuthChallengeUnsupported</span></tt></a></p>
+<p>Tor doesn't recognize the AUTHCHALLENGE command. This is probably a Tor
+version prior to SAFECOOKIE being implement, but this exception shouldn't
+arise because we won't attempt SAFECOOKIE auth unless Tor claims to
+support it.</p>
+</li>
+<li><p class="first"><strong>*</strong><a class="reference internal" href="#stem.connection.UnrecognizedAuthChallengeMethod" title="stem.connection.UnrecognizedAuthChallengeMethod"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.UnrecognizedAuthChallengeMethod</span></tt></a></p>
+<p>Tor couldn't recognize the AUTHCHALLENGE method Stem sent to it. This
+shouldn't happen at all.</p>
+</li>
+<li><p class="first"><strong>*</strong><a class="reference internal" href="#stem.connection.InvalidClientNonce" title="stem.connection.InvalidClientNonce"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.InvalidClientNonce</span></tt></a></p>
+<p>Tor says that the client nonce provided by Stem during the AUTHCHALLENGE
+process is invalid.</p>
+</li>
+<li><p class="first"><strong>*</strong><a class="reference internal" href="#stem.connection.AuthSecurityFailure" title="stem.connection.AuthSecurityFailure"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.AuthSecurityFailure</span></tt></a></p>
+<p>Nonce value provided by the server was invalid.</p>
+</li>
+<li><p class="first"><strong>*</strong><a class="reference internal" href="#stem.connection.OpenAuthRejected" title="stem.connection.OpenAuthRejected"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.OpenAuthRejected</span></tt></a></p>
+<p>Tor says that it allows for authentication without any credentials, but
+then rejected our authentication attempt.</p>
+</li>
+<li><p class="first"><strong>*</strong><a class="reference internal" href="#stem.connection.MissingAuthInfo" title="stem.connection.MissingAuthInfo"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.MissingAuthInfo</span></tt></a></p>
+<p>Tor provided us with a PROTOCOLINFO reply that is technically valid, but
+missing the information we need to authenticate.</p>
+</li>
+<li><p class="first"><strong>*</strong><a class="reference internal" href="#stem.connection.AuthenticationFailure" title="stem.connection.AuthenticationFailure"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.AuthenticationFailure</span></tt></a></p>
+<p>There are numerous other ways that authentication could have failed
+including socket failures, malformed controller responses, etc. These
+mostly constitute transient failures or bugs.</p>
+</li>
+</ul>
+<p><strong>*</strong> In practice it is highly unusual for this to occur, being more of a
+theoretical possibility rather than something you should expect. It's fine
+to treat these as errors. If you have a use case where this commonly
+happens, please file a ticket on 'trac.torproject.org'.</p>
+<p class="last">In the future new <a class="reference internal" href="#stem.connection.AuthenticationFailure" title="stem.connection.AuthenticationFailure"><tt class="xref py py-class docutils literal"><span class="pre">AuthenticationFailure</span></tt></a>
+subclasses may be added to allow for better error handling.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.connection.authenticate_none">
+<tt class="descclassname">stem.connection.</tt><tt class="descname">authenticate_none</tt><big>(</big><em>controller</em>, <em>suppress_ctl_errors=True</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#authenticate_none"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.authenticate_none" title="Permalink to this definition">¶</a></dt>
+<dd><p>Authenticates to an open control socket. All control connections need to
+authenticate before they can be used, even if tor hasn't been configured to
+use any authentication.</p>
+<p>If authentication fails tor will disconnect and we'll make a best effort
+attempt to re-establish the connection. This may not succeed, so check
+<a class="reference internal" href="socket.html#stem.socket.ControlSocket.is_alive" title="stem.socket.ControlSocket.is_alive"><tt class="xref py py-func docutils literal"><span class="pre">is_alive()</span></tt></a> before using the socket further.</p>
+<p>This can authenticate to either a <a class="reference internal" href="control.html#stem.control.BaseController" title="stem.control.BaseController"><tt class="xref py py-class docutils literal"><span class="pre">BaseController</span></tt></a> or
+<a class="reference internal" href="socket.html#stem.socket.ControlSocket" title="stem.socket.ControlSocket"><tt class="xref py py-class docutils literal"><span class="pre">ControlSocket</span></tt></a>.</p>
+<p>For general usage use the <a class="reference internal" href="#stem.connection.authenticate" title="stem.connection.authenticate"><tt class="xref py py-func docutils literal"><span class="pre">authenticate()</span></tt></a> function
+instead.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>controller</strong> -- tor controller or socket to be authenticated</li>
+<li><strong>suppress_ctl_errors</strong> (<em>bool</em>) -- reports raised
+<a class="reference internal" href="control.html#stem.ControllerError" title="stem.ControllerError"><tt class="xref py py-class docutils literal"><span class="pre">ControllerError</span></tt></a> as authentication rejection if
+<strong>True</strong>, otherwise they're re-raised</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last"><a class="reference internal" href="#stem.connection.OpenAuthRejected" title="stem.connection.OpenAuthRejected"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.OpenAuthRejected</span></tt></a> if the empty authentication credentials aren't accepted</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.connection.authenticate_password">
+<tt class="descclassname">stem.connection.</tt><tt class="descname">authenticate_password</tt><big>(</big><em>controller</em>, <em>password</em>, <em>suppress_ctl_errors=True</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#authenticate_password"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.authenticate_password" title="Permalink to this definition">¶</a></dt>
+<dd><p>Authenticates to a control socket that uses a password (via the
+HashedControlPassword torrc option). Quotes in the password are escaped.</p>
+<p>If authentication fails tor will disconnect and we'll make a best effort
+attempt to re-establish the connection. This may not succeed, so check
+<a class="reference internal" href="socket.html#stem.socket.ControlSocket.is_alive" title="stem.socket.ControlSocket.is_alive"><tt class="xref py py-func docutils literal"><span class="pre">is_alive()</span></tt></a> before using the socket further.</p>
+<p>If you use this function directly, rather than
+<a class="reference internal" href="#stem.connection.authenticate" title="stem.connection.authenticate"><tt class="xref py py-func docutils literal"><span class="pre">authenticate()</span></tt></a>, we may mistakenly raise a
+PasswordAuthRejected rather than IncorrectPassword. This is because we rely
+on tor's error messaging which is liable to change in future versions
+(<a class="reference external" href="https://trac.torproject.org/4817">ticket 4817</a>).</p>
+<p>This can authenticate to either a <a class="reference internal" href="control.html#stem.control.BaseController" title="stem.control.BaseController"><tt class="xref py py-class docutils literal"><span class="pre">BaseController</span></tt></a> or
+<a class="reference internal" href="socket.html#stem.socket.ControlSocket" title="stem.socket.ControlSocket"><tt class="xref py py-class docutils literal"><span class="pre">ControlSocket</span></tt></a>.</p>
+<p>For general usage use the <a class="reference internal" href="#stem.connection.authenticate" title="stem.connection.authenticate"><tt class="xref py py-func docutils literal"><span class="pre">authenticate()</span></tt></a> function
+instead.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>controller</strong> -- tor controller or socket to be authenticated</li>
+<li><strong>password</strong> (<em>str</em>) -- passphrase to present to the socket</li>
+<li><strong>suppress_ctl_errors</strong> (<em>bool</em>) -- reports raised
+<a class="reference internal" href="control.html#stem.ControllerError" title="stem.ControllerError"><tt class="xref py py-class docutils literal"><span class="pre">ControllerError</span></tt></a> as authentication rejection if
+<strong>True</strong>, otherwise they're re-raised</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference internal" href="#stem.connection.PasswordAuthRejected" title="stem.connection.PasswordAuthRejected"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.PasswordAuthRejected</span></tt></a> if the socket doesn't
+accept password authentication</li>
+<li><a class="reference internal" href="#stem.connection.IncorrectPassword" title="stem.connection.IncorrectPassword"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.IncorrectPassword</span></tt></a> if the authentication
+credentials aren't accepted</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.connection.authenticate_cookie">
+<tt class="descclassname">stem.connection.</tt><tt class="descname">authenticate_cookie</tt><big>(</big><em>controller</em>, <em>cookie_path</em>, <em>suppress_ctl_errors=True</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#authenticate_cookie"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.authenticate_cookie" title="Permalink to this definition">¶</a></dt>
+<dd><p>Authenticates to a control socket that uses the contents of an authentication
+cookie (generated via the CookieAuthentication torrc option). This does basic
+validation that this is a cookie before presenting the contents to the
+socket.</p>
+<p>The <a class="reference internal" href="#stem.connection.IncorrectCookieSize" title="stem.connection.IncorrectCookieSize"><tt class="xref py py-class docutils literal"><span class="pre">IncorrectCookieSize</span></tt></a> and
+<a class="reference internal" href="#stem.connection.UnreadableCookieFile" title="stem.connection.UnreadableCookieFile"><tt class="xref py py-class docutils literal"><span class="pre">UnreadableCookieFile</span></tt></a> exceptions take precedence
+over the other types.</p>
+<p>If authentication fails tor will disconnect and we'll make a best effort
+attempt to re-establish the connection. This may not succeed, so check
+<a class="reference internal" href="socket.html#stem.socket.ControlSocket.is_alive" title="stem.socket.ControlSocket.is_alive"><tt class="xref py py-func docutils literal"><span class="pre">is_alive()</span></tt></a> before using the socket further.</p>
+<p>If you use this function directly, rather than
+<a class="reference internal" href="#stem.connection.authenticate" title="stem.connection.authenticate"><tt class="xref py py-func docutils literal"><span class="pre">authenticate()</span></tt></a>, we may mistakenly raise a
+<a class="reference internal" href="#stem.connection.CookieAuthRejected" title="stem.connection.CookieAuthRejected"><tt class="xref py py-class docutils literal"><span class="pre">CookieAuthRejected</span></tt></a> rather than
+<a class="reference internal" href="#stem.connection.IncorrectCookieValue" title="stem.connection.IncorrectCookieValue"><tt class="xref py py-class docutils literal"><span class="pre">IncorrectCookieValue</span></tt></a>. This is because we rely on
+tor's error messaging which is liable to change in future versions
+(<a class="reference external" href="https://trac.torproject.org/4817">ticket 4817</a>).</p>
+<p>This can authenticate to either a <a class="reference internal" href="control.html#stem.control.BaseController" title="stem.control.BaseController"><tt class="xref py py-class docutils literal"><span class="pre">BaseController</span></tt></a> or
+<a class="reference internal" href="socket.html#stem.socket.ControlSocket" title="stem.socket.ControlSocket"><tt class="xref py py-class docutils literal"><span class="pre">ControlSocket</span></tt></a>.</p>
+<p>For general usage use the <a class="reference internal" href="#stem.connection.authenticate" title="stem.connection.authenticate"><tt class="xref py py-func docutils literal"><span class="pre">authenticate()</span></tt></a> function
+instead.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>controller</strong> -- tor controller or socket to be authenticated</li>
+<li><strong>cookie_path</strong> (<em>str</em>) -- path of the authentication cookie to send to tor</li>
+<li><strong>suppress_ctl_errors</strong> (<em>bool</em>) -- reports raised
+<a class="reference internal" href="control.html#stem.ControllerError" title="stem.ControllerError"><tt class="xref py py-class docutils literal"><span class="pre">ControllerError</span></tt></a> as authentication rejection if
+<strong>True</strong>, otherwise they're re-raised</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference internal" href="#stem.connection.IncorrectCookieSize" title="stem.connection.IncorrectCookieSize"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.IncorrectCookieSize</span></tt></a> if the cookie file's size
+is wrong</li>
+<li><a class="reference internal" href="#stem.connection.UnreadableCookieFile" title="stem.connection.UnreadableCookieFile"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.UnreadableCookieFile</span></tt></a> if the cookie file doesn't
+exist or we're unable to read it</li>
+<li><a class="reference internal" href="#stem.connection.CookieAuthRejected" title="stem.connection.CookieAuthRejected"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.CookieAuthRejected</span></tt></a> if cookie authentication is
+attempted but the socket doesn't accept it</li>
+<li><a class="reference internal" href="#stem.connection.IncorrectCookieValue" title="stem.connection.IncorrectCookieValue"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.IncorrectCookieValue</span></tt></a> if the cookie file's value
+is rejected</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.connection.authenticate_safecookie">
+<tt class="descclassname">stem.connection.</tt><tt class="descname">authenticate_safecookie</tt><big>(</big><em>controller</em>, <em>cookie_path</em>, <em>suppress_ctl_errors=True</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#authenticate_safecookie"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.authenticate_safecookie" title="Permalink to this definition">¶</a></dt>
+<dd><p>Authenticates to a control socket using the safe cookie method, which is
+enabled by setting the CookieAuthentication torrc option on Tor client's which
+support it.</p>
+<p>Authentication with this is a two-step process...</p>
+<ol class="arabic simple">
+<li>send a nonce to the server and receives a challenge from the server for
+the cookie's contents</li>
+<li>generate a hash digest using the challenge received in the first step, and
+use it to authenticate the controller</li>
+</ol>
+<p>The <a class="reference internal" href="#stem.connection.IncorrectCookieSize" title="stem.connection.IncorrectCookieSize"><tt class="xref py py-class docutils literal"><span class="pre">IncorrectCookieSize</span></tt></a> and
+<a class="reference internal" href="#stem.connection.UnreadableCookieFile" title="stem.connection.UnreadableCookieFile"><tt class="xref py py-class docutils literal"><span class="pre">UnreadableCookieFile</span></tt></a> exceptions take precedence
+over the other exception types.</p>
+<p>The <a class="reference internal" href="#stem.connection.AuthChallengeUnsupported" title="stem.connection.AuthChallengeUnsupported"><tt class="xref py py-class docutils literal"><span class="pre">AuthChallengeUnsupported</span></tt></a>,
+<a class="reference internal" href="#stem.connection.UnrecognizedAuthChallengeMethod" title="stem.connection.UnrecognizedAuthChallengeMethod"><tt class="xref py py-class docutils literal"><span class="pre">UnrecognizedAuthChallengeMethod</span></tt></a>,
+<a class="reference internal" href="#stem.connection.InvalidClientNonce" title="stem.connection.InvalidClientNonce"><tt class="xref py py-class docutils literal"><span class="pre">InvalidClientNonce</span></tt></a> and
+<a class="reference internal" href="#stem.connection.CookieAuthRejected" title="stem.connection.CookieAuthRejected"><tt class="xref py py-class docutils literal"><span class="pre">CookieAuthRejected</span></tt></a> exceptions are next in the order
+of precedence. Depending on the reason, one of these is raised if the first
+(AUTHCHALLENGE) step fails.</p>
+<p>In the second (AUTHENTICATE) step,
+<a class="reference internal" href="#stem.connection.IncorrectCookieValue" title="stem.connection.IncorrectCookieValue"><tt class="xref py py-class docutils literal"><span class="pre">IncorrectCookieValue</span></tt></a> or
+<a class="reference internal" href="#stem.connection.CookieAuthRejected" title="stem.connection.CookieAuthRejected"><tt class="xref py py-class docutils literal"><span class="pre">CookieAuthRejected</span></tt></a> maybe raised.</p>
+<p>If authentication fails tor will disconnect and we'll make a best effort
+attempt to re-establish the connection. This may not succeed, so check
+<a class="reference internal" href="socket.html#stem.socket.ControlSocket.is_alive" title="stem.socket.ControlSocket.is_alive"><tt class="xref py py-func docutils literal"><span class="pre">is_alive()</span></tt></a> before using the socket further.</p>
+<p>For general usage use the <a class="reference internal" href="#stem.connection.authenticate" title="stem.connection.authenticate"><tt class="xref py py-func docutils literal"><span class="pre">authenticate()</span></tt></a> function
+instead.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>controller</strong> -- tor controller or socket to be authenticated</li>
+<li><strong>cookie_path</strong> (<em>str</em>) -- path of the authentication cookie to send to tor</li>
+<li><strong>suppress_ctl_errors</strong> (<em>bool</em>) -- reports raised
+<a class="reference internal" href="control.html#stem.ControllerError" title="stem.ControllerError"><tt class="xref py py-class docutils literal"><span class="pre">ControllerError</span></tt></a> as authentication rejection if
+<strong>True</strong>, otherwise they're re-raised</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference internal" href="#stem.connection.IncorrectCookieSize" title="stem.connection.IncorrectCookieSize"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.IncorrectCookieSize</span></tt></a> if the cookie file's size
+is wrong</li>
+<li><a class="reference internal" href="#stem.connection.UnreadableCookieFile" title="stem.connection.UnreadableCookieFile"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.UnreadableCookieFile</span></tt></a> if the cookie file doesn't
+exist or we're unable to read it</li>
+<li><a class="reference internal" href="#stem.connection.CookieAuthRejected" title="stem.connection.CookieAuthRejected"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.CookieAuthRejected</span></tt></a> if cookie authentication is
+attempted but the socket doesn't accept it</li>
+<li><a class="reference internal" href="#stem.connection.IncorrectCookieValue" title="stem.connection.IncorrectCookieValue"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.IncorrectCookieValue</span></tt></a> if the cookie file's value
+is rejected</li>
+<li><a class="reference internal" href="#stem.connection.UnrecognizedAuthChallengeMethod" title="stem.connection.UnrecognizedAuthChallengeMethod"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.UnrecognizedAuthChallengeMethod</span></tt></a> if the Tor
+client fails to recognize the AuthChallenge method</li>
+<li><a class="reference internal" href="#stem.connection.AuthChallengeUnsupported" title="stem.connection.AuthChallengeUnsupported"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.AuthChallengeUnsupported</span></tt></a> if AUTHCHALLENGE is
+unimplemented, or if unable to parse AUTHCHALLENGE response</li>
+<li><a class="reference internal" href="#stem.connection.AuthSecurityFailure" title="stem.connection.AuthSecurityFailure"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.AuthSecurityFailure</span></tt></a> if AUTHCHALLENGE's response
+looks like a security attack</li>
+<li><a class="reference internal" href="#stem.connection.InvalidClientNonce" title="stem.connection.InvalidClientNonce"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.InvalidClientNonce</span></tt></a> if stem's AUTHCHALLENGE
+client nonce is rejected for being invalid</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.connection.get_protocolinfo">
+<tt class="descclassname">stem.connection.</tt><tt class="descname">get_protocolinfo</tt><big>(</big><em>controller</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#get_protocolinfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.get_protocolinfo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Issues a PROTOCOLINFO query to a control socket, getting information about
+the tor process running on it. If the socket is already closed then it is
+first reconnected.</p>
+<p>According to the control spec the cookie_file is an absolute path. However,
+this often is not the case (especially for the Tor Browser Bundle). If the
+path is relative then we'll make an attempt (which may not work) to correct
+this (<a class="reference external" href="https://trac.torproject.org/1101">ticket 1101</a>).</p>
+<p>This can authenticate to either a <a class="reference internal" href="control.html#stem.control.BaseController" title="stem.control.BaseController"><tt class="xref py py-class docutils literal"><span class="pre">BaseController</span></tt></a> or
+<a class="reference internal" href="socket.html#stem.socket.ControlSocket" title="stem.socket.ControlSocket"><tt class="xref py py-class docutils literal"><span class="pre">ControlSocket</span></tt></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>controller</strong> -- tor controller or socket to be queried</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><a class="reference internal" href="response.html#stem.response.protocolinfo.ProtocolInfoResponse" title="stem.response.protocolinfo.ProtocolInfoResponse"><tt class="xref py py-class docutils literal"><span class="pre">ProtocolInfoResponse</span></tt></a> provided by tor</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference internal" href="control.html#stem.ProtocolError" title="stem.ProtocolError"><tt class="xref py py-class docutils literal"><span class="pre">stem.ProtocolError</span></tt></a> if the PROTOCOLINFO response is
+malformed</li>
+<li><a class="reference internal" href="control.html#stem.SocketError" title="stem.SocketError"><tt class="xref py py-class docutils literal"><span class="pre">stem.SocketError</span></tt></a> if problems arise in establishing or
+using the socket</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.AuthenticationFailure">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">AuthenticationFailure</tt><big>(</big><em>message</em>, <em>auth_response=None</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#AuthenticationFailure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.AuthenticationFailure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></tt></p>
+<p>Base error for authentication failures.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>auth_response</strong> (<em>stem.socket.ControlMessage</em>) -- AUTHENTICATE response from the
+control socket, <strong>None</strong> if one wasn't received</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.UnrecognizedAuthMethods">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">UnrecognizedAuthMethods</tt><big>(</big><em>message</em>, <em>unknown_auth_methods</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#UnrecognizedAuthMethods"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.UnrecognizedAuthMethods" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.AuthenticationFailure" title="stem.connection.AuthenticationFailure"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.AuthenticationFailure</span></tt></a></p>
+<p>All methods for authenticating aren't recognized.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>unknown_auth_methods</strong> (<em>list</em>) -- authentication methods that weren't recognized</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.IncorrectSocketType">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">IncorrectSocketType</tt><big>(</big><em>message</em>, <em>auth_response=None</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#IncorrectSocketType"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.IncorrectSocketType" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.AuthenticationFailure" title="stem.connection.AuthenticationFailure"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.AuthenticationFailure</span></tt></a></p>
+<p>Socket does not speak the control protocol.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.OpenAuthFailed">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">OpenAuthFailed</tt><big>(</big><em>message</em>, <em>auth_response=None</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#OpenAuthFailed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.OpenAuthFailed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.AuthenticationFailure" title="stem.connection.AuthenticationFailure"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.AuthenticationFailure</span></tt></a></p>
+<p>Failure to authenticate to an open socket.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.OpenAuthRejected">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">OpenAuthRejected</tt><big>(</big><em>message</em>, <em>auth_response=None</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#OpenAuthRejected"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.OpenAuthRejected" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.OpenAuthFailed" title="stem.connection.OpenAuthFailed"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.OpenAuthFailed</span></tt></a></p>
+<p>Attempt to connect to an open control socket was rejected.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.PasswordAuthFailed">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">PasswordAuthFailed</tt><big>(</big><em>message</em>, <em>auth_response=None</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#PasswordAuthFailed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.PasswordAuthFailed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.AuthenticationFailure" title="stem.connection.AuthenticationFailure"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.AuthenticationFailure</span></tt></a></p>
+<p>Failure to authenticate with a password.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.PasswordAuthRejected">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">PasswordAuthRejected</tt><big>(</big><em>message</em>, <em>auth_response=None</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#PasswordAuthRejected"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.PasswordAuthRejected" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.PasswordAuthFailed" title="stem.connection.PasswordAuthFailed"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.PasswordAuthFailed</span></tt></a></p>
+<p>Socket does not support password authentication.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.IncorrectPassword">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">IncorrectPassword</tt><big>(</big><em>message</em>, <em>auth_response=None</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#IncorrectPassword"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.IncorrectPassword" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.PasswordAuthFailed" title="stem.connection.PasswordAuthFailed"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.PasswordAuthFailed</span></tt></a></p>
+<p>Authentication password incorrect.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.MissingPassword">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">MissingPassword</tt><big>(</big><em>message</em>, <em>auth_response=None</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#MissingPassword"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.MissingPassword" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.PasswordAuthFailed" title="stem.connection.PasswordAuthFailed"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.PasswordAuthFailed</span></tt></a></p>
+<p>Password authentication is supported but we weren't provided with one.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.CookieAuthFailed">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">CookieAuthFailed</tt><big>(</big><em>message</em>, <em>cookie_path</em>, <em>is_safecookie</em>, <em>auth_response=None</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#CookieAuthFailed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.CookieAuthFailed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.AuthenticationFailure" title="stem.connection.AuthenticationFailure"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.AuthenticationFailure</span></tt></a></p>
+<p>Failure to authenticate with an authentication cookie.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>cookie_path</strong> (<em>str</em>) -- location of the authentication cookie we attempted</li>
+<li><strong>is_safecookie</strong> (<em>bool</em>) -- <strong>True</strong> if this was for SAFECOOKIE
+authentication, <strong>False</strong> if for COOKIE</li>
+<li><strong>auth_response</strong> (<a class="reference internal" href="response.html#stem.response.ControlMessage" title="stem.response.ControlMessage"><em>stem.response.ControlMessage</em></a>) -- reply to our
+authentication attempt</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.CookieAuthRejected">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">CookieAuthRejected</tt><big>(</big><em>message</em>, <em>cookie_path</em>, <em>is_safecookie</em>, <em>auth_response=None</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#CookieAuthRejected"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.CookieAuthRejected" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.CookieAuthFailed" title="stem.connection.CookieAuthFailed"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.CookieAuthFailed</span></tt></a></p>
+<p>Socket does not support password authentication.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.IncorrectCookieValue">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">IncorrectCookieValue</tt><big>(</big><em>message</em>, <em>cookie_path</em>, <em>is_safecookie</em>, <em>auth_response=None</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#IncorrectCookieValue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.IncorrectCookieValue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.CookieAuthFailed" title="stem.connection.CookieAuthFailed"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.CookieAuthFailed</span></tt></a></p>
+<p>Authentication cookie value was rejected.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.IncorrectCookieSize">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">IncorrectCookieSize</tt><big>(</big><em>message</em>, <em>cookie_path</em>, <em>is_safecookie</em>, <em>auth_response=None</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#IncorrectCookieSize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.IncorrectCookieSize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.CookieAuthFailed" title="stem.connection.CookieAuthFailed"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.CookieAuthFailed</span></tt></a></p>
+<p>Aborted because the cookie file is the wrong size.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.UnreadableCookieFile">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">UnreadableCookieFile</tt><big>(</big><em>message</em>, <em>cookie_path</em>, <em>is_safecookie</em>, <em>auth_response=None</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#UnreadableCookieFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.UnreadableCookieFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.CookieAuthFailed" title="stem.connection.CookieAuthFailed"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.CookieAuthFailed</span></tt></a></p>
+<p>Error arose in reading the authentication cookie.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.AuthChallengeFailed">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">AuthChallengeFailed</tt><big>(</big><em>message</em>, <em>cookie_path</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#AuthChallengeFailed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.AuthChallengeFailed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.CookieAuthFailed" title="stem.connection.CookieAuthFailed"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.CookieAuthFailed</span></tt></a></p>
+<p>AUTHCHALLENGE command has failed.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.AuthChallengeUnsupported">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">AuthChallengeUnsupported</tt><big>(</big><em>message</em>, <em>cookie_path</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#AuthChallengeUnsupported"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.AuthChallengeUnsupported" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.AuthChallengeFailed" title="stem.connection.AuthChallengeFailed"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.AuthChallengeFailed</span></tt></a></p>
+<p>AUTHCHALLENGE isn't implemented.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.UnrecognizedAuthChallengeMethod">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">UnrecognizedAuthChallengeMethod</tt><big>(</big><em>message</em>, <em>cookie_path</em>, <em>authchallenge_method</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#UnrecognizedAuthChallengeMethod"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.UnrecognizedAuthChallengeMethod" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.AuthChallengeFailed" title="stem.connection.AuthChallengeFailed"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.AuthChallengeFailed</span></tt></a></p>
+<p>Tor couldn't recognize our AUTHCHALLENGE method.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>authchallenge_method</strong> (<em>str</em>) -- AUTHCHALLENGE method that Tor couldn't recognize</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.AuthSecurityFailure">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">AuthSecurityFailure</tt><big>(</big><em>message</em>, <em>cookie_path</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#AuthSecurityFailure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.AuthSecurityFailure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.AuthChallengeFailed" title="stem.connection.AuthChallengeFailed"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.AuthChallengeFailed</span></tt></a></p>
+<p>AUTHCHALLENGE response is invalid.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.InvalidClientNonce">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">InvalidClientNonce</tt><big>(</big><em>message</em>, <em>cookie_path</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#InvalidClientNonce"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.InvalidClientNonce" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.AuthChallengeFailed" title="stem.connection.AuthChallengeFailed"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.AuthChallengeFailed</span></tt></a></p>
+<p>AUTHCHALLENGE request contains an invalid client nonce.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.MissingAuthInfo">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">MissingAuthInfo</tt><big>(</big><em>message</em>, <em>auth_response=None</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#MissingAuthInfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.MissingAuthInfo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.AuthenticationFailure" title="stem.connection.AuthenticationFailure"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.AuthenticationFailure</span></tt></a></p>
+<p>The PROTOCOLINFO response didn't have enough information to authenticate.
+These are valid control responses but really shouldn't happen in practice.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.NoAuthMethods">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">NoAuthMethods</tt><big>(</big><em>message</em>, <em>auth_response=None</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#NoAuthMethods"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.NoAuthMethods" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.MissingAuthInfo" title="stem.connection.MissingAuthInfo"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.MissingAuthInfo</span></tt></a></p>
+<p>PROTOCOLINFO response didn't have any methods for authenticating.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="stem.connection.NoAuthCookie">
+<em class="property">exception </em><tt class="descclassname">stem.connection.</tt><tt class="descname">NoAuthCookie</tt><big>(</big><em>message</em>, <em>is_safecookie</em><big>)</big><a class="reference internal" href="../_modules/stem/connection.html#NoAuthCookie"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.connection.NoAuthCookie" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.connection.MissingAuthInfo" title="stem.connection.MissingAuthInfo"><tt class="xref py py-class docutils literal"><span class="pre">stem.connection.MissingAuthInfo</span></tt></a></p>
+<p>PROTOCOLINFO response supports cookie auth but doesn't have its path.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>is_safecookie</strong> (<em>bool</em>) -- <strong>True</strong> if this was for SAFECOOKIE
+authentication, <strong>False</strong> if for COOKIE</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

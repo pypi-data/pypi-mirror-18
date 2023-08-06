@@ -1,0 +1,165 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Determine The Exit You&#39;re Using &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>Determine The Exit You&#39;re Using</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../index.html">Home</a></li>
+          <li><a href="../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../over_the_river.html">Hidden Services</a></li>
+              <li><a href="../mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../api.html">API</a>
+            <ul>
+              <li><a href="../../api/control.html">stem.control</a></li>
+              <li><a href="../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../api/process.html">stem.process</a></li>
+              <li><a href="../../api/response.html">stem.response</a></li>
+              <li><a href="../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../api/version.html">stem.version</a></li>
+              <li><a href="../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../faq.html">FAQ</a></li>
+              <li><a href="../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="determine-the-exit-you-re-using">
+<h1>Determine The Exit You're Using<a class="headerlink" href="#determine-the-exit-you-re-using" title="Permalink to this headline">¶</a></h1>
+<a class="reference external image-reference" href="../double_double_toil_and_trouble.html"><img alt="../../_images/back.png" src="../../_images/back.png" /></a>
+<p>Lets say you're using Tor and one day you run into something odd. Maybe a
+misconfigured relay, or maybe one that's being malicious. How can you figure
+out what exit you're using?</p>
+<p>Here's a simple script that prints information about the exits used to service
+the requests going through Tor...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">functools</span>
+
+<span class="kn">from</span> <span class="nn">stem</span> <span class="kn">import</span> <span class="n">StreamStatus</span>
+<span class="kn">from</span> <span class="nn">stem.control</span> <span class="kn">import</span> <span class="n">EventType</span><span class="p">,</span> <span class="n">Controller</span>
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+  <span class="k">print</span><span class="p">(</span><span class="s">&quot;Tracking requests for tor exits. Press &#39;enter&#39; to end.&quot;</span><span class="p">)</span>
+  <span class="k">print</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">)</span>
+
+  <span class="k">with</span> <span class="n">Controller</span><span class="o">.</span><span class="n">from_port</span><span class="p">()</span> <span class="k">as</span> <span class="n">controller</span><span class="p">:</span>
+    <span class="n">controller</span><span class="o">.</span><span class="n">authenticate</span><span class="p">()</span>
+
+    <span class="n">stream_listener</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">stream_event</span><span class="p">,</span> <span class="n">controller</span><span class="p">)</span>
+    <span class="n">controller</span><span class="o">.</span><span class="n">add_event_listener</span><span class="p">(</span><span class="n">stream_listener</span><span class="p">,</span> <span class="n">EventType</span><span class="o">.</span><span class="n">STREAM</span><span class="p">)</span>
+
+    <span class="nb">raw_input</span><span class="p">()</span>  <span class="c"># wait for user to press enter</span>
+
+
+<span class="k">def</span> <span class="nf">stream_event</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+  <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">StreamStatus</span><span class="o">.</span><span class="n">SUCCEEDED</span> <span class="ow">and</span> <span class="n">event</span><span class="o">.</span><span class="n">circ_id</span><span class="p">:</span>
+    <span class="n">circ</span> <span class="o">=</span> <span class="n">controller</span><span class="o">.</span><span class="n">get_circuit</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">circ_id</span><span class="p">)</span>
+
+    <span class="n">exit_fingerprint</span> <span class="o">=</span> <span class="n">circ</span><span class="o">.</span><span class="n">path</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">exit_relay</span> <span class="o">=</span> <span class="n">controller</span><span class="o">.</span><span class="n">get_network_status</span><span class="p">(</span><span class="n">exit_fingerprint</span><span class="p">)</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;Exit relay for our connection to </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">target</span><span class="p">))</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;  address: </span><span class="si">%s</span><span class="s">:</span><span class="si">%i</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">exit_relay</span><span class="o">.</span><span class="n">address</span><span class="p">,</span> <span class="n">exit_relay</span><span class="o">.</span><span class="n">or_port</span><span class="p">))</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;  fingerprint: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">exit_relay</span><span class="o">.</span><span class="n">fingerprint</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;  nickname: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">exit_relay</span><span class="o">.</span><span class="n">nickname</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;  locale: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">controller</span><span class="o">.</span><span class="n">get_info</span><span class="p">(</span><span class="s">&quot;ip-to-country/</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">exit_relay</span><span class="o">.</span><span class="n">address</span><span class="p">,</span> <span class="s">&#39;unknown&#39;</span><span class="p">))</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+  <span class="n">main</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Now if you make a request over Tor...</p>
+<div class="highlight-python"><pre>% curl --socks4a 127.0.0.1:9050 google.com
+&lt;HTML&gt;&lt;HEAD&gt;&lt;meta http-equiv="content-type" content="text/html;charset=utf-8"&gt;
+&lt;TITLE&gt;301 Moved&lt;/TITLE&gt;&lt;/HEAD&gt;&lt;BODY&gt;
+&lt;H1&gt;301 Moved&lt;/H1&gt;
+The document has moved
+&lt;A HREF="http://www.google.com/"&gt;here&lt;/A&gt;.
+&lt;/BODY&gt;&lt;/HTML&gt;</pre>
+</div>
+<p>... this script will tell you about the exit...</p>
+<div class="highlight-python"><pre>% python exit_used.py
+Tracking requests for tor exits. Press 'enter' to end.
+
+Exit relay for our connection to 64.15.112.44:80
+  address: 31.172.30.2:443
+  fingerprint: A59E1E7C7EAEE083D756EE1FF6EC31CA3D8651D7
+  nickname: chaoscomputerclub19
+  locale: unknown</pre>
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

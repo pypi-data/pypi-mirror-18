@@ -1,0 +1,228 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MicroDescriptor &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>MicroDescriptor</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../index.html">Home</a></li>
+          <li><a href="../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../api.html">API</a>
+            <ul>
+              <li><a href="../control.html">stem.control</a></li>
+              <li><a href="../connection.html">stem.connection</a></li>
+              <li><a href="../socket.html">stem.socket</a></li>
+              <li><a href="../process.html">stem.process</a></li>
+              <li><a href="../response.html">stem.response</a></li>
+              <li><a href="../exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../version.html">stem.version</a></li>
+              <li><a href="../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../faq.html">FAQ</a></li>
+              <li><a href="../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="module-stem.descriptor.microdescriptor">
+<span id="microdescriptor"></span><h1>MicroDescriptor<a class="headerlink" href="#module-stem.descriptor.microdescriptor" title="Permalink to this headline">¶</a></h1>
+<p>Parsing for Tor microdescriptors, which contain a distilled version of a
+relay's server descriptor. As of Tor version 0.2.3.3-alpha Tor no longer
+downloads server descriptors by default, opting for microdescriptors instead.</p>
+<p>Unlike most descriptor documents these aren't available on the metrics site
+(since they don't contain any information that the server descriptors don't).</p>
+<p>The limited information in microdescriptors make them rather clunky to use
+compared with server descriptors. For instance microdescriptors lack the
+relay's fingerprint, making it difficut to use them to look up the relay's
+other descriptors.</p>
+<p>To do so you need to match the microdescriptor's digest against its
+corresponding router status entry. For added fun as of this writing the
+controller doesn't even surface those router status entries
+(<a class="reference external" href="https://trac.torproject.org/7953">ticket 7953</a>).</p>
+<p>For instance, here's an example that prints the nickname and fingerprints of
+the exit relays.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">from</span> <span class="nn">stem.control</span> <span class="kn">import</span> <span class="n">Controller</span>
+<span class="kn">from</span> <span class="nn">stem.descriptor</span> <span class="kn">import</span> <span class="n">parse_file</span>
+
+<span class="k">with</span> <span class="n">Controller</span><span class="o">.</span><span class="n">from_port</span><span class="p">(</span><span class="n">port</span> <span class="o">=</span> <span class="mi">9051</span><span class="p">)</span> <span class="k">as</span> <span class="n">controller</span><span class="p">:</span>
+  <span class="n">controller</span><span class="o">.</span><span class="n">authenticate</span><span class="p">()</span>
+
+  <span class="n">exit_digests</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+  <span class="n">data_dir</span> <span class="o">=</span> <span class="n">controller</span><span class="o">.</span><span class="n">get_conf</span><span class="p">(</span><span class="s">&#39;DataDirectory&#39;</span><span class="p">)</span>
+
+  <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">controller</span><span class="o">.</span><span class="n">get_microdescriptors</span><span class="p">():</span>
+    <span class="k">if</span> <span class="n">desc</span><span class="o">.</span><span class="n">exit_policy</span><span class="o">.</span><span class="n">is_exiting_allowed</span><span class="p">():</span>
+      <span class="n">exit_digests</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">desc</span><span class="o">.</span><span class="n">digest</span><span class="p">)</span>
+
+  <span class="k">print</span> <span class="s">&#39;Exit Relays:&#39;</span>
+
+  <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">parse_file</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data_dir</span><span class="p">,</span> <span class="s">&#39;cached-microdesc-consensus&#39;</span><span class="p">)):</span>
+    <span class="k">if</span> <span class="n">desc</span><span class="o">.</span><span class="n">digest</span> <span class="ow">in</span> <span class="n">exit_digests</span><span class="p">:</span>
+      <span class="k">print</span> <span class="s">&#39;  </span><span class="si">%s</span><span class="s"> (</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">desc</span><span class="o">.</span><span class="n">nickname</span><span class="p">,</span> <span class="n">desc</span><span class="o">.</span><span class="n">fingerprint</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Doing the same is trivial with server descriptors...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">stem.descriptor</span> <span class="kn">import</span> <span class="n">parse_file</span>
+
+<span class="k">print</span> <span class="s">&#39;Exit Relays:&#39;</span>
+
+<span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">parse_file</span><span class="p">(</span><span class="s">&#39;/home/atagar/.tor/cached-descriptors&#39;</span><span class="p">):</span>
+  <span class="k">if</span> <span class="n">desc</span><span class="o">.</span><span class="n">exit_policy</span><span class="o">.</span><span class="n">is_exiting_allowed</span><span class="p">():</span>
+    <span class="k">print</span> <span class="s">&#39;  </span><span class="si">%s</span><span class="s"> (</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">desc</span><span class="o">.</span><span class="n">nickname</span><span class="p">,</span> <span class="n">desc</span><span class="o">.</span><span class="n">fingerprint</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Module Overview:</strong></p>
+<div class="highlight-python"><pre>Microdescriptor - Tor microdescriptor.</pre>
+</div>
+<dl class="class">
+<dt id="stem.descriptor.microdescriptor.Microdescriptor">
+<em class="property">class </em><tt class="descclassname">stem.descriptor.microdescriptor.</tt><tt class="descname">Microdescriptor</tt><big>(</big><em>raw_contents</em>, <em>validate=False</em>, <em>annotations=None</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/microdescriptor.html#Microdescriptor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.microdescriptor.Microdescriptor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">stem.descriptor.Descriptor</span></tt></p>
+<p>Microdescriptor (<a class="reference external" href="https://gitweb.torproject.org/torspec.git/tree/dir-spec.txt">descriptor specification</a>)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>digest</strong> (<em>str</em>) -- <strong>*</strong> hex digest for this microdescriptor, this can be used
+to match against the corresponding digest attribute of a
+<a class="reference internal" href="router_status_entry.html#stem.descriptor.router_status_entry.RouterStatusEntryMicroV3" title="stem.descriptor.router_status_entry.RouterStatusEntryMicroV3"><tt class="xref py py-class docutils literal"><span class="pre">RouterStatusEntryMicroV3</span></tt></a></li>
+<li><strong>onion_key</strong> (<em>str</em>) -- <strong>*</strong> key used to encrypt EXTEND cells</li>
+<li><strong>ntor_onion_key</strong> (<em>str</em>) -- base64 key used to encrypt EXTEND in the ntor protocol</li>
+<li><strong>or_addresses</strong> (<em>list</em>) -- <strong>*</strong> alternative for our address/or_port attributes, each
+entry is a tuple of the form (address (<strong>str</strong>), port (<strong>int</strong>), is_ipv6
+(<strong>bool</strong>))</li>
+<li><strong>family</strong> (<em>list</em>) -- <strong>*</strong> nicknames or fingerprints of declared family</li>
+<li><strong>exit_policy</strong> (<a class="reference internal" href="../exit_policy.html#stem.exit_policy.MicroExitPolicy" title="stem.exit_policy.MicroExitPolicy"><em>stem.exit_policy.MicroExitPolicy</em></a>) -- <strong>*</strong> relay's exit policy</li>
+<li><strong>exit_policy_v6</strong> (<a class="reference internal" href="../exit_policy.html#stem.exit_policy.MicroExitPolicy" title="stem.exit_policy.MicroExitPolicy"><em>stem.exit_policy.MicroExitPolicy</em></a>) -- <strong>*</strong> exit policy for IPv6</li>
+<li><strong>identifiers</strong> (<em>hash</em>) -- mapping of key types (like rsa1024 or ed25519) to
+their base64 encoded identity, this is only used for collision prevention
+(<a class="reference external" href="https://trac.torproject.org/11743">ticket 11743</a>)</li>
+<li><strong>identifier</strong> (<em>str</em>) -- base64 encoded identity digest (<strong>deprecated</strong>, use
+identifiers instead)</li>
+<li><strong>identifier_type</strong> (<em>str</em>) -- identity digest key type (<strong>deprecated</strong>, use
+identifiers instead)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>*</strong> attribute is required when we're parsed with validation</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.1.0: </span>Added the identifier and identifier_type attributes.</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.5.0: </span>Added the identifiers attribute, and deprecated identifier and
+identifier_type since the field can now appear multiple times.</p>
+<dl class="method">
+<dt id="stem.descriptor.microdescriptor.Microdescriptor.get_annotations">
+<tt class="descname">get_annotations</tt><big>(</big><em>*args</em>, <em>**kwds</em><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/microdescriptor.html#Microdescriptor.get_annotations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.microdescriptor.Microdescriptor.get_annotations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides content that appeared prior to the descriptor. If this comes from
+the cached-microdescs then this commonly contains content like...</p>
+<div class="highlight-python"><pre>@last-listed 2013-02-24 00:18:30</pre>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>dict</strong> with the key/value pairs in our annotations</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.descriptor.microdescriptor.Microdescriptor.get_annotation_lines">
+<tt class="descname">get_annotation_lines</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/descriptor/microdescriptor.html#Microdescriptor.get_annotation_lines"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.descriptor.microdescriptor.Microdescriptor.get_annotation_lines" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the lines of content that appeared prior to the descriptor. This
+is the same as the
+<a class="reference internal" href="#stem.descriptor.microdescriptor.Microdescriptor.get_annotations" title="stem.descriptor.microdescriptor.Microdescriptor.get_annotations"><tt class="xref py py-func docutils literal"><span class="pre">get_annotations()</span></tt></a>
+results, but with the unparsed lines and ordering retained.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>list</strong> with the lines of annotation that came before this descriptor</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

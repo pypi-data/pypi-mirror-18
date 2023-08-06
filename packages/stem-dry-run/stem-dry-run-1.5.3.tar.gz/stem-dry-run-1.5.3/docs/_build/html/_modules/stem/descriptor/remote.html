@@ -1,0 +1,1209 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.descriptor.remote &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem" href="../../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.descriptor.remote</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.descriptor.remote</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2013-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Module for remotely retrieving descriptors from directory authorities and</span>
+<span class="sd">mirrors. This is the simplest method for getting current tor descriptor</span>
+<span class="sd">information...</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  import stem.descriptor.remote</span>
+
+<span class="sd">  for desc in stem.descriptor.remote.get_server_descriptors():</span>
+<span class="sd">    if desc.exit_policy.is_exiting_allowed():</span>
+<span class="sd">      print &#39;  %s (%s)&#39; % (desc.nickname, desc.fingerprint)</span>
+
+<span class="sd">More custom downloading behavior can be done through the</span>
+<span class="sd">:class:`~stem.descriptor.remote.DescriptorDownloader` class, which issues</span>
+<span class="sd">:class:`~stem.descriptor.remote.Query` instances to get you descriptor</span>
+<span class="sd">content. For example...</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  from stem.descriptor.remote import DescriptorDownloader</span>
+
+<span class="sd">  downloader = DescriptorDownloader(</span>
+<span class="sd">    use_mirrors = True,</span>
+<span class="sd">    timeout = 10,</span>
+<span class="sd">  )</span>
+
+<span class="sd">  query = downloader.get_server_descriptors()</span>
+
+<span class="sd">  print &#39;Exit Relays:&#39;</span>
+
+<span class="sd">  try:</span>
+<span class="sd">    for desc in query.run():</span>
+<span class="sd">      if desc.exit_policy.is_exiting_allowed():</span>
+<span class="sd">        print &#39;  %s (%s)&#39; % (desc.nickname, desc.fingerprint)</span>
+
+<span class="sd">    print</span>
+<span class="sd">    print &#39;Query took %0.2f seconds&#39; % query.runtime</span>
+<span class="sd">  except Exception as exc:</span>
+<span class="sd">    print &#39;Unable to retrieve the server descriptors: %s&#39; % exc</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  get_instance - Provides a singleton DescriptorDownloader used for...</span>
+<span class="sd">    |- get_server_descriptors - provides present server descriptors</span>
+<span class="sd">    |- get_extrainfo_descriptors - provides present extrainfo descriptors</span>
+<span class="sd">    +- get_consensus - provides the present consensus or router status entries</span>
+
+<span class="sd">  get_authorities - Provides tor directory information.</span>
+
+<span class="sd">  Directory - Relay we can retrieve directory information from</span>
+<span class="sd">    |- DirectoryAuthority - Information about a tor directory authority</span>
+<span class="sd">    +- FallbackDirectory - Directory mirror tor uses when authories are unavailable</span>
+<span class="sd">        |- from_cache - Provides fallback directories cached with Stem.</span>
+<span class="sd">        +- from_remote - Retrieves fallback directories remotely from tor&#39;s latest commit.</span>
+
+<span class="sd">  Query - Asynchronous request to download tor descriptors</span>
+<span class="sd">    |- start - issues the query if it isn&#39;t already running</span>
+<span class="sd">    +- run - blocks until the request is finished and provides the results</span>
+
+<span class="sd">  DescriptorDownloader - Configurable class for issuing queries</span>
+<span class="sd">    |- use_directory_mirrors - use directory mirrors to download future descriptors</span>
+<span class="sd">    |- get_server_descriptors - provides present server descriptors</span>
+<span class="sd">    |- get_extrainfo_descriptors - provides present extrainfo descriptors</span>
+<span class="sd">    |- get_consensus - provides the present consensus or router status entries</span>
+<span class="sd">    |- get_key_certificates - provides present authority key certificates</span>
+<span class="sd">    +- query - request an arbitrary descriptor resource</span>
+
+<span class="sd">.. versionadded:: 1.1.0</span>
+
+<span class="sd">.. data:: MAX_FINGERPRINTS</span>
+
+<span class="sd">  Maximum number of descriptors that can requested at a time by their</span>
+<span class="sd">  fingerprints.</span>
+
+<span class="sd">.. data:: MAX_MICRODESCRIPTOR_HASHES</span>
+
+<span class="sd">  Maximum number of microdescriptors that can requested at a time by their</span>
+<span class="sd">  hashes.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">io</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">zlib</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="c"># account for urllib&#39;s change between python 2.x and 3.x</span>
+  <span class="kn">import</span> <span class="nn">urllib.request</span> <span class="kn">as</span> <span class="nn">urllib</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+  <span class="kn">import</span> <span class="nn">urllib2</span> <span class="kn">as</span> <span class="nn">urllib</span>
+
+<span class="kn">import</span> <span class="nn">stem.descriptor</span>
+
+<span class="kn">from</span> <span class="nn">stem</span> <span class="kn">import</span> <span class="n">Flag</span>
+<span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">_hash_attr</span><span class="p">,</span> <span class="n">connection</span><span class="p">,</span> <span class="n">log</span><span class="p">,</span> <span class="n">str_tools</span><span class="p">,</span> <span class="n">tor_tools</span>
+
+<span class="c"># Tor has a limited number of descriptors we can fetch explicitly by their</span>
+<span class="c"># fingerprint or hashes due to a limit on the url length by squid proxies.</span>
+
+<span class="n">MAX_FINGERPRINTS</span> <span class="o">=</span> <span class="mi">96</span>
+<span class="n">MAX_MICRODESCRIPTOR_HASHES</span> <span class="o">=</span> <span class="mi">92</span>
+
+<span class="n">GITWEB_FALLBACK_DIR_URL</span> <span class="o">=</span> <span class="s">&#39;https://gitweb.torproject.org/tor.git/plain/src/or/fallback_dirs.inc&#39;</span>
+<span class="n">CACHE_PATH</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">),</span> <span class="s">&#39;fallback_directories.cfg&#39;</span><span class="p">)</span>
+
+<span class="n">SINGLETON_DOWNLOADER</span> <span class="o">=</span> <span class="bp">None</span>
+
+
+<div class="viewcode-block" id="get_instance"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.get_instance">[docs]</a><span class="k">def</span> <span class="nf">get_instance</span><span class="p">():</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the singleton :class:`~stem.descriptor.remote.DescriptorDownloader`</span>
+<span class="sd">  used for the following functions...</span>
+
+<span class="sd">    * :func:`stem.descriptor.remote.get_server_descriptors`</span>
+<span class="sd">    * :func:`stem.descriptor.remote.get_extrainfo_descriptors`</span>
+<span class="sd">    * :func:`stem.descriptor.remote.get_consensus`</span>
+
+<span class="sd">  .. versionadded:: 1.5.0</span>
+
+<span class="sd">  :returns: singleton :class:`~stem.descriptor.remote.DescriptorDownloader` instance</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">global</span> <span class="n">SINGLETON_DOWNLOADER</span>
+
+  <span class="k">if</span> <span class="n">SINGLETON_DOWNLOADER</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="n">SINGLETON_DOWNLOADER</span> <span class="o">=</span> <span class="n">DescriptorDownloader</span><span class="p">()</span>
+
+  <span class="k">return</span> <span class="n">SINGLETON_DOWNLOADER</span>
+
+</div>
+<div class="viewcode-block" id="get_server_descriptors"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.get_server_descriptors">[docs]</a><span class="k">def</span> <span class="nf">get_server_descriptors</span><span class="p">(</span><span class="n">fingerprints</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">query_args</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Shorthand for</span>
+<span class="sd">  :func:`~stem.descriptor.remote.DescriptorDownloader.get_server_descriptors`</span>
+<span class="sd">  on our singleton instance.</span>
+
+<span class="sd">  .. versionadded:: 1.5.0</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">return</span> <span class="n">get_instance</span><span class="p">()</span><span class="o">.</span><span class="n">get_server_descriptors</span><span class="p">(</span><span class="n">fingerprints</span><span class="p">,</span> <span class="o">**</span><span class="n">query_args</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="get_extrainfo_descriptors"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.get_extrainfo_descriptors">[docs]</a><span class="k">def</span> <span class="nf">get_extrainfo_descriptors</span><span class="p">(</span><span class="n">fingerprints</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">query_args</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Shorthand for</span>
+<span class="sd">  :func:`~stem.descriptor.remote.DescriptorDownloader.get_extrainfo_descriptors`</span>
+<span class="sd">  on our singleton instance.</span>
+
+<span class="sd">  .. versionadded:: 1.5.0</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">return</span> <span class="n">get_instance</span><span class="p">()</span><span class="o">.</span><span class="n">get_extrainfo_descriptors</span><span class="p">(</span><span class="n">fingerprints</span><span class="p">,</span> <span class="o">**</span><span class="n">query_args</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="get_consensus"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.get_consensus">[docs]</a><span class="k">def</span> <span class="nf">get_consensus</span><span class="p">(</span><span class="n">authority_v3ident</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">query_args</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Shorthand for</span>
+<span class="sd">  :func:`~stem.descriptor.remote.DescriptorDownloader.get_consensus`</span>
+<span class="sd">  on our singleton instance.</span>
+
+<span class="sd">  .. versionadded:: 1.5.0</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">return</span> <span class="n">get_instance</span><span class="p">()</span><span class="o">.</span><span class="n">get_consensus</span><span class="p">(</span><span class="n">authority_v3ident</span><span class="p">,</span> <span class="o">**</span><span class="n">query_args</span><span class="p">)</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_guess_descriptor_type</span><span class="p">(</span><span class="n">resource</span><span class="p">):</span>
+  <span class="c"># Attempts to determine the descriptor type based on the resource url. This</span>
+  <span class="c"># raises a ValueError if the resource isn&#39;t recognized.</span>
+
+  <span class="k">if</span> <span class="n">resource</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;/tor/server/&#39;</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&#39;server-descriptor 1.0&#39;</span>
+  <span class="k">elif</span> <span class="n">resource</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;/tor/extra/&#39;</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&#39;extra-info 1.0&#39;</span>
+  <span class="k">elif</span> <span class="n">resource</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;/tor/micro/&#39;</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&#39;microdescriptor 1.0&#39;</span>
+  <span class="k">elif</span> <span class="n">resource</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;/tor/status-vote/&#39;</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&#39;network-status-consensus-3 1.0&#39;</span>
+  <span class="k">elif</span> <span class="n">resource</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;/tor/keys/&#39;</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&#39;dir-key-certificate-3 1.0&#39;</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Unable to determine the descriptor type for &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="n">resource</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Query"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.Query">[docs]</a><span class="k">class</span> <span class="nc">Query</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Asynchronous request for descriptor content from a directory authority or</span>
+<span class="sd">  mirror. These can either be made through the</span>
+<span class="sd">  :class:`~stem.descriptor.remote.DescriptorDownloader` or directly for more</span>
+<span class="sd">  advanced usage.</span>
+
+<span class="sd">  To block on the response and get results either call</span>
+<span class="sd">  :func:`~stem.descriptor.remote.Query.run` or iterate over the Query. The</span>
+<span class="sd">  :func:`~stem.descriptor.remote.Query.run` method pass along any errors that</span>
+<span class="sd">  arise...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    from stem.descriptor.remote import Query</span>
+
+<span class="sd">    query = Query(</span>
+<span class="sd">      &#39;/tor/server/all.z&#39;,</span>
+<span class="sd">      block = True,</span>
+<span class="sd">      timeout = 30,</span>
+<span class="sd">    )</span>
+
+<span class="sd">    print &#39;Current relays:&#39;</span>
+
+<span class="sd">    if not query.error:</span>
+<span class="sd">      for desc in query:</span>
+<span class="sd">        print desc.fingerprint</span>
+<span class="sd">    else:</span>
+<span class="sd">      print &#39;Unable to retrieve the server descriptors: %s&#39; % query.error</span>
+
+<span class="sd">  ... while iterating fails silently...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    print &#39;Current relays:&#39;</span>
+
+<span class="sd">    for desc in Query(&#39;/tor/server/all.z&#39;, &#39;server-descriptor 1.0&#39;):</span>
+<span class="sd">      print desc.fingerprint</span>
+
+<span class="sd">  In either case exceptions are available via our &#39;error&#39; attribute.</span>
+
+<span class="sd">  Tor provides quite a few different descriptor resources via its directory</span>
+<span class="sd">  protocol (see section 4.2 and later of the `dir-spec</span>
+<span class="sd">  &lt;https://gitweb.torproject.org/torspec.git/tree/dir-spec.txt&gt;`_).</span>
+<span class="sd">  Commonly useful ones include...</span>
+
+<span class="sd">  ===================================== ===========</span>
+<span class="sd">  Resource                              Description</span>
+<span class="sd">  ===================================== ===========</span>
+<span class="sd">  /tor/server/all.z                     all present server descriptors</span>
+<span class="sd">  /tor/server/fp/&lt;fp1&gt;+&lt;fp2&gt;+&lt;fp3&gt;.z    server descriptors with the given fingerprints</span>
+<span class="sd">  /tor/extra/all.z                      all present extrainfo descriptors</span>
+<span class="sd">  /tor/extra/fp/&lt;fp1&gt;+&lt;fp2&gt;+&lt;fp3&gt;.z     extrainfo descriptors with the given fingerprints</span>
+<span class="sd">  /tor/micro/d/&lt;hash1&gt;-&lt;hash2&gt;.z        microdescriptors with the given hashes</span>
+<span class="sd">  /tor/status-vote/current/consensus.z  present consensus</span>
+<span class="sd">  /tor/keys/all.z                       key certificates for the authorities</span>
+<span class="sd">  /tor/keys/fp/&lt;v3ident1&gt;+&lt;v3ident2&gt;.z  key certificates for specific authorities</span>
+<span class="sd">  ===================================== ===========</span>
+
+<span class="sd">  The &#39;.z&#39; suffix can be excluded to get a plaintext rather than compressed</span>
+<span class="sd">  response. Compression is handled transparently, so this shouldn&#39;t matter to</span>
+<span class="sd">  the caller.</span>
+
+<span class="sd">  :var str resource: resource being fetched, such as &#39;/tor/server/all.z&#39;</span>
+<span class="sd">  :var str descriptor_type: type of descriptors being fetched (for options see</span>
+<span class="sd">    :func:`~stem.descriptor.__init__.parse_file`), this is guessed from the</span>
+<span class="sd">    resource if **None**</span>
+
+<span class="sd">  :var list endpoints: (address, dirport) tuples of the authority or mirror</span>
+<span class="sd">    we&#39;re querying, this uses authorities if undefined</span>
+<span class="sd">  :var int retries: number of times to attempt the request if downloading it</span>
+<span class="sd">    fails</span>
+<span class="sd">  :var bool fall_back_to_authority: when retrying request issues the last</span>
+<span class="sd">    request to a directory authority if **True**</span>
+
+<span class="sd">  :var str content: downloaded descriptor content</span>
+<span class="sd">  :var Exception error: exception if a problem occured</span>
+<span class="sd">  :var bool is_done: flag that indicates if our request has finished</span>
+<span class="sd">  :var str download_url: last url used to download the descriptor, this is</span>
+<span class="sd">    unset until we&#39;ve actually made a download attempt</span>
+
+<span class="sd">  :var float start_time: unix timestamp when we first started running</span>
+<span class="sd">  :var float timeout: duration before we&#39;ll time out our request</span>
+<span class="sd">  :var float runtime: time our query took, this is **None** if it&#39;s not yet</span>
+<span class="sd">    finished</span>
+
+<span class="sd">  :var bool validate: checks the validity of the descriptor&#39;s content if</span>
+<span class="sd">    **True**, skips these checks otherwise</span>
+<span class="sd">  :var stem.descriptor.__init__.DocumentHandler document_handler: method in</span>
+<span class="sd">    which to parse a :class:`~stem.descriptor.networkstatus.NetworkStatusDocument`</span>
+<span class="sd">  :var dict kwargs: additional arguments for the descriptor constructor</span>
+
+<span class="sd">  :param bool start: start making the request when constructed (default is **True**)</span>
+<span class="sd">  :param bool block: only return after the request has been completed, this is</span>
+<span class="sd">    the same as running **query.run(True)** (default is **False**)</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">descriptor_type</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">endpoints</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">retries</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">fall_back_to_authority</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">timeout</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">start</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">block</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">document_handler</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">DocumentHandler</span><span class="o">.</span><span class="n">ENTRIES</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">resource</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Resources should start with a &#39;/&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">resource</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="n">resource</span>
+
+    <span class="k">if</span> <span class="n">descriptor_type</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">descriptor_type</span> <span class="o">=</span> <span class="n">descriptor_type</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">descriptor_type</span> <span class="o">=</span> <span class="n">_guess_descriptor_type</span><span class="p">(</span><span class="n">resource</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">endpoints</span> <span class="o">=</span> <span class="n">endpoints</span> <span class="k">if</span> <span class="n">endpoints</span> <span class="k">else</span> <span class="p">[]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">retries</span> <span class="o">=</span> <span class="n">retries</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">fall_back_to_authority</span> <span class="o">=</span> <span class="n">fall_back_to_authority</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">error</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">is_done</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">download_url</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span> <span class="o">=</span> <span class="n">timeout</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">runtime</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">validate</span> <span class="o">=</span> <span class="n">validate</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">document_handler</span> <span class="o">=</span> <span class="n">document_handler</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_downloader_thread</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_downloader_thread_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">start</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">block</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Query.start"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.Query.start">[docs]</a>  <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Starts downloading the scriptors if we haven&#39;t started already.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_downloader_thread_lock</span><span class="p">:</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_downloader_thread</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_downloader_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+          <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;Descriptor Query&#39;</span><span class="p">,</span>
+          <span class="n">target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_download_descriptors</span><span class="p">,</span>
+          <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">retries</span><span class="p">,)</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_downloader_thread</span><span class="o">.</span><span class="n">setDaemon</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_downloader_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="Query.run"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.Query.run">[docs]</a>  <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">suppress</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Blocks until our request is complete then provides the descriptors. If we</span>
+<span class="sd">    haven&#39;t yet started our request then this does so.</span>
+
+<span class="sd">    :param bool suppress: avoids raising exceptions if **True**</span>
+
+<span class="sd">    :returns: list for the requested :class:`~stem.descriptor.__init__.Descriptor` instances</span>
+
+<span class="sd">    :raises:</span>
+<span class="sd">      Using the iterator can fail with the following if **suppress** is</span>
+<span class="sd">      **False**...</span>
+
+<span class="sd">        * **ValueError** if the descriptor contents is malformed</span>
+<span class="sd">        * **socket.timeout** if our request timed out</span>
+<span class="sd">        * **urllib2.URLError** for most request failures</span>
+
+<span class="sd">      Note that the urllib2 module may fail with other exception types, in</span>
+<span class="sd">      which case we&#39;ll pass it along.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run</span><span class="p">(</span><span class="n">suppress</span><span class="p">))</span>
+</div>
+  <span class="k">def</span> <span class="nf">_run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">suppress</span><span class="p">):</span>
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_downloader_thread_lock</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_downloader_thread</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">error</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">suppress</span><span class="p">:</span>
+          <span class="k">return</span>
+
+        <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">error</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+          <span class="k">if</span> <span class="n">suppress</span><span class="p">:</span>
+            <span class="k">return</span>
+
+          <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;BUG: _download_descriptors() finished without either results or an error&#39;</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+          <span class="n">results</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">parse_file</span><span class="p">(</span>
+            <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">content</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">descriptor_type</span><span class="p">,</span>
+            <span class="n">validate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">validate</span><span class="p">,</span>
+            <span class="n">document_handler</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">document_handler</span><span class="p">,</span>
+            <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span>
+          <span class="p">)</span>
+
+          <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">desc</span>
+        <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">error</span> <span class="o">=</span> <span class="n">exc</span>  <span class="c"># encountered a parsing error</span>
+
+          <span class="k">if</span> <span class="n">suppress</span><span class="p">:</span>
+            <span class="k">return</span>
+
+          <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">error</span>
+
+  <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run</span><span class="p">(</span><span class="bp">True</span><span class="p">):</span>
+      <span class="k">yield</span> <span class="n">desc</span>
+
+  <span class="k">def</span> <span class="nf">_pick_url</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">use_authority</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides a url that can be queried. If we have multiple endpoints then one</span>
+<span class="sd">    will be picked randomly.</span>
+
+<span class="sd">    :param bool use_authority: ignores our endpoints and uses a directory</span>
+<span class="sd">      authority instead</span>
+
+<span class="sd">    :returns: **str** for the url being queried by this request</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">use_authority</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">endpoints</span><span class="p">:</span>
+      <span class="n">directories</span> <span class="o">=</span> <span class="n">get_authorities</span><span class="p">()</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+
+      <span class="n">picked</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">directories</span><span class="p">)</span>
+      <span class="n">address</span><span class="p">,</span> <span class="n">dirport</span> <span class="o">=</span> <span class="n">picked</span><span class="o">.</span><span class="n">address</span><span class="p">,</span> <span class="n">picked</span><span class="o">.</span><span class="n">dir_port</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">address</span><span class="p">,</span> <span class="n">dirport</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoints</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="s">&#39;http://</span><span class="si">%s</span><span class="s">:</span><span class="si">%i</span><span class="s">/</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">dirport</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="p">))</span>
+
+  <span class="k">def</span> <span class="nf">_download_descriptors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">retries</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">use_authority</span> <span class="o">=</span> <span class="n">retries</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">fall_back_to_authority</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">download_url</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pick_url</span><span class="p">(</span><span class="n">use_authority</span><span class="p">)</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+      <span class="n">response</span> <span class="o">=</span> <span class="n">urllib</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">download_url</span><span class="p">,</span> <span class="n">timeout</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">download_url</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;.z&#39;</span><span class="p">):</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">decompress</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">runtime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span>
+      <span class="n">log</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="s">&quot;Descriptors retrieved from &#39;</span><span class="si">%s</span><span class="s">&#39; in </span><span class="si">%0.2f</span><span class="s">s&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">download_url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">runtime</span><span class="p">))</span>
+    <span class="k">except</span><span class="p">:</span>
+      <span class="n">exc</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">exc_info</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span>
+
+      <span class="k">if</span> <span class="n">retries</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Unable to download descriptors from &#39;</span><span class="si">%s</span><span class="s">&#39; (</span><span class="si">%i</span><span class="s"> retries remaining): </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">download_url</span><span class="p">,</span> <span class="n">retries</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_download_descriptors</span><span class="p">(</span><span class="n">retries</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Unable to download descriptors from &#39;</span><span class="si">%s</span><span class="s">&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">download_url</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">error</span> <span class="o">=</span> <span class="n">exc</span>
+    <span class="k">finally</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">is_done</span> <span class="o">=</span> <span class="bp">True</span>
+
+</div>
+<div class="viewcode-block" id="DescriptorDownloader"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.DescriptorDownloader">[docs]</a><span class="k">class</span> <span class="nc">DescriptorDownloader</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Configurable class that issues :class:`~stem.descriptor.remote.Query`</span>
+<span class="sd">  instances on your behalf.</span>
+
+<span class="sd">  :param bool use_mirrors: downloads the present consensus and uses the directory</span>
+<span class="sd">    mirrors to fetch future requests, this fails silently if the consensus</span>
+<span class="sd">    cannot be downloaded</span>
+<span class="sd">  :param default_args: default arguments for the</span>
+<span class="sd">    :class:`~stem.descriptor.remote.Query` constructor</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">use_mirrors</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="o">**</span><span class="n">default_args</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_default_args</span> <span class="o">=</span> <span class="n">default_args</span>
+
+    <span class="n">directories</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">get_authorities</span><span class="p">()</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_endpoints</span> <span class="o">=</span> <span class="p">[(</span><span class="n">directory</span><span class="o">.</span><span class="n">address</span><span class="p">,</span> <span class="n">directory</span><span class="o">.</span><span class="n">dir_port</span><span class="p">)</span> <span class="k">for</span> <span class="n">directory</span> <span class="ow">in</span> <span class="n">directories</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">use_mirrors</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_directory_mirrors</span><span class="p">()</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;Retrieved directory mirrors (took </span><span class="si">%0.2f</span><span class="s">s)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span><span class="p">))</span>
+      <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;Unable to retrieve directory mirrors: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">exc</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DescriptorDownloader.use_directory_mirrors"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.DescriptorDownloader.use_directory_mirrors">[docs]</a>  <span class="k">def</span> <span class="nf">use_directory_mirrors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Downloads the present consensus and configures ourselves to use directory</span>
+<span class="sd">    mirrors, in addition to authorities.</span>
+
+<span class="sd">    :returns: :class:`~stem.descriptor.networkstatus.NetworkStatusDocumentV3`</span>
+<span class="sd">      from which we got the directory mirrors</span>
+
+<span class="sd">    :raises: **Exception** if unable to determine the directory mirrors</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">directories</span> <span class="o">=</span> <span class="n">get_authorities</span><span class="p">()</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+    <span class="n">new_endpoints</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([(</span><span class="n">directory</span><span class="o">.</span><span class="n">address</span><span class="p">,</span> <span class="n">directory</span><span class="o">.</span><span class="n">dir_port</span><span class="p">)</span> <span class="k">for</span> <span class="n">directory</span> <span class="ow">in</span> <span class="n">directories</span><span class="p">])</span>
+
+    <span class="n">consensus</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_consensus</span><span class="p">(</span><span class="n">document_handler</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">DocumentHandler</span><span class="o">.</span><span class="n">DOCUMENT</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">consensus</span><span class="o">.</span><span class="n">routers</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+      <span class="k">if</span> <span class="n">Flag</span><span class="o">.</span><span class="n">V2DIR</span> <span class="ow">in</span> <span class="n">desc</span><span class="o">.</span><span class="n">flags</span><span class="p">:</span>
+        <span class="n">new_endpoints</span><span class="o">.</span><span class="n">add</span><span class="p">((</span><span class="n">desc</span><span class="o">.</span><span class="n">address</span><span class="p">,</span> <span class="n">desc</span><span class="o">.</span><span class="n">dir_port</span><span class="p">))</span>
+
+    <span class="c"># we need our endpoints to be a list rather than set for random.choice()</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_endpoints</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">new_endpoints</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">consensus</span>
+</div>
+<div class="viewcode-block" id="DescriptorDownloader.get_server_descriptors"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.DescriptorDownloader.get_server_descriptors">[docs]</a>  <span class="k">def</span> <span class="nf">get_server_descriptors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fingerprints</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">query_args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the server descriptors with the given fingerprints. If no</span>
+<span class="sd">    fingerprints are provided then this returns all descriptors in the present</span>
+<span class="sd">    consensus.</span>
+
+<span class="sd">    :param str,list fingerprints: fingerprint or list of fingerprints to be</span>
+<span class="sd">      retrieved, gets all descriptors if **None**</span>
+<span class="sd">    :param query_args: additional arguments for the</span>
+<span class="sd">      :class:`~stem.descriptor.remote.Query` constructor</span>
+
+<span class="sd">    :returns: :class:`~stem.descriptor.remote.Query` for the server descriptors</span>
+
+<span class="sd">    :raises: **ValueError** if we request more than 96 descriptors by their</span>
+<span class="sd">      fingerprints (this is due to a limit on the url length by squid proxies).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">resource</span> <span class="o">=</span> <span class="s">&#39;/tor/server/all.z&#39;</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fingerprints</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+      <span class="n">fingerprints</span> <span class="o">=</span> <span class="p">[</span><span class="n">fingerprints</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">fingerprints</span><span class="p">:</span>
+      <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fingerprints</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">MAX_FINGERPRINTS</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Unable to request more than </span><span class="si">%i</span><span class="s"> descriptors at a time by their fingerprints&#39;</span> <span class="o">%</span> <span class="n">MAX_FINGERPRINTS</span><span class="p">)</span>
+
+      <span class="n">resource</span> <span class="o">=</span> <span class="s">&#39;/tor/server/fp/</span><span class="si">%s</span><span class="s">.z&#39;</span> <span class="o">%</span> <span class="s">&#39;+&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fingerprints</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="o">**</span><span class="n">query_args</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="DescriptorDownloader.get_extrainfo_descriptors"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.DescriptorDownloader.get_extrainfo_descriptors">[docs]</a>  <span class="k">def</span> <span class="nf">get_extrainfo_descriptors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fingerprints</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">query_args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the extrainfo descriptors with the given fingerprints. If no</span>
+<span class="sd">    fingerprints are provided then this returns all descriptors in the present</span>
+<span class="sd">    consensus.</span>
+
+<span class="sd">    :param str,list fingerprints: fingerprint or list of fingerprints to be</span>
+<span class="sd">      retrieved, gets all descriptors if **None**</span>
+<span class="sd">    :param query_args: additional arguments for the</span>
+<span class="sd">      :class:`~stem.descriptor.remote.Query` constructor</span>
+
+<span class="sd">    :returns: :class:`~stem.descriptor.remote.Query` for the extrainfo descriptors</span>
+
+<span class="sd">    :raises: **ValueError** if we request more than 96 descriptors by their</span>
+<span class="sd">      fingerprints (this is due to a limit on the url length by squid proxies).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">resource</span> <span class="o">=</span> <span class="s">&#39;/tor/extra/all.z&#39;</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fingerprints</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+      <span class="n">fingerprints</span> <span class="o">=</span> <span class="p">[</span><span class="n">fingerprints</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">fingerprints</span><span class="p">:</span>
+      <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fingerprints</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">MAX_FINGERPRINTS</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Unable to request more than </span><span class="si">%i</span><span class="s"> descriptors at a time by their fingerprints&#39;</span> <span class="o">%</span> <span class="n">MAX_FINGERPRINTS</span><span class="p">)</span>
+
+      <span class="n">resource</span> <span class="o">=</span> <span class="s">&#39;/tor/extra/fp/</span><span class="si">%s</span><span class="s">.z&#39;</span> <span class="o">%</span> <span class="s">&#39;+&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fingerprints</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="o">**</span><span class="n">query_args</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="DescriptorDownloader.get_microdescriptors"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.DescriptorDownloader.get_microdescriptors">[docs]</a>  <span class="k">def</span> <span class="nf">get_microdescriptors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hashes</span><span class="p">,</span> <span class="o">**</span><span class="n">query_args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the microdescriptors with the given hashes. To get these see the</span>
+<span class="sd">    &#39;microdescriptor_hashes&#39; attribute of</span>
+<span class="sd">    :class:`~stem.descriptor.router_status_entry.RouterStatusEntryV3`. Note</span>
+<span class="sd">    that these are only provided via a microdescriptor consensus (such as</span>
+<span class="sd">    &#39;cached-microdesc-consensus&#39; in your data directory).</span>
+
+<span class="sd">    .. deprecated:: 1.5.0</span>
+<span class="sd">       This function has never worked, as it was never implemented in tor</span>
+<span class="sd">       (:trac:`9271`).</span>
+
+<span class="sd">    :param str,list hashes: microdescriptor hash or list of hashes to be</span>
+<span class="sd">      retrieved</span>
+<span class="sd">    :param query_args: additional arguments for the</span>
+<span class="sd">      :class:`~stem.descriptor.remote.Query` constructor</span>
+
+<span class="sd">    :returns: :class:`~stem.descriptor.remote.Query` for the microdescriptors</span>
+
+<span class="sd">    :raises: **ValueError** if we request more than 92 microdescriptors by their</span>
+<span class="sd">      hashes (this is due to a limit on the url length by squid proxies).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">hashes</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+      <span class="n">hashes</span> <span class="o">=</span> <span class="p">[</span><span class="n">hashes</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">hashes</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">MAX_MICRODESCRIPTOR_HASHES</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Unable to request more than </span><span class="si">%i</span><span class="s"> microdescriptors at a time by their hashes&#39;</span> <span class="o">%</span> <span class="n">MAX_MICRODESCRIPTOR_HASHES</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s">&#39;/tor/micro/d/</span><span class="si">%s</span><span class="s">.z&#39;</span> <span class="o">%</span> <span class="s">&#39;-&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">hashes</span><span class="p">),</span> <span class="o">**</span><span class="n">query_args</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="DescriptorDownloader.get_consensus"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.DescriptorDownloader.get_consensus">[docs]</a>  <span class="k">def</span> <span class="nf">get_consensus</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">authority_v3ident</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">query_args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the present router status entries.</span>
+
+<span class="sd">    :param str authority_v3ident: fingerprint of the authority key for which</span>
+<span class="sd">      to get the consensus, see `&#39;v3ident&#39; in tor&#39;s config.c</span>
+<span class="sd">      &lt;https://gitweb.torproject.org/tor.git/tree/src/or/config.c#n819&gt;`_</span>
+<span class="sd">      for the values.</span>
+<span class="sd">    :param query_args: additional arguments for the</span>
+<span class="sd">      :class:`~stem.descriptor.remote.Query` constructor</span>
+
+<span class="sd">    :returns: :class:`~stem.descriptor.remote.Query` for the router status</span>
+<span class="sd">      entries</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">resource</span> <span class="o">=</span> <span class="s">&#39;/tor/status-vote/current/consensus&#39;</span>
+
+    <span class="k">if</span> <span class="n">authority_v3ident</span><span class="p">:</span>
+      <span class="n">resource</span> <span class="o">+=</span> <span class="s">&#39;/</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">authority_v3ident</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">resource</span> <span class="o">+</span> <span class="s">&#39;.z&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">query_args</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="DescriptorDownloader.get_vote"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.DescriptorDownloader.get_vote">[docs]</a>  <span class="k">def</span> <span class="nf">get_vote</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">authority</span><span class="p">,</span> <span class="o">**</span><span class="n">query_args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the present vote for a given directory authority.</span>
+
+<span class="sd">    :param stem.descriptor.remote.DirectoryAuthority authority: authority for which to retrieve a vote for</span>
+<span class="sd">    :param query_args: additional arguments for the</span>
+<span class="sd">      :class:`~stem.descriptor.remote.Query` constructor</span>
+
+<span class="sd">    :returns: :class:`~stem.descriptor.remote.Query` for the router status</span>
+<span class="sd">      entries</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">resource</span> <span class="o">=</span> <span class="s">&#39;/tor/status-vote/current/authority&#39;</span>
+
+    <span class="k">if</span> <span class="s">&#39;endpoint&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">query_args</span><span class="p">:</span>
+      <span class="n">query_args</span><span class="p">[</span><span class="s">&#39;endpoints&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[(</span><span class="n">authority</span><span class="o">.</span><span class="n">address</span><span class="p">,</span> <span class="n">authority</span><span class="o">.</span><span class="n">dir_port</span><span class="p">)]</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">resource</span> <span class="o">+</span> <span class="s">&#39;.z&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">query_args</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="DescriptorDownloader.get_key_certificates"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.DescriptorDownloader.get_key_certificates">[docs]</a>  <span class="k">def</span> <span class="nf">get_key_certificates</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">authority_v3idents</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">query_args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the key certificates for authorities with the given fingerprints.</span>
+<span class="sd">    If no fingerprints are provided then this returns all present key</span>
+<span class="sd">    certificates.</span>
+
+<span class="sd">    :param str authority_v3idents: fingerprint or list of fingerprints of the</span>
+<span class="sd">      authority keys, see `&#39;v3ident&#39; in tor&#39;s config.c</span>
+<span class="sd">      &lt;https://gitweb.torproject.org/tor.git/tree/src/or/config.c#n819&gt;`_</span>
+<span class="sd">      for the values.</span>
+<span class="sd">    :param query_args: additional arguments for the</span>
+<span class="sd">      :class:`~stem.descriptor.remote.Query` constructor</span>
+
+<span class="sd">    :returns: :class:`~stem.descriptor.remote.Query` for the key certificates</span>
+
+<span class="sd">    :raises: **ValueError** if we request more than 96 key certificates by</span>
+<span class="sd">      their identity fingerprints (this is due to a limit on the url length by</span>
+<span class="sd">      squid proxies).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">resource</span> <span class="o">=</span> <span class="s">&#39;/tor/keys/all.z&#39;</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">authority_v3idents</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+      <span class="n">authority_v3idents</span> <span class="o">=</span> <span class="p">[</span><span class="n">authority_v3idents</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">authority_v3idents</span><span class="p">:</span>
+      <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">authority_v3idents</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">MAX_FINGERPRINTS</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Unable to request more than </span><span class="si">%i</span><span class="s"> key certificates at a time by their identity fingerprints&#39;</span> <span class="o">%</span> <span class="n">MAX_FINGERPRINTS</span><span class="p">)</span>
+
+      <span class="n">resource</span> <span class="o">=</span> <span class="s">&#39;/tor/keys/fp/</span><span class="si">%s</span><span class="s">.z&#39;</span> <span class="o">%</span> <span class="s">&#39;+&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">authority_v3idents</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="o">**</span><span class="n">query_args</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="DescriptorDownloader.query"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.DescriptorDownloader.query">[docs]</a>  <span class="k">def</span> <span class="nf">query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="o">**</span><span class="n">query_args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Issues a request for the given resource.</span>
+
+<span class="sd">    :param str resource: resource being fetched, such as &#39;/tor/server/all.z&#39;</span>
+<span class="sd">    :param query_args: additional arguments for the</span>
+<span class="sd">      :class:`~stem.descriptor.remote.Query` constructor</span>
+
+<span class="sd">    :returns: :class:`~stem.descriptor.remote.Query` for the descriptors</span>
+
+<span class="sd">    :raises: **ValueError** if resource is clearly invalid or the descriptor</span>
+<span class="sd">      type can&#39;t be determined when &#39;descriptor_type&#39; is **None**</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_default_args</span><span class="p">)</span>
+    <span class="n">args</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">query_args</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s">&#39;endpoints&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+      <span class="n">args</span><span class="p">[</span><span class="s">&#39;endpoints&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_endpoints</span>
+
+    <span class="k">if</span> <span class="s">&#39;fall_back_to_authority&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+      <span class="n">args</span><span class="p">[</span><span class="s">&#39;fall_back_to_authority&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="k">return</span> <span class="n">Query</span><span class="p">(</span>
+      <span class="n">resource</span><span class="p">,</span>
+      <span class="o">**</span><span class="n">args</span>
+    <span class="p">)</span>
+
+</div></div>
+<div class="viewcode-block" id="Directory"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.Directory">[docs]</a><span class="k">class</span> <span class="nc">Directory</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Relay we can contact for directory information</span>
+
+<span class="sd">  .. versionadded:: 1.5.0</span>
+
+<span class="sd">  :var str address: IPv4 address of the directory</span>
+<span class="sd">  :var int or_port: port on which the relay services relay traffic</span>
+<span class="sd">  :var int dir_port: port on which directory information is available</span>
+<span class="sd">  :var str fingerprint: relay fingerprint</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">address</span><span class="p">,</span> <span class="n">or_port</span><span class="p">,</span> <span class="n">dir_port</span><span class="p">,</span> <span class="n">fingerprint</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">address</span> <span class="o">=</span> <span class="n">address</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">or_port</span> <span class="o">=</span> <span class="n">or_port</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">dir_port</span> <span class="o">=</span> <span class="n">dir_port</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">fingerprint</span> <span class="o">=</span> <span class="n">fingerprint</span>
+
+  <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">_hash_attr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;address&#39;</span><span class="p">,</span> <span class="s">&#39;or_port&#39;</span><span class="p">,</span> <span class="s">&#39;dir_port&#39;</span><span class="p">,</span> <span class="s">&#39;fingerprint&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">==</span> <span class="nb">hash</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">Directory</span><span class="p">)</span> <span class="k">else</span> <span class="bp">False</span>
+
+  <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span>
+
+</div>
+<div class="viewcode-block" id="DirectoryAuthority"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.DirectoryAuthority">[docs]</a><span class="k">class</span> <span class="nc">DirectoryAuthority</span><span class="p">(</span><span class="n">Directory</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Tor directory authority, a special type of relay `hardcoded into tor</span>
+<span class="sd">  &lt;https://gitweb.torproject.org/tor.git/tree/src/or/config.c#n819&gt;`_</span>
+<span class="sd">  that enumerates the other relays within the network.</span>
+
+<span class="sd">  At a very high level tor works as follows...</span>
+
+<span class="sd">  1. A volunteer starts up a new tor relay, during which it sends a `server</span>
+<span class="sd">     descriptor &lt;server_descriptor.html&gt;`_ to each of the directory</span>
+<span class="sd">     authorities.</span>
+
+<span class="sd">  2. Each hour the directory authorities make a `vote &lt;networkstatus.html&gt;`_</span>
+<span class="sd">     that says who they think the active relays are in the network and some</span>
+<span class="sd">     attributes about them.</span>
+
+<span class="sd">  3. The directory authorities send each other their votes, and compile that</span>
+<span class="sd">     into the `consensus &lt;networkstatus.html&gt;`_. This document is very similar</span>
+<span class="sd">     to the votes, the only difference being that the majority of the</span>
+<span class="sd">     authorities agree upon and sign this document. The idividual relay entries</span>
+<span class="sd">     in the vote or consensus is called `router status entries</span>
+<span class="sd">     &lt;router_status_entry.html&gt;`_.</span>
+
+<span class="sd">  4. Tor clients (people using the service) download the consensus from one of</span>
+<span class="sd">     the authorities or a mirror to determine the active relays within the</span>
+<span class="sd">     network. They in turn use this to construct their circuits and use the</span>
+<span class="sd">     network.</span>
+
+<span class="sd">  .. versionchanged:: 1.3.0</span>
+<span class="sd">     Added the is_bandwidth_authority attribute.</span>
+
+<span class="sd">  :var str nickname: nickname of the authority</span>
+<span class="sd">  :var str v3ident: identity key fingerprint used to sign votes and consensus</span>
+<span class="sd">  :var bool is_bandwidth_authority: **True** if this is a bandwidth authority,</span>
+<span class="sd">    **False** otherwise</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">address</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">or_port</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">dir_port</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">fingerprint</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">nickname</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">v3ident</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">is_bandwidth_authority</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">DirectoryAuthority</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">or_port</span><span class="p">,</span> <span class="n">dir_port</span><span class="p">,</span> <span class="n">fingerprint</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">nickname</span> <span class="o">=</span> <span class="n">nickname</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">v3ident</span> <span class="o">=</span> <span class="n">v3ident</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">is_bandwidth_authority</span> <span class="o">=</span> <span class="n">is_bandwidth_authority</span>
+
+  <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">_hash_attr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;nickname&#39;</span><span class="p">,</span> <span class="s">&#39;v3ident&#39;</span><span class="p">,</span> <span class="s">&#39;is_bandwidth_authority&#39;</span><span class="p">,</span> <span class="n">parent</span> <span class="o">=</span> <span class="n">Directory</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">==</span> <span class="nb">hash</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">DirectoryAuthority</span><span class="p">)</span> <span class="k">else</span> <span class="bp">False</span>
+
+  <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span>
+
+</div>
+<span class="n">DIRECTORY_AUTHORITIES</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="s">&#39;moria1&#39;</span><span class="p">:</span> <span class="n">DirectoryAuthority</span><span class="p">(</span>
+    <span class="n">nickname</span> <span class="o">=</span> <span class="s">&#39;moria1&#39;</span><span class="p">,</span>
+    <span class="n">address</span> <span class="o">=</span> <span class="s">&#39;128.31.0.39&#39;</span><span class="p">,</span>
+    <span class="n">or_port</span> <span class="o">=</span> <span class="mi">9101</span><span class="p">,</span>
+    <span class="n">dir_port</span> <span class="o">=</span> <span class="mi">9131</span><span class="p">,</span>
+    <span class="n">is_bandwidth_authority</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span>
+    <span class="n">fingerprint</span> <span class="o">=</span> <span class="s">&#39;9695DFC35FFEB861329B9F1AB04C46397020CE31&#39;</span><span class="p">,</span>
+    <span class="n">v3ident</span> <span class="o">=</span> <span class="s">&#39;D586D18309DED4CD6D57C18FDB97EFA96D330566&#39;</span><span class="p">,</span>
+  <span class="p">),</span>
+  <span class="s">&#39;tor26&#39;</span><span class="p">:</span> <span class="n">DirectoryAuthority</span><span class="p">(</span>
+    <span class="n">nickname</span> <span class="o">=</span> <span class="s">&#39;tor26&#39;</span><span class="p">,</span>
+    <span class="n">address</span> <span class="o">=</span> <span class="s">&#39;86.59.21.38&#39;</span><span class="p">,</span>
+    <span class="n">or_port</span> <span class="o">=</span> <span class="mi">443</span><span class="p">,</span>
+    <span class="n">dir_port</span> <span class="o">=</span> <span class="mi">80</span><span class="p">,</span>
+    <span class="n">is_bandwidth_authority</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span>
+    <span class="n">fingerprint</span> <span class="o">=</span> <span class="s">&#39;847B1F850344D7876491A54892F904934E4EB85D&#39;</span><span class="p">,</span>
+    <span class="n">v3ident</span> <span class="o">=</span> <span class="s">&#39;14C131DFC5C6F93646BE72FA1401C02A8DF2E8B4&#39;</span><span class="p">,</span>
+  <span class="p">),</span>
+  <span class="s">&#39;dizum&#39;</span><span class="p">:</span> <span class="n">DirectoryAuthority</span><span class="p">(</span>
+    <span class="n">nickname</span> <span class="o">=</span> <span class="s">&#39;dizum&#39;</span><span class="p">,</span>
+    <span class="n">address</span> <span class="o">=</span> <span class="s">&#39;194.109.206.212&#39;</span><span class="p">,</span>
+    <span class="n">or_port</span> <span class="o">=</span> <span class="mi">443</span><span class="p">,</span>
+    <span class="n">dir_port</span> <span class="o">=</span> <span class="mi">80</span><span class="p">,</span>
+    <span class="n">is_bandwidth_authority</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span>
+    <span class="n">fingerprint</span> <span class="o">=</span> <span class="s">&#39;7EA6EAD6FD83083C538F44038BBFA077587DD755&#39;</span><span class="p">,</span>
+    <span class="n">v3ident</span> <span class="o">=</span> <span class="s">&#39;E8A9C45EDE6D711294FADF8E7951F4DE6CA56B58&#39;</span><span class="p">,</span>
+  <span class="p">),</span>
+  <span class="s">&#39;gabelmoo&#39;</span><span class="p">:</span> <span class="n">DirectoryAuthority</span><span class="p">(</span>
+    <span class="n">nickname</span> <span class="o">=</span> <span class="s">&#39;gabelmoo&#39;</span><span class="p">,</span>
+    <span class="n">address</span> <span class="o">=</span> <span class="s">&#39;131.188.40.189&#39;</span><span class="p">,</span>
+    <span class="n">or_port</span> <span class="o">=</span> <span class="mi">443</span><span class="p">,</span>
+    <span class="n">dir_port</span> <span class="o">=</span> <span class="mi">80</span><span class="p">,</span>
+    <span class="n">is_bandwidth_authority</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span>
+    <span class="n">fingerprint</span> <span class="o">=</span> <span class="s">&#39;F2044413DAC2E02E3D6BCF4735A19BCA1DE97281&#39;</span><span class="p">,</span>
+    <span class="n">v3ident</span> <span class="o">=</span> <span class="s">&#39;ED03BB616EB2F60BEC80151114BB25CEF515B226&#39;</span><span class="p">,</span>
+  <span class="p">),</span>
+  <span class="s">&#39;dannenberg&#39;</span><span class="p">:</span> <span class="n">DirectoryAuthority</span><span class="p">(</span>
+    <span class="n">nickname</span> <span class="o">=</span> <span class="s">&#39;dannenberg&#39;</span><span class="p">,</span>
+    <span class="n">address</span> <span class="o">=</span> <span class="s">&#39;193.23.244.244&#39;</span><span class="p">,</span>
+    <span class="n">or_port</span> <span class="o">=</span> <span class="mi">443</span><span class="p">,</span>
+    <span class="n">dir_port</span> <span class="o">=</span> <span class="mi">80</span><span class="p">,</span>
+    <span class="n">is_bandwidth_authority</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span>
+    <span class="n">fingerprint</span> <span class="o">=</span> <span class="s">&#39;7BE683E65D48141321C5ED92F075C55364AC7123&#39;</span><span class="p">,</span>
+    <span class="n">v3ident</span> <span class="o">=</span> <span class="s">&#39;0232AF901C31A04EE9848595AF9BB7620D4C5B2E&#39;</span><span class="p">,</span>
+  <span class="p">),</span>
+  <span class="s">&#39;maatuska&#39;</span><span class="p">:</span> <span class="n">DirectoryAuthority</span><span class="p">(</span>
+    <span class="n">nickname</span> <span class="o">=</span> <span class="s">&#39;maatuska&#39;</span><span class="p">,</span>
+    <span class="n">address</span> <span class="o">=</span> <span class="s">&#39;171.25.193.9&#39;</span><span class="p">,</span>
+    <span class="n">or_port</span> <span class="o">=</span> <span class="mi">80</span><span class="p">,</span>
+    <span class="n">dir_port</span> <span class="o">=</span> <span class="mi">443</span><span class="p">,</span>
+    <span class="n">is_bandwidth_authority</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span>
+    <span class="n">fingerprint</span> <span class="o">=</span> <span class="s">&#39;BD6A829255CB08E66FBE7D3748363586E46B3810&#39;</span><span class="p">,</span>
+    <span class="n">v3ident</span> <span class="o">=</span> <span class="s">&#39;49015F787433103580E3B66A1707A00E60F2D15B&#39;</span><span class="p">,</span>
+  <span class="p">),</span>
+  <span class="s">&#39;Faravahar&#39;</span><span class="p">:</span> <span class="n">DirectoryAuthority</span><span class="p">(</span>
+    <span class="n">nickname</span> <span class="o">=</span> <span class="s">&#39;Faravahar&#39;</span><span class="p">,</span>
+    <span class="n">address</span> <span class="o">=</span> <span class="s">&#39;154.35.175.225&#39;</span><span class="p">,</span>
+    <span class="n">or_port</span> <span class="o">=</span> <span class="mi">443</span><span class="p">,</span>
+    <span class="n">dir_port</span> <span class="o">=</span> <span class="mi">80</span><span class="p">,</span>
+    <span class="n">is_bandwidth_authority</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span>
+    <span class="n">fingerprint</span> <span class="o">=</span> <span class="s">&#39;CF6D0AAFB385BE71B8E111FC5CFF4B47923733BC&#39;</span><span class="p">,</span>
+    <span class="n">v3ident</span> <span class="o">=</span> <span class="s">&#39;EFCBE720AB3A82B99F9E953CD5BF50F7EEFC7B97&#39;</span><span class="p">,</span>
+  <span class="p">),</span>
+  <span class="s">&#39;longclaw&#39;</span><span class="p">:</span> <span class="n">DirectoryAuthority</span><span class="p">(</span>
+    <span class="n">nickname</span> <span class="o">=</span> <span class="s">&#39;longclaw&#39;</span><span class="p">,</span>
+    <span class="n">address</span> <span class="o">=</span> <span class="s">&#39;199.254.238.52&#39;</span><span class="p">,</span>
+    <span class="n">or_port</span> <span class="o">=</span> <span class="mi">443</span><span class="p">,</span>
+    <span class="n">dir_port</span> <span class="o">=</span> <span class="mi">80</span><span class="p">,</span>
+    <span class="n">is_bandwidth_authority</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span>
+    <span class="n">fingerprint</span> <span class="o">=</span> <span class="s">&#39;74A910646BCEEFBCD2E874FC1DC997430F968145&#39;</span><span class="p">,</span>
+    <span class="n">v3ident</span> <span class="o">=</span> <span class="s">&#39;23D15D965BC35114467363C165C4F724B64B4F66&#39;</span><span class="p">,</span>
+  <span class="p">),</span>
+  <span class="s">&#39;Bifroest&#39;</span><span class="p">:</span> <span class="n">DirectoryAuthority</span><span class="p">(</span>
+    <span class="n">nickname</span> <span class="o">=</span> <span class="s">&#39;Bifroest&#39;</span><span class="p">,</span>
+    <span class="n">address</span> <span class="o">=</span> <span class="s">&#39;37.218.247.217&#39;</span><span class="p">,</span>
+    <span class="n">or_port</span> <span class="o">=</span> <span class="mi">443</span><span class="p">,</span>
+    <span class="n">dir_port</span> <span class="o">=</span> <span class="mi">80</span><span class="p">,</span>
+    <span class="n">is_bandwidth_authority</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span>
+    <span class="n">fingerprint</span> <span class="o">=</span> <span class="s">&#39;1D8F3A91C37C5D1C4C19B1AD1D0CFBE8BF72D8E1&#39;</span><span class="p">,</span>
+    <span class="n">v3ident</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span>  <span class="c"># does not vote in the consensus</span>
+  <span class="p">),</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="get_authorities"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.get_authorities">[docs]</a><span class="k">def</span> <span class="nf">get_authorities</span><span class="p">():</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the Tor directory authority information as of **Tor on 11/21/14**.</span>
+<span class="sd">  The directory information hardcoded into Tor and occasionally changes, so the</span>
+<span class="sd">  information this provides might not necessarily match your version of tor.</span>
+
+<span class="sd">  :returns: **dict** of **str** nicknames to :class:`~stem.descriptor.remote.DirectoryAuthority` instances</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">DIRECTORY_AUTHORITIES</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="FallbackDirectory"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.FallbackDirectory">[docs]</a><span class="k">class</span> <span class="nc">FallbackDirectory</span><span class="p">(</span><span class="n">Directory</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Particularly stable relays tor can instead of authorities when</span>
+<span class="sd">  bootstrapping. These relays are `hardcoded in tor</span>
+<span class="sd">  &lt;https://gitweb.torproject.org/tor.git/tree/src/or/fallback_dirs.inc&gt;`_.</span>
+
+<span class="sd">  For example, the following checks the performance of tor&#39;s fallback directories...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    import time</span>
+<span class="sd">    from stem.descriptor.remote import DescriptorDownloader, FallbackDirectory</span>
+
+<span class="sd">    downloader = DescriptorDownloader()</span>
+
+<span class="sd">    for fallback_directory in FallbackDirectory.from_cache().values():</span>
+<span class="sd">      start = time.time()</span>
+<span class="sd">      downloader.get_consensus(endpoints = [(fallback_directory.address, fallback_directory.dir_port)]).run()</span>
+<span class="sd">      print(&#39;Downloading the consensus took %0.2f from %s&#39; % (time.time() - start, fallback_directory.fingerprint))</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    % python example.py</span>
+<span class="sd">    Downloading the consensus took 5.07 from 0AD3FA884D18F89EEA2D89C019379E0E7FD94417</span>
+<span class="sd">    Downloading the consensus took 3.59 from C871C91489886D5E2E94C13EA1A5FDC4B6DC5204</span>
+<span class="sd">    Downloading the consensus took 4.16 from 74A910646BCEEFBCD2E874FC1DC997430F968145</span>
+<span class="sd">    ...</span>
+
+<span class="sd">  .. versionadded:: 1.5.0</span>
+
+<span class="sd">  :var str orport_v6: **(address, port)** tuple for the directory&#39;s IPv6</span>
+<span class="sd">    ORPort, or **None** if it doesn&#39;t have one</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">address</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">or_port</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">dir_port</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">fingerprint</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">orport_v6</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">FallbackDirectory</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">or_port</span><span class="p">,</span> <span class="n">dir_port</span><span class="p">,</span> <span class="n">fingerprint</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">orport_v6</span> <span class="o">=</span> <span class="n">orport_v6</span>
+
+  <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="FallbackDirectory.from_cache"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.FallbackDirectory.from_cache">[docs]</a>  <span class="k">def</span> <span class="nf">from_cache</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides fallback directory information cached with Stem. Unlike</span>
+<span class="sd">    :func:`~stem.descriptor.remote.FallbackDirectory.from_remote` this doesn&#39;t</span>
+<span class="sd">    have any system requirements, and is faster too. Only drawback is that</span>
+<span class="sd">    these fallback directories are only as up to date as the Stem release we&#39;re</span>
+<span class="sd">    using.</span>
+
+<span class="sd">    :returns: **dict** of **str** fingerprints to their</span>
+<span class="sd">      :class:`~stem.descriptor.remote.FallbackDirectory`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">conf</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">conf</span><span class="o">.</span><span class="n">Config</span><span class="p">()</span>
+    <span class="n">conf</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">CACHE_PATH</span><span class="p">)</span>
+
+    <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">fingerprint</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">([</span><span class="n">key</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">conf</span><span class="o">.</span><span class="n">keys</span><span class="p">()]):</span>
+      <span class="k">if</span> <span class="n">fingerprint</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;tor_commit&#39;</span><span class="p">,</span> <span class="s">&#39;stem_commit&#39;</span><span class="p">):</span>
+        <span class="k">continue</span>
+
+      <span class="n">attr</span> <span class="o">=</span> <span class="p">{}</span>
+
+      <span class="k">for</span> <span class="n">attr_name</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;address&#39;</span><span class="p">,</span> <span class="s">&#39;or_port&#39;</span><span class="p">,</span> <span class="s">&#39;dir_port&#39;</span><span class="p">,</span> <span class="s">&#39;orport6_address&#39;</span><span class="p">,</span> <span class="s">&#39;orport6_port&#39;</span><span class="p">):</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s">.</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fingerprint</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">)</span>
+        <span class="n">attr</span><span class="p">[</span><span class="n">attr_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">conf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">attr</span><span class="p">[</span><span class="n">attr_name</span><span class="p">]</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">attr_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;orport6_&#39;</span><span class="p">):</span>
+          <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; is missing from </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">CACHE_PATH</span><span class="p">))</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s">&#39;address&#39;</span><span class="p">]):</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">.address&#39; was an invalid IPv4 address (</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fingerprint</span><span class="p">,</span> <span class="n">attr</span><span class="p">[</span><span class="s">&#39;address&#39;</span><span class="p">]))</span>
+      <span class="k">elif</span> <span class="ow">not</span> <span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s">&#39;or_port&#39;</span><span class="p">]):</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">.or_port&#39; was an invalid port (</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fingerprint</span><span class="p">,</span> <span class="n">attr</span><span class="p">[</span><span class="s">&#39;or_port&#39;</span><span class="p">]))</span>
+      <span class="k">elif</span> <span class="ow">not</span> <span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s">&#39;dir_port&#39;</span><span class="p">]):</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">.dir_port&#39; was an invalid port (</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fingerprint</span><span class="p">,</span> <span class="n">attr</span><span class="p">[</span><span class="s">&#39;dir_port&#39;</span><span class="p">]))</span>
+      <span class="k">elif</span> <span class="n">attr</span><span class="p">[</span><span class="s">&#39;orport6_address&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv6_address</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s">&#39;orport6_address&#39;</span><span class="p">]):</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">.orport6_address&#39; was an invalid IPv6 address (</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fingerprint</span><span class="p">,</span> <span class="n">attr</span><span class="p">[</span><span class="s">&#39;orport6_address&#39;</span><span class="p">]))</span>
+      <span class="k">elif</span> <span class="n">attr</span><span class="p">[</span><span class="s">&#39;orport6_port&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s">&#39;orport6_port&#39;</span><span class="p">]):</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">.orport6_port&#39; was an invalid port (</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fingerprint</span><span class="p">,</span> <span class="n">attr</span><span class="p">[</span><span class="s">&#39;orport6_port&#39;</span><span class="p">]))</span>
+
+      <span class="k">if</span> <span class="n">attr</span><span class="p">[</span><span class="s">&#39;orport6_address&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="n">attr</span><span class="p">[</span><span class="s">&#39;orport6_port&#39;</span><span class="p">]:</span>
+        <span class="n">orport_v6</span> <span class="o">=</span> <span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s">&#39;orport6_address&#39;</span><span class="p">],</span> <span class="nb">int</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s">&#39;orport6_port&#39;</span><span class="p">]))</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">orport_v6</span> <span class="o">=</span> <span class="bp">None</span>
+
+      <span class="n">results</span><span class="p">[</span><span class="n">fingerprint</span><span class="p">]</span> <span class="o">=</span> <span class="n">FallbackDirectory</span><span class="p">(</span>
+        <span class="n">address</span> <span class="o">=</span> <span class="n">attr</span><span class="p">[</span><span class="s">&#39;address&#39;</span><span class="p">],</span>
+        <span class="n">or_port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s">&#39;or_port&#39;</span><span class="p">]),</span>
+        <span class="n">dir_port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s">&#39;dir_port&#39;</span><span class="p">]),</span>
+        <span class="n">fingerprint</span> <span class="o">=</span> <span class="n">fingerprint</span><span class="p">,</span>
+        <span class="n">orport_v6</span> <span class="o">=</span> <span class="n">orport_v6</span><span class="p">,</span>
+      <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">results</span>
+</div>
+  <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="FallbackDirectory.from_remote"><a class="viewcode-back" href="../../../api/descriptor/remote.html#stem.descriptor.remote.FallbackDirectory.from_remote">[docs]</a>  <span class="k">def</span> <span class="nf">from_remote</span><span class="p">(</span><span class="n">timeout</span> <span class="o">=</span> <span class="mi">60</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Reads and parses tor&#39;s latest fallback directories `from</span>
+<span class="sd">    gitweb.torproject.org</span>
+<span class="sd">    &lt;https://gitweb.torproject.org/tor.git/plain/src/or/fallback_dirs.inc&gt;`_.</span>
+<span class="sd">    Note that while convenient, this reliance on GitWeb means you should alway</span>
+<span class="sd">    call with a fallback, such as...</span>
+
+<span class="sd">    ::</span>
+
+<span class="sd">      try:</span>
+<span class="sd">        fallback_directories = stem.descriptor.remote.from_remote()</span>
+<span class="sd">      except IOError:</span>
+<span class="sd">        fallback_directories = stem.descriptor.remote.from_cache()</span>
+
+<span class="sd">    :param int timeout: seconds to wait before timing out the request</span>
+
+<span class="sd">    :returns: **dict** of **str** fingerprints to their</span>
+<span class="sd">      :class:`~stem.descriptor.remote.FallbackDirectory`</span>
+
+<span class="sd">    :raises: **IOError** if unable to retrieve the fallback directories</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">fallback_dir_page</span> <span class="o">=</span> <span class="n">str_tools</span><span class="o">.</span><span class="n">_to_unicode</span><span class="p">(</span><span class="n">urllib</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">GITWEB_FALLBACK_DIR_URL</span><span class="p">,</span> <span class="n">timeout</span> <span class="o">=</span> <span class="n">timeout</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+    <span class="k">except</span><span class="p">:</span>
+      <span class="n">exc</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">exc_info</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span>
+      <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;Unable to download tor&#39;s fallback directories from </span><span class="si">%s</span><span class="s">: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">GITWEB_FALLBACK_DIR_URL</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
+
+    <span class="c"># Example of an entry...</span>
+    <span class="c">#</span>
+    <span class="c">#   &quot;5.175.233.86:80 orport=443 id=5525D0429BFE5DC4F1B0E9DE47A4CFA169661E33&quot;</span>
+    <span class="c">#   &quot; ipv6=[2a03:b0c0:0:1010::a4:b001]:9001&quot;</span>
+    <span class="c">#   &quot; weight=43680&quot;,</span>
+
+    <span class="n">results</span><span class="p">,</span> <span class="n">attr</span> <span class="o">=</span> <span class="p">{},</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">fallback_dir_page</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
+      <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;&quot;&#39;</span><span class="p">):</span>
+        <span class="n">addr_line_match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;&quot;([\d\.]+):(\d+) orport=(\d+) id=([\dA-F]{40}).*&#39;</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+        <span class="n">ipv6_line_match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;&quot; ipv6=\[([\da-f:]+)\]:(\d+)&quot;&#39;</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">addr_line_match</span><span class="p">:</span>
+          <span class="n">address</span><span class="p">,</span> <span class="n">dir_port</span><span class="p">,</span> <span class="n">or_port</span><span class="p">,</span> <span class="n">fingerprint</span> <span class="o">=</span> <span class="n">addr_line_match</span><span class="o">.</span><span class="n">groups</span><span class="p">()</span>
+
+          <span class="k">if</span> <span class="ow">not</span> <span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> has an invalid IPv4 address: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fingerprint</span><span class="p">,</span> <span class="n">address</span><span class="p">))</span>
+          <span class="k">elif</span> <span class="ow">not</span> <span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">or_port</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> has an invalid or_port: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fingerprint</span><span class="p">,</span> <span class="n">or_port</span><span class="p">))</span>
+          <span class="k">elif</span> <span class="ow">not</span> <span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">dir_port</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> has an invalid dir_port: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fingerprint</span><span class="p">,</span> <span class="n">dir_port</span><span class="p">))</span>
+          <span class="k">elif</span> <span class="ow">not</span> <span class="n">tor_tools</span><span class="o">.</span><span class="n">is_valid_fingerprint</span><span class="p">(</span><span class="n">fingerprint</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> has an invalid fingerprint: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fingerprint</span><span class="p">,</span> <span class="n">fingerprint</span><span class="p">))</span>
+
+          <span class="n">attr</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s">&#39;address&#39;</span><span class="p">:</span> <span class="n">address</span><span class="p">,</span>
+            <span class="s">&#39;or_port&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">or_port</span><span class="p">),</span>
+            <span class="s">&#39;dir_port&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">dir_port</span><span class="p">),</span>
+            <span class="s">&#39;fingerprint&#39;</span><span class="p">:</span> <span class="n">fingerprint</span><span class="p">,</span>
+          <span class="p">}</span>
+        <span class="k">elif</span> <span class="n">ipv6_line_match</span><span class="p">:</span>
+          <span class="n">address</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="n">ipv6_line_match</span><span class="o">.</span><span class="n">groups</span><span class="p">()</span>
+
+          <span class="k">if</span> <span class="ow">not</span> <span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv6_address</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> has an invalid IPv6 address: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fingerprint</span><span class="p">,</span> <span class="n">address</span><span class="p">))</span>
+          <span class="k">elif</span> <span class="ow">not</span> <span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">port</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> has an invalid ORPort for its IPv6 endpoint: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fingerprint</span><span class="p">,</span> <span class="n">port</span><span class="p">))</span>
+
+          <span class="n">attr</span><span class="p">[</span><span class="s">&#39;orport_v6&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">port</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;&quot; weight=&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="s">&#39;fingerprint&#39;</span> <span class="ow">in</span> <span class="n">attr</span><span class="p">:</span>
+          <span class="n">results</span><span class="p">[</span><span class="n">attr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;fingerprint&#39;</span><span class="p">)]</span> <span class="o">=</span> <span class="n">FallbackDirectory</span><span class="p">(</span>
+            <span class="n">address</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;address&#39;</span><span class="p">),</span>
+            <span class="n">or_port</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;or_port&#39;</span><span class="p">),</span>
+            <span class="n">dir_port</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;dir_port&#39;</span><span class="p">),</span>
+            <span class="n">fingerprint</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;fingerprint&#39;</span><span class="p">),</span>
+            <span class="n">orport_v6</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;orport_v6&#39;</span><span class="p">),</span>
+          <span class="p">)</span>
+
+          <span class="n">attr</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">return</span> <span class="n">results</span>
+</div>
+  <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">_hash_attr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;orport_v6&#39;</span><span class="p">,</span> <span class="n">parent</span> <span class="o">=</span> <span class="n">Directory</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">==</span> <span class="nb">hash</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">FallbackDirectory</span><span class="p">)</span> <span class="k">else</span> <span class="bp">False</span>
+
+  <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_fallback_directory_differences</span><span class="p">(</span><span class="n">previous_directories</span><span class="p">,</span> <span class="n">new_directories</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides a description of how fallback directories differ.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+
+  <span class="n">added_fp</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">new_directories</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">previous_directories</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+  <span class="n">removed_fp</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">previous_directories</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">new_directories</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+  <span class="k">for</span> <span class="n">fp</span> <span class="ow">in</span> <span class="n">added_fp</span><span class="p">:</span>
+    <span class="n">directory</span> <span class="o">=</span> <span class="n">new_directories</span><span class="p">[</span><span class="n">fp</span><span class="p">]</span>
+
+    <span class="n">lines</span> <span class="o">+=</span> <span class="p">[</span>
+      <span class="s">&#39;* Added </span><span class="si">%s</span><span class="s"> as a new fallback directory:&#39;</span> <span class="o">%</span> <span class="n">directory</span><span class="o">.</span><span class="n">fingerprint</span><span class="p">,</span>
+      <span class="s">&#39;  address: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">directory</span><span class="o">.</span><span class="n">address</span><span class="p">,</span>
+      <span class="s">&#39;  or_port: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">directory</span><span class="o">.</span><span class="n">or_port</span><span class="p">,</span>
+      <span class="s">&#39;  dir_port: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">directory</span><span class="o">.</span><span class="n">dir_port</span><span class="p">,</span>
+      <span class="s">&#39;  orport_v6: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">directory</span><span class="o">.</span><span class="n">orport_v6</span> <span class="k">if</span> <span class="n">directory</span><span class="o">.</span><span class="n">orport_v6</span> <span class="k">else</span> <span class="s">&#39;[none]&#39;</span><span class="p">,</span>
+      <span class="s">&#39;&#39;</span><span class="p">,</span>
+    <span class="p">]</span>
+
+  <span class="k">for</span> <span class="n">fp</span> <span class="ow">in</span> <span class="n">removed_fp</span><span class="p">:</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;* Removed </span><span class="si">%s</span><span class="s"> as a fallback directory&#39;</span> <span class="o">%</span> <span class="n">fp</span><span class="p">)</span>
+
+  <span class="k">for</span> <span class="n">fp</span> <span class="ow">in</span> <span class="n">new_directories</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">fp</span> <span class="ow">in</span> <span class="n">added_fp</span> <span class="ow">or</span> <span class="n">fp</span> <span class="ow">in</span> <span class="n">removed_fp</span><span class="p">:</span>
+      <span class="k">continue</span>  <span class="c"># already discussed these</span>
+
+    <span class="n">previous_directory</span> <span class="o">=</span> <span class="n">previous_directories</span><span class="p">[</span><span class="n">fp</span><span class="p">]</span>
+    <span class="n">new_directory</span> <span class="o">=</span> <span class="n">new_directories</span><span class="p">[</span><span class="n">fp</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">previous_directory</span> <span class="o">!=</span> <span class="n">new_directory</span><span class="p">:</span>
+      <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;address&#39;</span><span class="p">,</span> <span class="s">&#39;or_port&#39;</span><span class="p">,</span> <span class="s">&#39;dir_port&#39;</span><span class="p">,</span> <span class="s">&#39;fingerprint&#39;</span><span class="p">,</span> <span class="s">&#39;orport_v6&#39;</span><span class="p">):</span>
+        <span class="n">old_attr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">previous_directory</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+        <span class="n">new_attr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">new_directory</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">old_attr</span> <span class="o">!=</span> <span class="n">new_attr</span><span class="p">:</span>
+          <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;* Changed the </span><span class="si">%s</span><span class="s"> of </span><span class="si">%s</span><span class="s"> from </span><span class="si">%s</span><span class="s"> to </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="n">fp</span><span class="p">,</span> <span class="n">old_attr</span><span class="p">,</span> <span class="n">new_attr</span><span class="p">))</span>
+
+  <span class="k">return</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

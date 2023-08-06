@@ -1,0 +1,212 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.descriptor.export &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem" href="../../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.descriptor.export</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.descriptor.export</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2012-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Toolkit for exporting descriptors to other formats.</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  export_csv - Exports descriptors to a CSV</span>
+<span class="sd">  export_csv_file - Writes exported CSV output to a file</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">csv</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="kn">from</span> <span class="nn">cStringIO</span> <span class="kn">import</span> <span class="n">StringIO</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+  <span class="kn">from</span> <span class="nn">io</span> <span class="kn">import</span> <span class="n">StringIO</span>
+
+<span class="kn">import</span> <span class="nn">stem.descriptor</span>
+<span class="kn">import</span> <span class="nn">stem.prereq</span>
+
+
+<span class="k">class</span> <span class="nc">_ExportDialect</span><span class="p">(</span><span class="n">csv</span><span class="o">.</span><span class="n">excel</span><span class="p">):</span>
+  <span class="n">lineterminator</span> <span class="o">=</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span>
+
+
+<div class="viewcode-block" id="export_csv"><a class="viewcode-back" href="../../../api/descriptor/export.html#stem.descriptor.export.export_csv">[docs]</a><span class="k">def</span> <span class="nf">export_csv</span><span class="p">(</span><span class="n">descriptors</span><span class="p">,</span> <span class="n">included_fields</span> <span class="o">=</span> <span class="p">(),</span> <span class="n">excluded_fields</span> <span class="o">=</span> <span class="p">(),</span> <span class="n">header</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides a newline separated CSV for one or more descriptors. If simply</span>
+<span class="sd">  provided with descriptors then the CSV contains all of its attributes,</span>
+<span class="sd">  labeled with a header row. Either &#39;included_fields&#39; or &#39;excluded_fields&#39; can</span>
+<span class="sd">  be used for more granular control over its attributes and the order.</span>
+
+<span class="sd">  :param Descriptor,list descriptors: either a</span>
+<span class="sd">    :class:`~stem.descriptor.Descriptor` or list of descriptors to be exported</span>
+<span class="sd">  :param list included_fields: attributes to include in the csv</span>
+<span class="sd">  :param list excluded_fields: attributes to exclude from the csv</span>
+<span class="sd">  :param bool header: if **True** then the first line will be a comma separated</span>
+<span class="sd">    list of the attribute names (**only supported in python 2.7 and higher**)</span>
+
+<span class="sd">  :returns: **str** of the CSV for the descriptors, one per line</span>
+<span class="sd">  :raises: **ValueError** if descriptors contain more than one descriptor type</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">output_buffer</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
+  <span class="n">export_csv_file</span><span class="p">(</span><span class="n">output_buffer</span><span class="p">,</span> <span class="n">descriptors</span><span class="p">,</span> <span class="n">included_fields</span><span class="p">,</span> <span class="n">excluded_fields</span><span class="p">,</span> <span class="n">header</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">output_buffer</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+
+</div>
+<div class="viewcode-block" id="export_csv_file"><a class="viewcode-back" href="../../../api/descriptor/export.html#stem.descriptor.export.export_csv_file">[docs]</a><span class="k">def</span> <span class="nf">export_csv_file</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="n">descriptors</span><span class="p">,</span> <span class="n">included_fields</span> <span class="o">=</span> <span class="p">(),</span> <span class="n">excluded_fields</span> <span class="o">=</span> <span class="p">(),</span> <span class="n">header</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Similar to :func:`stem.descriptor.export.export_csv`, except that the CSV is</span>
+<span class="sd">  written directly to a file.</span>
+
+<span class="sd">  :param file output_file: file to be written to</span>
+<span class="sd">  :param Descriptor,list descriptors: either a</span>
+<span class="sd">    :class:`~stem.descriptor.Descriptor` or list of descriptors to be exported</span>
+<span class="sd">  :param list included_fields: attributes to include in the csv</span>
+<span class="sd">  :param list excluded_fields: attributes to exclude from the csv</span>
+<span class="sd">  :param bool header: if **True** then the first line will be a comma separated</span>
+<span class="sd">    list of the attribute names (**only supported in python 2.7 and higher**)</span>
+
+<span class="sd">  :returns: **str** of the CSV for the descriptors, one per line</span>
+<span class="sd">  :raises: **ValueError** if descriptors contain more than one descriptor type</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">descriptors</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">Descriptor</span><span class="p">):</span>
+    <span class="n">descriptors</span> <span class="o">=</span> <span class="p">(</span><span class="n">descriptors</span><span class="p">,)</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">descriptors</span><span class="p">:</span>
+    <span class="k">return</span>
+
+  <span class="n">descriptor_type</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">descriptors</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+  <span class="n">descriptor_type_label</span> <span class="o">=</span> <span class="n">descriptor_type</span><span class="o">.</span><span class="n">__name__</span>
+  <span class="n">included_fields</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">included_fields</span><span class="p">)</span>
+
+  <span class="c"># If the user didn&#39;t specify the fields to include then export everything,</span>
+  <span class="c"># ordered alphabetically. If they did specify fields then make sure that</span>
+  <span class="c"># they exist.</span>
+
+  <span class="n">desc_attr</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">vars</span><span class="p">(</span><span class="n">descriptors</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+  <span class="k">if</span> <span class="n">included_fields</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">included_fields</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">field</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">desc_attr</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> does not have a &#39;</span><span class="si">%s</span><span class="s">&#39; attribute, valid fields are: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor_type_label</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">desc_attr</span><span class="p">)))</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="n">included_fields</span> <span class="o">=</span> <span class="p">[</span><span class="n">attr</span> <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">desc_attr</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">attr</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;_&#39;</span><span class="p">)]</span>
+
+  <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">excluded_fields</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">included_fields</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+      <span class="k">pass</span>
+
+  <span class="n">writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">DictWriter</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="n">included_fields</span><span class="p">,</span> <span class="n">dialect</span> <span class="o">=</span> <span class="n">_ExportDialect</span><span class="p">(),</span> <span class="n">extrasaction</span><span class="o">=</span><span class="s">&#39;ignore&#39;</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">header</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">stem</span><span class="o">.</span><span class="n">prereq</span><span class="o">.</span><span class="n">_is_python_26</span><span class="p">():</span>
+    <span class="n">writer</span><span class="o">.</span><span class="n">writeheader</span><span class="p">()</span>
+
+  <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">descriptors</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">desc</span><span class="p">,</span> <span class="n">stem</span><span class="o">.</span><span class="n">descriptor</span><span class="o">.</span><span class="n">Descriptor</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Unable to export a descriptor CSV since </span><span class="si">%s</span><span class="s"> is not a descriptor.&#39;</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">desc</span><span class="p">)</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">descriptor_type</span> <span class="o">!=</span> <span class="nb">type</span><span class="p">(</span><span class="n">desc</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;To export a descriptor CSV all of the descriptors must be of the same type. First descriptor was a </span><span class="si">%s</span><span class="s"> but we later got a </span><span class="si">%s</span><span class="s">.&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">descriptor_type_label</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">desc</span><span class="p">)))</span>
+
+    <span class="n">writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span class="nb">vars</span><span class="p">(</span><span class="n">desc</span><span class="p">))</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

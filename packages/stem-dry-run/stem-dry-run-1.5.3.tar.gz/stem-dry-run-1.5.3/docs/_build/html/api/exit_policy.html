@@ -1,0 +1,581 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Exit Policy &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>Exit Policy</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../api.html">API</a>
+            <ul>
+              <li><a href="control.html">stem.control</a></li>
+              <li><a href="connection.html">stem.connection</a></li>
+              <li><a href="socket.html">stem.socket</a></li>
+              <li><a href="process.html">stem.process</a></li>
+              <li><a href="response.html">stem.response</a></li>
+              <li><a href="#">stem.exit_policy</a></li>
+              <li><a href="version.html">stem.version</a></li>
+              <li><a href="../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../faq.html">FAQ</a></li>
+              <li><a href="../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="module-stem.exit_policy">
+<span id="exit-policy"></span><h1>Exit Policy<a class="headerlink" href="#module-stem.exit_policy" title="Permalink to this headline">¶</a></h1>
+<p>Representation of tor exit policies. These can be easily used to check if
+exiting to a destination is permissible or not. For instance...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">stem.exit_policy</span> <span class="kn">import</span> <span class="n">ExitPolicy</span><span class="p">,</span> <span class="n">MicroExitPolicy</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">policy</span> <span class="o">=</span> <span class="n">ExitPolicy</span><span class="p">(</span><span class="s">&#39;accept *:80&#39;</span><span class="p">,</span> <span class="s">&#39;accept *:443&#39;</span><span class="p">,</span> <span class="s">&#39;reject *:*&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span><span class="p">(</span><span class="n">policy</span><span class="p">)</span>
+<span class="go">accept *:80, accept *:443, reject *:*</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span><span class="p">(</span><span class="n">policy</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
+<span class="go">accept 80, 443</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">policy</span><span class="o">.</span><span class="n">can_exit_to</span><span class="p">(</span><span class="s">&#39;75.119.206.243&#39;</span><span class="p">,</span> <span class="mi">80</span><span class="p">)</span>
+<span class="go">True</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">policy</span> <span class="o">=</span> <span class="n">MicroExitPolicy</span><span class="p">(</span><span class="s">&#39;accept 80,443&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span><span class="p">(</span><span class="n">policy</span><span class="p">)</span>
+<span class="go">accept 80,443</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">policy</span><span class="o">.</span><span class="n">can_exit_to</span><span class="p">(</span><span class="s">&#39;75.119.206.243&#39;</span><span class="p">,</span> <span class="mi">80</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<div class="highlight-python"><pre>ExitPolicy - Exit policy for a Tor relay
+  |- MicroExitPolicy - Microdescriptor exit policy
+  |
+  |- can_exit_to - check if exiting to this destination is allowed or not
+  |- is_exiting_allowed - check if any exiting is allowed
+  |- summary - provides a short label, similar to a microdescriptor
+  |- has_private - checks if policy has anything expanded from the 'private' keyword
+  |- strip_private - provides a copy of the policy without 'private' entries
+  |- has_default - checks if policy ends with the defaultly appended suffix
+  |- strip_default - provides a copy of the policy without the default suffix
+  |- __str__  - string representation
+  +- __iter__ - ExitPolicyRule entries that this contains
+
+ExitPolicyRule - Single rule of an exit policy chain
+  |- MicroExitPolicyRule - Single rule for a microdescriptor policy
+  |
+  |- is_address_wildcard - checks if we'll accept any address
+  |- is_port_wildcard - checks if we'll accept any port
+  |- get_address_type - provides the protocol our ip address belongs to
+  |- is_match - checks if we match a given destination
+  |- get_mask - provides the address representation of our mask
+  |- get_masked_bits - provides the bit representation of our mask
+  |- is_default - flag indicating if this was part of the default end of a policy
+  |- is_private - flag indicating if this was expanded from a 'private' keyword
+  +- __str__ - string representation for this rule
+
+get_config_policy - provides the ExitPolicy based on torrc rules</pre>
+</div>
+<dl class="data">
+<dt id="stem.exit_policy.AddressType">
+<tt class="descclassname">stem.exit_policy.</tt><tt class="descname">AddressType</tt><big>(</big><em>enum</em><big>)</big><a class="headerlink" href="#stem.exit_policy.AddressType" title="Permalink to this definition">¶</a></dt>
+<dd><p>Enumerations for IP address types that can be in an exit policy.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="26%" />
+<col width="74%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">AddressType</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><strong>WILDCARD</strong></td>
+<td>any address of either IPv4 or IPv6</td>
+</tr>
+<tr class="row-odd"><td><strong>IPv4</strong></td>
+<td>IPv4 address</td>
+</tr>
+<tr class="row-even"><td><strong>IPv6</strong></td>
+<td>IPv6 address</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.exit_policy.get_config_policy">
+<tt class="descclassname">stem.exit_policy.</tt><tt class="descname">get_config_policy</tt><big>(</big><em>rules</em>, <em>ip_address=None</em><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#get_config_policy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.get_config_policy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts an ExitPolicy found in a torrc to a proper exit pattern. This
+accounts for...</p>
+<ul class="simple">
+<li>ports being optional</li>
+<li>the 'private' keyword</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>rules</strong> (<em>str,list</em>) -- comma separated rules or list to be converted</li>
+<li><strong>ip_address</strong> (<em>str</em>) -- this relay's IP address for the 'private' policy if
+it's present, this defaults to the local address</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><a class="reference internal" href="#stem.exit_policy.ExitPolicy" title="stem.exit_policy.ExitPolicy"><tt class="xref py py-class docutils literal"><span class="pre">ExitPolicy</span></tt></a> reflected by the rules</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last"><strong>ValueError</strong> if input isn't a valid tor exit policy</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.exit_policy.ExitPolicy">
+<em class="property">class </em><tt class="descclassname">stem.exit_policy.</tt><tt class="descname">ExitPolicy</tt><big>(</big><em>*rules</em><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#ExitPolicy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.ExitPolicy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Policy for the destinations that a relay allows or denies exiting to. This
+is, in effect, just a list of <a class="reference internal" href="#stem.exit_policy.ExitPolicyRule" title="stem.exit_policy.ExitPolicyRule"><tt class="xref py py-class docutils literal"><span class="pre">ExitPolicyRule</span></tt></a>
+entries.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>rules</strong> (<em>list</em>) -- <strong>str</strong> or <a class="reference internal" href="#stem.exit_policy.ExitPolicyRule" title="stem.exit_policy.ExitPolicyRule"><tt class="xref py py-class docutils literal"><span class="pre">ExitPolicyRule</span></tt></a>
+entries that make up this policy</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="stem.exit_policy.ExitPolicy.can_exit_to">
+<tt class="descname">can_exit_to</tt><big>(</big><em>*args</em>, <em>**kwds</em><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#ExitPolicy.can_exit_to"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.ExitPolicy.can_exit_to" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if this policy allows exiting to a given destination or not. If the
+address or port is omitted then this will check if we're allowed to exit to
+any instances of the defined address or port.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>address</strong> (<em>str</em>) -- IPv4 or IPv6 address (with or without brackets)</li>
+<li><strong>port</strong> (<em>int</em>) -- port number</li>
+<li><strong>strict</strong> (<em>bool</em>) -- if the address or port is excluded then check if we can
+exit to <strong>all</strong> instances of the defined address or port</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><strong>True</strong> if exiting to this destination is allowed, <strong>False</strong> otherwise</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.exit_policy.ExitPolicy.is_exiting_allowed">
+<tt class="descname">is_exiting_allowed</tt><big>(</big><em>*args</em>, <em>**kwds</em><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#ExitPolicy.is_exiting_allowed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.ExitPolicy.is_exiting_allowed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides <strong>True</strong> if the policy allows exiting whatsoever, <strong>False</strong>
+otherwise.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.exit_policy.ExitPolicy.summary">
+<tt class="descname">summary</tt><big>(</big><em>*args</em>, <em>**kwds</em><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#ExitPolicy.summary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.ExitPolicy.summary" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides a short description of our policy chain, similar to a
+microdescriptor. This excludes entries that don't cover all IP
+addresses, and is either white-list or blacklist policy based on
+the final entry. For instance...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">policy</span> <span class="o">=</span> <span class="n">ExitPolicy</span><span class="p">(</span><span class="s">&#39;accept *:80&#39;</span><span class="p">,</span> <span class="s">&#39;accept *:443&#39;</span><span class="p">,</span> <span class="s">&#39;reject *:*&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">policy</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
+<span class="go">&#39;accept 80, 443&#39;</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">policy</span> <span class="o">=</span> <span class="n">ExitPolicy</span><span class="p">(</span><span class="s">&#39;accept *:443&#39;</span><span class="p">,</span> <span class="s">&#39;reject *:1-1024&#39;</span><span class="p">,</span> <span class="s">&#39;accept *:*&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">policy</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
+<span class="go">&#39;reject 1-442, 444-1024&#39;</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>str</strong> with a concise summary for our policy</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.exit_policy.ExitPolicy.has_private">
+<tt class="descname">has_private</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#ExitPolicy.has_private"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.ExitPolicy.has_private" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if we have any rules expanded from the 'private' keyword. Tor
+appends these by default to the start of the policy and includes a dynamic
+address (the relay's public IP).</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.3.0.</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>True</strong> if we have any private rules expanded from the 'private'
+keyword, <strong>False</strong> otherwise</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.exit_policy.ExitPolicy.strip_private">
+<tt class="descname">strip_private</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#ExitPolicy.strip_private"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.ExitPolicy.strip_private" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides a copy of this policy without 'private' policy entries.</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.3.0.</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>ExitPolicy</strong> without private rules</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.exit_policy.ExitPolicy.has_default">
+<tt class="descname">has_default</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#ExitPolicy.has_default"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.ExitPolicy.has_default" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if we have the default policy suffix.</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.3.0.</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>True</strong> if we have the default policy suffix, <strong>False</strong> otherwise</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.exit_policy.ExitPolicy.strip_default">
+<tt class="descname">strip_default</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#ExitPolicy.strip_default"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.ExitPolicy.strip_default" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides a copy of this policy without the default policy suffix.</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.3.0.</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>ExitPolicy</strong> without default rules</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.exit_policy.MicroExitPolicy">
+<em class="property">class </em><tt class="descclassname">stem.exit_policy.</tt><tt class="descname">MicroExitPolicy</tt><big>(</big><em>policy</em><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#MicroExitPolicy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.MicroExitPolicy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.exit_policy.ExitPolicy" title="stem.exit_policy.ExitPolicy"><tt class="xref py py-class docutils literal"><span class="pre">stem.exit_policy.ExitPolicy</span></tt></a></p>
+<p>Exit policy provided by the microdescriptors. This is a distilled version of
+a normal <a class="reference internal" href="#stem.exit_policy.ExitPolicy" title="stem.exit_policy.ExitPolicy"><tt class="xref py py-class docutils literal"><span class="pre">ExitPolicy</span></tt></a> contains, just consisting of a
+list of ports that are either accepted or rejected. For instance...</p>
+<div class="highlight-python"><pre>accept 80,443       # only accepts common http ports
+reject 1-1024       # only accepts non-privileged ports</pre>
+</div>
+<p>Since these policies are a subset of the exit policy information (lacking IP
+ranges) clients can only use them to guess if a relay will accept traffic or
+not. To quote the <a class="reference external" href="https://gitweb.torproject.org/torspec.git/tree/dir-spec.txt">dir-spec</a> (section 3.2.1)...</p>
+<div class="highlight-python"><pre>With microdescriptors, clients don't learn exact exit policies:
+clients can only guess whether a relay accepts their request, try the
+BEGIN request, and might get end-reason-exit-policy if they guessed
+wrong, in which case they'll have to try elsewhere.</pre>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>is_accept</strong> (<em>bool</em>) -- <strong>True</strong> if these are ports that we accept, <strong>False</strong> if
+they're ports that we reject</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><strong>policy</strong> (<em>str</em>) -- policy string that describes this policy</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.exit_policy.ExitPolicyRule">
+<em class="property">class </em><tt class="descclassname">stem.exit_policy.</tt><tt class="descname">ExitPolicyRule</tt><big>(</big><em>rule</em><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#ExitPolicyRule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.ExitPolicyRule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Single rule from the user's exit policy. These rules are chained together to
+form complete policies that describe where a relay will and will not allow
+traffic to exit.</p>
+<p>The format of these rules are formally described in the <a class="reference external" href="https://gitweb.torproject.org/torspec.git/tree/dir-spec.txt">dir-spec</a> as an
+'exitpattern'. Note that while these are similar to tor's man page entry for
+ExitPolicies, it's not the exact same. An exitpattern is better defined and
+stricter in what it'll accept. For instance, ports are not optional and it
+does not contain the 'private' alias.</p>
+<p>This should be treated as an immutable object.</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.5.0: </span>Support for 'accept6/reject6' entries and '*4/6' wildcards.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first simple">
+<li><strong>is_accept</strong> (<em>bool</em>) -- indicates if exiting is allowed or disallowed</li>
+<li><strong>address</strong> (<em>str</em>) -- address that this rule is for</li>
+<li><strong>min_port</strong> (<em>int</em>) -- lower end of the port range that we include (inclusive)</li>
+<li><strong>max_port</strong> (<em>int</em>) -- upper end of the port range that we include (inclusive)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>rule</strong> (<em>str</em>) -- exit policy rule to be parsed</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last"><strong>ValueError</strong> if input isn't a valid tor exit policy rule</p>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="stem.exit_policy.ExitPolicyRule.is_address_wildcard">
+<tt class="descname">is_address_wildcard</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#ExitPolicyRule.is_address_wildcard"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.ExitPolicyRule.is_address_wildcard" title="Permalink to this definition">¶</a></dt>
+<dd><p><strong>True</strong> if we'll match against <strong>any</strong> address, <strong>False</strong> otherwise.</p>
+<p>Note that this is different than *4, *6, or '/0' address which are
+wildcards for only either IPv4 or IPv6.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>bool</strong> for if our address matching is a wildcard</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.exit_policy.ExitPolicyRule.is_port_wildcard">
+<tt class="descname">is_port_wildcard</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#ExitPolicyRule.is_port_wildcard"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.ExitPolicyRule.is_port_wildcard" title="Permalink to this definition">¶</a></dt>
+<dd><p><strong>True</strong> if we'll match against any port, <strong>False</strong> otherwise.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>bool</strong> for if our port matching is a wildcard</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.exit_policy.ExitPolicyRule.is_match">
+<tt class="descname">is_match</tt><big>(</big><em>address=None</em>, <em>port=None</em>, <em>strict=False</em><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#ExitPolicyRule.is_match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.ExitPolicyRule.is_match" title="Permalink to this definition">¶</a></dt>
+<dd><p><strong>True</strong> if we match against the given destination, <strong>False</strong> otherwise. If
+the address or port is omitted then this will check if we're allowed to
+exit to any instances of the defined address or port.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>address</strong> (<em>str</em>) -- IPv4 or IPv6 address (with or without brackets)</li>
+<li><strong>port</strong> (<em>int</em>) -- port number</li>
+<li><strong>strict</strong> (<em>bool</em>) -- if the address or port is excluded then check if we can
+exit to <strong>all</strong> instances of the defined address or port</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>bool</strong> indicating if we match against this destination</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last"><strong>ValueError</strong> if provided with a malformed address or port</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.exit_policy.ExitPolicyRule.get_address_type">
+<tt class="descname">get_address_type</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#ExitPolicyRule.get_address_type"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.ExitPolicyRule.get_address_type" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the <a class="reference internal" href="#stem.exit_policy.AddressType" title="stem.exit_policy.AddressType"><tt class="xref py py-data docutils literal"><span class="pre">AddressType</span></tt></a> for our policy.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><a class="reference internal" href="#stem.exit_policy.AddressType" title="stem.exit_policy.AddressType"><tt class="xref py py-data docutils literal"><span class="pre">AddressType</span></tt></a> for the type of address that we have</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.exit_policy.ExitPolicyRule.get_mask">
+<tt class="descname">get_mask</tt><big>(</big><em>cache=True</em><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#ExitPolicyRule.get_mask"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.ExitPolicyRule.get_mask" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the address represented by our mask. This is <strong>None</strong> if our
+address type is a wildcard.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>cache</strong> (<em>bool</em>) -- caches the result if <strong>True</strong></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">str of our subnet mask for the address (ex. '255.255.255.0')</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.exit_policy.ExitPolicyRule.get_masked_bits">
+<tt class="descname">get_masked_bits</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#ExitPolicyRule.get_masked_bits"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.ExitPolicyRule.get_masked_bits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the number of bits our subnet mask represents. This is <strong>None</strong> if
+our mask can't have a bit representation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">int with the bit representation of our mask</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.exit_policy.ExitPolicyRule.is_private">
+<tt class="descname">is_private</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#ExitPolicyRule.is_private"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.ExitPolicyRule.is_private" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if this rule was expanded from the 'private' policy keyword.</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.3.0.</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>True</strong> if this rule was expanded from the 'private' keyword, <strong>False</strong> otherwise.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.exit_policy.ExitPolicyRule.is_default">
+<tt class="descname">is_default</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#ExitPolicyRule.is_default"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.ExitPolicyRule.is_default" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if this rule belongs to the default exit policy suffix.</p>
+<p class="versionadded">
+<span class="versionmodified">New in version 1.3.0.</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>True</strong> if this rule was part of the default end of a policy, <strong>False</strong> otherwise.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.exit_policy.MicroExitPolicyRule">
+<em class="property">class </em><tt class="descclassname">stem.exit_policy.</tt><tt class="descname">MicroExitPolicyRule</tt><big>(</big><em>is_accept</em>, <em>min_port</em>, <em>max_port</em><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#MicroExitPolicyRule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.MicroExitPolicyRule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stem.exit_policy.ExitPolicyRule" title="stem.exit_policy.ExitPolicyRule"><tt class="xref py py-class docutils literal"><span class="pre">stem.exit_policy.ExitPolicyRule</span></tt></a></p>
+<p>Lighter weight ExitPolicyRule derivative for microdescriptors.</p>
+<dl class="method">
+<dt id="stem.exit_policy.MicroExitPolicyRule.is_address_wildcard">
+<tt class="descname">is_address_wildcard</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#MicroExitPolicyRule.is_address_wildcard"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.MicroExitPolicyRule.is_address_wildcard" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="stem.exit_policy.MicroExitPolicyRule.get_address_type">
+<tt class="descname">get_address_type</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#MicroExitPolicyRule.get_address_type"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.MicroExitPolicyRule.get_address_type" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="stem.exit_policy.MicroExitPolicyRule.get_mask">
+<tt class="descname">get_mask</tt><big>(</big><em>cache=True</em><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#MicroExitPolicyRule.get_mask"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.MicroExitPolicyRule.get_mask" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="stem.exit_policy.MicroExitPolicyRule.get_masked_bits">
+<tt class="descname">get_masked_bits</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/stem/exit_policy.html#MicroExitPolicyRule.get_masked_bits"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.exit_policy.MicroExitPolicyRule.get_masked_bits" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

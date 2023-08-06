@@ -1,0 +1,157 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>The Little Relay that Could &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>The Little Relay that Could</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="#">Hello World</a></li>
+              <li><a href="to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="over_the_river.html">Hidden Services</a></li>
+              <li><a href="mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="east_of_the_sun.html">Utilities</a></li>
+              <li><a href="down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../api.html">API</a>
+            <ul>
+              <li><a href="../api/control.html">stem.control</a></li>
+              <li><a href="../api/connection.html">stem.connection</a></li>
+              <li><a href="../api/socket.html">stem.socket</a></li>
+              <li><a href="../api/process.html">stem.process</a></li>
+              <li><a href="../api/response.html">stem.response</a></li>
+              <li><a href="../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../api/version.html">stem.version</a></li>
+              <li><a href="../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../faq.html">FAQ</a></li>
+              <li><a href="../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="the-little-relay-that-could">
+<h1>The Little Relay that Could<a class="headerlink" href="#the-little-relay-that-could" title="Permalink to this headline">¶</a></h1>
+<p>Let's say you just set up your very first <a class="reference external" href="https://www.torproject.org/docs/tor-doc-relay.html.en">Tor relay</a> (thank you!), and now
+you want to write a script that tells you how much it is being used.</p>
+<p>First, for any script to talk with your relay it will need to have a control
+port available. This is a port that's usually only available on localhost and
+protected by either a <strong>password</strong> or <strong>authentication cookie</strong>.</p>
+<p>Look at your <a class="reference external" href="https://www.torproject.org/docs/faq.html.en#torrc">torrc</a> for
+the following configuration options...</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="c"># This provides a port for our script to talk with. If you set this then be</span>
+<span class="c"># sure to also set either CookieAuthentication *or* HashedControlPassword!</span>
+<span class="c">#</span>
+<span class="c"># You could also use ControlSocket instead of ControlPort, which provides a</span>
+<span class="c"># file based socket. You don&#39;t need to have authentication if you use</span>
+<span class="c"># ControlSocket. For this example however we&#39;ll use a port.</span>
+
+ControlPort 9051
+
+<span class="c"># Setting this will make Tor write an authentication cookie. Anything with</span>
+<span class="c"># permission to read this file can connect to Tor. If you&#39;re going to run</span>
+<span class="c"># your script with the same user or permission group as Tor then this is the</span>
+<span class="c"># easiest method of authentication to use.</span>
+
+CookieAuthentication 1
+
+<span class="c"># Alternatively we can authenticate with a password. To set a password first</span>
+<span class="c"># get its hash...</span>
+<span class="c">#</span>
+<span class="c"># % tor --hash-password &quot;my_password&quot;</span>
+<span class="c"># 16:E600ADC1B52C80BB6022A0E999A7734571A451EB6AE50FED489B72E3DF</span>
+<span class="c">#</span>
+<span class="c"># ... and use that for the HashedControlPassword in your torrc.</span>
+
+HashedControlPassword 16:E600ADC1B52C80BB6022A0E999A7734571A451EB6AE50FED489B72E3DF
+</pre></div>
+</div>
+<p>When you change your torrc you'll need to either restart Tor or issue a SIGHUP
+for the new settings to take effect. Now let's write a script that tells us how
+many bytes Tor has sent and received since it started. Note that there are a
+<a class="reference external" href="../faq.html#how-do-i-connect-to-tor">few ways to connect to Tor</a>. If you're
+unfamiliar with the '<strong>with</strong>' keyword then see <a class="reference external" href="../faq.html#what-is-that-with-keyword-i-keep-seeing-in-the-tutorials">here</a>...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">stem.control</span> <span class="kn">import</span> <span class="n">Controller</span>
+
+<span class="k">with</span> <span class="n">Controller</span><span class="o">.</span><span class="n">from_port</span><span class="p">(</span><span class="n">port</span> <span class="o">=</span> <span class="mi">9051</span><span class="p">)</span> <span class="k">as</span> <span class="n">controller</span><span class="p">:</span>
+  <span class="n">controller</span><span class="o">.</span><span class="n">authenticate</span><span class="p">()</span>  <span class="c"># provide the password here if you set one</span>
+
+  <span class="n">bytes_read</span> <span class="o">=</span> <span class="n">controller</span><span class="o">.</span><span class="n">get_info</span><span class="p">(</span><span class="s">&quot;traffic/read&quot;</span><span class="p">)</span>
+  <span class="n">bytes_written</span> <span class="o">=</span> <span class="n">controller</span><span class="o">.</span><span class="n">get_info</span><span class="p">(</span><span class="s">&quot;traffic/written&quot;</span><span class="p">)</span>
+
+  <span class="k">print</span><span class="p">(</span><span class="s">&quot;My Tor relay has read </span><span class="si">%s</span><span class="s"> bytes and written </span><span class="si">%s</span><span class="s">.&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">bytes_read</span><span class="p">,</span> <span class="n">bytes_written</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-python"><pre>% python example.py
+My Tor relay has read 33406 bytes and written 29649.</pre>
+</div>
+<p>Congratulations! You've just written your first controller script.</p>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

@@ -1,0 +1,679 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Configuration File Handling &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>Configuration File Handling</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../index.html">Home</a></li>
+          <li><a href="../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../api.html">API</a>
+            <ul>
+              <li><a href="../control.html">stem.control</a></li>
+              <li><a href="../connection.html">stem.connection</a></li>
+              <li><a href="../socket.html">stem.socket</a></li>
+              <li><a href="../process.html">stem.process</a></li>
+              <li><a href="../response.html">stem.response</a></li>
+              <li><a href="../exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../version.html">stem.version</a></li>
+              <li><a href="../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../faq.html">FAQ</a></li>
+              <li><a href="../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="module-stem.util.conf">
+<span id="configuration-file-handling"></span><h1>Configuration File Handling<a class="headerlink" href="#module-stem.util.conf" title="Permalink to this headline">¶</a></h1>
+<p>Handlers for text configuration files. Configurations are simple string to
+string mappings, with the configuration files using the following rules...</p>
+<ul class="simple">
+<li>the key/value is separated by a space</li>
+<li>anything after a '#' is ignored as a comment</li>
+<li>excess whitespace is trimmed</li>
+<li>empty lines are ignored</li>
+<li>multi-line values can be defined by following the key with lines starting
+with a '|'</li>
+</ul>
+<p>For instance...</p>
+<div class="highlight-python"><pre># This is my sample config
+user.name Galen
+user.password yabba1234 # here's an inline comment
+user.notes takes a fancy to pepperjack cheese
+blankEntry.example
+
+msg.greeting
+|Multi-line message exclaiming of the
+|wonder and awe that is pepperjack!</pre>
+</div>
+<p>... would be loaded as...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="s">&#39;user.name&#39;</span><span class="p">:</span> <span class="s">&#39;Galen&#39;</span><span class="p">,</span>
+  <span class="s">&#39;user.password&#39;</span><span class="p">:</span> <span class="s">&#39;yabba1234&#39;</span><span class="p">,</span>
+  <span class="s">&#39;user.notes&#39;</span><span class="p">:</span> <span class="s">&#39;takes a fancy to pepperjack cheese&#39;</span><span class="p">,</span>
+  <span class="s">&#39;blankEntry.example&#39;</span><span class="p">:</span> <span class="s">&#39;&#39;</span><span class="p">,</span>
+  <span class="s">&#39;msg.greeting&#39;</span><span class="p">:</span> <span class="s">&#39;Multi-line message exclaiming of the</span><span class="se">\n</span><span class="s">wonder and awe that is pepperjack!&#39;</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Configurations are managed via the <a class="reference internal" href="#stem.util.conf.Config" title="stem.util.conf.Config"><tt class="xref py py-class docutils literal"><span class="pre">Config</span></tt></a> class. The
+<a class="reference internal" href="#stem.util.conf.Config" title="stem.util.conf.Config"><tt class="xref py py-class docutils literal"><span class="pre">Config</span></tt></a> can be be used directly with its
+<a class="reference internal" href="#stem.util.conf.Config.get" title="stem.util.conf.Config.get"><tt class="xref py py-func docutils literal"><span class="pre">get()</span></tt></a> and <a class="reference internal" href="#stem.util.conf.Config.set" title="stem.util.conf.Config.set"><tt class="xref py py-func docutils literal"><span class="pre">set()</span></tt></a>
+methods, but usually modules will want a local dictionary with just the
+configurations that it cares about.</p>
+<p>To do this use the <a class="reference internal" href="#stem.util.conf.config_dict" title="stem.util.conf.config_dict"><tt class="xref py py-func docutils literal"><span class="pre">config_dict()</span></tt></a> function. For example...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">getpass</span>
+<span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">conf</span><span class="p">,</span> <span class="n">connection</span>
+
+<span class="k">def</span> <span class="nf">config_validator</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+  <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s">&#39;timeout&#39;</span><span class="p">:</span>
+    <span class="c"># require at least a one second timeout</span>
+    <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="n">key</span> <span class="o">==</span> <span class="s">&#39;endpoint&#39;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">connection</span><span class="o">.</span><span class="n">is_valid_ipv4_address</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; isn&#39;t a valid IPv4 address&quot;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="n">key</span> <span class="o">==</span> <span class="s">&#39;port&#39;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">connection</span><span class="o">.</span><span class="n">is_valid_port</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39; isn&#39;t a valid port&quot;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="n">key</span> <span class="o">==</span> <span class="s">&#39;retries&#39;</span><span class="p">:</span>
+    <span class="c"># negative retries really don&#39;t make sense</span>
+    <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+<span class="n">CONFIG</span> <span class="o">=</span> <span class="n">conf</span><span class="o">.</span><span class="n">config_dict</span><span class="p">(</span><span class="s">&#39;ssh_login&#39;</span><span class="p">,</span> <span class="p">{</span>
+  <span class="s">&#39;username&#39;</span><span class="p">:</span> <span class="n">getpass</span><span class="o">.</span><span class="n">getuser</span><span class="p">(),</span>
+  <span class="s">&#39;password&#39;</span><span class="p">:</span> <span class="s">&#39;&#39;</span><span class="p">,</span>
+  <span class="s">&#39;timeout&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+  <span class="s">&#39;endpoint&#39;</span><span class="p">:</span> <span class="s">&#39;263.12.8.0&#39;</span><span class="p">,</span>
+  <span class="s">&#39;port&#39;</span><span class="p">:</span> <span class="mi">22</span><span class="p">,</span>
+  <span class="s">&#39;reconnect&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+  <span class="s">&#39;retries&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+<span class="p">},</span> <span class="n">config_validator</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>There's several things going on here so lets take it step by step...</p>
+<ul class="simple">
+<li>The <a class="reference internal" href="#stem.util.conf.config_dict" title="stem.util.conf.config_dict"><tt class="xref py py-func docutils literal"><span class="pre">config_dict()</span></tt></a> provides a dictionary that's bound
+to a given configuration. If the &quot;ssh_proxy_config&quot; configuration changes
+then so will the contents of CONFIG.</li>
+<li>The dictionary we're passing to <a class="reference internal" href="#stem.util.conf.config_dict" title="stem.util.conf.config_dict"><tt class="xref py py-func docutils literal"><span class="pre">config_dict()</span></tt></a> provides
+two important pieces of information: default values and their types. See the
+Config's <a class="reference internal" href="#stem.util.conf.Config.get" title="stem.util.conf.Config.get"><tt class="xref py py-func docutils literal"><span class="pre">get()</span></tt></a> method for how these type
+inferences work.</li>
+<li>The config_validator is a hook we're adding to make sure CONFIG only gets
+values we think are valid. In this case it ensures that our timeout value
+is at least one second, and rejects endpoints or ports that are invalid.</li>
+</ul>
+<p>Now lets say our user has the following configuration file...</p>
+<div class="highlight-python"><pre>username waddle_doo
+password jabberwocky
+timeout -15
+port 9000000
+retries lots
+reconnect true
+logging debug</pre>
+</div>
+<p>... and we load it as follows...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">conf</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">our_config</span> <span class="o">=</span> <span class="n">conf</span><span class="o">.</span><span class="n">get_config</span><span class="p">(</span><span class="s">&#39;ssh_login&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">our_config</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s">&#39;/home/atagar/user_config&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span> <span class="n">CONFIG</span>  
+<span class="go">{</span>
+<span class="go">  &quot;username&quot;: &quot;waddle_doo&quot;,</span>
+<span class="go">  &quot;password&quot;: &quot;jabberwocky&quot;,</span>
+<span class="go">  &quot;timeout&quot;: 1,</span>
+<span class="go">  &quot;endpoint&quot;: &quot;263.12.8.0&quot;,</span>
+<span class="go">  &quot;port&quot;: 22,</span>
+<span class="go">  &quot;reconnect&quot;: True,</span>
+<span class="go">  &quot;retries&quot;: 3,</span>
+<span class="go">}</span>
+</pre></div>
+</div>
+<p>Here's an expanation of what happened...</p>
+<ul class="simple">
+<li>the username, password, and reconnect attributes took the values in the
+configuration file</li>
+<li>the 'config_validator' we added earlier allows for a minimum timeout of one
+and rejected the invalid port (with a log message)</li>
+<li>we weren't able to convert the retries' &quot;lots&quot; value to an integer so it kept
+its default value and logged a warning</li>
+<li>the user didn't supply an endpoint so that remained unchanged</li>
+<li>our CONFIG didn't have a 'logging' attribute so it was ignored</li>
+</ul>
+<p><strong>Module Overview:</strong></p>
+<div class="highlight-python"><pre>config_dict - provides a dictionary that's kept in sync with our config
+get_config - singleton for getting configurations
+uses_settings - provides an annotation for functions that use configurations
+parse_enum_csv - helper funcion for parsing confguration entries for enums
+
+Config - Custom configuration
+  |- load - reads a configuration file
+  |- save - writes the current configuration to a file
+  |- clear - empties our loaded configuration contents
+  |- add_listener - notifies the given listener when an update occurs
+  |- clear_listeners - removes any attached listeners
+  |- keys - provides keys in the loaded configuration
+  |- set - sets the given key/value pair
+  |- unused_keys - provides keys that have never been requested
+  |- get - provides the value for a given key, with type inference
+  +- get_value - provides the value for a given key as a string</pre>
+</div>
+<dl class="function">
+<dt id="stem.util.conf.config_dict">
+<tt class="descclassname">stem.util.conf.</tt><tt class="descname">config_dict</tt><big>(</big><em>handle</em>, <em>conf_mappings</em>, <em>handler=None</em><big>)</big><a class="reference internal" href="../../_modules/stem/util/conf.html#config_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.conf.config_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Makes a dictionary that stays synchronized with a configuration.</p>
+<p>This takes a dictionary of 'config_key =&gt; default_value' mappings and
+changes the values to reflect our current configuration. This will leave
+the previous values alone if...</p>
+<ul class="simple">
+<li>we don't have a value for that config_key</li>
+<li>we can't convert our value to be the same type as the default_value</li>
+</ul>
+<p>If a handler is provided then this is called just prior to assigning new
+values to the config_dict. The handler function is expected to accept the
+(key, value) for the new values and return what we should actually insert
+into the dictionary. If this returns None then the value is updated as
+normal.</p>
+<p>For more information about how we convert types see our
+<a class="reference internal" href="#stem.util.conf.Config.get" title="stem.util.conf.Config.get"><tt class="xref py py-func docutils literal"><span class="pre">get()</span></tt></a> method.</p>
+<p><strong>The dictionary you get from this is manged by the Config class and should
+be treated as being read-only.</strong></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>handle</strong> (<em>str</em>) -- unique identifier for a config instance</li>
+<li><strong>conf_mappings</strong> (<em>dict</em>) -- config key/value mappings used as our defaults</li>
+<li><strong>handler</strong> (<em>functor</em>) -- function referred to prior to assigning values</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.util.conf.get_config">
+<tt class="descclassname">stem.util.conf.</tt><tt class="descname">get_config</tt><big>(</big><em>handle</em><big>)</big><a class="reference internal" href="../../_modules/stem/util/conf.html#get_config"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.conf.get_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Singleton constructor for configuration file instances. If a configuration
+already exists for the handle then it's returned. Otherwise a fresh instance
+is constructed.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>handle</strong> (<em>str</em>) -- unique identifier used to access this config instance</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.util.conf.uses_settings">
+<tt class="descclassname">stem.util.conf.</tt><tt class="descname">uses_settings</tt><big>(</big><em>handle</em>, <em>path</em>, <em>lazy_load=True</em><big>)</big><a class="reference internal" href="../../_modules/stem/util/conf.html#uses_settings"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.conf.uses_settings" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides a function that can be used as a decorator for other functions that
+require settings to be loaded. Functions with this decorator will be provided
+with the configuration as its 'config' keyword argument.</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.3.0: </span>Omits the 'config' argument if the funcion we're decorating doesn't accept
+it.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">uses_settings</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">conf</span><span class="o">.</span><span class="n">uses_settings</span><span class="p">(</span><span class="s">&#39;my_app&#39;</span><span class="p">,</span> <span class="s">&#39;/path/to/settings.cfg&#39;</span><span class="p">)</span>
+
+<span class="nd">@uses_settings</span>
+<span class="k">def</span> <span class="nf">my_function</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+  <span class="k">print</span> <span class="s">&#39;hello </span><span class="si">%s</span><span class="s">!&#39;</span> <span class="o">%</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;username&#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>handle</strong> (<em>str</em>) -- hande for the configuration</li>
+<li><strong>path</strong> (<em>str</em>) -- path where the configuration should be loaded from</li>
+<li><strong>lazy_load</strong> (<em>bool</em>) -- loads the configuration file when the decorator is
+used if true, otherwise it's loaded right away</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>function</strong> that can be used as a decorator to provide the
+configuration</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last"><strong>IOError</strong> if we fail to read the configuration file, if
+<strong>lazy_load</strong> is true then this arises when we use the decorator</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.util.conf.parse_enum">
+<tt class="descclassname">stem.util.conf.</tt><tt class="descname">parse_enum</tt><big>(</big><em>key</em>, <em>value</em>, <em>enumeration</em><big>)</big><a class="reference internal" href="../../_modules/stem/util/conf.html#parse_enum"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.conf.parse_enum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the enumeration value for a given key. This is a case insensitive
+lookup and raises an exception if the enum key doesn't exist.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>key</strong> (<em>str</em>) -- configuration key being looked up</li>
+<li><strong>value</strong> (<em>str</em>) -- value to be parsed</li>
+<li><strong>enumeration</strong> (<a class="reference internal" href="enum.html#stem.util.enum.Enum" title="stem.util.enum.Enum"><em>stem.util.enum.Enum</em></a>) -- enumeration the values should be in</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">enumeration value</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last"><strong>ValueError</strong> if the <strong>value</strong> isn't among the enumeration keys</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stem.util.conf.parse_enum_csv">
+<tt class="descclassname">stem.util.conf.</tt><tt class="descname">parse_enum_csv</tt><big>(</big><em>key</em>, <em>value</em>, <em>enumeration</em>, <em>count=None</em><big>)</big><a class="reference internal" href="../../_modules/stem/util/conf.html#parse_enum_csv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.conf.parse_enum_csv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parses a given value as being a comma separated listing of enumeration keys,
+returning the corresponding enumeration values. This is intended to be a
+helper for config handlers. The checks this does are case insensitive.</p>
+<p>The <strong>count</strong> attribute can be used to make assertions based on the number of
+values. This can be...</p>
+<ul class="simple">
+<li>None to indicate that there's no restrictions.</li>
+<li>An int to indicate that we should have this many values.</li>
+<li>An (int, int) tuple to indicate the range that values can be in. This range
+is inclusive and either can be None to indicate the lack of a lower or
+upper bound.</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>key</strong> (<em>str</em>) -- configuration key being looked up</li>
+<li><strong>value</strong> (<em>str</em>) -- value to be parsed</li>
+<li><strong>enumeration</strong> (<a class="reference internal" href="enum.html#stem.util.enum.Enum" title="stem.util.enum.Enum"><em>stem.util.enum.Enum</em></a>) -- enumeration the values should be in</li>
+<li><strong>count</strong> (<em>int,tuple</em>) -- validates that we have this many items</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">list with the enumeration values</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last"><strong>ValueError</strong> if the count assertion fails or the <strong>value</strong> entries
+don't match the enumeration keys</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="stem.util.conf.Config">
+<em class="property">class </em><tt class="descclassname">stem.util.conf.</tt><tt class="descname">Config</tt><a class="reference internal" href="../../_modules/stem/util/conf.html#Config"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.conf.Config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Handler for easily working with custom configurations, providing persistence
+to and from files. All operations are thread safe.</p>
+<p><strong>Example usage:</strong></p>
+<p>User has a file at '/home/atagar/myConfig' with...</p>
+<div class="highlight-python"><pre>destination.ip 1.2.3.4
+destination.port blarg
+
+startup.run export PATH=$PATH:~/bin
+startup.run alias l=ls</pre>
+</div>
+<p>And they have a script with...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">conf</span>
+
+<span class="c"># Configuration values we&#39;ll use in this file. These are mappings of</span>
+<span class="c"># configuration keys to the default values we&#39;ll use if the user doesn&#39;t</span>
+<span class="c"># have something different in their config file (or it doesn&#39;t match this</span>
+<span class="c"># type).</span>
+
+<span class="n">ssh_config</span> <span class="o">=</span> <span class="n">conf</span><span class="o">.</span><span class="n">config_dict</span><span class="p">(</span><span class="s">&#39;ssh_login&#39;</span><span class="p">,</span> <span class="p">{</span>
+  <span class="s">&#39;login.user&#39;</span><span class="p">:</span> <span class="s">&#39;atagar&#39;</span><span class="p">,</span>
+  <span class="s">&#39;login.password&#39;</span><span class="p">:</span> <span class="s">&#39;pepperjack_is_awesome!&#39;</span><span class="p">,</span>
+  <span class="s">&#39;destination.ip&#39;</span><span class="p">:</span> <span class="s">&#39;127.0.0.1&#39;</span><span class="p">,</span>
+  <span class="s">&#39;destination.port&#39;</span><span class="p">:</span> <span class="mi">22</span><span class="p">,</span>
+  <span class="s">&#39;startup.run&#39;</span><span class="p">:</span> <span class="p">[],</span>
+<span class="p">})</span>
+
+<span class="c"># Makes an empty config instance with the handle of &#39;ssh_login&#39;. This is</span>
+<span class="c"># a singleton so other classes can fetch this same configuration from</span>
+<span class="c"># this handle.</span>
+
+<span class="n">user_config</span> <span class="o">=</span> <span class="n">conf</span><span class="o">.</span><span class="n">get_config</span><span class="p">(</span><span class="s">&#39;ssh_login&#39;</span><span class="p">)</span>
+
+<span class="c"># Loads the user&#39;s configuration file, warning if this fails.</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="n">user_config</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s">&quot;/home/atagar/myConfig&quot;</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+  <span class="k">print</span> <span class="s">&quot;Unable to load the user&#39;s config: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">exc</span>
+
+<span class="c"># This replace the contents of ssh_config with the values from the user&#39;s</span>
+<span class="c"># config file if...</span>
+<span class="c">#</span>
+<span class="c"># * the key is present in the config file</span>
+<span class="c"># * we&#39;re able to convert the configuration file&#39;s value to the same type</span>
+<span class="c">#   as what&#39;s in the mapping (see the Config.get() method for how these</span>
+<span class="c">#   type inferences work)</span>
+<span class="c">#</span>
+<span class="c"># For instance in this case...</span>
+<span class="c">#</span>
+<span class="c"># * the login values are left alone because they aren&#39;t in the user&#39;s</span>
+<span class="c">#   config file</span>
+<span class="c">#</span>
+<span class="c"># * the &#39;destination.port&#39; is also left with the value of 22 because we</span>
+<span class="c">#   can&#39;t turn &quot;blarg&quot; into an integer</span>
+<span class="c">#</span>
+<span class="c"># The other values are replaced, so ssh_config now becomes...</span>
+<span class="c">#</span>
+<span class="c"># {&#39;login.user&#39;: &#39;atagar&#39;,</span>
+<span class="c">#  &#39;login.password&#39;: &#39;pepperjack_is_awesome!&#39;,</span>
+<span class="c">#  &#39;destination.ip&#39;: &#39;1.2.3.4&#39;,</span>
+<span class="c">#  &#39;destination.port&#39;: 22,</span>
+<span class="c">#  &#39;startup.run&#39;: [&#39;export PATH=$PATH:~/bin&#39;, &#39;alias l=ls&#39;]}</span>
+<span class="c">#</span>
+<span class="c"># Information for what values fail to load and why are reported to</span>
+<span class="c"># &#39;stem.util.log&#39;.</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="stem.util.conf.Config.load">
+<tt class="descname">load</tt><big>(</big><em>path=None</em>, <em>commenting=True</em><big>)</big><a class="reference internal" href="../../_modules/stem/util/conf.html#Config.load"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.conf.Config.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads in the contents of the given path, adding its configuration values
+to our current contents. If the path is a directory then this loads each
+of the files, recursively.</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.3.0: </span>Added support for directories.</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.3.0: </span>Added the <strong>commenting</strong> argument.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>path</strong> (<em>str</em>) -- file or directory path to be loaded, this uses the last
+loaded path if not provided</li>
+<li><strong>commenting</strong> (<em>bool</em>) -- ignore line content after a '#' if <strong>True</strong>, read
+otherwise</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><ul class="first last simple">
+<li><strong>IOError</strong> if we fail to read the file (it doesn't exist, insufficient
+permissions, etc)</li>
+<li><strong>ValueError</strong> if no path was provided and we've never been provided one</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.util.conf.Config.save">
+<tt class="descname">save</tt><big>(</big><em>path=None</em><big>)</big><a class="reference internal" href="../../_modules/stem/util/conf.html#Config.save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.conf.Config.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves configuration contents to disk. If a path is provided then it
+replaces the configuration location that we track.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>path</strong> (<em>str</em>) -- location to be saved to</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><ul class="first last simple">
+<li><strong>IOError</strong> if we fail to save the file (insufficient permissions, etc)</li>
+<li><strong>ValueError</strong> if no path was provided and we've never been provided one</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.util.conf.Config.clear">
+<tt class="descname">clear</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/util/conf.html#Config.clear"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.conf.Config.clear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Drops the configuration contents and reverts back to a blank, unloaded
+state.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.util.conf.Config.add_listener">
+<tt class="descname">add_listener</tt><big>(</big><em>listener</em>, <em>backfill=True</em><big>)</big><a class="reference internal" href="../../_modules/stem/util/conf.html#Config.add_listener"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.conf.Config.add_listener" title="Permalink to this definition">¶</a></dt>
+<dd><p>Registers the function to be notified of configuration updates. Listeners
+are expected to be functors which accept (config, key).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>listener</strong> (<em>functor</em>) -- function to be notified when our configuration is changed</li>
+<li><strong>backfill</strong> (<em>bool</em>) -- calls the function with our current values if <strong>True</strong></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.util.conf.Config.clear_listeners">
+<tt class="descname">clear_listeners</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/util/conf.html#Config.clear_listeners"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.conf.Config.clear_listeners" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes all attached listeners.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.util.conf.Config.keys">
+<tt class="descname">keys</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/util/conf.html#Config.keys"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.conf.Config.keys" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides all keys in the currently loaded configuration.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>list</strong> if strings for the configuration keys we've loaded</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.util.conf.Config.unused_keys">
+<tt class="descname">unused_keys</tt><big>(</big><big>)</big><a class="reference internal" href="../../_modules/stem/util/conf.html#Config.unused_keys"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.conf.Config.unused_keys" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides the configuration keys that have never been provided to a caller
+via <a class="reference internal" href="#stem.util.conf.config_dict" title="stem.util.conf.config_dict"><tt class="xref py py-func docutils literal"><span class="pre">config_dict()</span></tt></a> or the
+<a class="reference internal" href="#stem.util.conf.Config.get" title="stem.util.conf.Config.get"><tt class="xref py py-func docutils literal"><span class="pre">get()</span></tt></a> and
+<a class="reference internal" href="#stem.util.conf.Config.get_value" title="stem.util.conf.Config.get_value"><tt class="xref py py-func docutils literal"><span class="pre">get_value()</span></tt></a> methods.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>set</strong> of configuration keys we've loaded but have never been requested</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.util.conf.Config.set">
+<tt class="descname">set</tt><big>(</big><em>key</em>, <em>value</em>, <em>overwrite=True</em><big>)</big><a class="reference internal" href="../../_modules/stem/util/conf.html#Config.set"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.conf.Config.set" title="Permalink to this definition">¶</a></dt>
+<dd><p>Appends the given key/value configuration mapping, behaving the same as if
+we'd loaded this from a configuration file.</p>
+<p class="versionchanged">
+<span class="versionmodified">Changed in version 1.5.0: </span>Allow removal of values by overwriting with a <strong>None</strong> value.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>key</strong> (<em>str</em>) -- key for the configuration mapping</li>
+<li><strong>value</strong> (<em>str,list</em>) -- value we're setting the mapping to</li>
+<li><strong>overwrite</strong> (<em>bool</em>) -- replaces the previous value if <strong>True</strong>, otherwise
+the values are appended</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.util.conf.Config.get">
+<tt class="descname">get</tt><big>(</big><em>key</em>, <em>default=None</em><big>)</big><a class="reference internal" href="../../_modules/stem/util/conf.html#Config.get"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.conf.Config.get" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fetches the given configuration, using the key and default value to
+determine the type it should be. Recognized inferences are:</p>
+<ul class="simple">
+<li><strong>default is a boolean =&gt; boolean</strong><ul>
+<li>values are case insensitive</li>
+<li>provides the default if the value isn't &quot;true&quot; or &quot;false&quot;</li>
+</ul>
+</li>
+<li><strong>default is an integer =&gt; int</strong><ul>
+<li>provides the default if the value can't be converted to an int</li>
+</ul>
+</li>
+<li><strong>default is a float =&gt; float</strong><ul>
+<li>provides the default if the value can't be converted to a float</li>
+</ul>
+</li>
+<li><strong>default is a list =&gt; list</strong><ul>
+<li>string contents for all configuration values with this key</li>
+</ul>
+</li>
+<li><strong>default is a tuple =&gt; tuple</strong><ul>
+<li>string contents for all configuration values with this key</li>
+</ul>
+</li>
+<li><strong>default is a dictionary =&gt; dict</strong><ul>
+<li>values without &quot;=&gt;&quot; in them are ignored</li>
+<li>values are split into key/value pairs on &quot;=&gt;&quot; with extra whitespace
+stripped</li>
+</ul>
+</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>key</strong> (<em>str</em>) -- config setting to be fetched</li>
+<li><strong>object</strong> (<em>default</em>) -- value provided if no such key exists or fails to be converted</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">given configuration value with its type inferred with the above rules</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="stem.util.conf.Config.get_value">
+<tt class="descname">get_value</tt><big>(</big><em>key</em>, <em>default=None</em>, <em>multiple=False</em><big>)</big><a class="reference internal" href="../../_modules/stem/util/conf.html#Config.get_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#stem.util.conf.Config.get_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>This provides the current value associated with a given key.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>key</strong> (<em>str</em>) -- config setting to be fetched</li>
+<li><strong>default</strong> (<em>object</em>) -- value provided if no such key exists</li>
+<li><strong>multiple</strong> (<em>bool</em>) -- provides back a list of all values if <strong>True</strong>,
+otherwise this returns the last loaded configuration value</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><strong>str</strong> or <strong>list</strong> of string configuration values associated
+with the given key, providing the default if no such key exists</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

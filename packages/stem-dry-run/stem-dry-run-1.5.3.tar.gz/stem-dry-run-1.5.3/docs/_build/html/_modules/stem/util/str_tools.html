@@ -1,0 +1,663 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.util.str_tools &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem" href="../../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.util.str_tools</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.util.str_tools</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2012-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Toolkit for various string activity.</span>
+
+<span class="sd">.. versionchanged:: 1.3.0</span>
+<span class="sd">   Dropped the get_* prefix from several function names. The old names still</span>
+<span class="sd">   work, but are deprecated aliases.</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  crop - shortens string to a given length</span>
+
+<span class="sd">  size_label - human readable label for a number of bytes</span>
+<span class="sd">  time_label - human readable label for a number of seconds</span>
+<span class="sd">  time_labels - human readable labels for each time unit</span>
+<span class="sd">  short_time_label - condensed time label output</span>
+<span class="sd">  parse_short_time_label - seconds represented by a short time label</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">codecs</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">import</span> <span class="nn">stem.prereq</span>
+<span class="kn">import</span> <span class="nn">stem.util.enum</span>
+
+<span class="kn">from</span> <span class="nn">stem.util</span> <span class="kn">import</span> <span class="n">str_type</span>
+
+<span class="c"># label conversion tuples of the form...</span>
+<span class="c"># (bits / bytes / seconds, short label, long label)</span>
+
+<span class="n">SIZE_UNITS_BITS</span> <span class="o">=</span> <span class="p">(</span>
+  <span class="p">(</span><span class="mf">140737488355328.0</span><span class="p">,</span> <span class="s">&#39; Pb&#39;</span><span class="p">,</span> <span class="s">&#39; Petabit&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="mf">137438953472.0</span><span class="p">,</span> <span class="s">&#39; Tb&#39;</span><span class="p">,</span> <span class="s">&#39; Terabit&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="mf">134217728.0</span><span class="p">,</span> <span class="s">&#39; Gb&#39;</span><span class="p">,</span> <span class="s">&#39; Gigabit&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="mf">131072.0</span><span class="p">,</span> <span class="s">&#39; Mb&#39;</span><span class="p">,</span> <span class="s">&#39; Megabit&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="mf">128.0</span><span class="p">,</span> <span class="s">&#39; Kb&#39;</span><span class="p">,</span> <span class="s">&#39; Kilobit&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="mf">0.125</span><span class="p">,</span> <span class="s">&#39; b&#39;</span><span class="p">,</span> <span class="s">&#39; Bit&#39;</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="n">SIZE_UNITS_BYTES</span> <span class="o">=</span> <span class="p">(</span>
+  <span class="p">(</span><span class="mf">1125899906842624.0</span><span class="p">,</span> <span class="s">&#39; PB&#39;</span><span class="p">,</span> <span class="s">&#39; Petabyte&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="mf">1099511627776.0</span><span class="p">,</span> <span class="s">&#39; TB&#39;</span><span class="p">,</span> <span class="s">&#39; Terabyte&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="mf">1073741824.0</span><span class="p">,</span> <span class="s">&#39; GB&#39;</span><span class="p">,</span> <span class="s">&#39; Gigabyte&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="mf">1048576.0</span><span class="p">,</span> <span class="s">&#39; MB&#39;</span><span class="p">,</span> <span class="s">&#39; Megabyte&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="mf">1024.0</span><span class="p">,</span> <span class="s">&#39; KB&#39;</span><span class="p">,</span> <span class="s">&#39; Kilobyte&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="s">&#39; B&#39;</span><span class="p">,</span> <span class="s">&#39; Byte&#39;</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="n">TIME_UNITS</span> <span class="o">=</span> <span class="p">(</span>
+  <span class="p">(</span><span class="mf">86400.0</span><span class="p">,</span> <span class="s">&#39;d&#39;</span><span class="p">,</span> <span class="s">&#39; day&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="mf">3600.0</span><span class="p">,</span> <span class="s">&#39;h&#39;</span><span class="p">,</span> <span class="s">&#39; hour&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="mf">60.0</span><span class="p">,</span> <span class="s">&#39;m&#39;</span><span class="p">,</span> <span class="s">&#39; minute&#39;</span><span class="p">),</span>
+  <span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="s">&#39;s&#39;</span><span class="p">,</span> <span class="s">&#39; second&#39;</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="n">_timestamp_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&#39;(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})&#39;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">prereq</span><span class="o">.</span><span class="n">is_python_3</span><span class="p">():</span>
+  <span class="k">def</span> <span class="nf">_to_bytes_impl</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+      <span class="k">return</span> <span class="n">codecs</span><span class="o">.</span><span class="n">latin_1_encode</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="s">&#39;replace&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">msg</span>
+
+  <span class="k">def</span> <span class="nf">_to_unicode_impl</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">msg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+      <span class="k">return</span> <span class="n">msg</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">&#39;utf-8&#39;</span><span class="p">,</span> <span class="s">&#39;replace&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">msg</span>
+<span class="k">else</span><span class="p">:</span>
+  <span class="k">def</span> <span class="nf">_to_bytes_impl</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">msg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">str_type</span><span class="p">):</span>
+      <span class="k">return</span> <span class="n">codecs</span><span class="o">.</span><span class="n">latin_1_encode</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="s">&#39;replace&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">msg</span>
+
+  <span class="k">def</span> <span class="nf">_to_unicode_impl</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">msg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">str_type</span><span class="p">):</span>
+      <span class="k">return</span> <span class="n">msg</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">&#39;utf-8&#39;</span><span class="p">,</span> <span class="s">&#39;replace&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">msg</span>
+
+
+<span class="k">def</span> <span class="nf">_to_bytes</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the ASCII bytes for the given string. This is purely to provide</span>
+<span class="sd">  python 3 compatability, normalizing the unicode/ASCII change in the version</span>
+<span class="sd">  bump. For an explanation of this see...</span>
+
+<span class="sd">  http://python3porting.com/problems.html#nicer-solutions</span>
+
+<span class="sd">  :param str,unicode msg: string to be converted</span>
+
+<span class="sd">  :returns: ASCII bytes for string</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">return</span> <span class="n">_to_bytes_impl</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_to_unicode</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the unicode string for the given ASCII bytes. This is purely to</span>
+<span class="sd">  provide python 3 compatability, normalizing the unicode/ASCII change in the</span>
+<span class="sd">  version bump.</span>
+
+<span class="sd">  :param str,unicode msg: string to be converted</span>
+
+<span class="sd">  :returns: unicode conversion</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">return</span> <span class="n">_to_unicode_impl</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_to_camel_case</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">divider</span> <span class="o">=</span> <span class="s">&#39;_&#39;</span><span class="p">,</span> <span class="n">joiner</span> <span class="o">=</span> <span class="s">&#39; &#39;</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Converts the given string to camel case, ie:</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    &gt;&gt;&gt; _to_camel_case(&#39;I_LIKE_PEPPERJACK!&#39;)</span>
+<span class="sd">    &#39;I Like Pepperjack!&#39;</span>
+
+<span class="sd">  :param str label: input string to be converted</span>
+<span class="sd">  :param str divider: word boundary</span>
+<span class="sd">  :param str joiner: replacement for word boundaries</span>
+
+<span class="sd">  :returns: camel cased string</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">words</span> <span class="o">=</span> <span class="p">[]</span>
+  <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">label</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">divider</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+      <span class="n">words</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+      <span class="n">words</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">upper</span><span class="p">())</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">words</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">+</span> <span class="n">entry</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+
+  <span class="k">return</span> <span class="n">joiner</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+
+
+<span class="c"># This needs to be defined after _to_camel_case() to avoid a circular</span>
+<span class="c"># dependency with the enum module.</span>
+
+<span class="n">Ending</span> <span class="o">=</span> <span class="n">stem</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">(</span><span class="s">&#39;ELLIPSE&#39;</span><span class="p">,</span> <span class="s">&#39;HYPHEN&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="crop"><a class="viewcode-back" href="../../../api/util/str_tools.html#stem.util.str_tools.crop">[docs]</a><span class="k">def</span> <span class="nf">crop</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">min_word_length</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="n">min_crop</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ending</span> <span class="o">=</span> <span class="n">Ending</span><span class="o">.</span><span class="n">ELLIPSE</span><span class="p">,</span> <span class="n">get_remainder</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Shortens a string to a given length.</span>
+
+<span class="sd">  If we crop content then a given ending is included (counting itself toward</span>
+<span class="sd">  the size limitation). This crops on word breaks so we only include a word if</span>
+<span class="sd">  we can display at least **min_word_length** characters of it.</span>
+
+<span class="sd">  If there isn&#39;t room for even a truncated single word (or one word plus the</span>
+<span class="sd">  ellipse if including those) then this provides an empty string.</span>
+
+<span class="sd">  If a cropped string ends with a comma or period then it&#39;s stripped (unless</span>
+<span class="sd">  we&#39;re providing the remainder back). For example...</span>
+
+<span class="sd">    &gt;&gt;&gt; crop(&#39;This is a looooong message&#39;, 17)</span>
+<span class="sd">    &#39;This is a looo...&#39;</span>
+
+<span class="sd">    &gt;&gt;&gt; crop(&#39;This is a looooong message&#39;, 12)</span>
+<span class="sd">    &#39;This is a...&#39;</span>
+
+<span class="sd">    &gt;&gt;&gt; crop(&#39;This is a looooong message&#39;, 3)</span>
+<span class="sd">    &#39;&#39;</span>
+
+<span class="sd">  The whole point of this method is to provide human friendly croppings, and as</span>
+<span class="sd">  such details of how this works might change in the future. Callers should not</span>
+<span class="sd">  rely on the details of how this crops.</span>
+
+<span class="sd">  .. versionadded:: 1.3.0</span>
+
+<span class="sd">  :param str msg: text to be processed</span>
+<span class="sd">  :param int size: space available for text</span>
+<span class="sd">  :param int min_word_length: minimum characters before which a word is</span>
+<span class="sd">    dropped, requires whole word if **None**</span>
+<span class="sd">  :param int min_crop: minimum characters that must be dropped if a word is</span>
+<span class="sd">    cropped</span>
+<span class="sd">  :param Ending ending: type of ending used when truncating, no special</span>
+<span class="sd">    truncation is used if **None**</span>
+<span class="sd">  :param bool get_remainder: returns a tuple with the second part being the</span>
+<span class="sd">    cropped portion of the message</span>
+
+<span class="sd">  :returns: **str** of the text truncated to the given length</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># checks if there&#39;s room for the whole message</span>
+
+  <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">size</span><span class="p">:</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="n">get_remainder</span> <span class="k">else</span> <span class="n">msg</span>
+
+  <span class="k">if</span> <span class="n">size</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Crop size can&#39;t be negative (received </span><span class="si">%i</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="n">size</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="n">min_word_length</span> <span class="ow">and</span> <span class="n">min_word_length</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Crop&#39;s min_word_length can&#39;t be negative (received </span><span class="si">%i</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="n">min_word_length</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="n">min_crop</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Crop&#39;s min_crop can&#39;t be negative (received </span><span class="si">%i</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="n">min_crop</span><span class="p">)</span>
+
+  <span class="c"># since we&#39;re cropping, the effective space available is less with an</span>
+  <span class="c"># ellipse, and cropping words requires an extra space for hyphens</span>
+
+  <span class="k">if</span> <span class="n">ending</span> <span class="o">==</span> <span class="n">Ending</span><span class="o">.</span><span class="n">ELLIPSE</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">size</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+      <span class="k">return</span> <span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span> <span class="k">if</span> <span class="n">get_remainder</span> <span class="k">else</span> <span class="s">&#39;&#39;</span>
+
+    <span class="n">size</span> <span class="o">-=</span> <span class="mi">3</span>
+  <span class="k">elif</span> <span class="n">min_word_length</span> <span class="ow">and</span> <span class="n">ending</span> <span class="o">==</span> <span class="n">Ending</span><span class="o">.</span><span class="n">HYPHEN</span><span class="p">:</span>
+    <span class="n">min_word_length</span> <span class="o">+=</span> <span class="mi">1</span>
+
+  <span class="k">if</span> <span class="n">min_word_length</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="n">min_word_length</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">maxsize</span>
+
+  <span class="c"># checks if there isn&#39;t the minimum space needed to include anything</span>
+
+  <span class="n">last_wordbreak</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">rfind</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">last_wordbreak</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+    <span class="c"># we&#39;re splitting the first word</span>
+
+    <span class="k">if</span> <span class="n">size</span> <span class="o">&lt;</span> <span class="n">min_word_length</span><span class="p">:</span>
+      <span class="k">return</span> <span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span> <span class="k">if</span> <span class="n">get_remainder</span> <span class="k">else</span> <span class="s">&#39;&#39;</span>
+
+    <span class="n">include_crop</span> <span class="o">=</span> <span class="bp">True</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="n">last_wordbreak</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">[:</span><span class="n">last_wordbreak</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">())</span>  <span class="c"># drops extra ending whitespaces</span>
+    <span class="n">include_crop</span> <span class="o">=</span> <span class="n">size</span> <span class="o">-</span> <span class="n">last_wordbreak</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">&gt;=</span> <span class="n">min_word_length</span>
+
+  <span class="c"># if there&#39;s a max crop size then make sure we&#39;re cropping at least that many characters</span>
+
+  <span class="k">if</span> <span class="n">include_crop</span> <span class="ow">and</span> <span class="n">min_crop</span><span class="p">:</span>
+    <span class="n">next_wordbreak</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">next_wordbreak</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+      <span class="n">next_wordbreak</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="n">include_crop</span> <span class="o">=</span> <span class="n">next_wordbreak</span> <span class="o">-</span> <span class="n">size</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">&gt;=</span> <span class="n">min_crop</span>
+
+  <span class="k">if</span> <span class="n">include_crop</span><span class="p">:</span>
+    <span class="n">return_msg</span><span class="p">,</span> <span class="n">remainder</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[:</span><span class="n">size</span><span class="p">],</span> <span class="n">msg</span><span class="p">[</span><span class="n">size</span><span class="p">:]</span>
+
+    <span class="k">if</span> <span class="n">ending</span> <span class="o">==</span> <span class="n">Ending</span><span class="o">.</span><span class="n">HYPHEN</span><span class="p">:</span>
+      <span class="n">remainder</span> <span class="o">=</span> <span class="n">return_msg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">remainder</span>
+      <span class="n">return_msg</span> <span class="o">=</span> <span class="n">return_msg</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span> <span class="o">+</span> <span class="s">&#39;-&#39;</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="n">return_msg</span><span class="p">,</span> <span class="n">remainder</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[:</span><span class="n">last_wordbreak</span><span class="p">],</span> <span class="n">msg</span><span class="p">[</span><span class="n">last_wordbreak</span><span class="p">:]</span>
+
+  <span class="c"># if this is ending with a comma or period then strip it off</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">get_remainder</span> <span class="ow">and</span> <span class="n">return_msg</span> <span class="ow">and</span> <span class="n">return_msg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">,</span> <span class="s">&#39;.&#39;</span><span class="p">):</span>
+    <span class="n">return_msg</span> <span class="o">=</span> <span class="n">return_msg</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+  <span class="k">if</span> <span class="n">ending</span> <span class="o">==</span> <span class="n">Ending</span><span class="o">.</span><span class="n">ELLIPSE</span><span class="p">:</span>
+    <span class="n">return_msg</span> <span class="o">=</span> <span class="n">return_msg</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span> <span class="o">+</span> <span class="s">&#39;...&#39;</span>
+
+  <span class="k">return</span> <span class="p">(</span><span class="n">return_msg</span><span class="p">,</span> <span class="n">remainder</span><span class="p">)</span> <span class="k">if</span> <span class="n">get_remainder</span> <span class="k">else</span> <span class="n">return_msg</span>
+
+</div>
+<div class="viewcode-block" id="size_label"><a class="viewcode-back" href="../../../api/util/str_tools.html#stem.util.str_tools.size_label">[docs]</a><span class="k">def</span> <span class="nf">size_label</span><span class="p">(</span><span class="n">byte_count</span><span class="p">,</span> <span class="n">decimal</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">is_long</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">is_bytes</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Converts a number of bytes into a human readable label in its most</span>
+<span class="sd">  significant units. For instance, 7500 bytes would return &quot;7 KB&quot;. If the</span>
+<span class="sd">  is_long option is used this expands unit labels to be the properly pluralized</span>
+<span class="sd">  full word (for instance &#39;Kilobytes&#39; rather than &#39;KB&#39;). Units go up through</span>
+<span class="sd">  petabytes.</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    &gt;&gt;&gt; size_label(2000000)</span>
+<span class="sd">    &#39;1 MB&#39;</span>
+
+<span class="sd">    &gt;&gt;&gt; size_label(1050, 2)</span>
+<span class="sd">    &#39;1.02 KB&#39;</span>
+
+<span class="sd">    &gt;&gt;&gt; size_label(1050, 3, True)</span>
+<span class="sd">    &#39;1.025 Kilobytes&#39;</span>
+
+<span class="sd">  :param int byte_count: number of bytes to be converted</span>
+<span class="sd">  :param int decimal: number of decimal digits to be included</span>
+<span class="sd">  :param bool is_long: expands units label</span>
+<span class="sd">  :param bool is_bytes: provides units in bytes if **True**, bits otherwise</span>
+
+<span class="sd">  :returns: **str** with human readable representation of the size</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">is_bytes</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">_get_label</span><span class="p">(</span><span class="n">SIZE_UNITS_BYTES</span><span class="p">,</span> <span class="n">byte_count</span><span class="p">,</span> <span class="n">decimal</span><span class="p">,</span> <span class="n">is_long</span><span class="p">)</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">_get_label</span><span class="p">(</span><span class="n">SIZE_UNITS_BITS</span><span class="p">,</span> <span class="n">byte_count</span><span class="p">,</span> <span class="n">decimal</span><span class="p">,</span> <span class="n">is_long</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="time_label"><a class="viewcode-back" href="../../../api/util/str_tools.html#stem.util.str_tools.time_label">[docs]</a><span class="k">def</span> <span class="nf">time_label</span><span class="p">(</span><span class="n">seconds</span><span class="p">,</span> <span class="n">decimal</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">is_long</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Converts seconds into a time label truncated to its most significant units.</span>
+<span class="sd">  For instance, 7500 seconds would return &quot;2h&quot;. Units go up through days.</span>
+
+<span class="sd">  This defaults to presenting single character labels, but if the is_long</span>
+<span class="sd">  option is used this expands labels to be the full word (space included and</span>
+<span class="sd">  properly pluralized). For instance, &quot;4h&quot; would be &quot;4 hours&quot; and &quot;1m&quot; would</span>
+<span class="sd">  become &quot;1 minute&quot;.</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    &gt;&gt;&gt; time_label(10000)</span>
+<span class="sd">    &#39;2h&#39;</span>
+
+<span class="sd">    &gt;&gt;&gt; time_label(61, 1, True)</span>
+<span class="sd">    &#39;1.0 minute&#39;</span>
+
+<span class="sd">    &gt;&gt;&gt; time_label(61, 2, True)</span>
+<span class="sd">    &#39;1.01 minutes&#39;</span>
+
+<span class="sd">  :param int seconds: number of seconds to be converted</span>
+<span class="sd">  :param int decimal: number of decimal digits to be included</span>
+<span class="sd">  :param bool is_long: expands units label</span>
+
+<span class="sd">  :returns: **str** with human readable representation of the time</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">return</span> <span class="n">_get_label</span><span class="p">(</span><span class="n">TIME_UNITS</span><span class="p">,</span> <span class="n">seconds</span><span class="p">,</span> <span class="n">decimal</span><span class="p">,</span> <span class="n">is_long</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="time_labels"><a class="viewcode-back" href="../../../api/util/str_tools.html#stem.util.str_tools.time_labels">[docs]</a><span class="k">def</span> <span class="nf">time_labels</span><span class="p">(</span><span class="n">seconds</span><span class="p">,</span> <span class="n">is_long</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides a list of label conversions for each time unit, starting with its</span>
+<span class="sd">  most significant units on down. Any counts that evaluate to zero are omitted.</span>
+<span class="sd">  For example...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    &gt;&gt;&gt; time_labels(400)</span>
+<span class="sd">    [&#39;6m&#39;, &#39;40s&#39;]</span>
+
+<span class="sd">    &gt;&gt;&gt; time_labels(3640, True)</span>
+<span class="sd">    [&#39;1 hour&#39;, &#39;40 seconds&#39;]</span>
+
+<span class="sd">  :param int seconds: number of seconds to be converted</span>
+<span class="sd">  :param bool is_long: expands units label</span>
+
+<span class="sd">  :returns: **list** of strings with human readable representations of the time</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">time_labels</span> <span class="o">=</span> <span class="p">[]</span>
+
+  <span class="k">for</span> <span class="n">count_per_unit</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">TIME_UNITS</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">seconds</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">count_per_unit</span><span class="p">:</span>
+      <span class="n">time_labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_get_label</span><span class="p">(</span><span class="n">TIME_UNITS</span><span class="p">,</span> <span class="n">seconds</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">is_long</span><span class="p">))</span>
+      <span class="n">seconds</span> <span class="o">%=</span> <span class="n">count_per_unit</span>
+
+  <span class="k">return</span> <span class="n">time_labels</span>
+
+</div>
+<div class="viewcode-block" id="short_time_label"><a class="viewcode-back" href="../../../api/util/str_tools.html#stem.util.str_tools.short_time_label">[docs]</a><span class="k">def</span> <span class="nf">short_time_label</span><span class="p">(</span><span class="n">seconds</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides a time in the following format:</span>
+<span class="sd">  [[dd-]hh:]mm:ss</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    &gt;&gt;&gt; short_time_label(111)</span>
+<span class="sd">    &#39;01:51&#39;</span>
+
+<span class="sd">    &gt;&gt;&gt; short_time_label(544100)</span>
+<span class="sd">    &#39;6-07:08:20&#39;</span>
+
+<span class="sd">  :param int seconds: number of seconds to be converted</span>
+
+<span class="sd">  :returns: **str** with the short representation for the time</span>
+
+<span class="sd">  :raises: **ValueError** if the input is negative</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="n">seconds</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Input needs to be a non-negative integer, got &#39;</span><span class="si">%i</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="n">seconds</span><span class="p">)</span>
+
+  <span class="n">time_comp</span> <span class="o">=</span> <span class="p">{}</span>
+
+  <span class="k">for</span> <span class="n">amount</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">TIME_UNITS</span><span class="p">:</span>
+    <span class="n">count</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">seconds</span> <span class="o">/</span> <span class="n">amount</span><span class="p">)</span>
+    <span class="n">seconds</span> <span class="o">%=</span> <span class="n">amount</span>
+    <span class="n">time_comp</span><span class="p">[</span><span class="n">label</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span> <span class="o">=</span> <span class="n">count</span>
+
+  <span class="n">label</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%02i</span><span class="s">:</span><span class="si">%02i</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">time_comp</span><span class="p">[</span><span class="s">&#39;minute&#39;</span><span class="p">],</span> <span class="n">time_comp</span><span class="p">[</span><span class="s">&#39;second&#39;</span><span class="p">])</span>
+
+  <span class="k">if</span> <span class="n">time_comp</span><span class="p">[</span><span class="s">&#39;day&#39;</span><span class="p">]:</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%i</span><span class="s">-</span><span class="si">%02i</span><span class="s">:</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">time_comp</span><span class="p">[</span><span class="s">&#39;day&#39;</span><span class="p">],</span> <span class="n">time_comp</span><span class="p">[</span><span class="s">&#39;hour&#39;</span><span class="p">],</span> <span class="n">label</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="n">time_comp</span><span class="p">[</span><span class="s">&#39;hour&#39;</span><span class="p">]:</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%02i</span><span class="s">:</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">time_comp</span><span class="p">[</span><span class="s">&#39;hour&#39;</span><span class="p">],</span> <span class="n">label</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">label</span>
+
+</div>
+<div class="viewcode-block" id="parse_short_time_label"><a class="viewcode-back" href="../../../api/util/str_tools.html#stem.util.str_tools.parse_short_time_label">[docs]</a><span class="k">def</span> <span class="nf">parse_short_time_label</span><span class="p">(</span><span class="n">label</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides the number of seconds corresponding to the formatting used for the</span>
+<span class="sd">  cputime and etime fields of ps:</span>
+<span class="sd">  [[dd-]hh:]mm:ss or mm:ss.ss</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    &gt;&gt;&gt; parse_short_time_label(&#39;01:51&#39;)</span>
+<span class="sd">    111</span>
+
+<span class="sd">    &gt;&gt;&gt; parse_short_time_label(&#39;6-07:08:20&#39;)</span>
+<span class="sd">    544100</span>
+
+<span class="sd">  :param str label: time entry to be parsed</span>
+
+<span class="sd">  :returns: **int** with the number of seconds represented by the label</span>
+
+<span class="sd">  :raises: **ValueError** if input is malformed</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">days</span><span class="p">,</span> <span class="n">hours</span><span class="p">,</span> <span class="n">minutes</span><span class="p">,</span> <span class="n">seconds</span> <span class="o">=</span> <span class="s">&#39;0&#39;</span><span class="p">,</span> <span class="s">&#39;0&#39;</span><span class="p">,</span> <span class="s">&#39;0&#39;</span><span class="p">,</span> <span class="s">&#39;0&#39;</span>
+
+  <span class="k">if</span> <span class="s">&#39;-&#39;</span> <span class="ow">in</span> <span class="n">label</span><span class="p">:</span>
+    <span class="n">days</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="n">label</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;-&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+  <span class="n">time_comp</span> <span class="o">=</span> <span class="n">label</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">time_comp</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+    <span class="n">hours</span><span class="p">,</span> <span class="n">minutes</span><span class="p">,</span> <span class="n">seconds</span> <span class="o">=</span> <span class="n">time_comp</span>
+  <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">time_comp</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+    <span class="n">minutes</span><span class="p">,</span> <span class="n">seconds</span> <span class="o">=</span> <span class="n">time_comp</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Invalid time format, we expected &#39;[[dd-]hh:]mm:ss&#39; or &#39;mm:ss.ss&#39;: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">label</span><span class="p">)</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">time_sum</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">seconds</span><span class="p">))</span>
+    <span class="n">time_sum</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span><span class="n">minutes</span><span class="p">)</span> <span class="o">*</span> <span class="mi">60</span>
+    <span class="n">time_sum</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span><span class="n">hours</span><span class="p">)</span> <span class="o">*</span> <span class="mi">3600</span>
+    <span class="n">time_sum</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span><span class="n">days</span><span class="p">)</span> <span class="o">*</span> <span class="mi">86400</span>
+    <span class="k">return</span> <span class="n">time_sum</span>
+  <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Non-numeric value in time entry: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">label</span><span class="p">)</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_parse_timestamp</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Parses the date and time that in format like like...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    2012-11-08 16:48:41</span>
+
+<span class="sd">  :param str entry: timestamp to be parsed</span>
+
+<span class="sd">  :returns: **datetime** for the time represented by the timestamp</span>
+
+<span class="sd">  :raises: **ValueError** if the timestamp is malformed</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">str_type</span><span class="p">)):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;parse_timestamp() input must be a str, got a </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">entry</span><span class="p">))</span>
+
+  <span class="k">try</span><span class="p">:</span>
+    <span class="n">time</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">_timestamp_re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span><span class="o">.</span><span class="n">groups</span><span class="p">()]</span>
+  <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Expected timestamp in format YYYY-MM-DD HH:MM:ss but got &#39;</span> <span class="o">+</span> <span class="n">entry</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">(</span><span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">time</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">time</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">time</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">time</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span> <span class="n">time</span><span class="p">[</span><span class="mi">5</span><span class="p">])</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_iso_timestamp</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Parses the ISO 8601 standard that provides for timestamps like...</span>
+
+<span class="sd">  ::</span>
+
+<span class="sd">    2012-11-08T16:48:41.420251</span>
+
+<span class="sd">  :param str entry: timestamp to be parsed</span>
+
+<span class="sd">  :returns: **datetime** for the time represented by the timestamp</span>
+
+<span class="sd">  :raises: **ValueError** if the timestamp is malformed</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">str_type</span><span class="p">)):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;parse_iso_timestamp() input must be a str, got a </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">entry</span><span class="p">))</span>
+
+  <span class="c"># based after suggestions from...</span>
+  <span class="c"># http://stackoverflow.com/questions/127803/how-to-parse-iso-formatted-date-in-python</span>
+
+  <span class="k">if</span> <span class="s">&#39;.&#39;</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>
+    <span class="n">timestamp_str</span><span class="p">,</span> <span class="n">microseconds</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="n">timestamp_str</span><span class="p">,</span> <span class="n">microseconds</span> <span class="o">=</span> <span class="n">entry</span><span class="p">,</span> <span class="s">&#39;000000&#39;</span>
+
+  <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">microseconds</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">6</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">microseconds</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;timestamp&#39;s microseconds should be six digits&quot;</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">timestamp_str</span><span class="p">[</span><span class="mi">10</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;T&#39;</span><span class="p">:</span>
+    <span class="n">timestamp_str</span> <span class="o">=</span> <span class="n">timestamp_str</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39; &#39;</span> <span class="o">+</span> <span class="n">timestamp_str</span><span class="p">[</span><span class="mi">11</span><span class="p">:]</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;timestamp didn&#39;t contain delimeter &#39;T&#39; between date and time&quot;</span><span class="p">)</span>
+
+  <span class="n">timestamp</span> <span class="o">=</span> <span class="n">_parse_timestamp</span><span class="p">(</span><span class="n">timestamp_str</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">timestamp</span> <span class="o">+</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">microseconds</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">microseconds</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">_get_label</span><span class="p">(</span><span class="n">units</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">decimal</span><span class="p">,</span> <span class="n">is_long</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Provides label corresponding to units of the highest significance in the</span>
+<span class="sd">  provided set. This rounds down (ie, integer truncation after visible units).</span>
+
+<span class="sd">  :param tuple units: type of units to be used for conversion, containing</span>
+<span class="sd">    (count_per_unit, short_label, long_label)</span>
+<span class="sd">  :param int count: number of base units being converted</span>
+<span class="sd">  :param int decimal: decimal precision of label</span>
+<span class="sd">  :param bool is_long: uses the long label if **True**, short label otherwise</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c"># formatted string for the requested number of digits</span>
+  <span class="n">label_format</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%%</span><span class="s">.</span><span class="si">%i</span><span class="s">f&#39;</span> <span class="o">%</span> <span class="n">decimal</span>
+
+  <span class="k">if</span> <span class="n">count</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="n">label_format</span> <span class="o">=</span> <span class="s">&#39;-&#39;</span> <span class="o">+</span> <span class="n">label_format</span>
+    <span class="n">count</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">count</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="n">count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="n">units_label</span> <span class="o">=</span> <span class="n">units</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;s&#39;</span> <span class="k">if</span> <span class="n">is_long</span> <span class="k">else</span> <span class="n">units</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">return</span> <span class="s">&#39;</span><span class="si">%s%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">label_format</span> <span class="o">%</span> <span class="n">count</span><span class="p">,</span> <span class="n">units_label</span><span class="p">)</span>
+
+  <span class="k">for</span> <span class="n">count_per_unit</span><span class="p">,</span> <span class="n">short_label</span><span class="p">,</span> <span class="n">long_label</span> <span class="ow">in</span> <span class="n">units</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">count</span> <span class="o">&gt;=</span> <span class="n">count_per_unit</span><span class="p">:</span>
+      <span class="c"># Rounding down with a &#39;%f&#39; is a little clunky. Reducing the count so</span>
+      <span class="c"># it&#39;ll divide evenly as the rounded down value.</span>
+
+      <span class="n">count</span> <span class="o">-=</span> <span class="n">count</span> <span class="o">%</span> <span class="p">(</span><span class="n">count_per_unit</span> <span class="o">/</span> <span class="p">(</span><span class="mi">10</span> <span class="o">**</span> <span class="n">decimal</span><span class="p">))</span>
+      <span class="n">count_label</span> <span class="o">=</span> <span class="n">label_format</span> <span class="o">%</span> <span class="p">(</span><span class="n">count</span> <span class="o">/</span> <span class="n">count_per_unit</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">is_long</span><span class="p">:</span>
+        <span class="c"># Pluralize if any of the visible units make it greater than one. For</span>
+        <span class="c"># instance 1.0003 is plural but 1.000 isn&#39;t.</span>
+
+        <span class="k">if</span> <span class="n">decimal</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+          <span class="n">is_plural</span> <span class="o">=</span> <span class="n">count</span> <span class="o">&gt;</span> <span class="n">count_per_unit</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="n">is_plural</span> <span class="o">=</span> <span class="n">count</span> <span class="o">&gt;=</span> <span class="n">count_per_unit</span> <span class="o">*</span> <span class="mi">2</span>
+
+        <span class="k">return</span> <span class="n">count_label</span> <span class="o">+</span> <span class="n">long_label</span> <span class="o">+</span> <span class="p">(</span><span class="s">&#39;s&#39;</span> <span class="k">if</span> <span class="n">is_plural</span> <span class="k">else</span> <span class="s">&#39;&#39;</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">count_label</span> <span class="o">+</span> <span class="n">short_label</span>
+
+<span class="c"># TODO: drop with stem 2.x</span>
+<span class="c"># We renamed our methods to drop a redundant &#39;get_*&#39; prefix, so alias the old</span>
+<span class="c"># names for backward compatability.</span>
+
+<span class="n">get_size_label</span> <span class="o">=</span> <span class="n">size_label</span>
+<span class="n">get_time_label</span> <span class="o">=</span> <span class="n">time_label</span>
+<span class="n">get_time_labels</span> <span class="o">=</span> <span class="n">time_labels</span>
+<span class="n">get_short_time_label</span> <span class="o">=</span> <span class="n">short_time_label</span>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

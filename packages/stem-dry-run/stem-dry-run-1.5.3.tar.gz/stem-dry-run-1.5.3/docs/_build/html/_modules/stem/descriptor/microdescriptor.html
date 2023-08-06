@@ -1,0 +1,443 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>stem.descriptor.microdescriptor &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../../index.html" />
+    <link rel="up" title="stem" href="../../stem.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>stem.descriptor.microdescriptor</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../../index.html">Home</a></li>
+          <li><a href="../../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../../../tutorials/the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../../../tutorials/to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../../../tutorials/tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../../../tutorials/over_the_river.html">Hidden Services</a></li>
+              <li><a href="../../../tutorials/mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../../../tutorials/east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../../../tutorials/down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../../../tutorials/double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../api.html">API</a>
+            <ul>
+              <li><a href="../../../api/control.html">stem.control</a></li>
+              <li><a href="../../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../../api/process.html">stem.process</a></li>
+              <li><a href="../../../api/response.html">stem.response</a></li>
+              <li><a href="../../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../../api/version.html">stem.version</a></li>
+              <li><a href="../../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../../faq.html">FAQ</a></li>
+              <li><a href="../../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for stem.descriptor.microdescriptor</h1><div class="highlight"><pre>
+<span class="c"># Copyright 2013-2016, Damian Johnson and The Tor Project</span>
+<span class="c"># See LICENSE for licensing information</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Parsing for Tor microdescriptors, which contain a distilled version of a</span>
+<span class="sd">relay&#39;s server descriptor. As of Tor version 0.2.3.3-alpha Tor no longer</span>
+<span class="sd">downloads server descriptors by default, opting for microdescriptors instead.</span>
+
+<span class="sd">Unlike most descriptor documents these aren&#39;t available on the metrics site</span>
+<span class="sd">(since they don&#39;t contain any information that the server descriptors don&#39;t).</span>
+
+<span class="sd">The limited information in microdescriptors make them rather clunky to use</span>
+<span class="sd">compared with server descriptors. For instance microdescriptors lack the</span>
+<span class="sd">relay&#39;s fingerprint, making it difficut to use them to look up the relay&#39;s</span>
+<span class="sd">other descriptors.</span>
+
+<span class="sd">To do so you need to match the microdescriptor&#39;s digest against its</span>
+<span class="sd">corresponding router status entry. For added fun as of this writing the</span>
+<span class="sd">controller doesn&#39;t even surface those router status entries</span>
+<span class="sd">(:trac:`7953`).</span>
+
+<span class="sd">For instance, here&#39;s an example that prints the nickname and fingerprints of</span>
+<span class="sd">the exit relays.</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  import os</span>
+
+<span class="sd">  from stem.control import Controller</span>
+<span class="sd">  from stem.descriptor import parse_file</span>
+
+<span class="sd">  with Controller.from_port(port = 9051) as controller:</span>
+<span class="sd">    controller.authenticate()</span>
+
+<span class="sd">    exit_digests = set()</span>
+<span class="sd">    data_dir = controller.get_conf(&#39;DataDirectory&#39;)</span>
+
+<span class="sd">    for desc in controller.get_microdescriptors():</span>
+<span class="sd">      if desc.exit_policy.is_exiting_allowed():</span>
+<span class="sd">        exit_digests.add(desc.digest)</span>
+
+<span class="sd">    print &#39;Exit Relays:&#39;</span>
+
+<span class="sd">    for desc in parse_file(os.path.join(data_dir, &#39;cached-microdesc-consensus&#39;)):</span>
+<span class="sd">      if desc.digest in exit_digests:</span>
+<span class="sd">        print &#39;  %s (%s)&#39; % (desc.nickname, desc.fingerprint)</span>
+
+<span class="sd">Doing the same is trivial with server descriptors...</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  from stem.descriptor import parse_file</span>
+
+<span class="sd">  print &#39;Exit Relays:&#39;</span>
+
+<span class="sd">  for desc in parse_file(&#39;/home/atagar/.tor/cached-descriptors&#39;):</span>
+<span class="sd">    if desc.exit_policy.is_exiting_allowed():</span>
+<span class="sd">      print &#39;  %s (%s)&#39; % (desc.nickname, desc.fingerprint)</span>
+
+<span class="sd">**Module Overview:**</span>
+
+<span class="sd">::</span>
+
+<span class="sd">  Microdescriptor - Tor microdescriptor.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">hashlib</span>
+
+<span class="kn">import</span> <span class="nn">stem.exit_policy</span>
+
+<span class="kn">from</span> <span class="nn">stem.descriptor</span> <span class="kn">import</span> <span class="p">(</span>
+  <span class="n">Descriptor</span><span class="p">,</span>
+  <span class="n">_get_descriptor_components</span><span class="p">,</span>
+  <span class="n">_read_until_keywords</span><span class="p">,</span>
+  <span class="n">_values</span><span class="p">,</span>
+  <span class="n">_parse_simple_line</span><span class="p">,</span>
+  <span class="n">_parse_key_block</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">stem.descriptor.router_status_entry</span> <span class="kn">import</span> <span class="p">(</span>
+  <span class="n">_parse_a_line</span><span class="p">,</span>
+  <span class="n">_parse_p_line</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+  <span class="c"># added in python 3.2</span>
+  <span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">lru_cache</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+  <span class="kn">from</span> <span class="nn">stem.util.lru_cache</span> <span class="kn">import</span> <span class="n">lru_cache</span>
+
+<span class="n">REQUIRED_FIELDS</span> <span class="o">=</span> <span class="p">(</span>
+  <span class="s">&#39;onion-key&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">SINGLE_FIELDS</span> <span class="o">=</span> <span class="p">(</span>
+  <span class="s">&#39;onion-key&#39;</span><span class="p">,</span>
+  <span class="s">&#39;ntor-onion-key&#39;</span><span class="p">,</span>
+  <span class="s">&#39;family&#39;</span><span class="p">,</span>
+  <span class="s">&#39;p&#39;</span><span class="p">,</span>
+  <span class="s">&#39;p6&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_file</span><span class="p">(</span><span class="n">descriptor_file</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Iterates over the microdescriptors in a file.</span>
+
+<span class="sd">  :param file descriptor_file: file with descriptor content</span>
+<span class="sd">  :param bool validate: checks the validity of the descriptor&#39;s content if</span>
+<span class="sd">    **True**, skips these checks otherwise</span>
+<span class="sd">  :param dict kwargs: additional arguments for the descriptor constructor</span>
+
+<span class="sd">  :returns: iterator for Microdescriptor instances in the file</span>
+
+<span class="sd">  :raises:</span>
+<span class="sd">    * **ValueError** if the contents is malformed and validate is True</span>
+<span class="sd">    * **IOError** if the file can&#39;t be read</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+    <span class="n">annotations</span> <span class="o">=</span> <span class="n">_read_until_keywords</span><span class="p">(</span><span class="s">&#39;onion-key&#39;</span><span class="p">,</span> <span class="n">descriptor_file</span><span class="p">)</span>
+
+    <span class="c"># read until we reach an annotation or onion-key line</span>
+    <span class="n">descriptor_lines</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c"># read the onion-key line, done if we&#39;re at the end of the document</span>
+
+    <span class="n">onion_key_line</span> <span class="o">=</span> <span class="n">descriptor_file</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">onion_key_line</span><span class="p">:</span>
+      <span class="n">descriptor_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">onion_key_line</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">break</span>
+
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+      <span class="n">last_position</span> <span class="o">=</span> <span class="n">descriptor_file</span><span class="o">.</span><span class="n">tell</span><span class="p">()</span>
+      <span class="n">line</span> <span class="o">=</span> <span class="n">descriptor_file</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="p">:</span>
+        <span class="k">break</span>  <span class="c"># EOF</span>
+      <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;@&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;onion-key&#39;</span><span class="p">):</span>
+        <span class="n">descriptor_file</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="n">last_position</span><span class="p">)</span>
+        <span class="k">break</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">descriptor_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">descriptor_lines</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">descriptor_lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;@type&#39;</span><span class="p">):</span>
+        <span class="n">descriptor_lines</span> <span class="o">=</span> <span class="n">descriptor_lines</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+      <span class="c"># strip newlines from annotations</span>
+      <span class="n">annotations</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">bytes</span><span class="o">.</span><span class="n">strip</span><span class="p">,</span> <span class="n">annotations</span><span class="p">))</span>
+
+      <span class="n">descriptor_text</span> <span class="o">=</span> <span class="nb">bytes</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">descriptor_lines</span><span class="p">)</span>
+
+      <span class="k">yield</span> <span class="n">Microdescriptor</span><span class="p">(</span><span class="n">descriptor_text</span><span class="p">,</span> <span class="n">validate</span><span class="p">,</span> <span class="n">annotations</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">break</span>  <span class="c"># done parsing descriptors</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_id_line</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="n">identities</span> <span class="o">=</span> <span class="p">{}</span>
+
+  <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">_values</span><span class="p">(</span><span class="s">&#39;id&#39;</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+    <span class="n">entry_comp</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">entry_comp</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+      <span class="n">key_type</span><span class="p">,</span> <span class="n">key_value</span> <span class="o">=</span> <span class="n">entry_comp</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">entry_comp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+      <span class="k">if</span> <span class="n">key_type</span> <span class="ow">in</span> <span class="n">identities</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;There can only be one &#39;id&#39; line per a key type, but &#39;</span><span class="si">%s</span><span class="s">&#39; appeared multiple times&quot;</span> <span class="o">%</span> <span class="n">key_type</span><span class="p">)</span>
+
+      <span class="n">descriptor</span><span class="o">.</span><span class="n">identifier_type</span> <span class="o">=</span> <span class="n">key_type</span>
+      <span class="n">descriptor</span><span class="o">.</span><span class="n">identifier</span> <span class="o">=</span> <span class="n">key_value</span>
+      <span class="n">identities</span><span class="p">[</span><span class="n">key_type</span><span class="p">]</span> <span class="o">=</span> <span class="n">key_value</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;&#39;id&#39; lines should contain both the key type and digest: id </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">entry</span><span class="p">)</span>
+
+  <span class="n">descriptor</span><span class="o">.</span><span class="n">identifiers</span> <span class="o">=</span> <span class="n">identities</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_digest</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+  <span class="nb">setattr</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="s">&#39;digest&#39;</span><span class="p">,</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">descriptor</span><span class="o">.</span><span class="n">get_bytes</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span><span class="o">.</span><span class="n">upper</span><span class="p">())</span>
+
+
+<span class="n">_parse_onion_key_line</span> <span class="o">=</span> <span class="n">_parse_key_block</span><span class="p">(</span><span class="s">&#39;onion-key&#39;</span><span class="p">,</span> <span class="s">&#39;onion_key&#39;</span><span class="p">,</span> <span class="s">&#39;RSA PUBLIC KEY&#39;</span><span class="p">)</span>
+<span class="n">_parse_ntor_onion_key_line</span> <span class="o">=</span> <span class="n">_parse_simple_line</span><span class="p">(</span><span class="s">&#39;ntor-onion-key&#39;</span><span class="p">,</span> <span class="s">&#39;ntor_onion_key&#39;</span><span class="p">)</span>
+<span class="n">_parse_family_line</span> <span class="o">=</span> <span class="n">_parse_simple_line</span><span class="p">(</span><span class="s">&#39;family&#39;</span><span class="p">,</span> <span class="s">&#39;family&#39;</span><span class="p">,</span> <span class="n">func</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">v</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">))</span>
+<span class="n">_parse_p6_line</span> <span class="o">=</span> <span class="n">_parse_simple_line</span><span class="p">(</span><span class="s">&#39;p6&#39;</span><span class="p">,</span> <span class="s">&#39;exit_policy_v6&#39;</span><span class="p">,</span> <span class="n">func</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">stem</span><span class="o">.</span><span class="n">exit_policy</span><span class="o">.</span><span class="n">MicroExitPolicy</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="Microdescriptor"><a class="viewcode-back" href="../../../api/descriptor/microdescriptor.html#stem.descriptor.microdescriptor.Microdescriptor">[docs]</a><span class="k">class</span> <span class="nc">Microdescriptor</span><span class="p">(</span><span class="n">Descriptor</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Microdescriptor (`descriptor specification</span>
+<span class="sd">  &lt;https://gitweb.torproject.org/torspec.git/tree/dir-spec.txt&gt;`_)</span>
+
+<span class="sd">  :var str digest: **\*** hex digest for this microdescriptor, this can be used</span>
+<span class="sd">    to match against the corresponding digest attribute of a</span>
+<span class="sd">    :class:`~stem.descriptor.router_status_entry.RouterStatusEntryMicroV3`</span>
+<span class="sd">  :var str onion_key: **\*** key used to encrypt EXTEND cells</span>
+<span class="sd">  :var str ntor_onion_key: base64 key used to encrypt EXTEND in the ntor protocol</span>
+<span class="sd">  :var list or_addresses: **\*** alternative for our address/or_port attributes, each</span>
+<span class="sd">    entry is a tuple of the form (address (**str**), port (**int**), is_ipv6</span>
+<span class="sd">    (**bool**))</span>
+<span class="sd">  :var list family: **\*** nicknames or fingerprints of declared family</span>
+<span class="sd">  :var stem.exit_policy.MicroExitPolicy exit_policy: **\*** relay&#39;s exit policy</span>
+<span class="sd">  :var stem.exit_policy.MicroExitPolicy exit_policy_v6: **\*** exit policy for IPv6</span>
+<span class="sd">  :var hash identifiers: mapping of key types (like rsa1024 or ed25519) to</span>
+<span class="sd">    their base64 encoded identity, this is only used for collision prevention</span>
+<span class="sd">    (:trac:`11743`)</span>
+
+<span class="sd">  :var str identifier: base64 encoded identity digest (**deprecated**, use</span>
+<span class="sd">    identifiers instead)</span>
+<span class="sd">  :var str identifier_type: identity digest key type (**deprecated**, use</span>
+<span class="sd">    identifiers instead)</span>
+
+<span class="sd">  **\*** attribute is required when we&#39;re parsed with validation</span>
+
+<span class="sd">  .. versionchanged:: 1.1.0</span>
+<span class="sd">     Added the identifier and identifier_type attributes.</span>
+
+<span class="sd">  .. versionchanged:: 1.5.0</span>
+<span class="sd">     Added the identifiers attribute, and deprecated identifier and</span>
+<span class="sd">     identifier_type since the field can now appear multiple times.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">ATTRIBUTES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;onion_key&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_onion_key_line</span><span class="p">),</span>
+    <span class="s">&#39;ntor_onion_key&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_ntor_onion_key_line</span><span class="p">),</span>
+    <span class="s">&#39;or_addresses&#39;</span><span class="p">:</span> <span class="p">([],</span> <span class="n">_parse_a_line</span><span class="p">),</span>
+    <span class="s">&#39;family&#39;</span><span class="p">:</span> <span class="p">([],</span> <span class="n">_parse_family_line</span><span class="p">),</span>
+    <span class="s">&#39;exit_policy&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">stem</span><span class="o">.</span><span class="n">exit_policy</span><span class="o">.</span><span class="n">MicroExitPolicy</span><span class="p">(</span><span class="s">&#39;reject 1-65535&#39;</span><span class="p">),</span> <span class="n">_parse_p_line</span><span class="p">),</span>
+    <span class="s">&#39;exit_policy_v6&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_p6_line</span><span class="p">),</span>
+    <span class="s">&#39;identifier_type&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_id_line</span><span class="p">),</span>  <span class="c"># deprecated in favor of identifiers</span>
+    <span class="s">&#39;identifier&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_id_line</span><span class="p">),</span>  <span class="c"># deprecated in favor of identifiers</span>
+    <span class="s">&#39;identifiers&#39;</span><span class="p">:</span> <span class="p">({},</span> <span class="n">_parse_id_line</span><span class="p">),</span>
+    <span class="s">&#39;digest&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">_parse_digest</span><span class="p">),</span>
+  <span class="p">}</span>
+
+  <span class="n">PARSER_FOR_LINE</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;onion-key&#39;</span><span class="p">:</span> <span class="n">_parse_onion_key_line</span><span class="p">,</span>
+    <span class="s">&#39;ntor-onion-key&#39;</span><span class="p">:</span> <span class="n">_parse_ntor_onion_key_line</span><span class="p">,</span>
+    <span class="s">&#39;a&#39;</span><span class="p">:</span> <span class="n">_parse_a_line</span><span class="p">,</span>
+    <span class="s">&#39;family&#39;</span><span class="p">:</span> <span class="n">_parse_family_line</span><span class="p">,</span>
+    <span class="s">&#39;p&#39;</span><span class="p">:</span> <span class="n">_parse_p_line</span><span class="p">,</span>
+    <span class="s">&#39;p6&#39;</span><span class="p">:</span> <span class="n">_parse_p6_line</span><span class="p">,</span>
+    <span class="s">&#39;id&#39;</span><span class="p">:</span> <span class="n">_parse_id_line</span><span class="p">,</span>
+  <span class="p">}</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_contents</span><span class="p">,</span> <span class="n">validate</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">annotations</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">Microdescriptor</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">raw_contents</span><span class="p">,</span> <span class="n">lazy_load</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">validate</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_annotation_lines</span> <span class="o">=</span> <span class="n">annotations</span> <span class="k">if</span> <span class="n">annotations</span> <span class="k">else</span> <span class="p">[]</span>
+    <span class="n">entries</span> <span class="o">=</span> <span class="n">_get_descriptor_components</span><span class="p">(</span><span class="n">raw_contents</span><span class="p">,</span> <span class="n">validate</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">digest</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_bytes</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">validate</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_check_constraints</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span> <span class="o">=</span> <span class="n">entries</span>
+
+  <span class="nd">@lru_cache</span><span class="p">()</span>
+<div class="viewcode-block" id="Microdescriptor.get_annotations"><a class="viewcode-back" href="../../../api/descriptor/microdescriptor.html#stem.descriptor.microdescriptor.Microdescriptor.get_annotations">[docs]</a>  <span class="k">def</span> <span class="nf">get_annotations</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides content that appeared prior to the descriptor. If this comes from</span>
+<span class="sd">    the cached-microdescs then this commonly contains content like...</span>
+
+<span class="sd">    ::</span>
+
+<span class="sd">      @last-listed 2013-02-24 00:18:30</span>
+
+<span class="sd">    :returns: **dict** with the key/value pairs in our annotations</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">annotation_dict</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_annotation_lines</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">b</span><span class="s">&#39; &#39;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+        <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">b</span><span class="s">&#39; &#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">annotation_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">annotation_dict</span><span class="p">[</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">return</span> <span class="n">annotation_dict</span>
+</div>
+<div class="viewcode-block" id="Microdescriptor.get_annotation_lines"><a class="viewcode-back" href="../../../api/descriptor/microdescriptor.html#stem.descriptor.microdescriptor.Microdescriptor.get_annotation_lines">[docs]</a>  <span class="k">def</span> <span class="nf">get_annotation_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides the lines of content that appeared prior to the descriptor. This</span>
+<span class="sd">    is the same as the</span>
+<span class="sd">    :func:`~stem.descriptor.microdescriptor.Microdescriptor.get_annotations`</span>
+<span class="sd">    results, but with the unparsed lines and ordering retained.</span>
+
+<span class="sd">    :returns: **list** with the lines of annotation that came before this descriptor</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_annotation_lines</span>
+</div>
+  <span class="k">def</span> <span class="nf">_check_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entries</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Does a basic check that the entries conform to this descriptor type&#39;s</span>
+<span class="sd">    constraints.</span>
+
+<span class="sd">    :param dict entries: keyword =&gt; (value, pgp key) entries</span>
+
+<span class="sd">    :raises: **ValueError** if an issue arises in validation</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">for</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">REQUIRED_FIELDS</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">keyword</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Microdescriptor must have a &#39;</span><span class="si">%s</span><span class="s">&#39; entry&quot;</span> <span class="o">%</span> <span class="n">keyword</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">SINGLE_FIELDS</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">entries</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">entries</span><span class="p">[</span><span class="n">keyword</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;The &#39;</span><span class="si">%s</span><span class="s">&#39; entry can only appear once in a microdescriptor&quot;</span> <span class="o">%</span> <span class="n">keyword</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s">&#39;onion-key&#39;</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">(</span><span class="n">entries</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Microdescriptor must start with a &#39;onion-key&#39; entry&quot;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is_plural</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&#39;microdescriptors&#39;</span> <span class="k">if</span> <span class="n">is_plural</span> <span class="k">else</span> <span class="s">&#39;microdescriptor&#39;</span>
+
+  <span class="k">def</span> <span class="nf">_compare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">method</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">Microdescriptor</span><span class="p">):</span>
+      <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="k">return</span> <span class="n">method</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="nb">str</span><span class="p">(</span><span class="n">other</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+  <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+  <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">==</span> <span class="n">o</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span>
+
+  <span class="k">def</span> <span class="nf">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">&lt;</span> <span class="n">o</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__le__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="n">s</span> <span class="o">&lt;=</span> <span class="n">o</span><span class="p">)</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

@@ -1,0 +1,159 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Saving and Loading a Tor Consensus &mdash; Stem 1.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+    <link rel="top" title="Stem 1.5.2 documentation" href="../../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Stem Docs</span></a></h1>
+        <h2 class="heading"><span>Saving and Loading a Tor Consensus</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+
+        <ul id="navbar">
+          <li><a href="../../index.html">Home</a></li>
+          <li><a href="../../tutorials.html">Tutorials</a>
+            <ul>
+              <li><a href="../the_little_relay_that_could.html">Hello World</a></li>
+              <li><a href="../to_russia_with_love.html">Client Usage</a></li>
+              <li><a href="../tortoise_and_the_hare.html">Event Listening</a></li>
+              <li><a href="../over_the_river.html">Hidden Services</a></li>
+              <li><a href="../mirror_mirror_on_the_wall.html">Tor Descriptors</a></li>
+              <li><a href="../east_of_the_sun.html">Utilities</a></li>
+              <li><a href="../down_the_rabbit_hole.html">Interpreter</a></li>
+              <li><a href="../double_double_toil_and_trouble.html">Examples</a></li>
+            </ul>
+          </li>
+          <li><a href="../../api.html">API</a>
+            <ul>
+              <li><a href="../../api/control.html">stem.control</a></li>
+              <li><a href="../../api/connection.html">stem.connection</a></li>
+              <li><a href="../../api/socket.html">stem.socket</a></li>
+              <li><a href="../../api/process.html">stem.process</a></li>
+              <li><a href="../../api/response.html">stem.response</a></li>
+              <li><a href="../../api/exit_policy.html">stem.exit_policy</a></li>
+              <li><a href="../../api/version.html">stem.version</a></li>
+              <li><a href="../../api.html#descriptors">Descriptors</a></li>
+              <li><a href="../../api.html#utilities">Utilities</a></li>
+            </ul>
+          </li>
+          <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Development</a>
+            <ul>
+              <li><a href="../../faq.html">FAQ</a></li>
+              <li><a href="../../change_log.html">Change Log</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem/bugs">Bug Tracker</a></li>
+              <li><a href="https://trac.torproject.org/projects/tor/wiki/doc/stem">Wiki</a></li>
+              <li><a href="../../download.html">Download</a></li>
+            </ul>
+          </li>
+          <li><a href="../../faq.html#where-can-i-get-help">Contact</a>
+            <ul>
+              <li><a href="https://lists.torproject.org/cgi-bin/mailman/listinfo/tor-dev">Email List</a></li>
+              <li><a href="https://www.torproject.org/about/contact.html.en#irc">IRC</a></li>
+              <li><a href="https://www.atagar.com/contact/">Author</a></li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="saving-and-loading-a-tor-consensus">
+<h1>Saving and Loading a Tor Consensus<a class="headerlink" href="#saving-and-loading-a-tor-consensus" title="Permalink to this headline">¶</a></h1>
+<a class="reference external image-reference" href="../double_double_toil_and_trouble.html"><img alt="../../_images/back.png" src="../../_images/back.png" /></a>
+<p>Reading and writing a Tor consensus to disk is similar to <a class="reference external" href="../mirror_mirror_on_the_wall.html#saving-and-loading-descriptors">other descriptor
+types</a>
+with one small difference.</p>
+<p>Most descriptors are just about a single relay. Server descriptors and
+microdescriptors, for instance, can be concatenated together and dumped to a
+file because they're each independent of each other.</p>
+<p>The Tor consensus, however, is a larger document containing information about
+the Tor network in addition to a little data on each of the relays.</p>
+<p>In Stem the overall document is a
+<a class="reference internal" href="../../api/descriptor/networkstatus.html#stem.descriptor.networkstatus.NetworkStatusDocumentV3" title="stem.descriptor.networkstatus.NetworkStatusDocumentV3"><tt class="xref py py-class docutils literal"><span class="pre">NetworkStatusDocumentV3</span></tt></a>, and the
+information on individual relays are
+<a class="reference internal" href="../../api/descriptor/router_status_entry.html#stem.descriptor.router_status_entry.RouterStatusEntryV3" title="stem.descriptor.router_status_entry.RouterStatusEntryV3"><tt class="xref py py-class docutils literal"><span class="pre">RouterStatusEntryV3</span></tt></a> instances.</p>
+<p>Why does this matter? By default when you read a consensus Stem provides you
+<strong>just</strong> the <a class="reference internal" href="../../api/descriptor/router_status_entry.html#stem.descriptor.router_status_entry.RouterStatusEntryV3" title="stem.descriptor.router_status_entry.RouterStatusEntryV3"><tt class="xref py py-class docutils literal"><span class="pre">RouterStatusEntryV3</span></tt></a>.
+This is for performance reasons, and because usually that's what developers
+want. But for writing the conssensus to disk we'll want the whole document
+instead.</p>
+<p>So how do we get it? Just tell Stem that's what you want. The
+<a class="reference internal" href="../../api/descriptor/descriptor.html#stem.descriptor.__init__.DocumentHandler" title="stem.descriptor.__init__.DocumentHandler"><tt class="xref py py-class docutils literal"><span class="pre">DocumentHandler</span></tt></a> tells Stem how to read the
+consensus. For example, to write the consensus simply do the following...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">stem.descriptor</span> <span class="kn">import</span> <span class="n">DocumentHandler</span>
+<span class="kn">from</span> <span class="nn">stem.descriptor.remote</span> <span class="kn">import</span> <span class="n">DescriptorDownloader</span>
+
+<span class="n">downloader</span> <span class="o">=</span> <span class="n">DescriptorDownloader</span><span class="p">()</span>
+<span class="n">consensus</span> <span class="o">=</span> <span class="n">downloader</span><span class="o">.</span><span class="n">get_consensus</span><span class="p">(</span><span class="n">document_handler</span> <span class="o">=</span> <span class="n">DocumentHandler</span><span class="o">.</span><span class="n">DOCUMENT</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;/tmp/descriptor_dump&#39;</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">descriptor_file</span><span class="p">:</span>
+  <span class="n">descriptor_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">consensus</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Our <em>consensus</em> here is the current
+<a class="reference internal" href="../../api/descriptor/networkstatus.html#stem.descriptor.networkstatus.NetworkStatusDocumentV3" title="stem.descriptor.networkstatus.NetworkStatusDocumentV3"><tt class="xref py py-class docutils literal"><span class="pre">NetworkStatusDocumentV3</span></tt></a>. The
+<strong>descriptor_dump</strong> file now looks like...</p>
+<div class="highlight-python"><pre>network-status-version 3
+vote-status consensus
+consensus-method 18
+valid-after 2014-11-17 23:00:00
+fresh-until 2014-11-18 00:00:00
+valid-until 2014-11-18 02:00:00
+voting-delay 300 300
+... etc...</pre>
+</div>
+<p>You can then read it back with <a class="reference internal" href="../../api/descriptor/descriptor.html#stem.descriptor.__init__.parse_file" title="stem.descriptor.__init__.parse_file"><tt class="xref py py-func docutils literal"><span class="pre">parse_file()</span></tt></a>...</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">stem.descriptor</span> <span class="kn">import</span> <span class="n">DocumentHandler</span><span class="p">,</span> <span class="n">parse_file</span>
+
+<span class="n">consensus</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">parse_file</span><span class="p">(</span>
+  <span class="s">&#39;/tmp/descriptor_dump&#39;</span><span class="p">,</span>
+  <span class="n">descriptor_type</span> <span class="o">=</span> <span class="s">&#39;network-status-consensus-3 1.0&#39;</span><span class="p">,</span>
+  <span class="n">document_handler</span> <span class="o">=</span> <span class="n">DocumentHandler</span><span class="o">.</span><span class="n">DOCUMENT</span><span class="p">,</span>
+<span class="p">))</span>
+
+<span class="k">for</span> <span class="n">fingerprint</span><span class="p">,</span> <span class="n">relay</span> <span class="ow">in</span> <span class="n">consensus</span><span class="o">.</span><span class="n">routers</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+  <span class="k">print</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s">: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fingerprint</span><span class="p">,</span> <span class="n">relay</span><span class="o">.</span><span class="n">nickname</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      </div>
+
+    <div class="footer">
+    </div>
+  </body>
+</html>

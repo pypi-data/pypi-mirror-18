@@ -1,0 +1,286 @@
+{%import "commonExecuteCallback.js" as commons%}
+<script defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBBfYX6GG1foO1l7TAPk2LQVV_nACb7T4Q" type="text/javascript"></script>
+<script id="flightScript{{prefix}}">
+  window.Pixiedust = window.Pixiedust || {};
+  window.Pixiedust.flightpredict = window.Pixiedust.flightpredict || {};
+
+  (function(pix) {
+    var weatherIconClasses = ['wi-tornado', 'wi-storm-showers', 'wi-hurricane', 'wi-storm-showers', 'wi-hail', 'wi-sleet', 'wi-sleet', 'wi-rain-mix', 'wi-rain', 'wi-rain-mix', 'wi-rain',
+      'wi-rain-mix', 'wi-showers', 'wi-showers', 'wi-snow', 'wi-snow-wind', 'wi-snow', 'wi-hail', 'wi-sleet', 'wi-sandstorm', 'wi-fog',
+      'wi-cloudy-windy', 'wi-smoke', 'wi-windy', 'wi-windy', 'wi-sandstorm', 'wi-cloud', 'wi-cloudy', 'wi-day-cloudy', 'wi-night-partly-cloudy', 'wi-night-partly-cloudy',
+      'wi-night-clear', 'wi-day-sunny', 'wi-night-clear', 'day-cloudy-high', 'wi-rain-mix', 'wi-day-sunny', 'wi-thunderstorm', 'wi-thunderstorm', 'wi-showers', 'wi-rain-wind',
+      'wi-snow', 'wi-snow-wind', 'wi-snow-wind', 'wi-na', 'wi-night-alt-showers', 'wi-night-alt-snow', 'wi-night-alt-thunderstorm'];
+
+    function slideToggleArea(trigger) {
+      $(trigger).click(function() {
+        var that = $(this);
+        if (that.hasClass('expanded')) {
+          that.find('.collapsible').slideUp(500, function() {
+            that.removeClass('expanded');
+          });
+        }
+        else {
+          var opened = that.parent().find('.expanded');
+          opened.find('.collapsible').slideUp(400, function() {
+            opened.removeClass('expanded');
+          });
+          that.addClass('expanded');
+          that.find('.collapsible').slideDown(500);
+        }
+      });
+    }
+
+    pix.flightpredict = {
+      resetForm: function() {
+        $('#flightpredictform')[0].reset();
+        $('#flight-predict-date-one').datepicker('setDate', '2016-10-26');
+        $('#flight-predict-date-two').datepicker('setDate', '2016-10-26');
+
+        $('#flight-predict-select-one').empty();
+        $('#flight-predict-select-two').empty();
+
+        $('#prediction-models .prediction-models-list').empty();
+        $('#weather-forecasts .weather-forecast-list').empty();
+        $('.flight-info .chart-notes').empty();
+        $('.flight-two').attr('style', null);
+
+        $('.fp-path-one').attr('style', null).html('&nbsp;');
+        $('.fp-arr-one').attr('style', null).html('&nbsp;');
+        $('.fp-path-two').attr('style', null).html('&nbsp;');
+        $('.fp-arr-two').attr('style', null).html('&nbsp;');
+
+        google.maps.event.clearInstanceListeners(window);
+        google.maps.event.clearInstanceListeners(document);
+        $('#flightpredict-map').empty();
+        this.themap = null;
+      },
+
+      formatDateTime(datetime, opt) {
+        var datetimeStr = '';
+        if (!opt || opt === 'date') {
+          var day = datetime.getUTCDate();
+          var month = datetime.getUTCMonth() + 1;
+          var year = datetime.getUTCFullYear();
+          day = day < 10 ? '0' + day : day;
+          month = month < 10 ? '0' + month : month;
+          datetimeStr += year + '-' + month + '-' + day + ' ';
+        }
+        if (!opt || opt === 'time') {
+          var hours = datetime.getUTCHours();
+          var minutes = datetime.getUTCMinutes();
+          var ampm = hours >= 12 ? 'pm' : 'am';
+          hours = (hours % 12) || 12;
+          minutes = minutes < 10 ? '0' + minutes : minutes;
+          datetimeStr += ' ' + hours + ':' + minutes + ampm;
+        }
+        return datetimeStr;
+      },
+
+      predictionTemplate: '<li>' +
+        '<div class="prediction-model-title"><span>{flight}</span><span>{datetime}</span></div>' +
+        '<div class="prediction-model collapsible">{models}</div>' +
+        '</li>',
+
+      weatherTemplate: '<li>' +
+        '<div class="weather-forecast-title"><span>{flight}</span><span>{datetime}</span></div>' +
+        '<div class="row weather-forecast collapsible">' +
+        '<div>{departureweather}</div>' +
+        '<div>{arrivalweather}</div>' +
+        '</div></li>',
+
+      airportMarkerTemplate: '<div class="airport-marker-info">' +
+        '<h3>{name}</h3>' +
+        '<div>{street1}</div>' +
+        '<div>{city}, {stateCode} {postalCode}</div>' +
+        '<div><span>Lat/Long:</span> <span>{latitude}, {longitude}</span></div>' +
+        '</div>',
+
+      flightMarkerTemplate: '<div class="flight-path-info">' +
+        '<h3><span>{departureAirportFsCode} &gt; {arrivalAirportFsCode}</span> <span>({carrierFsCode} {flightNumber})</span></h3>' +
+        '<div><span>Departure:</span> <span>{depdatetime}</span></div>' +
+        '<div><span>Arrival:</span> <span>{arrdatetime}</span></div>' +
+        '<div><span>Airline Name:</span> <span>{airlineName}</span></div>' +
+        '<div><span>Airline Phone#:</span> <span>{airlinePhone}</span></div>' +
+        '<div><span>Airplane:</span> <span>{airplane}</span></div>' +
+        '</div>',
+
+      themap: null,
+      theinfowindow: null,
+
+      renderMap: function() {
+        if (this.themap === null) {
+            this.themap = new google.maps.Map(document.getElementById('flightpredict-map'), {
+              zoom: 4,
+              center: new google.maps.LatLng(40, -100),
+              mapTypeId: google.maps.MapTypeId.ROADMAP,
+              mapTypeControl: false,
+              streetViewControl: false,
+              rotateControl: false,
+              fullscreenControl: false
+            });
+        }
+      },
+
+      renderFlightMap: function(info) {
+        this.renderMap();
+
+        var departureInfo = info.departureAirportInfo.airportInfo;
+        var arrivalInfo = info.arrivalAirportInfo.airportInfo;
+
+        var depAirport = new google.maps.LatLng(departureInfo.latitude, departureInfo.longitude);
+        var arrAirport = new google.maps.LatLng(arrivalInfo.latitude, arrivalInfo.longitude);
+        var depAirportMarker = new google.maps.Marker({position: depAirport, map: this.themap});
+        var arrAirportMarker = new google.maps.Marker({position: arrAirport, map: this.themap});
+
+        var flightPlanCoordinates = [depAirport,arrAirport];
+        var flightPath = new google.maps.Polyline({
+          path: flightPlanCoordinates,
+          strokeColor: info.prediction.overall === 'On Time' ? '#00b4a0' : '#a6266e',
+          strokeOpacity: 0.75,
+          strokeWeight: 8
+        });
+
+        var flightPathInfo = {
+          departureAirportFsCode: info.flightInfo.departureAirportFsCode,
+          arrivalAirportFsCode:  info.flightInfo.arrivalAirportFsCode,
+          carrierFsCode: info.flightInfo.carrierFsCode,
+          flightNumber: info.flightInfo.flightNumber,
+          depdatetime: this.formatDateTime(new Date(info.flightInfo.departureTime)),
+          arrdatetime: this.formatDateTime(new Date(info.flightInfo.arrivalTime)),
+          airlineName: info.flightInfo.airlineInfo.name,
+          airlinePhone: info.flightInfo.airlineInfo.phoneNumber,
+          airplane: info.flightInfo.equipmentInfo.name
+        };
+        
+        flightPath.setMap(this.themap);
+
+        var depAirportInfoContent = this.airportMarkerTemplate.replace(/\{(.+?)\}/g, function($0, $1) {
+          return departureInfo.hasOwnProperty($1) ? departureInfo[$1] : $0;
+        });
+        var arrAirportInfoContent = this.airportMarkerTemplate.replace(/\{(.+?)\}/g, function($0, $1) {
+          return arrivalInfo.hasOwnProperty($1) ? arrivalInfo[$1] : $0;
+        });
+        var flightPathInfoContent = this.flightMarkerTemplate.replace(/\{(.+?)\}/g, function($0, $1) {
+          return flightPathInfo.hasOwnProperty($1) ? flightPathInfo[$1] : $0;
+        });
+
+        
+        if (this.theinfowindow === null) {
+          this.theinfowindow = new google.maps.InfoWindow({});
+        }
+        var infoWindow = this.theinfowindow;
+
+        depAirportMarker.addListener('click', function() {
+          infoWindow.setContent(depAirportInfoContent);
+          infoWindow.open(this.themap, depAirportMarker);
+        });
+
+        arrAirportMarker.addListener('click', function() {
+          infoWindow.setContent(arrAirportInfoContent);
+          infoWindow.open(this.themap, arrAirportMarker);
+        });
+
+        flightPath.addListener('click', function(event) {
+          infoWindow.setContent(flightPathInfoContent);
+          infoWindow.setPosition(event.latLng);
+          infoWindow.open(this.themap, arrAirportMarker);
+        });
+
+        google.maps.event.trigger(this.themap,'resize');
+      },
+
+      renderPredictionModels: function(info, expand) {
+        var predictionInfo = info.prediction;
+        var departureAirport = info.flightInfo.departureAirportFsCode;
+        var arrivalAirport = info.flightInfo.arrivalAirportFsCode;
+
+        var predictionModel = {
+          flight: departureAirport + ' > ' + arrivalAirport,
+          datetime: this.formatDateTime(new Date(info.flightInfo.departureTime)),
+          overall: predictionInfo.overall,
+          models: ''
+        };
+
+        for (var m in predictionInfo.models) {
+          var model = predictionInfo.models[m];
+          predictionModel.models += '<div><span>' + model.model + '</span><span class="' + (model.prediction === 'On Time' ? 'ontime' : 'delayed') + '">' + model.prediction + '</span></div>';
+        }
+
+        var t = $(this.predictionTemplate.replace(/\{(.+?)\}/g, function($0, $1) {
+          return predictionModel.hasOwnProperty($1) ? predictionModel[$1] : $0;
+        }));
+
+        slideToggleArea(t);
+        if (expand) {
+          t.trigger('click');
+        }
+
+        $('#prediction-models .prediction-models-list').append(t);
+      },
+
+      renderWeatherForecast: function(info, expand) {
+        var departureWeather = info.departureAirportInfo.weatherForecast;
+        var arrivalWeather = info.arrivalAirportInfo.weatherForecast;
+        var departureAirport = info.flightInfo.departureAirportFsCode;
+        var arrivalAirport = info.flightInfo.arrivalAirportFsCode;
+        var departureCity = info.departureAirportInfo.airportInfo.city;
+        var departureState = info.departureAirportInfo.airportInfo.stateCode;
+        var arrivalCity = info.arrivalAirportInfo.airportInfo.city;
+        var arrivalState = info.arrivalAirportInfo.airportInfo.stateCode;
+        var departureTemp = Math.round((departureWeather.temp * 1.8) + 32); //convert to fahrenheit
+        var arrivalTemp = Math.round((arrivalWeather.temp * 1.8) + 32); //convert to fahrenheit
+        var departureIcon = departureWeather.icon_code < weatherIconClasses.length ? weatherIconClasses[departureWeather.icon_code] : 'wi-na';
+        var arrivalIcon = arrivalWeather.icon_code < weatherIconClasses.length ? weatherIconClasses[arrivalWeather.icon_code] : 'wi-na';
+
+        var weatherForecast = {
+          flight: departureAirport + ' > ' + arrivalAirport,
+          datetime: this.formatDateTime(new Date(info.flightInfo.departureTime)),
+          departureweather: '<div class="fp-weather-temp">' + departureTemp + '<span>&deg; F</span></div>' +
+            '<div class="fp-weather-info">' +
+            '<div>' + departureCity + (departureState ? (', ' + departureState) : '') + '</div>' +
+            '<div>' + departureWeather.phrase_22char + '</div>' +
+            '<div>' + departureWeather.wdir_cardinal + '</div>' +
+            '</div>' +
+            '<div class="fp-weather-icon">' +
+            '<i class="wi ' + departureIcon + '"></i>' +
+            '</div>',
+          arrivalweather: '<div class="fp-weather-temp">' + arrivalTemp + '<span>&deg; F</span></div>' +
+            '<div class="fp-weather-info">' +
+            '<div>' + arrivalCity + (arrivalState ? (', ' + arrivalState) : '') + '</div>' +
+            '<div>' + arrivalWeather.phrase_22char + '</div>' +
+            '<div>' + arrivalWeather.wdir_cardinal + '</div>' +
+            '</div>' +
+            '<div class="fp-weather-icon">' +
+            '<i class="wi ' + arrivalIcon + '"></i>' +
+            '</div>'
+        };
+
+        var t = $(this.weatherTemplate.replace(/\{(.+?)\}/g, function($0, $1) {
+          return weatherForecast.hasOwnProperty($1) ? weatherForecast[$1] : $0;
+        }));
+
+        slideToggleArea(t);
+        if (expand) {
+          t.trigger('click');
+        }
+
+        $('#weather-forecasts .weather-forecast-list').append(t);
+      },
+
+      populateFlightOptions: function(flights, selectNode) {
+        for (var f in flights) {
+          var flight = flights[f];
+
+          var datetime = new Date(flight.time);
+          //var datetimeUTC = new Date(flight.timeUTC.replace(' ', 'T')); //firefox doesnt like the space
+          //var time = this.formatDateTime(datetimeUTC, 'time');
+          var datetimeUTC = new Date(flight.timeUTC);
+          var time = this.formatDateTime(datetime, 'time');
+
+          selectNode.append('<option value="' + flight.flightnumber + ':' + flight.destAirportCode + ':' + datetime.getTime() + ":" + datetimeUTC.getTime() + '">' + time + ' - ' + flight.destAirportCode + ' (' + flight.flightnumber + ')' + '</option>');
+          selectNode.change();
+        }
+      }
+    };
+  })(window.Pixiedust);
+</script>

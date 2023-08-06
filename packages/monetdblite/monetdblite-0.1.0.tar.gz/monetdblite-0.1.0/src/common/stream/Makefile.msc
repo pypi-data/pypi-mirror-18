@@ -1,0 +1,38 @@
+
+## Use: nmake -f makefile.msc install
+
+# Nothing much configurable below
+
+TOPDIR = .\..\..
+srcdir = $(TOPDIR)\..\common\stream
+!INCLUDE $(TOPDIR)\..\NT\rules.msc
+all: all-msc
+check: check-msc
+install: install-msc
+CFLAGS=$(CFLAGS) $(thread_safe_flag_spec)
+INCLUDES = -I$(srcdir) $(zlib_CFLAGS) $(BZ_CFLAGS) $(liblzma_CFLAGS)
+libstream.dll: 
+libstream_LIBS = $(SOCKET_LIBS) $(zlib_LIBS) $(BZ_LIBS) $(liblzma_LIBS) $(LTLIBICONV)
+libstream_OBJS = stream.obj
+libstream_DEPS = $(libstream_OBJS)
+libstream.lib: libstream.dll
+libstream.dll: $(libstream_DEPS) 
+	python "$(TOPDIR)\..\NT\wincompile.py" $(CC) $(CFLAGS) -LD -Felibstream.dll @<< /link @<<
+$(libstream_OBJS)
+<<
+$(libstream_LIBS)
+<<
+	if exist $@.manifest $(MT) -manifest $@.manifest -outputresource:$@;2
+
+stream.obj: "$(srcdir)\stream.c" "$(srcdir)\stream.h" "$(srcdir)\stream_socket.h"
+	$(CC) $(CFLAGS) $(stream_CFLAGS) $(GENDLL) -D_CRT_SECURE_NO_WARNINGS -DLIBSTREAM -Fo"stream.obj" -c "$(srcdir)\stream.c"
+all-msc: "libstream.dll"
+check-msc: all-msc "libstream.dll"
+install-msc: install-exec install-data
+install-exec:  "install_libstream" 
+install_libstream: "libstream.dll" "$(libdir)"
+	$(INSTALL) "libstream.dll" "$(libdir)\libstream.dll"
+	$(INSTALL) "libstream.lib" "$(libdir)\libstream.lib"
+"$(libdir)":
+	if not exist "$(libdir)" $(MKDIR) "$(libdir)"
+install-data:

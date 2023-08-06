@@ -1,0 +1,1 @@
+from ejabberdctl import ejabberdctl

@@ -1,0 +1,47 @@
+#!/usr/bin/env python
+# encoding: utf-8
+# Usage: python pipsort.py virtualenvwrapper
+
+import sys
+
+try:
+    import xmlrpclib
+except ImportError:
+    import xmlrpc.client as xmlrpclib
+
+client = xmlrpclib.ServerProxy('https://pypi.python.org/pypi')
+
+def score(item):
+    res = client.release_downloads(item['name'], item['version'])
+    item['downloads'] = -1
+    if len(res) >= 1 and len(res[0]) >= 2:
+        item['downloads'] = res[0][1]
+    return item
+
+def search(key):
+    #res = client.search({'name':key, 'summary':key})
+    res = client.search({'name':key})
+    print 'get results:', len(res), ' packages and going to retrive package downloads one by one ... '
+    res_score = map(score, res)
+    res_sorted = sorted(res_score, key=lambda x:x['downloads'], reverse=True)
+    return res_sorted
+
+if __name__ == "__main__": 
+    help_tip = '''
+Usage of pipsort:
+    pip <query>
+Example: python pipsort.py virtualenvwrapper
+    '''
+    if len(sys.argv) !=2:
+    	print help_tip
+    	exit(0)
+    x = sys.argv[1]
+    print 'query:', x,  ', searching ... '
+    result = search(x)
+    print 'get package sorted by downloads:\n'
+    for x in result:
+        st = (x['name'] + '(' + x['version'] + ')').ljust(50)  + (' Downloads:' + str(x['downloads'])).ljust(20)  + ' - ' +  x['summary']
+        print st
+
+
+

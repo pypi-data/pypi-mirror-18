@@ -1,0 +1,59 @@
+{% from 'invisibleroads_uploads:templates/parts.jinja2' import upload_button %}
+
+{% macro head_style_loaded() %}
+<link rel="stylesheet" href="//api.mapbox.com/mapbox.js/v2.4.0/mapbox.css">
+{% endmacro %}
+
+{% macro head_style_inline() %}{% endmacro %}
+
+{% macro head_script_inline() %}
+x = CC.geotable = {};
+x.definitions = {};
+{% endmacro %}
+
+{% macro body_script_loaded() %}
+<script src='//api.mapbox.com/mapbox.js/v2.4.0/mapbox.js'></script>
+{% endmacro %}
+
+{% macro body_script_inline() %}
+L.mapbox.accessToken = '{{ get_os_environment_variable("MAPBOX_TOKEN", "pk.eyJ1IjoiaW52aXNpYmxlcm9hZHMiLCJhIjoiY2lteHZianlxMDNuN3V3bTRnYjdsZTdycSJ9.xLgWezLxrs7TR11XqONWeQ") }}';
+$.each(CC.geotable.definitions, draw_map);
+{% endmacro %}
+
+{% macro render_argument(data_item) %}
+{% set key = data_item.key %}
+<div data-name="{{ key }}">{{ upload_button(id='%s-upload-button' % key, text='Upload', class='btn-lg geotable-upload') }}</div>
+<div id="{{ key }}">{{ render_property(data_item) }}</div>
+<input name="{{ key }}" type="hidden" value="{{ data_item.file_location }}">
+{% endmacro %}
+
+{% macro render_property(data_item, stamp='') %}
+{% set key = data_item.key + stamp %}
+{% if data_item.value is not none %}
+{% set items, properties = data_item.value.interpret() %}
+{% set column_names = items[0][-1].columns if items else [] %}
+<div id="{{ key }}-map" class="geotable-map"></div>
+<table id="{{ key }}-table" class="table geotable-table">
+<thead><tr>{% for column_name in column_names %}<th>{{ column_name }}</th>{% endfor %}</tr></thead>
+{% for geometry_type_id, geometry_coordinates, local_properties, local_table in items %}
+<tbody id="{{ key }}-row{{ loop.index0 }}">
+{%- for index, row in local_table.fillna('').iterrows() -%}
+<tr>{% for value in row %}<td>{{ value }}</td>{% endfor %}</tr>
+{%- endfor -%}
+</tbody>
+{% endfor %}
+</table>
+<script>
+CC.geotable.definitions['{{ key }}'] = [[
+{% for geometry_type_id, geometry_coordinates, local_properties, local_table in items %}
+[{{ geometry_type_id }}, {{ geometry_coordinates }}, {
+{%- for k, v in local_properties.items() %}
+'{{ k }}': '{{ v }}'
+{%- if not loop.last %},{% endif %}
+{% endfor -%}
+}]
+{%- if not loop.last %},{% endif %}
+{% endfor %}], {{ properties }}];
+</script>
+{% endif %}
+{%- endmacro %}

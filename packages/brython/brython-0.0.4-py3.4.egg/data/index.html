@@ -1,0 +1,679 @@
+<html>
+
+<head>
+<meta charset="utf-8">
+
+<style>
+body{
+    font-size: 14px;
+    font-family: Helvetica;
+    margin-left: 20%;
+    margin-right: 20%;
+}
+
+a{
+    color: #00f;
+}
+a.visited{
+    color: #00f;
+}
+
+.panel{
+    position: absolute;
+    top: 100;
+    left: 10%;
+    width: 80%;
+    height: 300;
+    background-color: #ccc;
+    padding: 10;
+}
+
+button{
+    background-color: #800;
+    color: #fff;
+    font-weight: bold;
+    border-style: solid;
+    border-color: #000;
+    border-width: 2px;
+}
+
+div.example{
+    margin-top: 2em;
+}
+
+pre.python{
+    font-family: Consolas, Courier New;
+    font-weight: bold;
+    color: #113;
+    background-color: #cef968;
+    border-width: 1 1 1 3;
+    border-color: #113;
+    border-style: solid;
+    width:90%;
+    margin-top: 2em;
+}
+
+.zone{
+    margin-left: 5em;
+    padding: 1em;
+    border-width: 1px;
+    border-color: #333;
+    border-style: solid;
+    width: 20em;
+}
+
+code{
+    font-family: Consolas, Courier New;
+    font-weight: bold;
+    color: #113;
+    background-color: #cef968;
+}
+</style>
+
+</head>
+
+<body onload="brython(1)">
+
+<h1>Introduction to Brython</h1>
+
+Brython is made to develop applications for the browser in Python. To enable it, the HTML page must have this structure :
+
+<pre>&lt;html&gt;
+&lt;head&gt;
+<b style="color:#080;">&lt;script src="/brython.js"&gt;&lt;/script&gt;
+&lt;script src="/brython_modules.js"&gt;&lt;/script&gt;</b>
+&lt;/head&gt;
+&lt;body <b style="color:#800;">onload="brython()"</b>&gt;
+<b style="color:#00f;">&lt;script type="text/python"&gt;
+# python code here
+&lt;/script&gt;</b>
+&lt;/body&gt;
+&lt;/html&gt;
+</pre>
+
+<p><b style="color:#080;font-family:courier">brython.js</b> is the Brython engine. <b style="color:#080;font-family:courier;">brython_modules.js</b> includes all the modules in the standard distribution. 
+<p>The function <b style="color:#800;font-family:courier">brython()</b>, defined in <b style="color:#080;font-family:courier">brython.js</b>, is executed when the page has finished loading : it scans the Python scripts in the page, ie the code inside script tags with the attribute <b style="color:#00f;font-family:courier;">type="text/python"</b>, and runs them.
+
+<p>
+Here are a few examples of how you can use Brython to interact with a web page.
+
+<div>
+    <ul id="menu">
+    </ul>
+</div>
+
+<div class="example" id="ex1">
+    <button id="button1">change the text of an element</button>
+    <span id="zone1" class="zone">Initial content</span>
+    
+    <script type="text/python" id="script1">
+    from browser import document
+    
+    def change(event):
+        document["zone1"].text = "New content"
+    
+    document["button1"].bind("click", change)
+    </script>
+    
+    <pre class="python"></pre>
+    
+    <span class="comment"><code>browser</code> is a Python-specific module that defines the objects used to interact with the page ; it is included in <b style="color:#080;font-family:courier;">brython_modules.js</b>. 
+<p><code>document</code> is an object representing the HTML document ; <code>document[element_id]</code> is the element with attribute id equal to element_id. In these examples, <code>document["buttonN"]</code> is a reference to the button you click on, and <code>document["zoneN"]</code> is the bordered zone at the right of the button.
+<p>Setting the attribute <code>text</code> of an element changes its text content.
+<p><code>bind()</code> is a method that defines the function to call when an event occurs on the element. When the user clicks on the element, this event is called "click". The last line means : when the user clicks on the element (here, the button with the text "change the text of an element"), call the function <code>change()</code>.
+The function takes one argument, an object representing the event.
+</code>
+</span>
+</div>
+
+<div class="example" id="ex2">
+    <button id="button2">change the style of an element</button>
+    <span id="zone2" style="color:blue;background-color:yellow;" class="zone">coloured content</span>
+    
+    <script type="text/python" id="script2">
+    from browser import document
+    
+    element = document["zone2"]
+    
+    def change(event):
+        style = element.style
+        color = style.color
+        style.color = "orange" if color == "blue" else "blue"
+        style.backgroundColor = "gray" if color == "blue" else "yellow"
+        style.fontWeight = "bold" if color == "blue" else "normal"
+        style.fontSize = "18px" if color == "blue" else "14px"
+        
+    document["button2"].bind("click", change)
+    </script>
+    
+    <pre class="python"></pre>
+
+    <span class="comment">
+    The attributes and methods of the elements are described in the Document Object Model (DOM), which is abundantly documented. One of these attributes is <code>style</code>, which itself has (among many others) the attributes <code>color</code> (text color), <code>backgroundColor</code> (background color), <code>fontWeigth</code> ("bold" or "normal"), <code>fontSize</code> (size of the letters, in pixels).
+    </span>
+
+</div>
+
+<div class="example" id="ex3">
+    <button id="button3">hide or show an element</button>
+    <span id="zone3" class="zone">on / off</span>
+    
+    <script type="text/python"  id="script3">
+    from browser import document
+    
+    def change(event):
+        display = document["zone3"].style.display
+        document["zone3"].style.display = "inline" if display == "none" else "none"
+    
+    document["button3"].bind("click", change)
+    </script>
+
+    <pre class="python"></pre>
+
+    <span class="comment">
+    <code>display</code> is another attribute of DOM elements. Setting it to <code>"none"</code> hides the element.
+    </span>
+</div>
+
+<div class="example" id="ex4">
+    <button id="button4">display a popup message</button>
+    
+    <script type="text/python" id="script4">
+    from browser import document, alert
+    
+    document["button4"].bind("click", lambda ev: alert("Hello !"))
+    </script>
+
+    <pre class="python"></pre>
+
+    <span class="comment">
+    <code>alert</code> is used to display small popup windows.
+    <p>Note that here, since the callback function is short, it is defined in a lambda function.
+    </span>
+</div>
+
+<div class="example" id="ex5">
+    <button id="button5">write in the browser console</button>
+    
+    <script type="text/python" id="script5">
+    from browser import document
+    
+    document["button5"].bind("click", lambda ev: print("Hello !"))
+    </script>
+    
+    <pre class="python"></pre>
+
+    <span class="comment">
+    By default, <code>print()</code> writes message in the browser console window (to open it, do Ctrl+Maj+K on Firefox, Ctrl+Maj+J on Chrome, F12 on IE, etc).
+    <p>Like in Python, the output can be reset by setting <code>sys.stdout</code> to an object with a method <code>write()</code>.
+    </span>
+</div>
+
+<div class="example" id="ex6">
+    <button id="button6">insert an element</button>
+    <span id="zone6" class="zone">initial content</span>
+    
+    <script type="text/python" id="script6">
+    from browser import document, html
+    
+    element = document["zone6"]
+    nb = 0
+    
+    def change(event):
+        global nb
+        element <= html.B(" {}".format(nb))
+        nb += 1
+    
+    document["button6"].bind("click", change)
+    </script>
+
+    <pre class="python"></pre>
+
+    <span class="comment">
+    To create DOM elements, Brython provides the module <code class="module">browser.html</code>. It defines classes with the name of all the valid HTML tags in uppercase ; <code>html.B("message")</code> creates the element <code class="html">&lt;B&gt;message&lt;B&gt;</code>
+    <p>To include an element inside another one, Brython uses the operator <code><=</code> : think of it as a left arrow, not as "inferior or equal". The use of an operator is more concise and avoids having to use a function call.
+    </code>
+    </span>
+
+</div>
+
+<div class="example" id="ex6_1">
+    <button id="button6_1">insert an element (standard DOM methods)</button>
+    <span id="zone6_1" class="zone">initial content</span>
+    
+    <script type="text/python" id="script6_1">
+    from browser import document, html
+    
+    element = document.getElementById("zone6_1")
+    nb = 0
+    
+    def change(event):
+        global nb
+        elt = document.createElement("B")
+        txt = document.createTextNode(" {}".format(nb))
+        elt.appendChild(txt)
+        element.appendChild(elt)
+        nb += 1
+    
+    document["button6_1"].addEventListener("click", change)
+    </script>
+
+    <pre class="python"></pre>
+
+    <span class="comment">This is the same as the previous example ; Brython provides an alternative syntax, but supports all the standard DOM features.
+    </span>
+
+</div>
+
+<div class="example" id="ex7">
+    <button id="button7">insert an HTML table</button>
+    <p>
+    <div id="zone7" class="zone" style="width:60%"></div>
+    
+    <script type="text/python" id="script7">
+    from browser import document, html
+    
+    counter = 0
+    
+    def change(event):
+        global counter
+        table = html.TABLE()
+        table <= html.TR(html.TH('Column {}'.format(counter+i)) 
+            for i in range(5))
+        for row in range(3):
+            table <= html.TR(html.TD('Cell {}-{}'.format(row, counter+i)) 
+                for i in range(5))
+        document["zone7"].clear()
+        document["zone7"] <= table
+        counter += 1
+    
+    document['button7'].bind('click', change)
+    </script>
+
+    <pre class="python"></pre>
+
+    <span class="comment">
+    To build a table, we use the tags <code>TABLE, TR, TH</code> and <code>TD</code>. The first attribute passed to the classes defined in <code class="module">browser.html</code> is either a string, another instance of a class, <i>or an iterator on such elements</i>. Here we use a Python generator expression to include several headers (<code>TH</code>) in the first row (<code>TR</code>) of the table, and the same for the table cells (<code>TD</code>) in the next rows.
+    <p><code>clear()</code> is a method that removes all the element contents.
+    </code>
+    </span>
+    
+</div>
+
+
+<div class="example" id="ex12">
+    <button id="button12">create a dropdown menu</button>
+    <span id="zone12" class="zone"></span>
+    
+    <script type="text/python" id="script12">
+    from browser import document, alert, html
+    
+    def show(event):
+        dropdown = event.target
+        num = dropdown.selectedIndex
+        alert("Selected: {}".format(dropdown.options[num].value))
+
+    def change(event):
+        document["zone12"] <= 'Your choice : '
+        dropdown = html.SELECT(html.OPTION("Choice {}".format(i)) 
+            for i in range(5))
+        dropdown.bind('change', show)
+        document["zone12"] <= dropdown
+    
+    document['button12'].bind('click', change)
+    </script>
+    
+    <pre class="python"></pre>
+    
+    <span class="comment">
+    We build the dropdown menu by a SELECT element, using a generator expression with the OPTION elements displayed in the menu.
+    <p>When the user changes the selected option in the menu, the event "change" is triggered on the SELECT box. The function <code>show(event)</code> is called ; <code>event.target</code> is the element itself. A SELECT element has an attribute <code>selectedIndex</code>, the rank of the selected item in the list of options, available by its attribute <code>options</code>. The OPTION element itself has an attribute <code>value</code>, here the option text.
+    </span>
+</div>
+
+
+<div class="example" id="ex8">
+    <button id="button8">draw in a canvas</button>
+    <canvas id="zone8" width="200" height="50" 
+        style="border-color:#000;border-style:solid;border-width:1px;margin-left:5em;"></canvas>
+    
+    <script type="text/python" id="script8">
+    from browser import document, html
+    import math
+    
+    canvas = document["zone8"]
+    ctx = canvas.getContext("2d")
+    
+    x = 20
+    
+    def change(event):
+        global x
+        ctx.beginPath()
+        ctx.arc(x, 25, 15, 0, 2*math.pi)
+        x += 15
+        ctx.stroke()
+    
+    document["button8"].bind("click", change)
+    </script>
+
+    <pre class="python"></pre>
+
+    <span class="comment">
+    We start by importing the module <code class="module">math</code>, the same as in the Python standard distribution.
+    <p>Canvas allows drawing geometric forms in the page. There again you can easily find documentation and examples.
+    </span>
+</div>
+
+<div class="example" id="ex9">
+    <button id="button9">insert an image</button>
+    <p><div id="zone9" class="zone" style="height:60px;"></div>
+    
+    <script type="text/python"  id="script9">
+    from browser import document, html
+    
+    logo = "https://www.python.org/static/community_logos/python-logo-master-v3-TM.png"
+    
+    def change(event):
+        document["zone9"].clear()
+        document["zone9"] <= html.IMG(src=logo, height=50)
+    
+    document["button9"].bind("click", change)
+    </script>
+</div>
+
+<div class="example" id="ex_mousemove">
+    <button id="button_mousemove">move an element with the mouse</button>
+    <span style="width:300; height:50; background-color:#fff;" id="zone_mousemove">
+        <b style="position: relative;left:140;top:10;font-size:30px;" 
+            id="moving">&#9635;
+        </b>
+    </span>
+    
+    <script type="text/python"  id="script_mousemove">
+    from browser import document
+    
+    class ElementMove:
+    
+        def __init__(self, moving):
+            """Make "moving" element movable with the mouse"""
+            self.moving = moving
+            self.is_moving = False
+            self.moving.bind("mousedown", self.start)           
+            self.moving.bind("mousemove", self.move)
+            self.moving.bind("mouseup", self.stop)
+            moving.style.cursor = "move"
+
+        def start(self, event):
+            """When user clicks on the moving element, set boolean is_moving
+            to True and store mouse and moving element positions"""
+            self.is_moving = True
+            self.mouse_pos = [event.x, event.y]
+            self.elt_pos = [self.moving.left, self.moving.top]
+            # prevent default behaviour to avoid selecting the moving element
+            event.preventDefault()
+    
+        def move(self, event):
+            """User moves the mouse"""
+            if not self.is_moving:
+                return
+            
+            # set new moving element coordinates
+            self.moving.left = self.elt_pos[0] + event.x - self.mouse_pos[0]
+            self.moving.top = self.elt_pos[1] + event.y - self.mouse_pos[1]
+            
+        def stop(self, event):
+            """When user releases the mouse button, stop moving the element"""
+            self.is_moving = False
+
+    ElementMove(document["moving"])
+    </script>
+    
+    <pre class="python"></pre>
+    
+    <span class="comment">
+    This example uses other mouse events than "click" : "mousedown", "mousemove" and "mouseup". 
+    <p>The mouse position is available by the attributes <code>x</code>, <code>y</code> of the event object.
+    <p>The position of an element can be changed by defining its attributes <code>left</code> and <code>top</code>.    </span>
+</div>
+
+
+<div class="example" id="ex13">
+    <button id="button13">select elements by CSS selectors</button>
+    <span id="zone13" class="zone"></span>
+    
+    <script type="text/python" id="script13">
+    from browser import document, html
+    
+    def change(event):
+        document["zone13"].clear()
+
+        buttons = document.get(selector="button")
+        document["zone13"] <= "On this page there are {} buttons ".format(len(buttons))
+        
+        zones = document.get(selector=".zone")
+        document["zone13"] <= "and {} elements with class 'zone'".format(len(zones))
+    
+    document['button13'].bind('click', change)
+    </script>
+
+    <pre class="python"></pre>
+    
+    <span class="comment">
+    We have seen how to get an element by its id : <code>document[element_id]</code>. 
+    <p>The method <code>get(selector=css_selector)</code> provides a way to select elements based on the CSS selector syntax. Passing the name of a tag returns a list of all the elements with this tag ; passing <code>.zone</code> returns a list of all the elements whose attribute <code>class</code> is set to <code>"zone"</code>. You can easily find external resources on CSS selectors.
+    </span>
+</div>
+
+<div class="example" id="ex14">
+    <button id="button14">rotate an element</button>
+    <span id="zone14" class="zone">
+        <button style="background-color: red; width: 2em;" id="rot14">&nbsp;</button>
+    </span>
+    
+    <script type="text/python" id="script14">
+    from browser import document, html
+    
+    moving = document["rot14"]
+    angle = 10
+    
+    def change(event):
+        global angle
+        moving.style.transform = "rotate({}deg)".format(angle)
+        angle += 10
+
+    document['button14'].bind('click', change)
+    </script>
+
+    <pre class="python"></pre>
+    
+    <span class="comment">
+    <code>transform</code> is another attribute of <code>style</code> that can make changes to the element, including a rotation by a specified angle.
+    </span>
+</div>
+
+<div class="example" id="ex15">
+    <button id="button15">animate an element</button>
+    <p>
+    <div id="zone15" style="padding:0;" class="zone">
+        <button style="background-color: #fff; border-width: 0px; color:#000;padding:0;font-size:24px;height:auto;" id="rot15">&#9658;</button>
+    </div>
+    
+    <script type="text/python" id="script15">
+    from browser import document, window
+    
+    moving = document["rot15"]
+    x = 0
+    dx = 3
+    run = None
+    
+    def change(event):
+        global run
+        if run is None:
+            # start animation
+            animloop(10000)
+        else:
+            # stop animation
+            window.cancelAnimationFrame(run)
+            run = None
+    
+    def render():
+        global x, dx
+        moving.style.transform = "translate({}px,0)".format(x)
+        x += dx
+        if x > document["zone15"].offsetWidth-moving.offsetWidth:
+            dx = -dx
+            moving.html = "&#9668;" # left triangle
+        elif x <= 0:
+            dx = -dx
+            moving.html = "&#9658;" # right triangle
+
+    def animloop(t):
+        global run
+        run = window.requestAnimationFrame(animloop)
+        render()
+
+    document['button15'].bind('click', change)
+    </script>
+
+    <pre class="python"></pre>
+    
+    <span class="comment">
+    The browser window provides 2 functions to start and stop an animation : <code>requestAnimationFrame</code> and <code>cancelAnimationFrame</code>.
+    <p>When the user clicks on the button, the animation is started by calling the function <code>animloop</code> with an arbitrary argument. <code>window.requestAnimationFrame</code>, called with the function itself as argument, returns a reference to the animation. The drawing function, <code>render()</code> is called ; the loop is then executed repeatedly under the control of the animation loop.
+    <p>In <code>render()</code>, to put the element at a specific location, we use another <code>transform</code> function, <code>translate(x, y)</code>. The moving element bounces, and its shape changes, when its position reaches the box borders.
+    <p>If the user clicks the button again, calling <code>window.cancelAnimationFrame</code> on the animation object stops the animation.
+    </span>
+</div>
+
+<div class="example" id="ex16">
+    <button id="button16">get value of form fields</button>
+    <p><div id="zone16" class="zone"></div>
+    
+    <p><div style="width:30%; padding-left:3em; background-color:#ddd;">
+      <p><input id="input16" autocomplete="off" value="test">
+      <br><select id="select16" autocomplete="off">
+          <option value="one">one
+          <option value="two">two
+          <option value="three">three
+      </select>
+      <br><textarea id="textarea16" rows=3 cols=30 
+        autocomplete="off">your content here...</textarea>
+    </div>
+
+    <script type="text/python" id="script16">
+    from browser import document, html
+    
+    def change(event):
+        input = document["input16"].value
+        select = document["select16"]
+        option = select.options[select.selectedIndex].value
+        text = document["textarea16"].text
+        document["zone16"].clear()
+        document["zone16"] <= ("Value in INPUT field: {}".format(input),
+            html.BR(), "Selected option: {}".format(option),
+            html.BR(), "Value in TEXTAREA field: {}".format(text)
+            )
+
+    document['button16'].bind('click', change)
+    </script>
+
+    <pre class="python"></pre>
+    
+
+</div>
+
+
+<div class="example" id="ex10">
+    <button id="button10">send an Ajax request</button>
+    Position of the International Space Station <span id="zone10" style="padding-left:1em;"></span>
+    
+    <script type="text/python"  id="script10">
+    from browser import document, ajax
+    
+    url = "http://api.open-notify.org/iss-now.json"
+    
+    def complete(request):
+        import json
+        import datetime
+        data = json.loads(request.responseText)
+        position = data['iss_position']
+        ts = data['timestamp']
+        now = datetime.datetime.fromtimestamp(ts)
+        document["zone10"].text = "at {}: {}".format(now, position) 
+        
+    def change(event):
+        req = ajax.ajax()
+        req.open('GET', url, True)
+        req.bind('complete', complete)
+        document["zone10"].text = "waiting..."
+        req.send()
+    
+    document['button10'].bind('click', change)
+    </script>
+
+    <pre class="python"></pre>
+
+    <span class="comment">
+    The module <code class="module">browser.ajax</code> allows sending Ajax calls, ie sending HTTP requests to a URL and handle the reply without having to reload the page. 
+    <p>Here we use a public API that gives the current position of the International Space Station. The callback function <code>complete()</code> is called when the Ajax call has completed ; its argument has an attribute <code>responseText</code>, the response sent by the server. In this case, the API tells us that it's a JSON string. We decode it with the module <code class="module">json</code> of the standard distribution.
+    </span>
+
+</div>
+
+
+<div class="example" id="ex11">
+    <button id="button11">use javascript objects : Date()</button>
+    <span id="zone11" class="zone"></span>
+    
+    <script type="text/python" id="script11">
+    from browser import document, window
+    import javascript
+    
+    Date = javascript.JSConstructor(window.Date)
+    
+    def change(event):
+        date = Date()
+        document['zone11'].text = '{}-{:02}-{:02} at {:02}:{:02}:{:02}'.format(
+            date.getFullYear(), date.getMonth()+1, date.getDate(), 
+            date.getHours(), date.getMinutes(), date.getSeconds())
+    
+    document['button11'].bind('click', change)
+    </script>
+    
+    <pre class="python"></pre>
+    
+    <span class="comment">
+    Brython provides the modules <code class="module">time</code> and <code class="module">datetime</code> of the standard distribution, but it can also interact with the objects defined by Javascript.
+    <p>To use such objects, import the object <code>window</code> from module <code class="module">browser</code> : it is used to get a reference to all the objects defined in the Javascript global namespace. Because the Javascript object <code>Date</code> is a constructor (ie a function that returns new objects with the syntax <i>var date = new Date()</i>) we create the equivalent function in Brython with the function <code>JSConstructor</code> defined in module <code class="module">javascript</code>.
+    <p>We then use the attributes of the Javascript instance of <code>Date()</code> such as <code>getFullYear</code> with the usual Python syntax.
+    </span>
+</div>
+
+
+<script type="text/python">
+from browser import document, html
+
+for example in document.get(selector=".example"):
+    # add the Python source inside the example
+    script = example.get(selector="script")[0]
+    src = script.text
+    maxlen = max(len(line) for line in src.splitlines())
+    code_elt = example.get(selector="pre")
+    if code_elt:
+        code_elt[0].text = src
+    else:
+        example <= html.PRE(src, Class="python")
+
+    # create a menu entry
+    button = example.get(selector="button")[0]
+    document["menu"] <= html.LI(html.A(button.text, href="#"+example.id))
+    
+    # add an anchor for the example
+    example.insertBefore(html.A(name=example.id), example.childNodes[0])
+</script>
+<script src="brython.js"></script>
+<script src="brython_modules.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,65 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Find best biclique from preprocessed information on the non-covered graph
+%
+% initial version:  09/12/2014   J. Nicolas
+% revised version:  29/04/2015   L. Bourneuf
+% revised version:  08/07/2015   L. Bourneuf
+%
+% Constants:
+%       - cc: treated connected component. (cc/1 gives existing cc)
+%       -  k: current step of treatment (first step is 1)
+%       - upperbound: the maximal reachable cover
+%       - max_set_size: the maximal reachable size of a set
+% Input:
+%       - inter(X,Y): there exist an edge linking X and Y in cc.
+%       - oedge(X,Y): there exist an oriented edge linking X and Y in cc.
+%       - membercc(Y): Y is a member of cc.
+% Output:
+%       - newconcept(cc,k,T,X): X is the member of the set T in the concept cc at step k.
+%       - star(cc,k,T): set T of concept is a star.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%% CONCEPTS %%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Choice of the minimum of the concept
+1{minobj(cc,k,X): membercc(X)}1.
+
+% Choice of elements in set 1
+newconcept(cc,k,1,X):- minobj(cc,k,X).
+% 0 { newconcept(cc,k,1,X): membercc(X), Min<X } upperbound :- minobj(cc,k,Min).
+0 { newconcept(cc,k,1,X): membercc(X), Min<X } max_set_size :- minobj(cc,k,Min).
+% 0 { newconcept(cc,k,1,X): membercc(X), Min<X }  :- minobj(cc,k,Min).
+
+% size_set1(N):- N={newconcept(cc,k,1,_)} ; N>0.
+% max_size_set2(max_set_size):- not size_set1(_).
+% max_size_set2(M):- size_set1(N) ; M=(upperbound/N)+1.
+% :- size_set1(N) ; N<1.
+% :- max_size_set2(M) ; M<1.
+
+% takeable(X):- degree(X,D) ; size_set1(S) ; D>=S.
+
+% Choice of elements in set 2, using nb_node if available
+% 1 { newconcept(cc,k,2,Y): inter(Min,Y), Min<=Y, takeable(Y) } MaxSize :- minobj(cc,k,Min) ; max_size_set2(MaxSize).
+% 1 { newconcept(cc,k,2,Y): inter(Min,Y), Min<=Y, takeable(Y) } max_set_size :- minobj(cc,k,Min).
+% 1 { newconcept(cc,k,2,Y): inter(Min,Y), Min<=Y } MaxSize :- minobj(cc,k,Min) ; max_node_set2(MaxSize).
+% 1 { newconcept(cc,k,2,Y): inter(Min,Y), Min<=Y } MaxSize :- minobj(cc,k,Min) ; max_size_set2(MaxSize).
+% 1 { newconcept(cc,k,2,Y): inter(Min,Y), Min<=Y }  :- minobj(cc,k,Min).
+1 { newconcept(cc,k,2,Y): inter(Min,Y), Min<=Y } max_set_size :- minobj(cc,k,Min).
+% 1 { newconcept(cc,k,2,Y): inter(Min,Y), Min<=Y } upperbound :- minobj(cc,k,Min).
+
+% An element in a set can't be in the other set.
+:- newconcept(cc,k,1,X) ; newconcept(cc,k,2,X).
+
+% A node can't be in a set if not linked to a node of other set
+:- membercc(X) ; newconcept(cc,k,3-T,X) ; newconcept(cc,k,T,Y) ; not inter(X,Y).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%% CONCEPT PROPERTIES %%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% a star is a biclique with one powernode composed of only one node
+%star(cc,k,T):- 1 { newconcept(cc,k,T,X): weight(X,1) } 1 ; T=1..2.
+star(cc,k,T):- 1 { newconcept(cc,k,T,X) } 1 ; T=1..2.
+:- star(cc,k,3-T) ; star(cc,k,T) ; T=1..2. % link between two nodes will not be treated as a interesting case

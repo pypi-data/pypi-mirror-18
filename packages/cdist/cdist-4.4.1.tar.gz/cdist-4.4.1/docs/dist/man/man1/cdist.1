@@ -1,0 +1,345 @@
+.\" Man page generated from reStructuredText.
+.
+.TH "CDIST" "1" "Dec 17, 2016" "4.4.1" "cdist"
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.SH NAME
+.sp
+cdist \- Usable Configuration Management
+.SH SYNOPSIS
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+cdist [\-h] [\-d] [\-v] [\-V] {banner,config,shell,install} ...
+
+cdist banner [\-h] [\-d] [\-v]
+
+cdist config [\-h] [\-d] [\-v] [\-b] [\-c CONF_DIR] [\-f HOSTFILE]
+             [\-i MANIFEST] [\-j [JOBS]] [\-n] [\-o OUT_PATH] [\-p] [\-s]
+             [\-\-remote\-copy REMOTE_COPY] [\-\-remote\-exec REMOTE_EXEC]
+             [host [host ...]]
+
+cdist install [\-h] [\-d] [\-v] [\-b] [\-c CONF_DIR] [\-f HOSTFILE]
+              [\-i MANIFEST] [\-j [JOBS]] [\-n] [\-o OUT_PATH] [\-p] [\-s]
+              [\-\-remote\-copy REMOTE_COPY] [\-\-remote\-exec REMOTE_EXEC]
+              [host [host ...]]
+
+cdist shell [\-h] [\-d] [\-v] [\-s SHELL]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH DESCRIPTION
+.sp
+cdist is the frontend executable to the cdist configuration management.
+It supports different subcommands as explained below.
+.sp
+It is written in Python so it requires \fBpython\fP(1) to be installed.
+It requires a minimal Python version 3.2.
+.SH GENERAL
+.sp
+All commands accept the following options:
+.INDENT 0.0
+.TP
+.B \-h, \-\-help
+Show the help screen
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-d, \-\-debug
+Set log level to debug (deprecated, use \-vvv instead)
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-v, \-\-verbose
+Increase log level, be more verbose. Use it more than once to increase
+log level. The order of levels from the lowest to the highest are:
+ERROR, WARNING, INFO, DEBUG.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-V, \-\-version
+Show version and exit
+.UNINDENT
+.SH BANNER
+.sp
+Displays the cdist banner. Useful for printing
+cdist posters \- a must have for every office.
+.SH CONFIG/INSTALL
+.sp
+Configure/install one or more hosts.
+.INDENT 0.0
+.TP
+.B \-b, \-\-beta
+Enable beta functionalities.
+.sp
+Can also be enabled using CDIST_BETA env var.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-c CONF_DIR, \-\-conf\-dir CONF_DIR
+Add a configuration directory. Can be specified multiple times.
+If configuration directories contain conflicting types, explorers or
+manifests, then the last one found is used. Additionally this can also
+be configured by setting the CDIST_PATH environment variable to a colon
+delimited list of config directories. Directories given with the
+\-\-conf\-dir argument have higher precedence over those set through the
+environment variable.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-f HOSTFILE, \-\-file HOSTFILE
+Read additional hosts to operate on from specified file
+or from stdin if \(aq\-\(aq (each host on separate line).
+If no host or host file is specified then, by default,
+read hosts from stdin. For the file format see below.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-i MANIFEST, \-\-initial\-manifest MANIFEST
+Path to a cdist manifest or \- to read from stdin
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-j [JOBS], \-\-jobs [JOBS]
+Specify the maximum number of parallel jobs; currently only
+global explorers are supported (currently in beta)
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-n, \-\-dry\-run
+Do not execute code
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-o OUT_PATH, \-\-out\-dir OUT_PATH
+Directory to save cdist output in
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-p, \-\-parallel
+Operate on multiple hosts in parallel
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-s, \-\-sequential
+Operate on multiple hosts sequentially (default)
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-remote\-copy REMOTE_COPY
+Command to use for remote copy (should behave like scp)
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-remote\-exec REMOTE_EXEC
+Command to use for remote execution (should behave like ssh)
+.UNINDENT
+.SS HOSTFILE FORMAT
+.sp
+HOSTFILE contains hosts per line.
+All characters after and including \(aq#\(aq until the end of line is a comment.
+In a line, all leading and trailing whitespace characters are ignored.
+Empty lines are ignored/skipped.
+.sp
+Hostfile line is processed like the following. First, all comments are
+removed. Then all leading and trailing whitespace characters are stripped.
+If such a line results in empty line it is ignored/skipped. Otherwise,
+host string is used.
+.SH SHELL
+.sp
+This command allows you to spawn a shell that enables access
+to the types as commands. It can be thought as an
+"interactive manifest" environment. See below for example
+usage. Its primary use is for debugging type parameters.
+.INDENT 0.0
+.TP
+.B \-s SHELL, \-\-shell SHELL
+Select shell to use, defaults to current shell. Used shell should
+be POSIX compatible shell.
+.UNINDENT
+.SH FILES
+.INDENT 0.0
+.TP
+.B ~/.cdist
+Your personal cdist config directory. If exists it will be
+automatically used.
+.TP
+.B cdist/conf
+The distribution configuration directory. It contains official types and
+explorers. This path is relative to cdist installation directory.
+.UNINDENT
+.SH NOTES
+.sp
+cdist detects if host is specified by IPv6 address. If so then remote_copy
+command is executed with host address enclosed in square brackets
+(see \fBscp\fP(1)).
+.SH EXAMPLES
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# Configure ikq05.ethz.ch with debug enabled
+% cdist config \-d ikq05.ethz.ch
+
+# Configure hosts in parallel and use a different configuration directory
+% cdist config \-c ~/p/cdist\-nutzung \e
+    \-p ikq02.ethz.ch ikq03.ethz.ch ikq04.ethz.ch
+
+# Use custom remote exec / copy commands
+% cdist config \-\-remote\-exec /path/to/my/remote/exec \e
+    \-\-remote\-copy /path/to/my/remote/copy \e
+    \-p ikq02.ethz.ch ikq03.ethz.ch ikq04.ethz.ch
+
+# Configure hosts read from file loadbalancers
+% cdist config \-f loadbalancers
+
+# Configure hosts read from file web.hosts using 16 parallel jobs
+# (beta functionality)
+% cdist config \-b \-j 16 \-f web.hosts
+
+# Display banner
+cdist banner
+
+# Show help
+% cdist \-\-help
+
+# Show Version
+% cdist \-\-version
+
+# Enter a shell that has access to emulated types
+% cdist shell
+% __git
+usage: __git \-\-source SOURCE [\-\-state STATE] [\-\-branch BRANCH]
+             [\-\-group GROUP] [\-\-owner OWNER] [\-\-mode MODE] object_id
+
+# Install ikq05.ethz.ch with debug enabled
+% cdist install \-d ikq05.ethz.ch
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH ENVIRONMENT
+.INDENT 0.0
+.TP
+.B TMPDIR, TEMP, TMP
+Setup the base directory for the temporary directory.
+See \fI\%http://docs.python.org/py3k/library/tempfile.html\fP for
+more information. This is rather useful, if the standard
+directory used does not allow executables.
+.TP
+.B CDIST_PATH
+Colon delimited list of config directories.
+.TP
+.B CDIST_LOCAL_SHELL
+Selects shell for local script execution, defaults to /bin/sh.
+.TP
+.B CDIST_REMOTE_SHELL
+Selects shell for remote script execution, defaults to /bin/sh.
+.TP
+.B CDIST_OVERRIDE
+Allow overwriting type parameters.
+.TP
+.B CDIST_ORDER_DEPENDENCY
+Create dependencies based on the execution order.
+.TP
+.B CDIST_REMOTE_EXEC
+Use this command for remote execution (should behave like ssh).
+.TP
+.B CDIST_REMOTE_COPY
+Use this command for remote copy (should behave like scp).
+.TP
+.B CDIST_BETA
+Enable beta functionalities.
+.UNINDENT
+.SH EXIT STATUS
+.sp
+The following exit values shall be returned:
+.sp
+0   Successful completion.
+.sp
+1   One or more host configurations failed.
+.SH AUTHORS
+.sp
+Originally written by Nico Schottelius <\fI\%nico\-cdist\-\-@\-\-schottelius.org\fP>
+and Steven Armstrong <\fI\%steven\-cdist\-\-@\-\-armstrong.cc\fP>.
+.SH CAVEATS
+.sp
+When operating in parallel, either by operating in parallel for each host
+(\-p/\-\-parallel) or by parallel jobs within a host (\-j/\-\-jobs), and depending
+on target SSH server and its configuration you may encounter connection drops.
+This is controlled with sshd \fBMaxStartups\fP configuration options.
+You may also encounter session open refusal. This happens with ssh multiplexing
+when you reach maximum number of open sessions permitted per network
+connection. In this case ssh will disable multiplexing.
+This limit is controlled with sshd \fBMaxSessions\fP configuration
+options. For more details refer to \fBsshd_config\fP(5).
+.sp
+When requirements for the same object are defined in different manifests (see
+example below) in init manifest and in some other type manifest and they differs
+then dependency resolver cannot detect dependencies right. This happens because
+cdist cannot prepare all objects first and then run objects because some
+object can depend on the result of type explorer(s) and explorers are executed
+during object run. cdist will detect such case and write warning message.
+Example for such a case:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+init manifest:
+    __a a
+    require="__e/e" __b b
+    require="__f/f" __c c
+    __e e
+    __f f
+    require="__c/c" __d d
+    __g g
+    __h h
+
+type __g manifest:
+    require="__c/c __d/d" __a a
+
+Warning message:
+    WARNING: cdisttesthost: Object __a/a already exists with requirements:
+    /usr/home/darko/ungleich/cdist/cdist/test/config/fixtures/manifest/init\-deps\-resolver /tmp/tmp.cdist.test.ozagkg54/local/759547ff4356de6e3d9e08522b0d0807/data/conf/type/__g/manifest: set()
+    /tmp/tmp.cdist.test.ozagkg54/local/759547ff4356de6e3d9e08522b0d0807/data/conf/type/__g/manifest: {\(aq__c/c\(aq, \(aq__d/d\(aq}
+    Dependency resolver could not handle dependencies as expected.
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH COPYING
+.sp
+Copyright (C) 2011\-2013 Nico Schottelius. Free use of this software is
+granted under the terms of the GNU General Public License v3 or later (GPLv3+).
+.\" Generated by docutils manpage writer.
+.

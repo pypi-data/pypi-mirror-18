@@ -1,0 +1,78 @@
+<div id="edit-overlay" style="display:none">
+  <form class="form-group" action="" method="post" target="post-iframe" enctype="multipart/form-data">
+  {% csrf_token %}
+  <button style="float:right" id="save-edit">Save</button>
+  <button style="float:right" id="undo-edit">Undo</button>
+  {{ form.as_p }}
+  </form> 
+</div>
+
+<iframe id="post-iframe" name="post-iframe"></iframe>
+
+<script>
+  var plc = $("*").contents().filter(function(){
+    return (this.nodeValue && this.nodeValue.startsWith("placeholder") && this.nodeType == Node.COMMENT_NODE)
+  });
+  var page_id = "{{ current_page.id }}";
+  var lang = "{{ lang }}";
+
+  plc.each(function(i, el) {
+    $(el.parentNode).attr('data-placeholder-name', el.nodeValue.split(";")[1]);
+    $(el).remove();
+  });
+
+  var overlay = $("#edit-overlay");
+  var name, page_id, lang, element;
+
+  $(document).on('click', '#undo-edit', function(e) {
+    e.preventDefault();
+    overlay.hide();
+  });
+
+  $(document).on('click', '#save-edit', function(e) {
+    setTimeout(function(){
+      overlay.find('button,input').prop('disabled', true);
+    }, 100);
+    //overlay.find('form').submit();
+  });
+
+  $(document).on('click', '[data-placeholder-name]', function(){
+    element = $(this);
+    overlay.show();
+    name = $(this).attr('data-placeholder-name');
+
+    var modify_url = '{% url "admin:page-modify-placeholder" current_page.id %}';
+    modify_url = modify_url + '?content_type=' + name + '&language_id=' + lang
+     
+    var form = overlay.find('form');
+    form.attr('action', modify_url);
+    var label = form.find("[for='id_" + name + "']");
+
+    overlay.find('form>p').hide();
+    $(label[0].parentNode).show();
+
+    var offset = $(this).offset()
+
+    overlay.css('top', offset.top-5);
+    overlay.css('left', offset.left-5);
+    overlay.css('min-width', $(this).width()+5);
+    overlay.css('min-height', $(this).height()+5);
+
+    overlay.find('input,textarea').addClass('form-control').focus();
+
+    label.show();
+  });
+
+  $('#post-iframe').load(function() {
+    console.log('iframe loaded');
+    var get_content_url = '{% url "admin:page-get-last-content" current_page.id %}';
+    get_content_url = get_content_url + '?content_type=' + name + '&language_id=' + lang
+    $.get(get_content_url, function(result) {
+        setTimeout(function(){
+          overlay.find('button,input').prop('disabled', false);
+        }, 100);
+        overlay.hide();
+        element.html(result);
+    });
+  });
+</script>

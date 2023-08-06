@@ -1,0 +1,120 @@
+{% extends "base_basic.html" %}
+{% block title %}Control de Acceso{% endblock %}
+
+<!-- CSS Code -->
+{% block style_css %}{% endblock %}
+
+<!-- JavaScript Code -->
+{% block js_code %}
+<script>
+var access=2;
+	$(document).ready(function(){
+    
+    {% if clave %}
+		$("#principal").css("display", "none");
+    {% endif %}
+    sound();
+    
+
+		setTimeout(function(){
+			$(".datos").hide();
+			$("#principal").show();
+		}, 10000);
+	});
+
+	$("#id_clave").focus();
+	$("#id_clave").val('');
+
+function sound(){
+      {% if clave %}
+        {% if access %}
+        access = 1;
+        {% else %}
+        access = 0;
+        {% endif %}
+      {% endif %}
+      $.ajax({
+          url:'/acceso/play_sound/',
+          type : 'get',
+          data : {'access':access,
+              },
+          success: function(data){
+            
+        },
+      });
+    }
+
+
+</script>
+{% endblock %}
+
+{% block breadcrumb %}{{ block.super }}  <li class='active'> Cliente</li> {% endblock %}
+{% block content %}
+<div align = "left"><a href="/acceso/">Inicio</a></div>
+<div align ="center">
+	<form action="" method="post" enctype="multipart/form-data">{%csrf_token%}
+			{{form.errors}}
+			{{form.clave}}
+	</form>
+</div>
+
+<div id="principal" align="center"> <strong style="font-size:3em; color:rgb(43, 88, 184);">Bienvenidos a {{empresa_nombre}} </strong><br>
+	<div id="carousel-example-generic" class="carousel slide" data-ride="carousel">
+  <!-- Indicators -->
+  <ol class="carousel-indicators">
+  {% for r in range %}
+    <li data-target="#carousel-example-generic" data-slide-to="{{i}}" {% if r == 0 %}class="active"{% endif %}></li>
+  {% endfor %}
+  </ol>
+
+  <!-- Wrapper for slides -->
+  <div class="carousel-inner">
+    {% for r in imagenes %}
+    <div class="item {% if r == imagenes.0 %}active{% endif %}" width="1000px">
+      <img src="{{MEDIA_URL}}{{r.imagen}}" alt="..." style="height:500px; border-radius:10px;" >
+      <!-- <div class="carousel-caption">
+        Imagen 1 de Gym
+      </div> -->
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Controls -->
+  <a class="left carousel-control" href="#carousel-example-generic" role="button" data-slide="prev">
+    <span class="glyphicon glyphicon-chevron-left"></span>
+  </a>
+  <a class="right carousel-control" href="#carousel-example-generic" role="button" data-slide="next">
+    <span class="glyphicon glyphicon-chevron-right"></span>
+  </a>
+</div>
+</div>
+
+{% if not msg %}
+	{% if clave %}
+	<div align = "center" class="datos">
+		<h1><strong style="font-size:3em; color:green;">Bienvenido</strong></h1>
+	  {% if cliente.imagen != None and cliente.imagen != '' %}  
+	    	<img src='{{MEDIA_URL}}{{cliente.imagen}}' style="height: 260px; width: 300px; margin-top:.5em; margin-bottom:.5em; border-radius:5px; clear:both;"/> </a>
+	  	{% else %}
+	  		<img src='{{MEDIA_URL}}clientes/noimagen.png' style="height: 260px; width: 300px; margin-top:.5em; margin-bottom:.5em; border-radius:5px; clear:both;"/> </a>
+		{% endif %}		
+		<br>
+		<strong style="font-size:2.5em;">{{ cliente.nombre }}</strong>
+    <br>
+    <strong style="font-size:2em; {% if not vencido %}color:green {% else %}color:red;{% endif %} ">{{ msg_fecha }}</strong><br>
+    <strong style="font-size:2em; {% if not vencido %}color:green {% else %}color:red;{% endif %} ">{{ msg_fecha_vencimiento}}</strong><br>
+    {% if msg_saldo %} <strong style="font-size:2em; {% if not vencido %}color:green {% else %}color:red;{% endif %} ">{{ msg_saldo}}</strong><br>{% endif %}
+    {% if many_enters %}
+    <strong style="font-size:3em; color:orange">{{enters}} accesos el dia de hoy.</strong>
+    {% endif %}
+	</div>
+
+	{% endif %}	
+{% else %}
+  <div align="center" class="datos">
+	<strong style="font-size:2em; color:rgb(43, 88, 184);">{{msg}}</strong>
+  </div>
+{% endif %}
+
+<br style="clear:both">
+{% endblock %}

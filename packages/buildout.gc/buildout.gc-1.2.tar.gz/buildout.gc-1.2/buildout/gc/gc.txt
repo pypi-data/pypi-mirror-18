@@ -1,0 +1,143 @@
+
+Let's create an egg to use it in our tests::
+
+    >>> mkdir('myegg')
+    >>> write('myegg', 'setup.py',
+    ... '''
+    ... from setuptools import setup
+    ... setup(name='myegg', version='1.0',)
+    ... ''')
+    >>> write('myegg', 'README', '')
+    >>> print_(system(buildout+' setup myegg bdist_egg')), # doctest: +ELLIPSIS
+    Running setup script 'myegg...
+    ...
+
+    >>> mkdir('baregg')
+    >>> write('baregg', 'setup.py',
+    ... '''
+    ... from setuptools import setup
+    ... setup(name='baregg', version='1.0',)
+    ... ''')
+    >>> write('baregg', 'README', '')
+    >>> print_(system(buildout+' setup baregg bdist_egg')), # doctest: +ELLIPSIS
+    Running setup script 'baregg...
+    ...
+
+Now let's create a buildout to install the egg and to use buildout.gc::
+
+    >>> write('buildout.cfg',
+    ... '''
+    ... [buildout]
+    ... index = http://pypi.python.org/simple
+    ... extensions = buildout.gc
+    ... eggs-directory = ${buildout:directory}/eggs
+    ... parts = foo
+    ... find-links += %s
+    ... [foo]
+    ... recipe = zc.recipe.egg
+    ... eggs = myegg
+    ... ''' % join('myegg', 'dist'))
+
+Running the buildout will print information about unused eggs::
+
+    >>> print_(system(buildout)), # doctest: +ELLIPSIS
+    Installing foo.
+    Getting distribution for 'myegg'.
+    ...
+    Don't have a 'old-eggs-directory' or 'old-eggs-remove' set, only reporting
+    ...
+
+When we only want to report unused eggs we omit the ``old-eggs-directory`` and ``old-eggs-remove`` options.
+
+    >>> write('buildout.cfg',
+    ... '''
+    ... [buildout]
+    ... index = http://pypi.python.org/simple
+    ... extensions = buildout.gc
+    ... eggs-directory = ${buildout:directory}/eggs
+    ... parts = foo
+    ... find-links += %s
+    ... [foo]
+    ... recipe = zc.recipe.egg
+    ... eggs = baregg
+    ... ''' % join('baregg', 'dist'))
+
+    >>> print_(system(buildout)) # doctest:+ELLIPSIS
+    Uninstalling foo.
+    Installing foo.
+    Getting distribution for 'baregg'.
+    Got baregg 1.0.
+    Don't have a 'old-eggs-directory' or 'old-eggs-remove' set, only reporting
+    Can add it by adding 'old-eggs-directory = ${buildout:directory}/old-eggs' to your [buildout]
+    Found unused egg: myegg...
+    <BLANKLINE>
+
+
+
+Check that indeed nothing has been moved nor deleted::
+
+    >>> assert 'myegg' in  ''.join(os.listdir('eggs'))
+
+If we want to move unused eggs, we just add an ``old-eggs-directory`` option and give a directory target::
+
+    >>> write('buildout.cfg',
+    ... '''
+    ... [buildout]
+    ... index = http://pypi.python.org/simple
+    ... extensions = buildout.gc
+    ... eggs-directory = ${buildout:directory}/eggs
+    ... old-eggs-directory = ${buildout:directory}/old-eggs
+    ... parts = foo
+    ... find-links += %s
+    ... [foo]
+    ... recipe = zc.recipe.egg
+    ... eggs = baregg
+    ... ''' % join('baregg', 'dist'))
+
+    >>> print_(system(buildout)) # doctest:+ELLIPSIS
+    Updating foo.
+    Moved unused egg: myegg...
+    <BLANKLINE>
+
+Check that indeed 'myegg' has been moved::
+
+    >>> assert 'myegg' not in  ''.join(os.listdir('eggs')), 'myegg has not been moved out of egg dir'
+    >>> assert 'myegg' in  ''.join(os.listdir('old-eggs')), 'myegg has not been moved to old-egg dir'
+
+And baregg is still present::
+
+    >>> assert 'baregg' in  ''.join(os.listdir('eggs')), 'baregg is not present in egg dir'
+
+If we want to remove unused eggs, we just add an ``old-eggs-remove`` option::
+
+    >>> write('buildout.cfg',
+    ... '''
+    ... [buildout]
+    ... index = http://pypi.python.org/simple
+    ... extensions = buildout.gc
+    ... eggs-directory = ${buildout:directory}/eggs
+    ... old-eggs-directory = ${buildout:directory}/old-eggs
+    ... old-eggs-remove = true
+    ... parts = foo
+    ... find-links += %s
+    ... [foo]
+    ... recipe = zc.recipe.egg
+    ... eggs = myegg
+    ... ''' % join('myegg', 'dist'))
+
+    >>> print_(system(buildout)) # doctest:+ELLIPSIS
+    Uninstalling foo.
+    Installing foo.
+    Getting distribution for 'myegg'.
+    Got myegg 1.0.
+    Moved unused egg: baregg...
+    <BLANKLINE>
+
+Check that indeed 'baregg' has been removed::
+
+    >>> assert 'baregg' not in  ''.join(os.listdir('eggs')), 'baregg has not been removed'
+    >>> assert 'baregg' not in  ''.join(os.listdir('old-eggs')), 'baregg has been moved to old-egg dir'
+
+And 'myegg' is still present::
+
+    >>> assert 'myegg' in  ''.join(os.listdir('eggs')), 'myegg is not present in egg dir'

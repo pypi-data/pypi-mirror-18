@@ -1,0 +1,29 @@
+{% load i18n sekizai_tags staticfiles %}
+
+{% addtoblock 'css' %}
+<link rel="stylesheet" type="text/css" media="all" href="{% static 'cmsplugin_survey/style.css' %}"/>
+{% endaddtoblock %}
+
+<div class="survey survey-{{ question.id }}">
+    <strong class="survey-question">{{ question.question }}</strong>
+
+    {% for answer in question.answers.all %}
+    {% if question.votes_count %}{% widthratio answer.votes_count question.votes_count 100 as percents %}{% endif %}
+    {% url 'survey:vote' answer_id=answer.id as vote_url %}
+    <div class="survey-answer">
+        <a{% if can_vote %} href="{{ vote_url }}"{% endif %}>{{ answer.answer }}</a>
+    </div>
+    <div class="survey-value">
+        <a{% if can_vote %} href="{{ vote_url }}"{% endif %} style="width: {% if percents > '0' %}{{ percents }}{% else %}1{% endif %}%; background-color: {{ answer.color }}">
+            <span>{{ percents|default:0 }}%</span>
+        </a>
+    </div>
+    {% endfor %}
+    <div class="summary">
+        {% if question.votes_count > 0 %}
+        {% blocktrans count question.votes_count as count %}One visitor voted.{% plural %}{{ count }} visitors voted.{% endblocktrans %}
+        {% else %}
+        {% trans 'Nobody voted yet. Be first!' %}
+        {% endif %}
+    </div>
+</div>

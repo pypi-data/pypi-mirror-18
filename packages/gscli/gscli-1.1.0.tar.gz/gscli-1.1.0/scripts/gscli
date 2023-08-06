@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+from argparse import ArgumentParser
+from os.path import expanduser
+from sys import stderr
+from prompt_toolkit import prompt
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+from prompt_toolkit.contrib.completers import WordCompleter
+from prompt_toolkit.history import FileHistory
+from gscli.config import Config, NoDefaultConfigError, create_default_config
+from gscli.commands import commands, execute
+from gscli.validation import CommandValidator
+from gnusocial.utils import GNUSocialAPIError
+
+
+parser = ArgumentParser(description='A CLI client for GNU Social.')
+parser.add_argument('command', nargs='*', help='command to run')
+parser.add_argument('--help-cmds', nargs='+', metavar='COMMAND',
+                    help='show info about specified commands')
+parser.add_argument('--list-commands', action='store_true',
+                    help='show available commands')
+command_completer = WordCompleter(commands.keys())
+history = FileHistory(expanduser('~/.gscli_history'))
+
+
+if __name__ == '__main__':
+    args = parser.parse_args()
+    try:
+        try:
+            config = Config()
+        except NoDefaultConfigError:
+            config = create_default_config()
+        if args.list_commands:
+            execute('help', config)
+            quit()
+        if args.help_cmds:
+            execute(['help'] + args.help_cmds, config, no_split=True)
+            quit()
+        if args.command:
+            execute(args.command, config, no_split=True)
+            quit()
+        while True:
+            text = prompt(
+                '(gscli) ', completer=command_completer,
+                history=history, auto_suggest=AutoSuggestFromHistory(),
+                validator=CommandValidator(), get_title=lambda: 'gscli',
+            )
+            try:
+                execute(text, config)
+            except SystemExit:
+                continue
+    except (EOFError, KeyboardInterrupt):
+        quit()
+    except GNUSocialAPIError as e:
+        print('Error: ', e.error_message, file=stderr)

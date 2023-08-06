@@ -1,0 +1,157 @@
+#!/usr/bin/env python3
+import os
+
+import click
+from fabric.colors import red, green, yellow
+from fabric.api import hide, abort
+
+from classes.config import Config
+from classes.local_git_wrapper import LocalGitWrapper
+from classes.deployment_server_actions import DeploymentServerActions
+
+VERBOSE_LEVEL = 2
+
+
+def log(message, color):
+    """
+    Log with the verbose level
+
+    :param message: string message
+    :param color:
+    :return:
+    """
+    if color == yellow and VERBOSE_LEVEL >= 2 or color == green and VERBOSE_LEVEL > 0 or color == red:
+        print(color(message))
+
+
+def deployment(config_path, deployment_type):
+    try:
+        log('Read config item', yellow)
+        config_item = Config(config_path).config_item(deployment_type)
+        server_actions = DeploymentServerActions(config_item)
+        log('Read hash of specified branch', yellow)
+        to_deploy_branch_hash = LocalGitWrapper.get_branch_hash(config_item.branch)
+        log('Specified branch was: {}'.format(to_deploy_branch_hash), yellow)
+        log('Read last deployed branch hash on server...', yellow)
+        current_server_branch_hash = server_actions.get_current_revision()
+        log('Last deployed branch on server was: {}'.format(current_server_branch_hash), yellow)
+
+        if not current_server_branch_hash:
+            log('There is no deployment on the server.\n'
+                'You want to deploy the following commit hash: {}'.format(to_deploy_branch_hash), red)
+        else:
+            log(LocalGitWrapper.get_differ_git_commit_messages(current_server_branch_hash, to_deploy_branch_hash), red)
+
+        answer = click.prompt('Do you want to deploy?', type=str, default='y')
+        if answer != 'y':
+            abort('Thank you! See you later :*')
+
+        if not server_actions.has_virtualenv():
+            log('Creating virtualenv...', yellow)
+            server_actions.create_virtualenv()
+
+        source_path_of_artifact = '/tmp/{}.gz'.format(to_deploy_branch_hash)
+        log('Zip artifact of branch \"{branch_name}\"'.format(branch_name=config_item.branch, ), yellow)
+        LocalGitWrapper.create_git_archive_of_branch(to_deploy_branch_hash, source_path_of_artifact)
+        log('Upload artifact to server...', yellow)
+        server_actions.push_file_to_server(source_path_of_artifact, source_path_of_artifact)
+        log('Remove artifact...', yellow)
+        LocalGitWrapper.remove_git_archive_of_branch(source_path_of_artifact)
+
+        server_deploy_to_path = os.path.join(config_item.deploy_dir, to_deploy_branch_hash)
+
+        log('Create directory to unpack the artifact: {}'.format(server_deploy_to_path), yellow)
+        server_actions.create_directory(server_deploy_to_path)
+        log('Unpack the artifact to source path: {}'.format(server_deploy_to_path), yellow)
+        server_actions.unpack_tar_to_source(source_path_of_artifact, server_deploy_to_path)
+        log('Remove artifact from server...', yellow)
+        server_actions.remove_file_or_dir(source_path_of_artifact)
+
+        log('Stopping services', yellow)
+        server_actions.stop_services()
+
+        log('Updating virtualenv', yellow)
+        server_actions.update_virtualenv(to_deploy_branch_hash)
+
+        log('Create symbolic links for symbolic_links', yellow)
+        for source_path, destination_path in config_item.symbolic_links:
+            server_actions.set_symbolic_link(
+                source_path,
+                destination_path.format(new_deployment=to_deploy_branch_hash),
+            )
+
+        log('Set virtualenv link to new deployment', yellow)
+        server_actions.set_symbolic_link(
+            server_actions.virtualenv_path,
+            os.path.join(server_deploy_to_path, 'virtualenv'),
+        )
+
+        log('Executing all manage.py commands', yellow)
+        server_actions.execute_all_manage_py_commands(to_deploy_branch_hash)
+
+        log('Set deployed link to new deployment', yellow)
+        server_actions.set_symbolic_link(
+            server_deploy_to_path,
+            server_actions.deployed_path,
+        )
+
+        log('Starting services', yellow)
+        server_actions.start_services()
+
+        if current_server_branch_hash and current_server_branch_hash != to_deploy_branch_hash:
+            log('Delete old deployment', yellow)
+            server_actions.remove_file_or_dir(os.path.join(config_item.deploy_dir, current_server_branch_hash))
+
+    except Exception as deployment_exception:
+        log(unicode(deployment_exception), red)
+        answer = click.prompt('Ooops! There was an error, do you want to rollback? (y, n)', type=str, default='n')
+        if answer == 'y':
+            # rollback
+            pass
+
+
+@click.command()
+@click.option('--config-path', help='The path of the config file')
+@click.option(
+    '--verbose',
+    type=click.INT,
+    default=VERBOSE_LEVEL,
+    help='Verbose mode (0 = only errors, 1 = normal outputs, 2 = debugging level, 3 = high debugging level)'
+)
+@click.argument('deployment_type')
+def main(config_path, verbose, deployment_type):
+    """
+    **django-deploy**\n
+
+    django-deploy helps you to deploy your django application to a custom server via ssh\n
+
+    The Django Deployment of //SEIBERT/MEDIA works as follows:\n
+
+    1. It will search for the config item named: django-deploy.json or the given path (--config-path)\n
+    2. Reads out the branch of current git repository\n
+    3. Tries to read the hash of the directory on the server where {deploy_dir}/deployed (symlink) points to\n
+    4. Make a differ log to show what changed\n
+    5. Will asks you if you really want to deploy\n
+    6. Creates a new virtualenv (if there is none)\n
+    7. Pack a tar.gz and upload it on the server.\n
+    8. Unpack it to a newly created directory with the new git hash in {deploy_dir}. Then remove the tar.gz\n
+    9. Stop all given services (gunicorn, celery, uwsgi...)\n
+    10. Create the symbolic links in the config\n
+    11. Update the virtualenv\n
+    12. Execute manage.py commmands (migrate...)\n
+    13. Set the new deployed link\n
+    14. Start all services\n
+    15. Delete old deployment if everything was ok\n
+
+    """
+    global VERBOSE_LEVEL
+    VERBOSE_LEVEL = verbose
+    if VERBOSE_LEVEL != 3:
+        with hide('output', 'running', 'warnings'):
+            deployment(config_path, deployment_type)
+    else:
+        deployment(config_path, deployment_type)
+
+
+if __name__ == '__main__':
+    main()

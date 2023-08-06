@@ -1,0 +1,143 @@
+hkSMSURL=http://smscountry.com/SMSCwebservice_Bulk.aspx
+hkSMSUserName=AquamarineHealth
+hkSMSPassword=kart@2012
+
+#### [mongo] Database open to public leaking 11 lakh users data
+* `Severity`: high
+* There is an open mongo db instance at `205.147.110.93`
+* There is no password protection. An attacker can just type `mongo 205.147.110.93` on command line to connect.
+* `Impact`: It is leaking all the users data. Its very urgent that you fix this.
+* `How to fix`: Restrict the mongodb with username and password. Or make the accessible only from certain required IP addresses. 
+
+#### [sms] Healthkart SMS account credentials are leaked
+* `Severity`: high
+* The credentials of Healthkart's SMS account in `http://smscountry.com` are leaked on github: `https://github.com/rahulagarwal30/hkr_mirror/blob/b325e004e04b574cf56d0c6f0813f7bfcb867d36/HKWeb/resources/staging01/WEB-INF/environment.properties`
+* These are the credentials mentioned, `hkSMSUserName` is `AquamarineHealth` and `hkSMSPassword` is `kart@2012`
+* The account contains address book consisting of user phone/email addresses.
+* Any attacker can send any misleading sms to users with `HLTKRT` sender id - like order canceled or please make payment at this url.
+* `Impact`: Along with above two mentioned impacts. Attacker can send voice sms, see records of amount spend on sms, previous reports if available - this can help your competitors know how many orders does healthkart process.
+* `How to fix`: First of all change the password by logging into the account using above password. Then delete the above mentioned file, the parent project `https://github.com/rahulagarwal30/hkr_mirror` and other files which may be containing these credentials available publicly on `GitHub`. 
+
+#### [aws] Healthkart AWS API credentials are leaked
+* `Severity`: high
+* The API credentials of HealthKart's AWS account are leaked on `https://github.com/rahulagarwal30/hkr_mirror/blob/b325e004e04b574cf56d0c6f0813f7bfcb867d36/HKWeb/resources/staging01/WEB-INF/environment.properties`
+* These are the credentials mentioned, `accessKey` is `AKIAJJNKQWQ6VHJRKILA` and `secretKey` is `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`
+* An attacker can use these credentials to `delete`, `edit` or `create` (HealthKart's) data on S3 and other services like RDS.
+* If EC2 instance is running then the attacker can create a snapshot and later see all the code and secrets present on that machine.
+* An attacked can create EC2 machines and use them for free (using command line API). 
+* `Impact`: All the data stored on AWS can be deleted in 1 command without any recovery. Attacker can increase the bill in tens of thousands of dollars within few days without you getting any notification until its too late.
+* `How to fix`: First of all change the API `key` and `secret` by logging into the AWS account. Then check if any suspicious keys are present in your account, if yes then delete them. Then delete the above mentioned file, the parent project `https://github.com/rahulagarwal30/hkr_mirror` and other files which may be containing these credentials available publicly on `GitHub`.
+
+#### haproxy dashboard credentials are leaked
+* `Severity`: high
+* This GitHub repository is leaking the credentials needed to see the haproxy dashboard: `https://github.com/vikas17a/haproxy-highcharts/blob/32b7e7b9443cf275169cb6b2f43438607cdef3e7/haproxy-stats/dump.sql`
+* Just visit this in the browser: `http://healthkart:adw38&6cdQE@healthkart.com/haproxy?stats;json`
+* `Impact`: An attacker can plan how much effort will it take to DDoS whole of healthkart by looking at this dashboard. Competitors can gain useful business insights from this dashboard too.
+* `How to fix`: Change the existing username and password for the dashboard. If possible do not expose the haproxy on a public ip or domain. Delete above mentioned GitHub repository.
+
+#### [db credentials] Multiple Database username and password is being leaked in the public
+* The following files contain the `username` and `password` for the `dev` and `staging` healthkart machines:
+* `1.` https://github.com/rahulagarwal30/general/blob/513647bc0ea83b3a10dc26cc88c9e4345efb0ec6/stag01_restore/mysql_restore.sh
+* `2.` https://github.com/sujithsj/referral/blob/48e6701122cbf823a24ad9ab548d543f78f83128/environmentLocator.properties.template
+* `3.` https://github.com/modivishal/REST-POC/blob/84a15b5b0c054efdfc5a73c2b7d31591f2ef478c/environmentLocator.properties.template
+* `4.` https://github.com/adlakhavaibhav/trip/blob/b9b24e9c6e08e0daa0dc1581a0ef34aaf6e68596/environmentLocator.properties.template
+* `5.` https://github.com/rahulagarwal30/hk_dev_mirror/blob/24ea81496b93c52a0fb931609aadad03ed9628c7/HKCommon/resources/staging/setup/setup.properties
+* `Impact`: If the staging or dev machines have a public IP, an attacker can easily login and wipe out all data.
+* `How to fix`: Change the password and delete the above GitHub repositories.
+
+#### [stress credentials] User credentials for stress test machines is being leaked
+* The following GitHub url leaks the credentials of three different users: `https://github.com/nitinwadhawan/HKStress/blob/12616b8b066b2b7cb074278d6320dbd32ae1e24a/src/test/resources/data/user_credentials.csv`
+* `Impact`: If the stress test machine have a public IP, an attacker can easily login and wipe out all data.
+* `How to fix`: Change the password and delete the above GitHub repositories.
+
+#### [payment] Multiple Payment Secrets are being leaked
+* `Severity`: high
+* The following file is leaking the secrets for 4 different payment gateways: `Citrus`, `EBS`, `ICICI gateway`, `Paypal`, `Tekprocess`
+* `https://github.com/rahulagarwal30/hk_dev_mirror/tree/24ea81496b93c52a0fb931609aadad03ed9628c7/HKCommon/resources/staging/payment`
+* You can test one of the CitrusPay credentials using following curl command: `curl -X GET -H 'access_key:6Z1PA7WZEVIRHMGKG1VG' -H 'Accept: application/json' 'https://admin.citruspay.com/api/v2/txn/enquiry/2887131-617173'` (if it works and returns data then this credential is working)
+* `Impact`: We are still evaluating other secrets for other payment gateways, but its most likey that they can be abused to make orders for free or will leak user data. 
+* `How to fix`: Change all the credentials getting leaked in the file by contacting those payment gateways. Delete the above file and repository.
+
+#### Some facebook app secrets are leaked
+* `Severity`: low
+* Some facebook apps' secrets are being leaked in the GitHub page: `https://github.com/rahulagarwal30/hkr_mirror/blob/b325e004e04b574cf56d0c6f0813f7bfcb867d36/HKWeb/resources/staging01/WEB-INF/environment.properties`
+* These can be used in fb API call to get access tokens: `curl 'https://graph.facebook.com/oauth/access_token?client_id=173322049376376&client_secret=1054823d1f323daa6c8a742bb42a5b06&grant_type=client_credentials'` which can be used to do all that an `App Access Token` allows for a facebook app.
+* For example: `curl 'https://graph.facebook.com/v2.6/130945303622152/accounts?access_token=130945303622152|y3ViwRLUSLK3fAwTXGe8va5LqkE'`
+* They can also be used to get data from users profile if they had given such permissions to the app. (maybe) 
+* `Impact`: They do not have much impact since it is difficult to get users data from this `access token.`
+* `How to fix`: Delete these pages if you can and also remove the above GitHub page and its parent project.
+
+#### [recaptcha] Recaptcha secret is being leaked 
+* `Severity`: low
+* This GitHub url leaking Google recaptcha secret key : https://github.com/sujithsj/referral/blob/48e6701122cbf823a24ad9ab548d543f78f83128/resources/prod/properties/ds.properties
+* The key is in working condition as can be verified from the following curl call:
+* `curl https://www.google.com/recaptcha/api/siteverify -F "secret=6Lea8gkAAAAAAFfE0L7uzGbYju5pqWqGS8M1CEp7" -F "response=abc"`
+* (The response will not say `invalid-input-secret` hence the secret is working)
+* `Impact`: An attacker can request using this secret key but we believe it is not much of a risk as google do not have any rate limits (and the g-captcha-response token expire after one time use). Unless google implements any rate limits this bug is of low severity.
+* `How to fix`: Delete the key pair of Google recaptcha by logging into google account and create a new key. Then delete above GitHub file and repository.
+
+#### Loggly Credentials are being leaked
+* The following GitHub file contains the credentials:`https://github.com/rahulagarwal30/RHKWeb/blob/2c58283d2563d48369a47ca3990916725871f2e0/resources/aph_prod/WEB-INF/environment.properties`
+* `Impact`: We are evaluating the impact. We will update this with a comment later.
+* `How to fix`: Change the credentials. Then delete the above repository.
+
+#### MySMSMantra credentials are being leaked
+* didnt work
+curl "http://bulksms.mysmsmantra.com:8080/WebSMS/SMSAPI.jsp?username=healthchakr&password=1664566628&sendername=HLTHKART&mobileno=7259361414&message=tets"
+
+
+
+
+MySMSMantra 4 year old Creddentials
+https://github.com/rahulagarwal30/hkr_mirror/blob/b325e004e04b574cf56d0c6f0813f7bfcb867d36/HKWeb/src/com/hk/util/SMSUtility.java
+https://github.com/rahulagarwal30/hk_dev_mirror/blob/24ea81496b93c52a0fb931609aadad03ed9628c7/HKWeb/src/com/hk/util/SMSUtility.java
+
+
+
+
+{
+  "success": false,
+  "error-codes": [
+    "invalid-input-response"
+  ]
+}
+
+if wrong secret 
+{
+  "success": false,
+  "error-codes": [
+    "invalid-input-response",
+    "invalid-input-secret"
+  ]
+}
+
+100000199442380
+1101093203240651
+
+curl https://graph.facebook.com/v2.6/130945303622152/analytics_app_events_exports -F 'access_token=130945303622152|y3ViwRLUSLK3fAwTXGe8va5LqkE' -F 'start_ts=1447373454' -F 'end_ts=1447376454'
+
+curl https://graph.facebook.com/v2.6/130945303622152/accounts/test-users -F 'access_token=130945303622152|y3ViwRLUSLK3fAwTXGe8va5LqkE'
+
+{"id":"100897077039554","access_token":"EAAB3GBROsggBABYhZBZAIchcgDDPxja9xWDS6H4tD8ZCMCkgnWPRgmZACqxR4w6FSZCGF24D5aY3QOlgRe9KCkwe3Bn7XHxlXbkE1V7objwZAUvkOnZAZByRnyORZCYFRSALHkMZCW3y66JkTSqpZB0BgxZBlxyXAz38QfVZBna9qg7i4WoERQ4sO6RMP","login_url":"https:\/\/developers.facebook.com\/checkpoint\/test-user-login\/100897077039554\/","email":"gfgbwkq_sadansen_1473870686\u0040tfbnw.net","password":"949806889"}
+
+
+  fbApiKey=90dca39da611427fc91db5aa8f7f1bcf
+fbApiSecret=1f699a3583d9d3c791fc2b8506bf43d0
+fbAppId=130945303622152
+fbAppUrl=http://apps.facebook.com/hkfancoupon-local
+
+~ manish $ curl "https://graph.facebook.com/oauth/access_token?client_id=173322049376376&client_secret=1054823d1f323daa6c8a742bb42a5b06&grant_type=client_credentials"
+
+access_token=173322049376376|ilG6QBwg1bY8kLAtMgELqk4_WWU
+
+curl https://graph.facebook.com/v2.6/173322049376376/accounts/test-users -F 'access_token=173322049376376|ilG6QBwg1bY8kLAtMgELqk4_WWU'
+{"id":"105181086609822","access_token":"EAACdoq8vUHgBANaPcEdnFMEyxVWM6T4TngZAfqwJSKmuAajRTy24IfvhahtQ8tjDMoSizRA1Gtd8dHcmWzFpBt9F6JdjLZCSRAUAjIFAVjpJprv1Y2CCquBv1UileedhQ9r27ZBKi0yrlGPbKM9k8LgX07vNp5Ved2lTJtyqZC6fJzEGr6po","login_url":"https:\/\/developers.facebook.com\/checkpoint\/test-user-login\/105181086609822\/","email":"woxrvdi_letuchysky_1473870871\u0040tfbnw.net","password":"2046422554"}
+
+~ manish $ curl -X GET 'https://graph.facebook.com/v2.6/173322049376376?access_token=173322049376376|ilG6QBwg1bY8kLAtMgELqk4_WWU'
+
+
+fbPromoApiSecret=8d6a08e505f19a40b4de01f887b8288f
+fbPromoAppId=151748421555155
+curl "https://graph.facebook.com/oauth/access_token?client_id=151748421555155&client_secret=8d6a08e505f19a40b4de01f887b8288f&grant_type=client_credentials"
+
+

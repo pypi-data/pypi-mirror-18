@@ -1,0 +1,331 @@
+#!/usr/bin/env python
+
+#		pyzgoubi - python interface to zgoubi
+#		Copyright 2008 - 2009 Sam Tygier <Sam.Tygier@hep.manchester.ac.uk>
+#       This program is free software; you can redistribute it and/or modify
+#       it under the terms of the GNU General Public License as published by
+#       the Free Software Foundation; either version 2 of the License, or
+#       (at your option) any later version.
+#       
+#       This program is distributed in the hope that it will be useful,
+#       but WITHOUT ANY WARRANTY; without even the implied warranty of
+#       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#       GNU General Public License for more details.
+#       
+#       You should have received a copy of the GNU General Public License
+#       along with this program; if not, write to the Free Software
+#       Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+#       MA 02110-1301, USA.
+
+"""PyZgoubi is an interface to zgoubi. This script can be used to run a pyzgoubi script ::
+
+	pyzgoubi my_script.py
+
+More infomation please see the README file or the pyzgoubi website
+
+"""
+
+from __future__ import division
+from math import *
+import getopt, sys, os
+try:
+	import numpy
+except ImportError:
+	print "Numpy is required for PyZGoubi"
+	sys.exit(1)
+try:
+	eval("1 if True else 2")
+except SyntaxError:
+	print "PyZgoubi requires Python 2.5 or newer (2.7 recommended)"
+	sys.exit(1)
+import subprocess
+from zgoubi.utils import *
+from zgoubi.core import *
+from zgoubi.constants import *
+from zgoubi.version import *
+from zgoubi.bunch import *
+from zgoubi import gcp
+import logging
+
+sys.path.append(os.getcwd())
+
+# create a set of functions that work on default_line and default_results objects
+# these will make it simpler to run simple simulations
+
+default_line = None
+default_result = None
+
+def make_line(*a, **k):
+	"Wrapper to create a zgoubi Line, and store it in a global variable"
+	global default_line
+	default_line = Line(*a, **k)
+
+def run(*a, **k):
+	"Wrapper to run a zgoubi Line, and store the result in a global variable"
+	global default_line, default_result
+	if default_line is None:
+		zlog.error("Use make_line to create a line before using run()")
+		raise ValueError
+	default_result = default_line.run(*a, **k)
+	return default_result
+
+# most of these functions can be built from a template
+
+function_template = """def %(func_name)s(*a, **k):
+	global default_%(class_name)s
+	return default_%(class_name)s.%(func_name)s(*a, **k)
+"""
+# templatable functions for the line class
+line_funcs = ['add', 'output', 'full_tracking', 'remove_looping', 'add_input_files', 'replace']
+
+for func_name in line_funcs:
+	code = function_template % dict(func_name=func_name, class_name='line')
+	exec(code)
+
+# templatable functions for the res class
+
+# this pattern builds all the file access functions by pattern
+res_funcs = [a % b for a in ['%s_fh', '%s', 'save_%s'] for b in ['res', 'fai', 'dat', 'plt', 'b_fai']]
+
+res_funcs += ['get_all', 'get_track', 'get_tune', 'get_twiss_parameters', 'run_success']
+
+for func_name in res_funcs:
+	code = function_template % dict(func_name=func_name, class_name='result')
+	exec(code)
+
+def _show_help(help_arg):
+	"Show some help"
+	if help_arg is None:
+		_show_usage()
+		sys.exit(0)
+	if help_arg.lower() == "elements":
+		print "available elements"
+		elements = []
+
+		for k, v in globals().items():
+			try:
+				if issubclass(v, zgoubi_element):
+					if not k in ['zgoubi_element', 'zgoubi_particul']:
+						elements.append(k)
+			except TypeError:
+				pass
+		elements.sort()
+		print '\n'.join(elements)
+		sys.exit(0)
+
+	try:
+		# check if there is such an element
+		dummy = globals()[help_arg.upper()]
+	except KeyError:
+		print "There is no help for %s" % sys.argv[2]
+		sys.exit(1)
+
+	print help_arg.upper()
+	help_elem_inst = eval("%s()" % help_arg.upper())
+	print "zgoubi name:", help_elem_inst._zgoubi_name
+	print "Parameters:"
+	params = help_elem_inst.list_params()
+	params.sort()
+	print '\n'.join(params)
+	if hasattr(help_elem_inst, "_looped_data"):
+		help_elem_inst.add()
+		print "Sub element parameters:"
+		sparams = help_elem_inst._looped_data[0].keys()
+		sparams.sort()
+		print '\n'.join(sparams)
+
+
+
+def _show_usage():
+	"Show some usage instructions"
+	print "Usage:"
+	print "pyzgoubi", "input_file_name"
+	print "pyzgoubi", "--help"
+	print "pyzgoubi", "--help elements\t( show avalible elements"
+	print "pyzgoubi", "--help ELEMENT\t( show element info"
+	print "pyzgoubi", "--version"
+	print "pyzgoubi", "--zgoubi /path/to/zgoubi"
+	print "pyzgoubi", "--debug"
+	print "pyzgoubi", "--log-level DEBUG/WARNING/ERROR"
+	print "pyzgoubi", "-i drop to interactive mode on exception"
+	print "pyzgoubi", "--profile write execution profile to prof.log "
+	print "pyzgoubi", "--install-zgoubi"
+	print "pyzgoubi", "--install-zgoubi list"
+	print "pyzgoubi", "--install-zgoubi version KEY=VALUE"
+	print "\nFor documentation see http://www.hep.manchester.ac.uk/u/sam/pyzgoubi/"
+
+def show_version():
+	"Output version information"
+	print "Pyzgoubi version: %s" % MAIN_VERSION
+	try:
+		print 'Bzr: %(branch_nick)s rev %(revno)s' % version_info
+	except NameError:
+		pass
+	print "Default Zgoubi path", zgoubi_settings['zgoubi_path']
+	tmpdir = tempfile.mkdtemp()
+	try:
+		output = subprocess.Popen([zgoubi_settings['zgoubi_path']], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=tmpdir).communicate()[0]
+		for line in output.split('\n'):
+			if "version" in line.lower():
+				print line.strip()
+	except OSError:
+		print "Failed to run zgoubi"
+		print "[from settings.ini] zgoubi_path:", zgoubi_settings['zgoubi_path']
+		print "$PATH:", os.environ['PATH']
+
+	shutil.rmtree(tmpdir)
+
+	print "Python version", sys.version
+	show_path = False
+
+	print "numpy version", numpy.version.version
+	try:
+		import scipy
+		print "scipy version", scipy.version.version
+	except ImportError:
+		print "No scipy"
+		show_path = True
+	try:
+		import matplotlib
+		print "matplotlib version", matplotlib.__version__
+	except ImportError:
+		print "No matplotlib"
+		show_path = True
+	except RuntimeError:
+		print "Problem loading matplotlib"
+		show_path = True
+
+	if show_path:
+		print "python sys.path", str(sys.path)
+
+	import platform
+	if hasattr(platform, "linux_distribution"):
+		li = platform.linux_distribution()
+		if li[0]:
+			print li[0], li[1], 
+	elif hasattr(platform, "dist"):
+		li = platform.dist()
+		if li[0]:
+			print li[0], li[1], 
+	if hasattr(platform, "win32_ver"):
+		wi = platform.win32_ver()
+		if wi[0]:
+			print "Windows", wi[0], wi[1], wi[2],
+	if hasattr(platform, "mac_ver"):
+		mi = platform.mac_ver()
+		if mi[0]:
+			print "MacOS", mi[0], mi[1][0], mi[1][1], mi[2],
+
+	print "(", " ".join(platform.uname()), ")"
+
+
+
+if __name__ == '__main__':
+	try:
+		opts, args = getopt.getopt(sys.argv[1:], "hi", ["help", "version", "zgoubi=", "debug", "log_level=", "log-level=" ,"install-zgoubi", "profile"])
+	except getopt.GetoptError, err:
+		print str(err)
+		_show_usage()
+		sys.exit(1)
+
+	if len(sys.argv) == 1:
+		_show_usage()
+		sys.exit(1)
+	pyzgoubi_make_profile = False
+
+	for o, a in opts:
+		if o in ['--help', "-h"]:
+			if len(args):
+				_show_help(args[0])
+			else:
+				_show_help(None)
+			sys.exit(0)
+		if o in ['--zgoubi']:
+			zgoubi_settings['zgoubi_path'] = a
+		if o in ['--debug']:
+			zlog.setLevel(logging.DEBUG)
+		if o in ['--log_level', "--log-level"]:
+			zlog.setLevel(a.upper())
+		if o in ['--version']:
+			show_version()
+			sys.exit(0)
+		if o in ['--install-zgoubi']:
+			from zgoubi import build_zgoubi
+			include_opts = {}
+			arg_ver = None
+			for arg in args:
+				if "=" in arg:
+					k,dummy,v = arg.partition("=")
+					include_opts[k] = v
+				else:
+					arg_ver = arg
+
+			if arg_ver:
+				build_zgoubi.install_zgoubi_all(version=arg_ver, include_opts=include_opts)
+			else:
+				build_zgoubi.install_zgoubi_all(include_opts=include_opts)
+			sys.exit(0)
+		if o in ["-i"]:
+			os.environ["PYTHONINSPECT"] = "1"
+		if o in ["--profile"]:
+			pyzgoubi_make_profile = True
+
+	try:
+		input_file_name = args[0]
+		sys.argv.pop(0)
+	except IndexError:
+		print "No input file, try:"
+		print "pyzgoubi inputfile"
+		sys.exit(1)
+	
+	if not os.path.exists(input_file_name):
+		print "no such input file in current directory"
+		sys.exit(1)
+		
+	try:
+		tmpdir = tempfile.mkdtemp()
+		subprocess.Popen([zgoubi_settings['zgoubi_path']], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=tmpdir).wait()
+		shutil.rmtree(tmpdir)
+	except OSError:
+		shutil.rmtree(tmpdir)
+		print "can't find zgoubi binary", zgoubi_settings['zgoubi_path']
+		print "please modify the 'zgoubi_path' entry in ~/.pyzgoubi/settings.ini to the full path of zgoubi"
+		print "or add the direcory containing zgoubi to the $PATH"
+		sys.exit(1)
+
+	if pyzgoubi_make_profile:
+		import cProfile
+		pyzgoubi_profile = cProfile.Profile()
+		pyzgoubi_profile.enable()
+
+	try:
+		execfile(input_file_name)
+	except SystemExit:
+		# catch exit() so that we can do cleanup
+		pass
+
+	if pyzgoubi_make_profile:
+		pyzgoubi_profile.disable()
+		pyzgoubi_profile.dump_stats("prof.log")
+	
+
+	for left_over in locals().values():
+		if "Result"  in str(type(left_over)).split("'")[1]:
+			del left_over
+	
+
+	# uncomment to enable list leftover objects for memory debugging
+	#import gc
+	#gc.collect()
+	#print "colected"
+
+	#print "leftovers"
+	#for x in gc.get_objects():
+	#	if "zgoubi" in str(type(x)):
+	#		print type(x)
+	#		for y in gc.get_referrers(x):
+	#			print "\t", type(y)
+
+
+
+

@@ -1,0 +1,182 @@
+# Copyright (C) 2016-present the ayncpg authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of asyncpg and is released under
+# the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
+
+
+# GENERATED FROM pg_catalog.pg_type
+# DO NOT MODIFY, use tools/generate_type_map.py to update
+
+DEF INVALIDOID = 0
+DEF MAXBUILTINOID = 9999
+DEF MAXSUPPORTEDOID = 4096
+
+DEF BOOLOID = 16
+DEF BYTEAOID = 17
+DEF CHAROID = 18
+DEF NAMEOID = 19
+DEF INT8OID = 20
+DEF INT2OID = 21
+DEF INT4OID = 23
+DEF REGPROCOID = 24
+DEF TEXTOID = 25
+DEF OIDOID = 26
+DEF TIDOID = 27
+DEF XIDOID = 28
+DEF CIDOID = 29
+DEF PG_DDL_COMMANDOID = 32
+DEF JSONOID = 114
+DEF XMLOID = 142
+DEF PG_NODE_TREEOID = 194
+DEF SMGROID = 210
+DEF POINTOID = 600
+DEF LSEGOID = 601
+DEF PATHOID = 602
+DEF BOXOID = 603
+DEF POLYGONOID = 604
+DEF LINEOID = 628
+DEF CIDROID = 650
+DEF FLOAT4OID = 700
+DEF FLOAT8OID = 701
+DEF ABSTIMEOID = 702
+DEF RELTIMEOID = 703
+DEF TINTERVALOID = 704
+DEF UNKNOWNOID = 705
+DEF CIRCLEOID = 718
+DEF MONEYOID = 790
+DEF MACADDROID = 829
+DEF INETOID = 869
+DEF _TEXTOID = 1009
+DEF _OIDOID = 1028
+DEF ACLITEMOID = 1033
+DEF BPCHAROID = 1042
+DEF VARCHAROID = 1043
+DEF DATEOID = 1082
+DEF TIMEOID = 1083
+DEF TIMESTAMPOID = 1114
+DEF TIMESTAMPTZOID = 1184
+DEF INTERVALOID = 1186
+DEF TIMETZOID = 1266
+DEF BITOID = 1560
+DEF VARBITOID = 1562
+DEF NUMERICOID = 1700
+DEF REFCURSOROID = 1790
+DEF REGPROCEDUREOID = 2202
+DEF REGOPEROID = 2203
+DEF REGOPERATOROID = 2204
+DEF REGCLASSOID = 2205
+DEF REGTYPEOID = 2206
+DEF RECORDOID = 2249
+DEF CSTRINGOID = 2275
+DEF ANYOID = 2276
+DEF ANYARRAYOID = 2277
+DEF VOIDOID = 2278
+DEF TRIGGEROID = 2279
+DEF LANGUAGE_HANDLEROID = 2280
+DEF INTERNALOID = 2281
+DEF OPAQUEOID = 2282
+DEF ANYELEMENTOID = 2283
+DEF ANYNONARRAYOID = 2776
+DEF UUIDOID = 2950
+DEF TXID_SNAPSHOTOID = 2970
+DEF FDW_HANDLEROID = 3115
+DEF PG_LSNOID = 3220
+DEF TSM_HANDLEROID = 3310
+DEF ANYENUMOID = 3500
+DEF TSVECTOROID = 3614
+DEF TSQUERYOID = 3615
+DEF GTSVECTOROID = 3642
+DEF REGCONFIGOID = 3734
+DEF REGDICTIONARYOID = 3769
+DEF JSONBOID = 3802
+DEF ANYRANGEOID = 3831
+DEF EVENT_TRIGGEROID = 3838
+DEF REGNAMESPACEOID = 4089
+DEF REGROLEOID = 4096
+
+cdef ARRAY_TYPES = (_TEXTOID, _OIDOID,)
+
+TYPEMAP = {
+    NUMERICOID: 'numeric',
+    INTERVALOID: 'interval',
+    TIMETZOID: 'timetz',
+    CHAROID: 'char',
+    FDW_HANDLEROID: 'fdw_handler',
+    REGTYPEOID: 'regtype',
+    REGOPEROID: 'regoper',
+    ACLITEMOID: 'aclitem',
+    TXID_SNAPSHOTOID: 'txid_snapshot',
+    REGDICTIONARYOID: 'regdictionary',
+    POINTOID: 'point',
+    OIDOID: 'oid',
+    PG_NODE_TREEOID: 'pg_node_tree',
+    REFCURSOROID: 'refcursor',
+    REGNAMESPACEOID: 'regnamespace',
+    TIMESTAMPOID: 'timestamp',
+    BYTEAOID: 'bytea',
+    REGCONFIGOID: 'regconfig',
+    UUIDOID: 'uuid',
+    FLOAT4OID: 'float4',
+    SMGROID: 'smgr',
+    BOOLOID: 'bool',
+    INT4OID: 'int4',
+    MACADDROID: 'macaddr',
+    TSM_HANDLEROID: 'tsm_handler',
+    REGPROCEDUREOID: 'regprocedure',
+    RELTIMEOID: 'reltime',
+    DATEOID: 'date',
+    _OIDOID: 'oid[]',
+    TSQUERYOID: 'tsquery',
+    LINEOID: 'line',
+    PG_LSNOID: 'pg_lsn',
+    JSONOID: 'json',
+    POLYGONOID: 'polygon',
+    XMLOID: 'xml',
+    INT2OID: 'int2',
+    TINTERVALOID: 'tinterval',
+    ANYARRAYOID: 'anyarray',
+    NAMEOID: 'name',
+    TIDOID: 'tid',
+    ANYRANGEOID: 'anyrange',
+    CIDOID: 'cid',
+    TIMESTAMPTZOID: 'timestamptz',
+    CIDROID: 'cidr',
+    REGCLASSOID: 'regclass',
+    INT8OID: 'int8',
+    CSTRINGOID: 'cstring',
+    FLOAT8OID: 'float8',
+    REGROLEOID: 'regrole',
+    CIRCLEOID: 'circle',
+    ANYNONARRAYOID: 'anynonarray',
+    GTSVECTOROID: 'gtsvector',
+    ABSTIMEOID: 'abstime',
+    PATHOID: 'path',
+    OPAQUEOID: 'opaque',
+    ANYOID: 'any',
+    TIMEOID: 'time',
+    ANYENUMOID: 'anyenum',
+    VOIDOID: 'void',
+    ANYELEMENTOID: 'anyelement',
+    LSEGOID: 'lseg',
+    LANGUAGE_HANDLEROID: 'language_handler',
+    INETOID: 'inet',
+    REGPROCOID: 'regproc',
+    EVENT_TRIGGEROID: 'event_trigger',
+    TEXTOID: 'text',
+    BOXOID: 'box',
+    INTERNALOID: 'internal',
+    VARBITOID: 'varbit',
+    XIDOID: 'xid',
+    UNKNOWNOID: 'unknown',
+    PG_DDL_COMMANDOID: 'pg_ddl_command',
+    BITOID: 'bit',
+    MONEYOID: 'money',
+    VARCHAROID: 'varchar',
+    TSVECTOROID: 'tsvector',
+    _TEXTOID: 'text[]',
+    RECORDOID: 'record',
+    JSONBOID: 'jsonb',
+    REGOPERATOROID: 'regoperator',
+    TRIGGEROID: 'trigger',
+    BPCHAROID: 'bpchar'}

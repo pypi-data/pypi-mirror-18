@@ -1,0 +1,556 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Transactions and concurrency &#8212; ZODB  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../_static/zodb.ico"/>
+    <link rel="top" title="ZODB  documentation" href="../index.html" />
+    <link rel="up" title="ZODB programming guide" href="index.html" />
+    <link rel="next" title="Reference Documentation" href="../reference/index.html" />
+    <link rel="prev" title="Writing persistent objects" href="writing-persistent-objects.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="transactions-and-concurrency">
+<h1><a class="toc-backref" href="#id10">Transactions and concurrency</a><a class="headerlink" href="#transactions-and-concurrency" title="Permalink to this headline">¶</a></h1>
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#transactions-and-concurrency" id="id10">Transactions and concurrency</a><ul>
+<li><a class="reference internal" href="#using-transactions" id="id11">Using transactions</a><ul>
+<li><a class="reference internal" href="#explicit-transaction-managers" id="id12">Explicit transaction managers</a></li>
+<li><a class="reference internal" href="#context-managers" id="id13">Context managers</a></li>
+<li><a class="reference internal" href="#getting-a-connection-s-transaction-manager" id="id14">Getting a connection&#8217;s transaction manager</a></li>
+<li><a class="reference internal" href="#connection-isolation" id="id15">Connection isolation</a></li>
+<li><a class="reference internal" href="#conflict-errors" id="id16">Conflict errors</a><ul>
+<li><a class="reference internal" href="#retrying-transactions" id="id17">Retrying transactions</a></li>
+<li><a class="reference internal" href="#conflict-resolution" id="id18">Conflict resolution</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#zodb-and-atomicity" id="id19">ZODB and atomicity</a><ul>
+<li><a class="reference internal" href="#partial-transaction-error-recovery-using-savepoints" id="id20">Partial transaction error recovery using savepoints</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#concurrency-threads-and-processes" id="id21">Concurrency, threads and processes</a><ul>
+<li><a class="reference internal" href="#using-multiple-processes" id="id22">Using multiple processes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<p><a class="reference external" href="https://en.wikipedia.org/wiki/Database_transaction">Transactions</a>
+are a core feature of ZODB.  Much has been written about transactions,
+and we won&#8217;t go into much detail here.  Transactions provide two core
+benefits:</p>
+<dl class="docutils">
+<dt>Atomicity</dt>
+<dd>When a transaction executes, it succeeds or fails completely. If
+some data are updated and then an error occurs, causing the
+transaction to fail, the updates are rolled back automatically. The
+application using the transactional system doesn&#8217;t have to undo
+partial changes.  This takes a significant burden from developers
+and increases the reliability of applications.</dd>
+<dt>Concurrency</dt>
+<dd>Transactions provide a way of managing concurrent updates to data.
+Different programs operate on the data independently, without having
+to use low-level techniques to moderate their access. Coordination
+and synchronization happen via transactions.</dd>
+</dl>
+<div class="section" id="using-transactions">
+<span id="using-transactions-label"></span><h2><a class="toc-backref" href="#id11">Using transactions</a><a class="headerlink" href="#using-transactions" title="Permalink to this headline">¶</a></h2>
+<p>All activity in ZODB happens in the context of database connections
+and transactions.  Here&#8217;s a simple example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">ZODB</span><span class="o">,</span> <span class="nn">transaction</span>
+<span class="n">db</span> <span class="o">=</span> <span class="n">ZODB</span><span class="o">.</span><span class="n">DB</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span> <span class="c1"># Use a mapping storage</span>
+<span class="n">conn</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">open</span><span class="p">()</span>
+
+<span class="n">conn</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">transaction</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>In the example above, we used <code class="docutils literal"><span class="pre">transaction.commit()</span></code> to commit a
+transaction, making the change to <code class="docutils literal"><span class="pre">conn.root</span></code> permanent.  This is
+the most common way to use ZODB, at least historically.</p>
+<p>If we decide we don&#8217;t want to commit a transaction, we can use
+<code class="docutils literal"><span class="pre">abort</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">conn</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">transaction</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span> <span class="c1"># conn.root.x goes back to 1</span>
+</pre></div>
+</div>
+<p>In this example, because we aborted the transaction, the value of
+<code class="docutils literal"><span class="pre">conn.root.x</span></code> was rolled back to 1.</p>
+<p>There are a number of things going on here that deserve some
+explanation.  When using transactions, there are three kinds of
+objects involved:</p>
+<dl class="docutils">
+<dt>Transaction</dt>
+<dd>Transactions represent units of work.  Each transaction has a beginning and
+an end. Transactions provide the
+<a class="reference internal" href="../reference/transaction.html#transaction.interfaces.ITransaction" title="transaction.interfaces.ITransaction"><code class="xref py py-interface docutils literal"><span class="pre">ITransaction</span></code></a> interface.</dd>
+<dt>Transaction manager</dt>
+<dd>Transaction managers create transactions and
+provide APIs to start and end transactions.  The transactions
+managed are always sequential. There is always exactly one active
+transaction associated with a transaction manager at any point in
+time. Transaction managers provide the
+<a class="reference internal" href="../reference/transaction.html#transaction.interfaces.ITransactionManager" title="transaction.interfaces.ITransactionManager"><code class="xref py py-interface docutils literal"><span class="pre">ITransactionManager</span></code></a> interface.</dd>
+<dt>Data manager</dt>
+<dd>Data managers manage data associated with transactions.  ZODB
+connections are data managers.  The details of how they interact
+with transactions aren&#8217;t important here.</dd>
+</dl>
+<div class="section" id="explicit-transaction-managers">
+<h3><a class="toc-backref" href="#id12">Explicit transaction managers</a><a class="headerlink" href="#explicit-transaction-managers" title="Permalink to this headline">¶</a></h3>
+<p>ZODB connections have transaction managers associated with them when
+they&#8217;re opened. When we call the database <a class="reference internal" href="../reference/zodb.html#ZODB.DB.open" title="ZODB.DB.open"><code class="xref py py-meth docutils literal"><span class="pre">open()</span></code></a> method
+without an argument, a thread-local transaction manager is used. Each
+thread has its own transaction manager.  When we called
+<code class="docutils literal"><span class="pre">transaction.commit()</span></code> above we were calling commit on the
+thread-local transaction manager.</p>
+<p>Because we used a thread-local transaction manager, all of the work in
+the transaction needs to happen in the same thread.  Similarly, only
+one transaction can be active in a thread.</p>
+<p>If we want to run multiple simultaneous transactions in a single
+thread, or if we want to spread the work of a transaction over
+multiple threads <a class="footnote-reference" href="#bad-idea-using-multiple-threads-per-transaction" id="id1">[5]</a>,
+then we can create transaction managers ourselves and pass them to
+<a class="reference internal" href="../reference/zodb.html#ZODB.DB.open" title="ZODB.DB.open"><code class="xref py py-meth docutils literal"><span class="pre">open()</span></code></a>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">my_transaction_manager</span> <span class="o">=</span> <span class="n">transaction</span><span class="o">.</span><span class="n">TransactionManager</span><span class="p">()</span>
+<span class="n">conn</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">my_transaction_manager</span><span class="p">)</span>
+<span class="n">conn</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">my_transaction_manager</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>In this example, to commit our work, we called <code class="docutils literal"><span class="pre">commit()</span></code> on the
+transaction manager we created and passed to <a class="reference internal" href="../reference/zodb.html#ZODB.DB.open" title="ZODB.DB.open"><code class="xref py py-meth docutils literal"><span class="pre">open()</span></code></a>.</p>
+</div>
+<div class="section" id="context-managers">
+<h3><a class="toc-backref" href="#id13">Context managers</a><a class="headerlink" href="#context-managers" title="Permalink to this headline">¶</a></h3>
+<p>In the examples above, the transaction beginnings were
+implicit. Transactions were effectively
+<a class="footnote-reference" href="#implicit-transaction-creation" id="id2">[6]</a> created when the transaction
+managers were created and when previous transactions were committed.
+We can create transactions explicitly using
+<a class="reference internal" href="../reference/transaction.html#transaction.interfaces.ITransactionManager.begin" title="transaction.interfaces.ITransactionManager.begin"><code class="xref py py-meth docutils literal"><span class="pre">begin()</span></code></a>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">my_transaction_manager</span><span class="o">.</span><span class="n">begin</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>A more modern <a class="footnote-reference" href="#context-managers-are-new" id="id3">[7]</a> way to manage transaction
+boundaries is to use context managers and the Python <code class="docutils literal"><span class="pre">with</span></code>
+statement. Transaction managers are context managers, so we can use
+them with the <code class="docutils literal"><span class="pre">with</span></code> statement directly:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">my_transaction_manager</span> <span class="k">as</span> <span class="n">trans</span><span class="p">:</span>
+   <span class="n">trans</span><span class="o">.</span><span class="n">note</span><span class="p">(</span><span class="s2">&quot;incrementing x&quot;</span><span class="p">)</span>
+   <span class="n">conn</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">x</span> <span class="o">+=</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>When used as a context manager, a transaction manager explicitly
+begins a new transaction, executes the code block and commits the
+transaction if there isn&#8217;t an error and aborts it of there is an
+error.</p>
+<p>We used <code class="docutils literal"><span class="pre">as</span> <span class="pre">trans</span></code> above to get the transaction.</p>
+<p>Databases provide the <a class="reference internal" href="../reference/zodb.html#ZODB.DB.transaction" title="ZODB.DB.transaction"><code class="xref py py-meth docutils literal"><span class="pre">transaction()</span></code></a> method to execute a code
+block as a transaction:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">db</span><span class="o">.</span><span class="n">transaction</span><span class="p">()</span> <span class="k">as</span> <span class="n">conn2</span><span class="p">:</span>
+   <span class="n">conn2</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">x</span> <span class="o">+=</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>This opens a connection, assignes it its own context manager, and
+executes the nested code in a transaction.  We used <code class="docutils literal"><span class="pre">as</span> <span class="pre">conn2</span></code> to
+get the connection.  The transaction boundaries are defined by the
+<code class="docutils literal"><span class="pre">with</span></code> statement.</p>
+</div>
+<div class="section" id="getting-a-connection-s-transaction-manager">
+<h3><a class="toc-backref" href="#id14">Getting a connection&#8217;s transaction manager</a><a class="headerlink" href="#getting-a-connection-s-transaction-manager" title="Permalink to this headline">¶</a></h3>
+<p>In the previous example, you may have wondered how one might get the
+current transaction. Every connection has an associated transaction
+manager, which is available as the <code class="docutils literal"><span class="pre">transaction_manager</span></code> attribute.
+So, for example, if we wanted to set a transaction note:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">db</span><span class="o">.</span><span class="n">transaction</span><span class="p">()</span> <span class="k">as</span> <span class="n">conn2</span><span class="p">:</span>
+   <span class="n">conn2</span><span class="o">.</span><span class="n">transaction_manager</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">note</span><span class="p">(</span><span class="s2">&quot;incrementing x again&quot;</span><span class="p">)</span>
+   <span class="n">conn2</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">x</span> <span class="o">+=</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>Here, we used the
+<a class="reference internal" href="../reference/transaction.html#transaction.interfaces.ITransactionManager.get" title="transaction.interfaces.ITransactionManager.get"><code class="xref py py-meth docutils literal"><span class="pre">get()</span></code></a> method to get
+the current transaction.</p>
+</div>
+<div class="section" id="connection-isolation">
+<h3><a class="toc-backref" href="#id15">Connection isolation</a><a class="headerlink" href="#connection-isolation" title="Permalink to this headline">¶</a></h3>
+<p>In the last few examples, we used a connection opened using
+<a class="reference internal" href="../reference/zodb.html#ZODB.DB.transaction" title="ZODB.DB.transaction"><code class="xref py py-meth docutils literal"><span class="pre">transaction()</span></code></a>.  This was distinct from and used a
+different transaction manager than the original connection. If we
+looked at the original connection, <code class="docutils literal"><span class="pre">conn</span></code>, we&#8217;d see that it has the
+same value for <code class="docutils literal"><span class="pre">x</span></code> that we set earlier:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">conn</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">x</span>
+<span class="go">3</span>
+</pre></div>
+</div>
+<p>This is because it&#8217;s still in the same transaction that was begun when
+a change was last committed against it.  If we want to see changes, we
+have to begin a new transaction:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">trans</span> <span class="o">=</span> <span class="n">my_transaction_manager</span><span class="o">.</span><span class="n">begin</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">conn</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">x</span>
+<span class="go">5</span>
+</pre></div>
+</div>
+<p>ZODB uses a timestamp-based commit protocol that provides <a class="reference external" href="https://en.wikipedia.org/wiki/Snapshot_isolation">snapshot
+isolation</a>.
+Whenever we look at ZODB data, we see its state as of the time the
+transaction began.</p>
+</div>
+<div class="section" id="conflict-errors">
+<span id="conflicts-label"></span><h3><a class="toc-backref" href="#id16">Conflict errors</a><a class="headerlink" href="#conflict-errors" title="Permalink to this headline">¶</a></h3>
+<p>As mentioned in the previous section, each connection sees and
+operates on a view of the database as of the transaction start time.
+If two connections modify the same object at the same time, one of the
+connections will get a conflict error when it tries to commit:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">db</span><span class="o">.</span><span class="n">transaction</span><span class="p">()</span> <span class="k">as</span> <span class="n">conn2</span><span class="p">:</span>
+   <span class="n">conn2</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">x</span> <span class="o">+=</span> <span class="mi">1</span>
+
+<span class="n">conn</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="mi">9</span>
+<span class="n">my_transaction_manager</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span> <span class="c1"># will raise a conflict error</span>
+</pre></div>
+</div>
+<p>If we executed this code, we&#8217;d get <code class="docutils literal"><span class="pre">ConflictError</span></code> exception on the
+last line.  After a conflict error is raised, we&#8217;d need to abort the
+transaction, or begin a new one, at which point we&#8217;d see the data as
+written by the other connection:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">my_transaction_manager</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">conn</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">x</span>
+<span class="go">6</span>
+</pre></div>
+</div>
+<p>The timestamp-based approach used by ZODB is referred to as an
+<em>optimistic</em> approach, because it works best if there are no
+conflicts.</p>
+<p>The best way to avoid conflicts is to design your application so that
+multiple connections don&#8217;t update the same object at the same time.
+This isn&#8217;t always easy.</p>
+<p>Sometimes you may need to queue some operations that update shared
+data structures, like indexes, so the updates can be made by a
+dedicated thread or process, without making simultaneous updates.</p>
+<div class="section" id="retrying-transactions">
+<h4><a class="toc-backref" href="#id17">Retrying transactions</a><a class="headerlink" href="#retrying-transactions" title="Permalink to this headline">¶</a></h4>
+<p>The most common way to deal with conflict errors is to catch them and
+retry transactions.  To do this manually, involves code that looks
+something like this:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">max_attempts</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">attempts</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">transaction</span><span class="o">.</span><span class="n">manager</span><span class="p">:</span>
+            <span class="o">...</span> <span class="n">code</span> <span class="n">that</span> <span class="n">updates</span> <span class="n">a</span> <span class="n">database</span>
+    <span class="k">except</span> <span class="n">transaction</span><span class="o">.</span><span class="n">interfaces</span><span class="o">.</span><span class="n">TransientError</span><span class="p">:</span>
+        <span class="n">attempts</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">attempts</span> <span class="o">==</span> <span class="n">max_attempts</span><span class="p">:</span>
+            <span class="k">raise</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">break</span>
+</pre></div>
+</div>
+<p>In the example above, we used <code class="docutils literal"><span class="pre">transaction.manager</span></code> to refer to the
+thread-local transaction manager, which we then used used with the
+<code class="docutils literal"><span class="pre">with</span></code> statement.  When a conflict error occurs, the transaction
+must be aborted before retrying the update. Using the transaction
+manager as a context manager in the <code class="docutils literal"><span class="pre">with</span></code> statement takes care of this
+for us.</p>
+<p>The example above is rather tedious.  There are a number of tools to
+automate transaction retry.  The <a class="reference external" href="http://zodb.readthedocs.io/en/latest/transactions.html#retrying-transactions">transaction</a>
+package provides a context-manager-based mechanism for retrying
+transactions:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="n">transaction</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">attempts</span><span class="p">():</span>
+    <span class="k">with</span> <span class="n">attempt</span><span class="p">:</span>
+        <span class="o">...</span> <span class="n">code</span> <span class="n">that</span> <span class="n">updates</span> <span class="n">a</span> <span class="n">database</span>
+</pre></div>
+</div>
+<p>Which is shorter and simpler <a class="footnote-reference" href="#but-obscure" id="id4">[1]</a>.</p>
+<p>For Python web frameworks, there are WSGI <a class="footnote-reference" href="#wtf-wsgi" id="id5">[2]</a> middle-ware
+components, such as <a class="reference external" href="https://pypi.python.org/pypi/repoze.tm2">repoze.tm2</a> that align transaction
+boundaries with HTTP requests and retry transactions when there are
+transient errors.</p>
+<p>For applications like queue workers or <a class="reference external" href="https://en.wikipedia.org/wiki/Cron">cron jobs</a>, conflicts can sometimes be
+allowed to fail, letting other queue workers or subsequent cron-job
+runs retry the work.</p>
+</div>
+<div class="section" id="conflict-resolution">
+<h4><a class="toc-backref" href="#id18">Conflict resolution</a><a class="headerlink" href="#conflict-resolution" title="Permalink to this headline">¶</a></h4>
+<p>ZODB provides a conflict-resolution framework for merging conflicting
+changes.  When conflicts occur, conflict resolution is used, when
+possible, to resolve the conflicts without raising a ConflictError to
+the application.</p>
+<p>Commonly used objects that implement conflict resolution are
+buckets and <code class="docutils literal"><span class="pre">Length</span></code> objects provided by the <a class="reference external" href="https://pythonhosted.org/BTrees/">BTree</a> package.</p>
+<p>The main data structures provided by BTrees: BTrees and TreeSets,
+spread their data over multiple objects.  The leaf-level objects,
+called <em>buckets</em>, allow distinct keys to be updated without causing
+conflicts <a class="footnote-reference" href="#usually-avoids-conflicts" id="id6">[3]</a>.</p>
+<p><code class="docutils literal"><span class="pre">Length</span></code> objects are conflict-free counters, that merge changes by
+simply accumulating changes.</p>
+<div class="admonition caution">
+<p class="first admonition-title">Caution</p>
+<p>Conflict resolution weakens consistency.  Resist the temptation to
+try to implement conflict resolution yourself.  In the future, ZODB
+will provide greater control over conflict resolution, including
+the option of disabling it.</p>
+<p class="last">It&#8217;s generally best to avoid conflicts in the first place, if possible.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="zodb-and-atomicity">
+<h2><a class="toc-backref" href="#id19">ZODB and atomicity</a><a class="headerlink" href="#zodb-and-atomicity" title="Permalink to this headline">¶</a></h2>
+<p>ZODB provides atomic transactions. When using ZODB, it&#8217;s important to
+align work with transactions.  Once a transaction is committed, it
+can&#8217;t be rolled back <a class="footnote-reference" href="#undo" id="id7">[4]</a> automatically.  For applications, this
+implies that work that should be atomic shouldn&#8217;t be split over
+multiple transactions.  This may seem somewhat obvious, but the rule
+can be broken in non-obvious ways. For example a Web API that splits
+logical operations over multiple web requests, as is often done in
+<a class="reference external" href="https://en.wikipedia.org/wiki/Representational_state_transfer">REST</a>
+APIs, violate this rule.</p>
+<div class="section" id="partial-transaction-error-recovery-using-savepoints">
+<h3><a class="toc-backref" href="#id20">Partial transaction error recovery using savepoints</a><a class="headerlink" href="#partial-transaction-error-recovery-using-savepoints" title="Permalink to this headline">¶</a></h3>
+<p>A transaction can be split into multiple steps that can be rolled back
+individually.  This is done by creating savepoints.  Changes in a
+savepoint can be rolled back without rolling back an entire
+transaction:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">ZODB</span>
+<span class="n">db</span> <span class="o">=</span> <span class="n">ZODB</span><span class="o">.</span><span class="n">DB</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span> <span class="c1"># using a mapping storage</span>
+<span class="k">with</span> <span class="n">db</span><span class="o">.</span><span class="n">transaction</span><span class="p">()</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+    <span class="n">conn</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">conn</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">savepoint</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">transaction_manager</span><span class="o">.</span><span class="n">savepoint</span><span class="p">()</span>
+    <span class="n">conn</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">savepoint</span><span class="o">.</span><span class="n">rollback</span><span class="p">()</span>
+
+<span class="k">with</span> <span class="n">db</span><span class="o">.</span><span class="n">transaction</span><span class="p">()</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">([</span><span class="n">conn</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">conn</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">y</span><span class="p">])</span> <span class="c1"># prints 1 0</span>
+</pre></div>
+</div>
+<p>If we executed this code, it would print 1 and 0, because while the
+initial changes were committed, the changes in the savepoint were
+rolled back.</p>
+<p>A secondary benefit of savepoints is that they save any changes made
+before the savepoint to a file, so that memory of changed objects can
+be freed if they aren&#8217;t used later in the transaction.</p>
+</div>
+</div>
+<div class="section" id="concurrency-threads-and-processes">
+<h2><a class="toc-backref" href="#id21">Concurrency, threads and processes</a><a class="headerlink" href="#concurrency-threads-and-processes" title="Permalink to this headline">¶</a></h2>
+<p>ZODB supports concurrency through transactions.  Multiple programs
+<a class="footnote-reference" href="#wtf-program" id="id8">[8]</a> can operate independently in separate transactions.
+They synchronize at transaction boundaries.</p>
+<p>The most common way to run ZODB is with each program running in it&#8217;s
+own thread.  Usually the thread-local transaction manager is used.</p>
+<p>You can use multiple threads per transaction and you can run multiple
+transactions in a single thread. To do this, you need to instantiate
+and use your own transaction manager, as described in <a class="reference internal" href="#explicit-transaction-managers">Explicit
+transaction managers</a>.  To run multiple transaction managers
+simultaneously in a thread, you need to use a separate transaction
+manager for each transaction.</p>
+<p>To spread a transaction over multiple threads, you need to keep in
+mind that database connections, transaction managers and transactions
+are <strong>not thread-safe</strong>.  You have to prevent simultaneous access from
+multiple threads.  For this reason, <strong>using multiple threads with a
+single transaction is not recommended</strong>, but it is possible with care.</p>
+<div class="section" id="using-multiple-processes">
+<h3><a class="toc-backref" href="#id22">Using multiple processes</a><a class="headerlink" href="#using-multiple-processes" title="Permalink to this headline">¶</a></h3>
+<p>Using multiple Python processes is a good way to scale an application
+horizontally, especially given Python&#8217;s <a class="reference external" href="https://wiki.python.org/moin/GlobalInterpreterLock">global interpreter lock</a>.</p>
+<p>Some things to keep in mind when utilizing multiple processes:</p>
+<ul class="simple">
+<li>If using the <code class="xref py py-mod docutils literal"><span class="pre">multiprocessing</span></code> module, you can&#8217;t
+<a class="footnote-reference" href="#cant-share-now" id="id9">[9]</a> share databases or connections between
+processes. When you launch a subprocess, you&#8217;ll need to
+re-instantiate your storage and database.</li>
+<li>You&#8217;ll need to use a storage such as <a class="reference external" href="https://github.com/zopefoundation/ZEO">ZEO</a>, <a class="reference external" href="http://relstorage.readthedocs.io/en/latest/">RelStorage</a>, or <a class="reference external" href="http://www.neoppod.org/">NEO</a>, that supports multiple processes.  None
+of the included storages do.</li>
+</ul>
+<table class="docutils footnote" frame="void" id="but-obscure" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id4">[1]</a></td><td>But also a bit obscure.  The Python context-manager
+mechanism isn&#8217;t a great fit for the transaction-retry use case.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="wtf-wsgi" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id5">[2]</a></td><td><a class="reference external" href="http://wsgi.readthedocs.io/en/latest/">Web Server Gateway Interface</a></td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="usually-avoids-conflicts" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id6">[3]</a></td><td>Conflicts can still occur when buckets
+split due to added objects causing them to exceed their maximum size.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="undo" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id7">[4]</a></td><td>Transactions can&#8217;t be rolled back, but they may be undone
+in some cases, especially of subsequent transactions
+haven&#8217;t modified the same objects.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="bad-idea-using-multiple-threads-per-transaction" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[5]</a></td><td>While it&#8217;s
+possible to spread transaction work over multiple threads, <strong>it&#8217;s
+not a good idea</strong>. See <a class="reference internal" href="#concurrency-threads-and-processes">Concurrency, threads and processes</a></td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="implicit-transaction-creation" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[6]</a></td><td>Transactions are implicitly
+created when needed, such as when data are first modified.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="context-managers-are-new" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id3">[7]</a></td><td>ZODB and the transaction package
+predate context managers and the Python <code class="docutils literal"><span class="pre">with</span></code> statement.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="wtf-program" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id8">[8]</a></td><td>We&#8217;re using <em>program</em> here in a fairly general
+sense, meaning some logic that we want to run to
+perform some function, as opposed to an operating system program.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="cant-share-now" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id9">[9]</a></td><td>at least not now.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/zodb.png" alt="Logo"/>
+            </a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Transactions and concurrency</a><ul>
+<li><a class="reference internal" href="#using-transactions">Using transactions</a><ul>
+<li><a class="reference internal" href="#explicit-transaction-managers">Explicit transaction managers</a></li>
+<li><a class="reference internal" href="#context-managers">Context managers</a></li>
+<li><a class="reference internal" href="#getting-a-connection-s-transaction-manager">Getting a connection&#8217;s transaction manager</a></li>
+<li><a class="reference internal" href="#connection-isolation">Connection isolation</a></li>
+<li><a class="reference internal" href="#conflict-errors">Conflict errors</a><ul>
+<li><a class="reference internal" href="#retrying-transactions">Retrying transactions</a></li>
+<li><a class="reference internal" href="#conflict-resolution">Conflict resolution</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#zodb-and-atomicity">ZODB and atomicity</a><ul>
+<li><a class="reference internal" href="#partial-transaction-error-recovery-using-savepoints">Partial transaction error recovery using savepoints</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#concurrency-threads-and-processes">Concurrency, threads and processes</a><ul>
+<li><a class="reference internal" href="#using-multiple-processes">Using multiple processes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">ZODB programming guide</a><ul>
+      <li>Previous: <a href="writing-persistent-objects.html" title="previous chapter">Writing persistent objects</a></li>
+      <li>Next: <a href="../reference/index.html" title="next chapter">Reference Documentation</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/guide/transactions-and-threading.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2009-2016, Zope Foundation.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="../_sources/guide/transactions-and-threading.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

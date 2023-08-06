@@ -1,0 +1,515 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>ZODB Programming &#8212; ZODB  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/zodb.ico"/>
+    <link rel="top" title="ZODB  documentation" href="../../index.html" />
+    <link rel="up" title="Very old ZODB programming guide" href="index.html" />
+    <link rel="next" title="ZEO" href="zeo.html" />
+    <link rel="prev" title="Introduction" href="introduction.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="zodb-programming">
+<h1>ZODB Programming<a class="headerlink" href="#zodb-programming" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="installing-zodb">
+<h2>Installing ZODB<a class="headerlink" href="#installing-zodb" title="Permalink to this headline">¶</a></h2>
+<p>ZODB is packaged using the standard distutils tools.</p>
+<div class="section" id="requirements">
+<h3>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h3>
+<p>You will need Python 2.3 or higher.  Since the code is packaged using distutils,
+it is simply a matter of untarring or unzipping the release package, and then
+running <code class="docutils literal"><span class="pre">python</span> <span class="pre">setup.py</span> <span class="pre">install</span></code>.</p>
+<p>You&#8217;ll need a C compiler to build the packages, because there are various C
+extension modules.  Binary installers are provided for Windows users.</p>
+</div>
+<div class="section" id="installing-the-packages">
+<h3>Installing the Packages<a class="headerlink" href="#installing-the-packages" title="Permalink to this headline">¶</a></h3>
+<p>Download the ZODB tarball containing all the packages for both ZODB and ZEO from
+<a class="reference external" href="http://www.zope.org/Products/ZODB3.3">http://www.zope.org/Products/ZODB3.3</a>.  See the <code class="file docutils literal"><span class="pre">README.txt</span></code> file in
+the top level of the release directory for details on building, testing, and
+installing.</p>
+<p>You can find information about ZODB and the most current releases in the ZODB
+Wiki at <a class="reference external" href="http://www.zope.org/Wikis/ZODB">http://www.zope.org/Wikis/ZODB</a>.</p>
+</div>
+</div>
+<div class="section" id="how-zodb-works">
+<h2>How ZODB Works<a class="headerlink" href="#how-zodb-works" title="Permalink to this headline">¶</a></h2>
+<p>The ZODB is conceptually simple.  Python classes subclass a
+<code class="xref py py-class docutils literal"><span class="pre">persistent.Persistent</span></code> class to become ZODB-aware.  Instances of
+persistent objects are brought in from a permanent storage medium, such as a
+disk file, when the program needs them, and remain cached in RAM.  The ZODB
+traps modifications to objects, so that when a statement such as <code class="docutils literal"><span class="pre">obj.size</span> <span class="pre">=</span>
+<span class="pre">1</span></code> is executed, the modified object is marked as &#8220;dirty.&#8221;  On request, any
+dirty objects are written out to permanent storage; this is called committing a
+transaction.  Transactions can also be aborted or rolled back, which results in
+any changes being discarded, dirty objects reverting to their initial state
+before the transaction began.</p>
+<p>The term &#8220;transaction&#8221; has a specific technical meaning in computer science.
+It&#8217;s extremely important that the contents of a database don&#8217;t get corrupted by
+software or hardware crashes, and most database software offers protection
+against such corruption by supporting four useful properties, Atomicity,
+Consistency, Isolation, and Durability. In computer science jargon these four
+terms are collectively dubbed the ACID properties, forming an acronym from their
+names.</p>
+<p>The ZODB provides all of the ACID properties.  Definitions of the ACID
+properties are:</p>
+<dl class="docutils">
+<dt>Atomicity</dt>
+<dd>means that any changes to data made during a transaction  are all-or-nothing.
+Either all the changes are applied, or none of them are.  If a program makes a
+bunch of modifications and then crashes, the database won&#8217;t be partially
+modified, potentially leaving the data in an inconsistent state; instead all the
+changes will be forgotten.  That&#8217;s bad, but it&#8217;s better than having a partially-
+applied modification put the database into an inconsistent state.</dd>
+<dt>Consistency</dt>
+<dd>means that each transaction executes a valid transformation of the database
+state.  Some databases, but not ZODB, provide a variety of consistency checks in
+the database or language; for example, a relational database constraint columns
+to be of particular types and can enforce relations across tables.  Viewed more
+generally, atomicity and isolation make it possible for applications to provide
+consistency.</dd>
+<dt>Isolation</dt>
+<dd>means that two programs or threads running in two different transactions cannot
+see each other&#8217;s changes until they commit their transactions.</dd>
+<dt>Durability</dt>
+<dd>means that once a transaction has been committed, a subsequent crash will not
+cause any data to be lost or corrupted.</dd>
+</dl>
+</div>
+<div class="section" id="opening-a-zodb">
+<h2>Opening a ZODB<a class="headerlink" href="#opening-a-zodb" title="Permalink to this headline">¶</a></h2>
+<p>There are 3 main interfaces supplied by the ZODB: <code class="xref py py-class docutils literal"><span class="pre">Storage</span></code>, <a class="reference internal" href="../../reference/zodb.html#DB" title="DB"><code class="xref py py-class docutils literal"><span class="pre">DB</span></code></a>,
+and <code class="xref py py-class docutils literal"><span class="pre">Connection</span></code> classes. The <a class="reference internal" href="../../reference/zodb.html#DB" title="DB"><code class="xref py py-class docutils literal"><span class="pre">DB</span></code></a> and <code class="xref py py-class docutils literal"><span class="pre">Connection</span></code>
+interfaces both have single implementations, but there are several different
+classes that implement the <code class="xref py py-class docutils literal"><span class="pre">Storage</span></code> interface.</p>
+<ul class="simple">
+<li><code class="xref py py-class docutils literal"><span class="pre">Storage</span></code> classes are the lowest layer, and handle storing and
+retrieving objects from some form of long-term storage. A few different types of
+Storage have been written, such as <code class="xref py py-class docutils literal"><span class="pre">FileStorage</span></code>, which uses regular disk
+files, and <code class="xref py py-class docutils literal"><span class="pre">BDBFullStorage</span></code>, which uses Sleepycat Software&#8217;s BerkeleyDB
+database.  You could write a new Storage that stored objects in a relational
+database, for example, if that would better suit your application.  Two example
+storages, <code class="xref py py-class docutils literal"><span class="pre">DemoStorage</span></code> and <code class="xref py py-class docutils literal"><span class="pre">MappingStorage</span></code>, are available to use
+as models if you want to write a new Storage.</li>
+<li>The <a class="reference internal" href="../../reference/zodb.html#DB" title="DB"><code class="xref py py-class docutils literal"><span class="pre">DB</span></code></a> class sits on top of a storage, and mediates the interaction
+between several connections.  One <a class="reference internal" href="../../reference/zodb.html#DB" title="DB"><code class="xref py py-class docutils literal"><span class="pre">DB</span></code></a> instance is created per process.</li>
+<li>Finally, the <code class="xref py py-class docutils literal"><span class="pre">Connection</span></code> class caches objects, and moves them into and
+out of object storage.  A multi-threaded program should open a separate
+<code class="xref py py-class docutils literal"><span class="pre">Connection</span></code> instance for each thread. Different threads can then modify
+objects and commit their modifications independently.</li>
+</ul>
+<p>Preparing to use a ZODB requires 3 steps: you have to open the <code class="xref py py-class docutils literal"><span class="pre">Storage</span></code>,
+then create a <a class="reference internal" href="../../reference/zodb.html#DB" title="DB"><code class="xref py py-class docutils literal"><span class="pre">DB</span></code></a> instance that uses the <code class="xref py py-class docutils literal"><span class="pre">Storage</span></code>, and then get
+a <code class="xref py py-class docutils literal"><span class="pre">Connection</span></code> from the <code class="xref py py-class docutils literal"><span class="pre">DB</span> <span class="pre">instance</span></code>.  All this is only a few
+lines of code:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ZODB</span> <span class="k">import</span> <span class="n">FileStorage</span><span class="p">,</span> <span class="n">DB</span>
+
+<span class="n">storage</span> <span class="o">=</span> <span class="n">FileStorage</span><span class="o">.</span><span class="n">FileStorage</span><span class="p">(</span><span class="s1">&#39;/tmp/test-filestorage.fs&#39;</span><span class="p">)</span>
+<span class="n">db</span> <span class="o">=</span> <span class="n">DB</span><span class="p">(</span><span class="n">storage</span><span class="p">)</span>
+<span class="n">conn</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">open</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Note that you can use a completely different data storage mechanism by changing
+the first line that opens a <code class="xref py py-class docutils literal"><span class="pre">Storage</span></code>; the above example uses a
+<code class="xref py py-class docutils literal"><span class="pre">FileStorage</span></code>.  In section <a class="reference internal" href="zeo.html#zeo"><span class="std std-ref">ZEO</span></a>, &#8220;How ZEO Works&#8221;, you&#8217;ll see how
+ZEO uses this flexibility to good effect.</p>
+</div>
+<div class="section" id="using-a-zodb-configuration-file">
+<h2>Using a ZODB Configuration File<a class="headerlink" href="#using-a-zodb-configuration-file" title="Permalink to this headline">¶</a></h2>
+<p>ZODB also supports configuration files written in the ZConfig format. A
+configuration file can be used to separate the configuration logic from the
+application logic.  The storages classes and the <a class="reference internal" href="../../reference/zodb.html#DB" title="DB"><code class="xref py py-class docutils literal"><span class="pre">DB</span></code></a> class support a
+variety of keyword arguments; all these options can be specified in a config
+file.</p>
+<p>The configuration file is simple.  The example in the previous section could use
+the following example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">zodb</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">filestorage</span><span class="o">&gt;</span>
+  <span class="n">path</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">test</span><span class="o">-</span><span class="n">filestorage</span><span class="o">.</span><span class="n">fs</span>
+  <span class="o">&lt;/</span><span class="n">filestorage</span><span class="o">&gt;</span>
+<span class="o">&lt;/</span><span class="n">zodb</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>The <a class="reference internal" href="../../reference/zodb.html#module-ZODB.config" title="ZODB.config"><code class="xref py py-mod docutils literal"><span class="pre">ZODB.config</span></code></a> module includes several functions for opening database
+and storages from configuration files.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">ZODB.config</span>
+
+<span class="n">db</span> <span class="o">=</span> <span class="n">ZODB</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">databaseFromURL</span><span class="p">(</span><span class="s1">&#39;/tmp/test.conf&#39;</span><span class="p">)</span>
+<span class="n">conn</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">open</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The ZConfig documentation, included in the ZODB3 release, explains the format in
+detail.  Each configuration file is described by a schema, by convention stored
+in a <code class="file docutils literal"><span class="pre">component.xml</span></code> file.  ZODB, ZEO, zLOG, and zdaemon all have schemas.</p>
+</div>
+<div class="section" id="writing-a-persistent-class">
+<h2>Writing a Persistent Class<a class="headerlink" href="#writing-a-persistent-class" title="Permalink to this headline">¶</a></h2>
+<p>Making a Python class persistent is quite simple; it simply needs to subclass
+from the <code class="xref py py-class docutils literal"><span class="pre">Persistent</span></code> class, as shown in this example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">persistent</span> <span class="k">import</span> <span class="n">Persistent</span>
+
+<span class="k">class</span> <span class="nc">User</span><span class="p">(</span><span class="n">Persistent</span><span class="p">):</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<p>The <code class="xref py py-class docutils literal"><span class="pre">Persistent</span></code> base class is a new-style class implemented in C.</p>
+<p>For simplicity, in the examples the <code class="xref py py-class docutils literal"><span class="pre">User</span></code> class will simply be used as a
+holder for a bunch of attributes.  Normally the class would define various
+methods that add functionality, but that has no impact on the ZODB&#8217;s treatment
+of the class.</p>
+<p>The ZODB uses persistence by reachability; starting from a set of root objects,
+all the attributes of those objects are made persistent, whether they&#8217;re simple
+Python data types or class instances.  There&#8217;s no method to explicitly store
+objects in a ZODB database; simply assign them as an attribute of an object, or
+store them in a mapping, that&#8217;s already in the database.  This chain of
+containment must eventually reach back to the root object of the database.</p>
+<p>As an example, we&#8217;ll create a simple database of users that allows retrieving a
+<code class="xref py py-class docutils literal"><span class="pre">User</span></code> object given the user&#8217;s ID.  First, we retrieve the primary root
+object of the ZODB using the <code class="xref py py-meth docutils literal"><span class="pre">root()</span></code> method of the <code class="xref py py-class docutils literal"><span class="pre">Connection</span></code>
+instance.  The root object behaves like a Python dictionary, so you can just add
+a new key/value pair for your application&#8217;s root object.  We&#8217;ll insert an
+<code class="xref py py-class docutils literal"><span class="pre">OOBTree</span></code> object that will contain all the <code class="xref py py-class docutils literal"><span class="pre">User</span></code> objects.  (The
+<code class="xref py py-class docutils literal"><span class="pre">BTree</span></code> module is also included as part of Zope.)</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">dbroot</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">root</span><span class="p">()</span>
+
+<span class="c1"># Ensure that a &#39;userdb&#39; key is present</span>
+<span class="c1"># in the root</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">dbroot</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="s1">&#39;userdb&#39;</span><span class="p">):</span>
+    <span class="kn">from</span> <span class="nn">BTrees.OOBTree</span> <span class="k">import</span> <span class="n">OOBTree</span>
+    <span class="n">dbroot</span><span class="p">[</span><span class="s1">&#39;userdb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">OOBTree</span><span class="p">()</span>
+
+<span class="n">userdb</span> <span class="o">=</span> <span class="n">dbroot</span><span class="p">[</span><span class="s1">&#39;userdb&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Inserting a new user is simple: create the <code class="xref py py-class docutils literal"><span class="pre">User</span></code> object, fill it with
+data, insert it into the <code class="xref py py-class docutils literal"><span class="pre">BTree</span></code> instance, and commit this transaction.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># Create new User instance</span>
+<span class="kn">import</span> <span class="nn">transaction</span>
+
+<span class="n">newuser</span> <span class="o">=</span> <span class="n">User</span><span class="p">()</span>
+
+<span class="c1"># Add whatever attributes you want to track</span>
+<span class="n">newuser</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="s1">&#39;amk&#39;</span>
+<span class="n">newuser</span><span class="o">.</span><span class="n">first_name</span> <span class="o">=</span> <span class="s1">&#39;Andrew&#39;</span> <span class="p">;</span> <span class="n">newuser</span><span class="o">.</span><span class="n">last_name</span> <span class="o">=</span> <span class="s1">&#39;Kuchling&#39;</span>
+<span class="o">...</span>
+
+<span class="c1"># Add object to the BTree, keyed on the ID</span>
+<span class="n">userdb</span><span class="p">[</span><span class="n">newuser</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">newuser</span>
+
+<span class="c1"># Commit the change</span>
+<span class="n">transaction</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The <code class="xref py py-mod docutils literal"><span class="pre">transaction</span></code> module defines a few top-level functions for working with
+transactions.  <code class="xref py py-func docutils literal"><span class="pre">commit()</span></code> writes any modified objects to disk, making the
+changes permanent.  <code class="xref py py-func docutils literal"><span class="pre">abort()</span></code> rolls back any changes that have been made,
+restoring the original state of the objects.  If you&#8217;re familiar with database
+transactional semantics, this is all what you&#8217;d expect.  <code class="xref py py-func docutils literal"><span class="pre">get()</span></code> returns a
+<code class="xref py py-class docutils literal"><span class="pre">Transaction</span></code> object that has additional methods like <code class="xref py py-meth docutils literal"><span class="pre">note()</span></code>, to
+add a note to the transaction metadata.</p>
+<p>More precisely, the <code class="xref py py-mod docutils literal"><span class="pre">transaction</span></code> module exposes an instance of the
+<code class="xref py py-class docutils literal"><span class="pre">ThreadTransactionManager</span></code> transaction manager class as
+<code class="docutils literal"><span class="pre">transaction.manager</span></code>, and the <code class="xref py py-mod docutils literal"><span class="pre">transaction</span></code> functions <code class="xref py py-func docutils literal"><span class="pre">get()</span></code> and
+<code class="xref py py-func docutils literal"><span class="pre">begin()</span></code> redirect to the same-named methods of <code class="docutils literal"><span class="pre">transaction.manager</span></code>.
+The <code class="xref py py-func docutils literal"><span class="pre">commit()</span></code> and <code class="xref py py-func docutils literal"><span class="pre">abort()</span></code> functions apply the methods of the same
+names to the <code class="xref py py-class docutils literal"><span class="pre">Transaction</span></code> object returned by
+<code class="docutils literal"><span class="pre">transaction.manager.get()</span></code>. This is for convenience.  It&#8217;s also possible to
+create your own transaction manager instances, and to tell <code class="docutils literal"><span class="pre">DB.open()</span></code> to use
+your transaction manager instead.</p>
+<p>Because the integration with Python is so complete, it&#8217;s a lot like having
+transactional semantics for your program&#8217;s variables, and you can experiment
+with transactions at the Python interpreter&#8217;s prompt:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">newuser</span>
+<span class="go">&lt;User instance at 81b1f40&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">newuser</span><span class="o">.</span><span class="n">first_name</span>           <span class="c1"># Print initial value</span>
+<span class="go">&#39;Andrew&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">newuser</span><span class="o">.</span><span class="n">first_name</span> <span class="o">=</span> <span class="s1">&#39;Bob&#39;</span>   <span class="c1"># Change first name</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">newuser</span><span class="o">.</span><span class="n">first_name</span>           <span class="c1"># Verify the change</span>
+<span class="go">&#39;Bob&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">transaction</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span>          <span class="c1"># Abort transaction</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">newuser</span><span class="o">.</span><span class="n">first_name</span>           <span class="c1"># The value has changed back</span>
+<span class="go">&#39;Andrew&#39;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="rules-for-writing-persistent-classes">
+<h2>Rules for Writing Persistent Classes<a class="headerlink" href="#rules-for-writing-persistent-classes" title="Permalink to this headline">¶</a></h2>
+<p>Practically all persistent languages impose some restrictions on programming
+style, warning against constructs they can&#8217;t handle or adding subtle semantic
+changes, and the ZODB is no exception. Happily, the ZODB&#8217;s restrictions are
+fairly simple to understand, and in practice it isn&#8217;t too painful to work around
+them.</p>
+<p>The summary of rules is as follows:</p>
+<ul class="simple">
+<li>If you modify a mutable object that&#8217;s the value of an object&#8217;s attribute, the
+ZODB can&#8217;t catch that, and won&#8217;t mark the object as dirty.  The solution is to
+either set the dirty bit yourself when you modify mutable objects, or use a
+wrapper for Python&#8217;s lists and dictionaries (<a class="reference internal" href="modules.html#PersistentList" title="PersistentList"><code class="xref py py-class docutils literal"><span class="pre">PersistentList</span></code></a>,
+<a class="reference internal" href="modules.html#PersistentMapping" title="PersistentMapping"><code class="xref py py-class docutils literal"><span class="pre">PersistentMapping</span></code></a>) that will set the dirty bit properly.</li>
+<li>Recent versions of the ZODB allow writing a class with  <code class="xref py py-meth docutils literal"><span class="pre">__setattr__()</span></code> ,
+<code class="xref py py-meth docutils literal"><span class="pre">__getattr__()</span></code>, or <code class="xref py py-meth docutils literal"><span class="pre">__delattr__()</span></code> methods.  (Older versions didn&#8217;t
+support this at all.)  If you write such a <code class="xref py py-meth docutils literal"><span class="pre">__setattr__()</span></code> or
+<code class="xref py py-meth docutils literal"><span class="pre">__delattr__()</span></code> method, its code has to set the dirty bit manually.</li>
+<li>A persistent class should not have a <code class="xref py py-meth docutils literal"><span class="pre">__del__()</span></code> method. The database
+moves objects freely between memory and storage.  If an object has not been used
+in a while, it may be released and its contents loaded from storage the next
+time it is used.  Since the Python interpreter is unaware of persistence, it
+would call <code class="xref py py-meth docutils literal"><span class="pre">__del__()</span></code> each time the object was freed.</li>
+</ul>
+<p>Let&#8217;s look at each of these rules in detail.</p>
+<div class="section" id="modifying-mutable-objects">
+<h3>Modifying Mutable Objects<a class="headerlink" href="#modifying-mutable-objects" title="Permalink to this headline">¶</a></h3>
+<p>The ZODB uses various Python hooks to catch attribute accesses, and can trap
+most of the ways of modifying an object, but not all of them. If you modify a
+<code class="xref py py-class docutils literal"><span class="pre">User</span></code> object by assigning to one of its attributes, as in
+<code class="docutils literal"><span class="pre">userobj.first_name</span> <span class="pre">=</span> <span class="pre">'Andrew'</span></code>, the ZODB will mark the object as having been
+changed, and it&#8217;ll be written out on the following <code class="xref py py-meth docutils literal"><span class="pre">commit()</span></code>.</p>
+<p>The most common idiom that <em>isn&#8217;t</em> caught by the ZODB is mutating a list or
+dictionary.  If <code class="xref py py-class docutils literal"><span class="pre">User</span></code> objects have a attribute named <code class="docutils literal"><span class="pre">friends</span></code>
+containing a list, calling <code class="docutils literal"><span class="pre">userobj.friends.append(otherUser)</span></code> doesn&#8217;t mark
+<code class="docutils literal"><span class="pre">userobj</span></code> as modified; from the ZODB&#8217;s point of view, <code class="docutils literal"><span class="pre">userobj.friends</span></code> was
+only read, and its value, which happened to be an ordinary Python list, was
+returned.  The ZODB isn&#8217;t aware that the object returned was subsequently
+modified.</p>
+<p>This is one of the few quirks you&#8217;ll have to remember when using the ZODB; if
+you modify a mutable attribute of an object in place, you have to manually mark
+the object as having been modified by setting its dirty bit to true.  This is
+done by setting the <code class="xref py py-attr docutils literal"><span class="pre">_p_changed</span></code> attribute of the object to true:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">userobj</span><span class="o">.</span><span class="n">friends</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">otherUser</span><span class="p">)</span>
+<span class="n">userobj</span><span class="o">.</span><span class="n">_p_changed</span> <span class="o">=</span> <span class="kc">True</span>
+</pre></div>
+</div>
+<p>You can hide the implementation detail of having to mark objects as dirty by
+designing your class&#8217;s API to not use direct attribute access; instead, you can
+use the Java-style approach of accessor methods for everything, and then set the
+dirty bit within the accessor method.  For example, you might forbid accessing
+the <code class="docutils literal"><span class="pre">friends</span></code> attribute directly, and add a <code class="xref py py-meth docutils literal"><span class="pre">get_friend_list()</span></code> accessor
+and an <code class="xref py py-meth docutils literal"><span class="pre">add_friend()</span></code> modifier method to the class.  <code class="xref py py-meth docutils literal"><span class="pre">add_friend()</span></code>
+would then look like this:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">add_friend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">friend</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">friends</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">otherUser</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_p_changed</span> <span class="o">=</span> <span class="kc">True</span>
+</pre></div>
+</div>
+<p>Alternatively, you could use a ZODB-aware list or mapping type that handles the
+dirty bit for you.  The ZODB comes with a <a class="reference internal" href="modules.html#PersistentMapping" title="PersistentMapping"><code class="xref py py-class docutils literal"><span class="pre">PersistentMapping</span></code></a> class, and
+I&#8217;ve contributed a <a class="reference internal" href="modules.html#PersistentList" title="PersistentList"><code class="xref py py-class docutils literal"><span class="pre">PersistentList</span></code></a> class that&#8217;s included in my ZODB
+distribution,  and may make it into a future upstream release of Zope.</p>
+</div>
+<div class="section" id="getattr-delattr-and-setattr">
+<h3><code class="xref py py-meth docutils literal"><span class="pre">__getattr__()</span></code>, <code class="xref py py-meth docutils literal"><span class="pre">__delattr__()</span></code>, and <code class="xref py py-meth docutils literal"><span class="pre">__setattr__()</span></code><a class="headerlink" href="#getattr-delattr-and-setattr" title="Permalink to this headline">¶</a></h3>
+<p>ZODB allows persistent classes to have hook methods like <code class="xref py py-meth docutils literal"><span class="pre">__getattr__()</span></code> and
+<code class="xref py py-meth docutils literal"><span class="pre">__setattr__()</span></code>.  There are four special methods that control attribute
+access; the rules for each are a little different.</p>
+<p>The <code class="xref py py-meth docutils literal"><span class="pre">__getattr__()</span></code> method works pretty much the same for persistent classes
+as it does for other classes.  No special handling is needed.  If an object is a
+ghost, then it will be activated before <code class="xref py py-meth docutils literal"><span class="pre">__getattr__()</span></code> is called.</p>
+<p>The other methods are more delicate.  They will override the hooks provided by
+<code class="xref py py-class docutils literal"><span class="pre">Persistent</span></code>, so user code must call special methods to invoke those
+hooks anyway.</p>
+<p>The <code class="xref py py-meth docutils literal"><span class="pre">__getattribute__()</span></code> method will be called for all attribute access; it
+overrides the attribute access support inherited from <code class="xref py py-class docutils literal"><span class="pre">Persistent</span></code>.  A
+user-defined <code class="xref py py-meth docutils literal"><span class="pre">__getattribute__()</span></code> must always give the <code class="xref py py-class docutils literal"><span class="pre">Persistent</span></code>
+base class a chance to handle special attribute, as well as <code class="xref py py-attr docutils literal"><span class="pre">__dict__</span></code> or
+<code class="xref py py-attr docutils literal"><span class="pre">__class__</span></code>.  The user code should call <code class="xref py py-meth docutils literal"><span class="pre">_p_getattr()</span></code>, passing the
+name of the attribute as the only argument.  If it returns True, the user code
+should call <code class="xref py py-class docutils literal"><span class="pre">Persistent</span></code>&#8216;s <code class="xref py py-meth docutils literal"><span class="pre">__getattribute__()</span></code> to get the value.  If
+not, the custom user code can run.</p>
+<p>A <code class="xref py py-meth docutils literal"><span class="pre">__setattr__()</span></code> hook will also override the <code class="xref py py-class docutils literal"><span class="pre">Persistent</span></code>
+<code class="xref py py-meth docutils literal"><span class="pre">__setattr__()</span></code> hook.  User code must treat it much like
+<code class="xref py py-meth docutils literal"><span class="pre">__getattribute__()</span></code>.  The user-defined code must call <code class="xref py py-meth docutils literal"><span class="pre">_p_setattr()</span></code>
+first to all <code class="xref py py-class docutils literal"><span class="pre">Persistent</span></code> to handle special attributes;
+<code class="xref py py-meth docutils literal"><span class="pre">_p_setattr()</span></code> takes the attribute name and value. If it returns True,
+<code class="xref py py-class docutils literal"><span class="pre">Persistent</span></code> handled the attribute.  If not, the user code can run.  If
+the user code modifies the object&#8217;s state, it must assigned to
+<code class="xref py py-attr docutils literal"><span class="pre">_p_changed</span></code>.</p>
+<p>A <code class="xref py py-meth docutils literal"><span class="pre">__delattr__()</span></code> hooks must be implemented the same was as a the last two
+hooks.  The user code must call <code class="xref py py-meth docutils literal"><span class="pre">_p_delattr()</span></code>, passing the name of the
+attribute as an argument.  If the call returns True, <code class="xref py py-class docutils literal"><span class="pre">Persistent</span></code> handled
+the attribute; if not, the user code can run.</p>
+</div>
+<div class="section" id="del-methods">
+<h3><code class="xref py py-meth docutils literal"><span class="pre">__del__()</span></code> methods<a class="headerlink" href="#del-methods" title="Permalink to this headline">¶</a></h3>
+<p>A <code class="xref py py-meth docutils literal"><span class="pre">__del__()</span></code> method is invoked just before the memory occupied by an
+unreferenced Python object is freed.  Because ZODB may materialize, and
+dematerialize, a given persistent object in memory any number of times, there
+isn&#8217;t a meaningful relationship between when a persistent object&#8217;s
+<code class="xref py py-meth docutils literal"><span class="pre">__del__()</span></code> method gets invoked and any natural aspect of a persistent
+object&#8217;s life cycle.  For example, it is emphatically not the case that a
+persistent object&#8217;s <code class="xref py py-meth docutils literal"><span class="pre">__del__()</span></code> method gets invoked only when the object is
+no longer referenced by other objects in the database. <code class="xref py py-meth docutils literal"><span class="pre">__del__()</span></code> is only
+concerned with reachability from objects in memory.</p>
+<p>Worse, a <code class="xref py py-meth docutils literal"><span class="pre">__del__()</span></code> method can interfere with the persistence machinery&#8217;s
+goals.  For example, some number of persistent objects reside in a
+<code class="xref py py-class docutils literal"><span class="pre">Connection</span></code>&#8216;s memory cache.  At various times, to reduce memory burden,
+objects that haven&#8217;t been referenced recently are removed from the cache.  If a
+persistent object with a <code class="xref py py-meth docutils literal"><span class="pre">__del___()</span></code> method is so removed, and the cache
+was holding the last memory reference to the object, the object&#8217;s
+<code class="xref py py-meth docutils literal"><span class="pre">__del__()</span></code> method will be invoked.  If the <code class="xref py py-meth docutils literal"><span class="pre">__del__()</span></code> method then
+references any attribute of the object, ZODB needs to load the object from the
+database again, in order to satisfy the attribute reference.  This puts the
+object back into the cache again:  such an object is effectively immortal,
+occupying space in the memory cache forever, as every attempt to remove it from
+cache puts it back into the cache.  In ZODB versions prior to 3.2.2, this could
+even cause the cache reduction code to fall into an infinite loop.  The infinite
+loop no longer occurs, but such objects continue to live in the memory cache
+forever.</p>
+<p>Because <code class="xref py py-meth docutils literal"><span class="pre">__del__()</span></code> methods don&#8217;t make good sense for persistent objects,
+and can create problems, persistent classes should not define <code class="xref py py-meth docutils literal"><span class="pre">__del__()</span></code>
+methods.</p>
+</div>
+</div>
+<div class="section" id="writing-persistent-classes">
+<h2>Writing Persistent Classes<a class="headerlink" href="#writing-persistent-classes" title="Permalink to this headline">¶</a></h2>
+<p>Now that we&#8217;ve looked at the basics of programming using the ZODB, we&#8217;ll turn to
+some more subtle tasks that are likely to come up for anyone using the ZODB in a
+production system.</p>
+<div class="section" id="changing-instance-attributes">
+<h3>Changing Instance Attributes<a class="headerlink" href="#changing-instance-attributes" title="Permalink to this headline">¶</a></h3>
+<p>Ideally, before making a class persistent you would get its interface right the
+first time, so that no attributes would ever need to be added, removed, or have
+their interpretation change over time.  It&#8217;s a worthy goal, but also an
+impractical one unless you&#8217;re gifted with perfect knowledge of the future.  Such
+unnatural foresight can&#8217;t be required of any person, so you therefore have to be
+prepared to handle such structural changes gracefully.  In object-oriented
+database terminology, this is a schema update.  The ZODB doesn&#8217;t have an actual
+schema specification, but you&#8217;re changing the software&#8217;s expectations of the
+data contained by an object, so you&#8217;re implicitly changing the schema.</p>
+<p>One way to handle such a change is to write a one-time conversion program that
+will loop over every single object in the database and update them to match the
+new schema.  This can be easy if your network of object references is quite
+structured, making it easy to find all the instances of the class being
+modified.  For example, if all <code class="xref py py-class docutils literal"><span class="pre">User</span></code> objects can be found inside a
+single dictionary or BTree, then it would be a simple matter to loop over every
+<code class="xref py py-class docutils literal"><span class="pre">User</span></code> instance with a <code class="docutils literal"><span class="pre">for</span></code> statement. This is more difficult
+if your object graph is less structured; if <code class="xref py py-class docutils literal"><span class="pre">User</span></code> objects can be found
+as attributes of any number of different class instances, then there&#8217;s no longer
+any easy way to find them all, short of writing a generalized object traversal
+function that would walk over every single object in a ZODB, checking each one
+to see if it&#8217;s an instance of <code class="xref py py-class docutils literal"><span class="pre">User</span></code>.</p>
+<p>Some OODBs support a feature called extents, which allow quickly finding all the
+instances of a given class, no matter where they are in the object graph;
+unfortunately the ZODB doesn&#8217;t offer extents as a feature.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../index.html">
+              <img class="logo" src="../../_static/zodb.png" alt="Logo"/>
+            </a></p>
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">ZODB Programming</a><ul>
+<li><a class="reference internal" href="#installing-zodb">Installing ZODB</a><ul>
+<li><a class="reference internal" href="#requirements">Requirements</a></li>
+<li><a class="reference internal" href="#installing-the-packages">Installing the Packages</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#how-zodb-works">How ZODB Works</a></li>
+<li><a class="reference internal" href="#opening-a-zodb">Opening a ZODB</a></li>
+<li><a class="reference internal" href="#using-a-zodb-configuration-file">Using a ZODB Configuration File</a></li>
+<li><a class="reference internal" href="#writing-a-persistent-class">Writing a Persistent Class</a></li>
+<li><a class="reference internal" href="#rules-for-writing-persistent-classes">Rules for Writing Persistent Classes</a><ul>
+<li><a class="reference internal" href="#modifying-mutable-objects">Modifying Mutable Objects</a></li>
+<li><a class="reference internal" href="#getattr-delattr-and-setattr"><code class="docutils literal"><span class="pre">__getattr__()</span></code>, <code class="docutils literal"><span class="pre">__delattr__()</span></code>, and <code class="docutils literal"><span class="pre">__setattr__()</span></code></a></li>
+<li><a class="reference internal" href="#del-methods"><code class="docutils literal"><span class="pre">__del__()</span></code> methods</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#writing-persistent-classes">Writing Persistent Classes</a><ul>
+<li><a class="reference internal" href="#changing-instance-attributes">Changing Instance Attributes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">ZODB articles</a><ul>
+  <li><a href="index.html">Very old ZODB programming guide</a><ul>
+      <li>Previous: <a href="introduction.html" title="previous chapter">Introduction</a></li>
+      <li>Next: <a href="zeo.html" title="next chapter">ZEO</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/articles/old-guide/prog-zodb.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2009-2016, Zope Foundation.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="../../_sources/articles/old-guide/prog-zodb.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

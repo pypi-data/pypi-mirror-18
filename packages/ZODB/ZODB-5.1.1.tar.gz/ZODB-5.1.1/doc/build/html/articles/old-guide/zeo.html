@@ -1,0 +1,341 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>ZEO &#8212; ZODB  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/zodb.ico"/>
+    <link rel="top" title="ZODB  documentation" href="../../index.html" />
+    <link rel="up" title="Very old ZODB programming guide" href="index.html" />
+    <link rel="next" title="Transactions and Versioning" href="transactions.html" />
+    <link rel="prev" title="ZODB Programming" href="prog-zodb.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="zeo">
+<span id="id1"></span><h1>ZEO<a class="headerlink" href="#zeo" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="how-zeo-works">
+<h2>How ZEO Works<a class="headerlink" href="#how-zeo-works" title="Permalink to this headline">¶</a></h2>
+<p>The ZODB, as I&#8217;ve described it so far, can only be used within a single Python
+process (though perhaps with multiple threads).  ZEO, Zope Enterprise Objects,
+extends the ZODB machinery to provide access to objects over a network.  The
+name &#8220;Zope Enterprise Objects&#8221; is a bit misleading; ZEO can be used to store
+Python objects and access them in a distributed fashion without Zope ever
+entering the picture. The combination of ZEO and ZODB is essentially a Python-
+specific object database.</p>
+<p>ZEO consists of about 12,000 lines of Python code, excluding tests.  The code is
+relatively small because it contains only code for a TCP/IP server, and for a
+new type of Storage, <code class="xref py py-class docutils literal"><span class="pre">ClientStorage</span></code>. <code class="xref py py-class docutils literal"><span class="pre">ClientStorage</span></code> simply makes
+remote procedure calls to the server, which then passes them on a regular
+<code class="xref py py-class docutils literal"><span class="pre">Storage</span></code> class such as <code class="xref py py-class docutils literal"><span class="pre">FileStorage</span></code>.  The following diagram lays
+out the system:</p>
+<p>XXX insert diagram here later</p>
+<p>Any number of processes can create a <code class="xref py py-class docutils literal"><span class="pre">ClientStorage</span></code> instance, and any
+number of threads in each process can be using that instance.
+<code class="xref py py-class docutils literal"><span class="pre">ClientStorage</span></code> aggressively caches objects locally, so in order to avoid
+using stale data the ZEO server sends an invalidation message to all the
+connected <code class="xref py py-class docutils literal"><span class="pre">ClientStorage</span></code> instances on every write operation.  The
+invalidation message contains the object ID for each object that&#8217;s been
+modified, letting the <code class="xref py py-class docutils literal"><span class="pre">ClientStorage</span></code> instances delete the old data for
+the given object from their caches.</p>
+<p>This design decision has some consequences you should be aware of. First, while
+ZEO isn&#8217;t tied to Zope, it was first written for use with Zope, which stores
+HTML, images, and program code in the database.  As a result, reads from the
+database are <em>far</em> more frequent than writes, and ZEO is therefore better suited
+for read-intensive applications.  If every <code class="xref py py-class docutils literal"><span class="pre">ClientStorage</span></code> is writing to
+the database all the time, this will result in a storm of invalidate messages
+being sent, and this might take up more processing time than the actual database
+operations themselves. These messages are small and sent in batches, so there
+would need to be a lot of writes before it became a problem.</p>
+<p>On the other hand, for applications that have few writes in comparison to the
+number of read accesses, this aggressive caching can be a major win.  Consider a
+Slashdot-like discussion forum that divides the load among several Web servers.
+If news items and postings are represented by objects and accessed through ZEO,
+then the most heavily accessed objects &#8211; the most recent or most popular
+postings &#8211; will very quickly wind up in the caches of the
+<code class="xref py py-class docutils literal"><span class="pre">ClientStorage</span></code> instances on the front-end servers.  The back-end ZEO
+server will do relatively little work, only being called upon to return the
+occasional older posting that&#8217;s requested, and to send the occasional invalidate
+message when a new posting is added. The ZEO server isn&#8217;t going to be contacted
+for every single request, so its workload will remain manageable.</p>
+</div>
+<div class="section" id="installing-zeo">
+<h2>Installing ZEO<a class="headerlink" href="#installing-zeo" title="Permalink to this headline">¶</a></h2>
+<p>This section covers how to install the ZEO package, and how to  configure and
+run a ZEO Storage Server on a machine.</p>
+<div class="section" id="requirements">
+<h3>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h3>
+<p>The ZEO server software is included in ZODB3.  As with the rest of ZODB3, you&#8217;ll
+need Python 2.3 or higher.</p>
+</div>
+<div class="section" id="running-a-server">
+<h3>Running a server<a class="headerlink" href="#running-a-server" title="Permalink to this headline">¶</a></h3>
+<p>The runzeo.py script in the ZEO directory can be used to start a server.  Run it
+with the -h option to see the various values.  If you&#8217;re just experimenting, a
+good choise is to use  <code class="docutils literal"><span class="pre">python</span> <span class="pre">ZEO/runzeo.py</span> <span class="pre">-a</span> <span class="pre">/tmp/zeosocket</span> <span class="pre">-f</span>
+<span class="pre">/tmp/test.fs</span></code> to run ZEO with a Unix domain socket and a <code class="xref py py-class docutils literal"><span class="pre">FileStorage</span></code>.</p>
+</div>
+</div>
+<div class="section" id="testing-the-zeo-installation">
+<h2>Testing the ZEO Installation<a class="headerlink" href="#testing-the-zeo-installation" title="Permalink to this headline">¶</a></h2>
+<p>Once a ZEO server is up and running, using it is just like using ZODB with a
+more conventional disk-based storage; no new programming details are introduced
+by using a remote server.  The only difference is that programs must create a
+<code class="xref py py-class docutils literal"><span class="pre">ClientStorage</span></code> instance instead of a <code class="xref py py-class docutils literal"><span class="pre">FileStorage</span></code> instance.
+From that point onward, ZODB-based code is happily unaware that objects are
+being retrieved from a ZEO server, and not from the local disk.</p>
+<p>As an example, and to test whether ZEO is working correctly, try running the
+following lines of code, which will connect to the server, add some bits of data
+to the root of the ZODB, and commits the transaction:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ZEO</span> <span class="k">import</span> <span class="n">ClientStorage</span>
+<span class="kn">from</span> <span class="nn">ZODB</span> <span class="k">import</span> <span class="n">DB</span>
+<span class="kn">import</span> <span class="nn">transaction</span>
+
+<span class="c1"># Change next line to connect to your ZEO server</span>
+<span class="n">addr</span> <span class="o">=</span> <span class="s1">&#39;kronos.example.com&#39;</span><span class="p">,</span> <span class="mi">1975</span>
+<span class="n">storage</span> <span class="o">=</span> <span class="n">ClientStorage</span><span class="o">.</span><span class="n">ClientStorage</span><span class="p">(</span><span class="n">addr</span><span class="p">)</span>
+<span class="n">db</span> <span class="o">=</span> <span class="n">DB</span><span class="p">(</span><span class="n">storage</span><span class="p">)</span>
+<span class="n">conn</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">open</span><span class="p">()</span>
+<span class="n">root</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">root</span><span class="p">()</span>
+
+<span class="c1"># Store some things in the root</span>
+<span class="n">root</span><span class="p">[</span><span class="s1">&#39;list&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+<span class="n">root</span><span class="p">[</span><span class="s1">&#39;dict&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;a&#39;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">:</span><span class="mi">4</span><span class="p">}</span>
+
+<span class="c1"># Commit the transaction</span>
+<span class="n">transaction</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>If this code runs properly, then your ZEO server is working correctly.</p>
+<p>You can also use a configuration file.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">zodb</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">zeoclient</span><span class="o">&gt;</span>
+    <span class="n">server</span> <span class="n">localhost</span><span class="p">:</span><span class="mi">9100</span>
+    <span class="o">&lt;/</span><span class="n">zeoclient</span><span class="o">&gt;</span>
+<span class="o">&lt;/</span><span class="n">zodb</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>One nice feature of the configuration file is that you don&#8217;t need to specify
+imports for a specific storage.  That makes the code a little shorter and allows
+you to change storages without changing the code.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">ZODB.config</span>
+
+<span class="n">db</span> <span class="o">=</span> <span class="n">ZODB</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">databaseFromURL</span><span class="p">(</span><span class="s1">&#39;/tmp/zeo.conf&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="zeo-programming-notes">
+<h2>ZEO Programming Notes<a class="headerlink" href="#zeo-programming-notes" title="Permalink to this headline">¶</a></h2>
+<p>ZEO is written using <code class="xref py py-mod docutils literal"><span class="pre">asyncore</span></code>, from the Python standard library.  It
+assumes that some part of the user application is running an <code class="xref py py-mod docutils literal"><span class="pre">asyncore</span></code>
+mainloop.  For example, Zope run the loop in a separate thread and ZEO uses
+that.  If your application does not have a mainloop, ZEO will not process
+incoming invalidation messages until you make some call into ZEO.  The
+<code class="xref py py-meth docutils literal"><span class="pre">Connection.sync()</span></code> method can be used to process pending invalidation
+messages.  You can call it when you want to make sure the <code class="xref py py-class docutils literal"><span class="pre">Connection</span></code>
+has the most recent version of every object, but you don&#8217;t have any other work
+for ZEO to do.</p>
+</div>
+<div class="section" id="sample-application-chatter-py">
+<h2>Sample Application: chatter.py<a class="headerlink" href="#sample-application-chatter-py" title="Permalink to this headline">¶</a></h2>
+<p>For an example application, we&#8217;ll build a little chat application. What&#8217;s
+interesting is that none of the application&#8217;s code deals with network
+programming at all; instead, an object will hold chat messages, and be
+magically shared between all the clients through ZEO. I won&#8217;t present the
+complete script here; you can download it from <a class="reference download internal" href="../../_downloads/chatter.py" download=""><code class="xref download docutils literal"><span class="pre">chatter.py</span></code></a>. Only the interesting portions of the code will be covered here.</p>
+<p>The basic data structure is the <code class="xref py py-class docutils literal"><span class="pre">ChatSession</span></code> object, which provides an
+<code class="xref py py-meth docutils literal"><span class="pre">add_message()</span></code> method that adds a message, and a <code class="xref py py-meth docutils literal"><span class="pre">new_messages()</span></code>
+method that returns a list of new messages that have accumulated since the last
+call to <code class="xref py py-meth docutils literal"><span class="pre">new_messages()</span></code>.  Internally, <code class="xref py py-class docutils literal"><span class="pre">ChatSession</span></code> maintains a
+B-tree that uses the time as the key, and stores the message as the
+corresponding value.</p>
+<p>The constructor for <code class="xref py py-class docutils literal"><span class="pre">ChatSession</span></code> is pretty simple; it simply creates an
+attribute containing a B-tree:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ChatSession</span><span class="p">(</span><span class="n">Persistent</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="c1"># Internal attribute: _messages holds all the chat messages.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_messages</span> <span class="o">=</span> <span class="n">BTrees</span><span class="o">.</span><span class="n">OOBTree</span><span class="o">.</span><span class="n">OOBTree</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><code class="xref py py-meth docutils literal"><span class="pre">add_message()</span></code> has to add a message to the <code class="docutils literal"><span class="pre">_messages</span></code> B-tree.  A
+complication is that it&#8217;s possible that some other client is trying to add a
+message at the same time; when this happens, the client that commits first wins,
+and the second client will get a <code class="xref py py-exc docutils literal"><span class="pre">ConflictError</span></code> exception when it tries to
+commit.  For this application, <code class="xref py py-exc docutils literal"><span class="pre">ConflictError</span></code> isn&#8217;t serious but simply
+means that the operation has to be retried; other applications might treat it as
+a fatal error.  The code uses <code class="docutils literal"><span class="pre">try...except...else</span></code> inside a <code class="docutils literal"><span class="pre">while</span></code> loop,
+breaking out of the loop when the commit works without raising an exception.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">add_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Add a message to the channel.</span>
+<span class="sd">    message -- text of the message to be added</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_messages</span><span class="p">[</span><span class="n">now</span><span class="p">]</span> <span class="o">=</span> <span class="n">message</span>
+            <span class="n">get_transaction</span><span class="p">()</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+        <span class="k">except</span> <span class="n">ConflictError</span><span class="p">:</span>
+            <span class="c1"># Conflict occurred; this process should abort,</span>
+            <span class="c1"># wait for a little bit, then try again.</span>
+            <span class="n">transaction</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="o">.</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># No ConflictError exception raised, so break</span>
+            <span class="c1"># out of the enclosing while loop.</span>
+            <span class="k">break</span>
+    <span class="c1"># end while</span>
+</pre></div>
+</div>
+<p><code class="xref py py-meth docutils literal"><span class="pre">new_messages()</span></code> introduces the use of <em>volatile</em> attributes.  Attributes of
+a persistent object that begin with <code class="docutils literal"><span class="pre">_v_</span></code> are considered volatile and are
+never stored in the database.  <code class="xref py py-meth docutils literal"><span class="pre">new_messages()</span></code> needs to store the last time
+the method was called, but if the time was stored as a regular attribute, its
+value would be committed to the database and shared with all the other clients.
+<code class="xref py py-meth docutils literal"><span class="pre">new_messages()</span></code> would then return the new messages accumulated since any
+other client called <code class="xref py py-meth docutils literal"><span class="pre">new_messages()</span></code>, which isn&#8217;t what we want.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">new_messages</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="s2">&quot;Return new messages.&quot;</span>
+
+    <span class="c1"># self._v_last_time is the time of the most recent message</span>
+    <span class="c1"># returned to the user of this class.</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_v_last_time&#39;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_v_last_time</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="n">new</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v_last_time</span>
+
+    <span class="k">for</span> <span class="n">T2</span><span class="p">,</span> <span class="n">message</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_messages</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">T2</span> <span class="o">&gt;</span> <span class="n">T</span><span class="p">:</span>
+            <span class="n">new</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_v_last_time</span> <span class="o">=</span> <span class="n">T2</span>
+
+    <span class="k">return</span> <span class="n">new</span>
+</pre></div>
+</div>
+<p>This application is interesting because it uses ZEO to easily share a data
+structure; ZEO and ZODB are being used for their networking ability, not
+primarily for their data storage ability.  I can foresee many interesting
+applications using ZEO in this way:</p>
+<ul class="simple">
+<li>With a Tkinter front-end, and a cleverer, more scalable data structure, you
+could build a shared whiteboard using the same technique.</li>
+<li>A shared chessboard object would make writing a networked chess game easy.</li>
+<li>You could create a Python class containing a CD&#8217;s title and track information.
+To make a CD database, a read-only ZEO server could be opened to the world, or
+an HTTP or XML-RPC interface could be written on top of the ZODB.</li>
+<li>A program like Quicken could use a ZODB on the local disk to store its data.
+This avoids the need to write and maintain specialized I/O code that reads in
+your objects and writes them out; instead you can concentrate on the problem
+domain, writing objects that represent cheques, stock portfolios, or whatever.</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../index.html">
+              <img class="logo" src="../../_static/zodb.png" alt="Logo"/>
+            </a></p>
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">ZEO</a><ul>
+<li><a class="reference internal" href="#how-zeo-works">How ZEO Works</a></li>
+<li><a class="reference internal" href="#installing-zeo">Installing ZEO</a><ul>
+<li><a class="reference internal" href="#requirements">Requirements</a></li>
+<li><a class="reference internal" href="#running-a-server">Running a server</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#testing-the-zeo-installation">Testing the ZEO Installation</a></li>
+<li><a class="reference internal" href="#zeo-programming-notes">ZEO Programming Notes</a></li>
+<li><a class="reference internal" href="#sample-application-chatter-py">Sample Application: chatter.py</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">ZODB articles</a><ul>
+  <li><a href="index.html">Very old ZODB programming guide</a><ul>
+      <li>Previous: <a href="prog-zodb.html" title="previous chapter">ZODB Programming</a></li>
+      <li>Next: <a href="transactions.html" title="next chapter">Transactions and Versioning</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/articles/old-guide/zeo.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2009-2016, Zope Foundation.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="../../_sources/articles/old-guide/zeo.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

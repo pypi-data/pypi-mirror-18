@@ -1,0 +1,612 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Writing persistent objects &#8212; ZODB  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../_static/zodb.ico"/>
+    <link rel="top" title="ZODB  documentation" href="../index.html" />
+    <link rel="up" title="ZODB programming guide" href="index.html" />
+    <link rel="next" title="Transactions and concurrency" href="transactions-and-threading.html" />
+    <link rel="prev" title="Installing and running ZODB" href="install-and-run.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="writing-persistent-objects">
+<h1>Writing persistent objects<a class="headerlink" href="#writing-persistent-objects" title="Permalink to this headline">¶</a></h1>
+<p>In the <a class="reference internal" href="../tutorial.html#tutorial-label"><span class="std std-ref">Tutorial</span></a>, we discussed the basics of
+implementing persistent objects by subclassing
+<code class="docutils literal"><span class="pre">persistent.Persistent</span></code>.  This is probably enough for 80% of
+persistent-object classes you write, but there are some other aspects
+of writing persistent classes you should be aware of.</p>
+<div class="section" id="access-and-modification">
+<h2>Access and modification<a class="headerlink" href="#access-and-modification" title="Permalink to this headline">¶</a></h2>
+<p>Two of the main jobs of the <code class="docutils literal"><span class="pre">Persistent</span></code> base class is to detect
+when an object has been accessed and when it has been modified.  When
+an object is accessed, its state may need to be loaded from the
+database.  When an object is modified, the modification needs to be
+saved if a transaction is committed.</p>
+<p><code class="docutils literal"><span class="pre">Persistent</span></code> detects object accesses by hooking into object
+attribute access and update.  In the case of object update, there
+may be other ways of modifying state that we need to make provision for.</p>
+</div>
+<div class="section" id="rules-of-persistence">
+<h2>Rules of persistence<a class="headerlink" href="#rules-of-persistence" title="Permalink to this headline">¶</a></h2>
+<p>When implementing persistent objects, be aware that an object&#8217;s
+attributes should be :</p>
+<ul class="simple">
+<li>immutable (such as strings or integers),</li>
+<li>persistent (subclass Persistent), or</li>
+<li>You need to take special precautions.</li>
+</ul>
+<p>If you modify a non-persistent mutable value of a persistent-object
+attribute, you need to mark the persistent object as changed yourself
+by setting <code class="docutils literal"><span class="pre">_p_changed</span></code> to True:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">persistent</span>
+
+<span class="k">class</span> <span class="nc">Book</span><span class="p">(</span><span class="n">persistent</span><span class="o">.</span><span class="n">Persistent</span><span class="p">):</span>
+
+   <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">title</span><span class="p">):</span>
+       <span class="bp">self</span><span class="o">.</span><span class="n">title</span> <span class="o">=</span> <span class="n">title</span>
+       <span class="bp">self</span><span class="o">.</span><span class="n">authors</span> <span class="o">=</span> <span class="p">[]</span>
+
+   <span class="k">def</span> <span class="nf">add_author</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">author</span><span class="p">):</span>
+       <span class="bp">self</span><span class="o">.</span><span class="n">authors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">author</span><span class="p">)</span>
+       <span class="bp">self</span><span class="o">.</span><span class="n">_p_changed</span> <span class="o">=</span> <span class="kc">True</span>
+</pre></div>
+</div>
+<p>In this example, <code class="docutils literal"><span class="pre">Book</span></code> objects have an <code class="docutils literal"><span class="pre">authors</span></code> object that&#8217;s a
+regular Python list, so it&#8217;s mutable and non-persistent.  When we add
+an author, we append it to the <code class="docutils literal"><span class="pre">authors</span></code> attribute&#8217;s value.  Because
+we didn&#8217;t set an attribute on the book, it&#8217;s not marked as changed, so
+we set <code class="docutils literal"><span class="pre">_p_changed</span></code> ourselves.</p>
+<p>Using standard Python lists, dicts, or sets is a common thing to do,
+so this pattern of setting <code class="docutils literal"><span class="pre">_p_changed</span></code> is common.</p>
+<p>Let&#8217;s look at some alternatives.</p>
+<div class="section" id="using-tuples-for-small-sequences-instead-of-lists">
+<h3>Using tuples for small sequences instead of lists<a class="headerlink" href="#using-tuples-for-small-sequences-instead-of-lists" title="Permalink to this headline">¶</a></h3>
+<p>If objects contain sequences that are small or that don&#8217;t change
+often, you can use tuples instead of lists:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">persistent</span>
+
+<span class="k">class</span> <span class="nc">Book</span><span class="p">(</span><span class="n">persistent</span><span class="o">.</span><span class="n">Persistent</span><span class="p">):</span>
+
+   <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">title</span><span class="p">):</span>
+       <span class="bp">self</span><span class="o">.</span><span class="n">title</span> <span class="o">=</span> <span class="n">title</span>
+       <span class="bp">self</span><span class="o">.</span><span class="n">authors</span> <span class="o">=</span> <span class="p">()</span>
+
+   <span class="k">def</span> <span class="nf">add_author</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">author</span><span class="p">):</span>
+       <span class="bp">self</span><span class="o">.</span><span class="n">authors</span> <span class="o">+=</span> <span class="p">(</span><span class="n">author</span><span class="p">,</span> <span class="p">)</span>
+</pre></div>
+</div>
+<p>Because tuples are immutable, they satisfy the rules of persistence
+without any special handling.</p>
+</div>
+<div class="section" id="using-persistent-data-structures">
+<h3>Using persistent data structures<a class="headerlink" href="#using-persistent-data-structures" title="Permalink to this headline">¶</a></h3>
+<p>The <code class="docutils literal"><span class="pre">persistent</span></code> package provides persistent versions of <code class="docutils literal"><span class="pre">list</span></code>
+and <code class="docutils literal"><span class="pre">dict</span></code>, namely <code class="docutils literal"><span class="pre">persistent.list.PersistentList</span></code> and
+<code class="docutils literal"><span class="pre">persistent.mapping.PersistentMapping</span></code>. We can update our example to
+use <code class="docutils literal"><span class="pre">PersistentList</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">persistent</span>
+<span class="kn">import</span> <span class="nn">persistent.list</span>
+
+<span class="k">class</span> <span class="nc">Book</span><span class="p">(</span><span class="n">persistent</span><span class="o">.</span><span class="n">Persistent</span><span class="p">):</span>
+
+   <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">title</span><span class="p">):</span>
+       <span class="bp">self</span><span class="o">.</span><span class="n">title</span> <span class="o">=</span> <span class="n">title</span>
+       <span class="bp">self</span><span class="o">.</span><span class="n">authors</span> <span class="o">=</span> <span class="n">persistent</span><span class="o">.</span><span class="n">list</span><span class="o">.</span><span class="n">PersistentList</span><span class="p">()</span>
+
+   <span class="k">def</span> <span class="nf">add_author</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">author</span><span class="p">):</span>
+       <span class="bp">self</span><span class="o">.</span><span class="n">authors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">author</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Note that in this example, when we added an author, the book itself
+didn&#8217;t change, but the <code class="docutils literal"><span class="pre">authors</span></code> attribute value did.  Because
+<code class="docutils literal"><span class="pre">authors</span></code> is a persistent object, it&#8217;s stored in a separate database
+record from the book record and is managed by ZODB independent of the
+management of the book.</p>
+<p>In addition to <code class="docutils literal"><span class="pre">PersistentList</span></code> and <code class="docutils literal"><span class="pre">PersistentMapping</span></code>, general
+persistent data structures are provided by the <a class="reference external" href="https://pythonhosted.org/BTrees/">BTrees</a> package,
+most notably <code class="docutils literal"><span class="pre">BTree</span></code> and <code class="docutils literal"><span class="pre">TreeSet</span></code> objects.  Unlike
+<code class="docutils literal"><span class="pre">PersistentList</span></code> and <code class="docutils literal"><span class="pre">PersistentMapping</span></code>, <code class="docutils literal"><span class="pre">BTree</span></code> and
+<code class="docutils literal"><span class="pre">TreeSet</span></code> objects are scalable and can easily hold millions of
+objects, because their data are spread over many subobjects.</p>
+<p>It&#8217;s generally better to use <code class="docutils literal"><span class="pre">BTree</span></code> objects than
+<code class="docutils literal"><span class="pre">PersistentMapping</span></code> objects, because they&#8217;re scalable and because
+they handle <a class="reference internal" href="transactions-and-threading.html#conflicts-label"><span class="std std-ref">conflicts</span></a> better. <code class="docutils literal"><span class="pre">TreeSet</span></code>
+objects are the only ZODB-provided persistent set implementation.
+<code class="docutils literal"><span class="pre">BTree</span></code> and <code class="docutils literal"><span class="pre">TreeSets</span></code> come in a number of families provided via
+different modules and differ in their internal implementations:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="33%" />
+<col width="33%" />
+<col width="35%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Module</th>
+<th class="head">Key type</th>
+<th class="head">Value Type</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>BTrees.OOBTree</td>
+<td>object</td>
+<td>object</td>
+</tr>
+<tr class="row-odd"><td>BTrees.IOBTree</td>
+<td>integer</td>
+<td>Object</td>
+</tr>
+<tr class="row-even"><td>BTrees.OIBTree</td>
+<td>object</td>
+<td>integer</td>
+</tr>
+<tr class="row-odd"><td>BTrees.IIBTree</td>
+<td>integer</td>
+<td>integer</td>
+</tr>
+<tr class="row-even"><td>BTrees.IFBTree</td>
+<td>integer</td>
+<td>float</td>
+</tr>
+<tr class="row-odd"><td>BTrees.LOBTree</td>
+<td>64-bit integer</td>
+<td>Object</td>
+</tr>
+<tr class="row-even"><td>BTrees.OLBTree</td>
+<td>object</td>
+<td>64-bit integer</td>
+</tr>
+<tr class="row-odd"><td>BTrees.LLBTree</td>
+<td>64-bit integer</td>
+<td>64-bit integer</td>
+</tr>
+<tr class="row-even"><td>BTrees.LFBTree</td>
+<td>64-bit integer</td>
+<td>float</td>
+</tr>
+</tbody>
+</table>
+<p>Here&#8217;s a version of the example that uses a <code class="docutils literal"><span class="pre">TreeSet</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">persistent</span>
+<span class="kn">from</span> <span class="nn">BTrees.OOBTree</span> <span class="k">import</span> <span class="n">TreeSet</span>
+
+<span class="k">class</span> <span class="nc">Book</span><span class="p">(</span><span class="n">persistent</span><span class="o">.</span><span class="n">Persistent</span><span class="p">):</span>
+
+   <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">title</span><span class="p">):</span>
+       <span class="bp">self</span><span class="o">.</span><span class="n">title</span> <span class="o">=</span> <span class="n">title</span>
+       <span class="bp">self</span><span class="o">.</span><span class="n">authors</span> <span class="o">=</span> <span class="n">TreeSet</span><span class="p">()</span>
+
+   <span class="k">def</span> <span class="nf">add_author</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">author</span><span class="p">):</span>
+       <span class="bp">self</span><span class="o">.</span><span class="n">authors</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">author</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Scalable sequences are a bit more challenging. The <a class="reference external" href="https://pypi.python.org/pypi/zc.blist/">zc.blist</a> package provides a scalable
+list implementation that works well for some sequence use cases.</p>
+</div>
+</div>
+<div class="section" id="properties">
+<h2>Properties<a class="headerlink" href="#properties" title="Permalink to this headline">¶</a></h2>
+<p>If you implement some attributes using Python properties (or other
+types of descriptors), they are treated just like any other attributes
+by the persistence machinery.  When you set an attribute through a
+property, the object is considered changed, even if the property
+didn&#8217;t actually modify the object state.</p>
+</div>
+<div class="section" id="special-attributes">
+<h2>Special attributes<a class="headerlink" href="#special-attributes" title="Permalink to this headline">¶</a></h2>
+<p>There are some attributes that are treated specially.</p>
+<p>Attributes with names starting with <code class="docutils literal"><span class="pre">_p_</span></code> are reserved for use by
+the persistence machinery and by ZODB.  These include (but aren&#8217;t
+limited to):</p>
+<dl class="docutils">
+<dt>_p_changed</dt>
+<dd>The <code class="docutils literal"><span class="pre">_p_changed</span></code> attribute has the value <code class="docutils literal"><span class="pre">None</span></code> if the
+object is a <a class="reference internal" href="#ghost-label"><span class="std std-ref">ghost</span></a>, True if it&#8217;s changed, and
+False if it&#8217;s not a ghost and not changed.</dd>
+<dt>_p_oid</dt>
+<dd>The object&#8217;s unique id in the database.</dd>
+<dt>_p_serial</dt>
+<dd>The object&#8217;s revision identifier also know as the object serial
+number, also known as the object transaction id. It&#8217;s a timestamp
+and if not set has the value 0 encoded as string of 8 zero bytes.</dd>
+<dt>_p_jar</dt>
+<dd>The database connection the object was accessed through.  This is
+commonly used by database-aware application code to get hold of an
+object&#8217;s database connection.</dd>
+</dl>
+<p>Attributes with names starting with <code class="docutils literal"><span class="pre">_v_</span></code> are treated as volatile.
+They aren&#8217;t saved to the database.  They&#8217;re useful for caching data
+that can be computed from saved data and shouldn&#8217;t be saved <a class="footnote-reference" href="#cache" id="id1">[1]</a>.
+They should be treated as though they can disappear between
+transactions.  Setting a volatile attribute doesn&#8217;t cause an object to
+be considered to be modified.</p>
+<p>An object&#8217;s <code class="docutils literal"><span class="pre">__dict__</span></code> attribute is treated specially in that
+getting it doesn&#8217;t cause an object&#8217;s state to be loaded.  It may have
+the value <code class="docutils literal"><span class="pre">None</span></code> rather than a dictionary for <a class="reference internal" href="#ghost-label"><span class="std std-ref">ghosts</span></a>.</p>
+</div>
+<div class="section" id="object-storage-and-management">
+<h2>Object storage and management<a class="headerlink" href="#object-storage-and-management" title="Permalink to this headline">¶</a></h2>
+<p>Every persistent object is stored in its own database record. Some
+storages maintain multiple object revisions, in which case each
+persistent object is stored in its own set of records.  Data for
+different persistent objects are stored separately.</p>
+<p>The database manages each object separately, according to a <a class="reference internal" href="#object-life-cycle-label"><span class="std std-ref">life
+cycle</span></a>.</p>
+<p>This is important when considering how to distribute data across your
+objects.  If you use lots of small persistent objects, then more
+objects may need to be loaded or saved and you may incur more memory
+overhead. On the other hand, if objects are too big, you may load or
+save more data than would otherwise be needed.</p>
+</div>
+<div class="section" id="you-can-t-change-your-mind-in-subclassing-persistent">
+<h2>You can&#8217;t change your mind in subclassing persistent<a class="headerlink" href="#you-can-t-change-your-mind-in-subclassing-persistent" title="Permalink to this headline">¶</a></h2>
+<p>Currently, you can&#8217;t change your mind about whether a class is
+persistent (subclasses <code class="docutils literal"><span class="pre">persistent.Persistent</span></code>) or not.  If you save
+objects in a database who&#8217;s classes subclass <code class="docutils literal"><span class="pre">persistent.Persistent</span></code>,
+you can&#8217;t change your mind later and make them non-persistent, and the
+other way around.  This may be a <a class="reference external" href="https://github.com/zopefoundation/ZODB/issues/99">bug or misfeature</a>.</p>
+</div>
+<div class="section" id="schema-migration">
+<span id="schema-migration-label"></span><h2>Schema migration<a class="headerlink" href="#schema-migration" title="Permalink to this headline">¶</a></h2>
+<p>Object requirements and implementations tend to evolve over time.
+This isn&#8217;t a problem for objects that are short lived, but persistent
+objects may have lifetimes that extend for years.  There needs to be
+some way of making sure that state for an older object schema can
+still be loaded into an object with the new schema.</p>
+<div class="section" id="adding-attributes">
+<h3>Adding attributes<a class="headerlink" href="#adding-attributes" title="Permalink to this headline">¶</a></h3>
+<p>Perhaps the commonest schema change is to add attributes.  This is
+usually accomplished easily by adding a default value in a class
+definition:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Book</span><span class="p">(</span><span class="n">persistent</span><span class="o">.</span><span class="n">Persistent</span><span class="p">):</span>
+
+   <span class="n">publisher</span> <span class="o">=</span> <span class="s1">&#39;UNKNOWN&#39;</span>
+
+   <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">publisher</span><span class="p">):</span>
+       <span class="bp">self</span><span class="o">.</span><span class="n">title</span> <span class="o">=</span> <span class="n">title</span>
+       <span class="bp">self</span><span class="o">.</span><span class="n">publisher</span> <span class="o">=</span> <span class="n">publisher</span>
+       <span class="bp">self</span><span class="o">.</span><span class="n">authors</span> <span class="o">=</span> <span class="n">TreeSet</span><span class="p">()</span>
+
+   <span class="k">def</span> <span class="nf">add_author</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">author</span><span class="p">):</span>
+       <span class="bp">self</span><span class="o">.</span><span class="n">authors</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">author</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="removing-attributes">
+<h3>Removing attributes<a class="headerlink" href="#removing-attributes" title="Permalink to this headline">¶</a></h3>
+<p>Removing attributes generally doesn&#8217;t require any action, assuming
+that their presence in older objects doesn&#8217;t do any harm.</p>
+</div>
+<div class="section" id="renaming-moving-classes">
+<h3>Renaming/moving classes<a class="headerlink" href="#renaming-moving-classes" title="Permalink to this headline">¶</a></h3>
+<p>The easiest way to handle renaming or moving classes is to leave
+aliases for the old name.  For example, if we have a class,
+<code class="docutils literal"><span class="pre">library.Book</span></code>, and want to move it to <code class="docutils literal"><span class="pre">catalog.Publication</span></code>, we
+can keep a <code class="docutils literal"><span class="pre">library</span></code> module that contains:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">catalog</span> <span class="k">import</span> <span class="n">Publication</span> <span class="k">as</span> <span class="n">Book</span> <span class="c1"># XXX deprecated name</span>
+</pre></div>
+</div>
+<p>A downside of this approach is that it clutters code and may even
+cause us to keep modules solely to hold aliases. (<a class="reference external" href="http://zopedeferredimport.readthedocs.io/en/latest/narrative.html">zope.deferredimport</a>
+can help with this by making these aliases a little more efficient and
+by generating deprecation warnings.)</p>
+</div>
+<div class="section" id="migration-scripts">
+<h3>Migration scripts<a class="headerlink" href="#migration-scripts" title="Permalink to this headline">¶</a></h3>
+<p>If the simple approaches above aren&#8217;t enough, then migration scripts
+can be used.  How these scripts are written is usually application
+dependent, as the application usually determines where objects of a
+given type reside in the database. (There are also some low-level
+interfaces for iterating over all of the objects of a database, but
+these are usually impractical for large databases.)</p>
+<p>An improvement to running migration scripts manually is to use a
+generational framework like <a class="reference external" href="https://pypi.python.org/pypi/zope.generations">zope.generations</a>. With a generational
+framework, each migration is assigned a migration number and the
+number is recorded in the database as each migration is run.  This is
+useful because remembering what migrations are needed is automated.</p>
+<div class="section" id="upgrading-multiple-clients-without-down-time">
+<h4>Upgrading multiple clients without down time<a class="headerlink" href="#upgrading-multiple-clients-without-down-time" title="Permalink to this headline">¶</a></h4>
+<p>Production applications typically have multiple clients for
+availability and load balancing.  This means an active application may
+be committing transactions using multiple software and schema
+versions.  In this situation, you may need to plan schema migrations
+in multiple steps:</p>
+<ol class="arabic simple">
+<li>Upgrade software on all clients to a version that works with the old and new
+version of the schema and that writes data using the old schema.</li>
+<li>Upgrade software on all clients to a version that works with the old and new
+version of the schema and that writes data using the new schema.</li>
+<li>Migrate objects written with the old schema to the new schema.</li>
+<li>Remove support for the old schema from the software.</li>
+</ol>
+</div>
+</div>
+</div>
+<div class="section" id="object-life-cycle-states-and-special-attributes-advanced">
+<span id="object-life-cycle-label"></span><h2>Object life cycle states and special attributes (advanced)<a class="headerlink" href="#object-life-cycle-states-and-special-attributes-advanced" title="Permalink to this headline">¶</a></h2>
+<p>Persistent objects typically transition through a collection of
+states. Most of the time, you don&#8217;t need to think too much about this.</p>
+<dl class="docutils">
+<dt>Unsaved</dt>
+<dd>When an object is created, it&#8217;s said to be in an <em>unsaved</em> state
+until it&#8217;s associated with a database.</dd>
+<dt>Added</dt>
+<dd><p class="first">When an unsaved object is added to a database, but hasn&#8217;t been
+saved by committing a transaction, it&#8217;s in the <em>added</em> state.</p>
+<p class="last">Note that most objects are added implicitly by being set as
+subobjects (attribute values or items) of objects already in the
+database.</p>
+</dd>
+<dt>Saved</dt>
+<dd>When an object is added and saved through a transaction commit, the
+object is in the <em>saved</em> state.</dd>
+<dt>Changed</dt>
+<dd><p class="first">When a saved object is updated, it enters the <em>changed</em> state to
+indicate that there are changes that need to be committed. It
+remains in this state until either:</p>
+<ul class="last simple">
+<li>The current transaction is committed, and the object transitions to
+the saved state, or</li>
+<li>The current transaction is aborted, and the object transitions to
+the ghost state.</li>
+</ul>
+</dd>
+</dl>
+<dl class="docutils" id="ghost-label">
+<dt>Ghost</dt>
+<dd><p class="first">An object in the <em>ghost</em> state is an empty shell. It has no
+state. When it&#8217;s accessed, its state will be loaded automatically,
+and it will enter the saved state.  A saved object can become a
+ghost if it hasn&#8217;t been accessed in a while and the database
+releases its state to make room for other objects.  A changed
+object can also become a ghost if the transaction it&#8217;s modified in is
+aborted.</p>
+<p class="last">An object that&#8217;s loaded from the database is loaded as a
+ghost. This typically happens when the object is a subobject of
+another object who&#8217;s state is loaded.</p>
+</dd>
+</dl>
+<p>We can interrogate and control an object&#8217;s state, although somewhat
+indirectly.  To do this, we&#8217;ll look at some special persistent-object
+attributes, described in <a class="reference internal" href="#special-attributes">Special attributes</a>, above.</p>
+<p>Let&#8217;s look at some state transitions with an example. First, we create
+an unsaved book:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">book</span> <span class="o">=</span> <span class="n">Book</span><span class="p">(</span><span class="s2">&quot;ZODB&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">ZODB.utils</span> <span class="k">import</span> <span class="n">z64</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">book</span><span class="o">.</span><span class="n">_p_changed</span><span class="p">,</span> <span class="nb">bool</span><span class="p">(</span><span class="n">book</span><span class="o">.</span><span class="n">_p_oid</span><span class="p">)</span>
+<span class="go">(False, False)</span>
+</pre></div>
+</div>
+<p>We can tell that it&#8217;s unsaved because it doesn&#8217;t have an object id, <code class="docutils literal"><span class="pre">_p_oid</span></code>.</p>
+<p>If we add it to a database:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">ZODB</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">connection</span> <span class="o">=</span> <span class="n">ZODB</span><span class="o">.</span><span class="n">connection</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">connection</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">book</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">book</span><span class="o">.</span><span class="n">_p_changed</span><span class="p">,</span> <span class="nb">bool</span><span class="p">(</span><span class="n">book</span><span class="o">.</span><span class="n">_p_oid</span><span class="p">),</span> <span class="n">book</span><span class="o">.</span><span class="n">_p_serial</span> <span class="o">==</span> <span class="n">z64</span>
+<span class="go">(False, True, True)</span>
+</pre></div>
+</div>
+<p>We know it&#8217;s added because it has an oid, but its serial (object
+revision timestamp), <code class="docutils literal"><span class="pre">_p_serial</span></code>, is the special zero value, and it&#8217;s
+value for <code class="docutils literal"><span class="pre">_p_changed</span></code> is False.</p>
+<p>If we commit the transaction that added it:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">transaction</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">transaction</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">book</span><span class="o">.</span><span class="n">_p_changed</span><span class="p">,</span> <span class="nb">bool</span><span class="p">(</span><span class="n">book</span><span class="o">.</span><span class="n">_p_oid</span><span class="p">),</span> <span class="n">book</span><span class="o">.</span><span class="n">_p_serial</span> <span class="o">==</span> <span class="n">z64</span>
+<span class="go">(False, True, False)</span>
+</pre></div>
+</div>
+<p>We see that the object is in the saved state because it has an object
+id and serial, and is unchanged.</p>
+<p>Now if we modify the object, it enters the changed state:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">book</span><span class="o">.</span><span class="n">title</span> <span class="o">=</span> <span class="s2">&quot;ZODB Explained&quot;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">book</span><span class="o">.</span><span class="n">_p_changed</span><span class="p">,</span> <span class="nb">bool</span><span class="p">(</span><span class="n">book</span><span class="o">.</span><span class="n">_p_oid</span><span class="p">),</span> <span class="n">book</span><span class="o">.</span><span class="n">_p_serial</span> <span class="o">==</span> <span class="n">z64</span>
+<span class="go">(True, True, False)</span>
+</pre></div>
+</div>
+<p>If we abort the transaction, the object becomes a ghost:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">transaction</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">book</span><span class="o">.</span><span class="n">_p_changed</span><span class="p">,</span> <span class="nb">bool</span><span class="p">(</span><span class="n">book</span><span class="o">.</span><span class="n">_p_oid</span><span class="p">)</span>
+<span class="go">(None, True)</span>
+</pre></div>
+</div>
+<p>We can see it&#8217;s a ghost because <code class="docutils literal"><span class="pre">_p_changed</span></code> is None.
+(<code class="docutils literal"><span class="pre">_p_serial</span></code> isn&#8217;t meaningful for ghosts.)</p>
+<p>If we access the object, it will be loaded into the saved state, which
+is indicated by a false <code class="docutils literal"><span class="pre">_p_changed</span></code> and an object id and non-zero serial.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">book</span><span class="o">.</span><span class="n">title</span>
+<span class="go">&#39;ZODB&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">book</span><span class="o">.</span><span class="n">_p_changed</span><span class="p">,</span> <span class="nb">bool</span><span class="p">(</span><span class="n">book</span><span class="o">.</span><span class="n">_p_oid</span><span class="p">),</span> <span class="n">book</span><span class="o">.</span><span class="n">_p_serial</span> <span class="o">==</span> <span class="n">z64</span>
+<span class="go">(False, True, False)</span>
+</pre></div>
+</div>
+<p>Note that accessing <code class="docutils literal"><span class="pre">_p_</span></code> attributes didn&#8217;t cause the object&#8217;s state
+to be loaded.</p>
+<p>We&#8217;ve already seen how modifying <code class="docutils literal"><span class="pre">_p_changed</span></code> can cause an object to
+be marked as modified.  We can also use it to make an object into a
+ghost:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">book</span><span class="o">.</span><span class="n">_p_changed</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">book</span><span class="o">.</span><span class="n">_p_changed</span><span class="p">,</span> <span class="nb">bool</span><span class="p">(</span><span class="n">book</span><span class="o">.</span><span class="n">_p_oid</span><span class="p">)</span>
+<span class="go">(None, True)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="other-things-you-can-do-but-shouldn-t-advanced">
+<h2>Other things you can do, but shouldn&#8217;t (advanced)<a class="headerlink" href="#other-things-you-can-do-but-shouldn-t-advanced" title="Permalink to this headline">¶</a></h2>
+<p>The first rule here is don&#8217;t be clever!!!  It&#8217;s very tempting to be
+clever, but it&#8217;s almost never worth it.</p>
+<div class="section" id="overriding-getstate-and-setstate">
+<h3>Overriding <code class="docutils literal"><span class="pre">__getstate__</span></code> and <code class="docutils literal"><span class="pre">__setstate__</span></code><a class="headerlink" href="#overriding-getstate-and-setstate" title="Permalink to this headline">¶</a></h3>
+<p>When an object is saved in a database, its <code class="docutils literal"><span class="pre">__getstate__</span></code> method is
+called without arguments to get the object&#8217;s state.  The default
+implementation simply returns a copy of an object&#8217;s instance
+dictionary. (It&#8217;s a little more complicated for objects with slots.)</p>
+<p>An object&#8217;s state is loaded by loading the state from the database and
+passing it to the object&#8217;s <code class="docutils literal"><span class="pre">__setstate__</span></code> method.  The default
+implementation expects a dictionary, which it uses to populate the
+object&#8217;s instance dictionary.</p>
+<p>Early on, we thought that overriding these methods would be useful for
+tasks like providing more efficient state representations or for
+<a class="reference internal" href="#schema-migration-label"><span class="std std-ref">schema migration</span></a>, but we found that
+the result was to make object implementations brittle and/or complex
+and the benefit usually wasn&#8217;t worth it.</p>
+</div>
+<div class="section" id="overriding-getattr-getattribute-or-setattribute">
+<h3>Overriding <code class="docutils literal"><span class="pre">__getattr__</span></code>, <code class="docutils literal"><span class="pre">__getattribute__</span></code>, or <code class="docutils literal"><span class="pre">__setattribute__</span></code><a class="headerlink" href="#overriding-getattr-getattribute-or-setattribute" title="Permalink to this headline">¶</a></h3>
+<p>This is something extremely clever people might attempt, but it&#8217;s
+probably never worth the bother. It&#8217;s possible, but it requires such
+deep understanding of persistence and internals that we&#8217;re not even
+going to document it. :)</p>
+</div>
+</div>
+<div class="section" id="links">
+<h2>Links<a class="headerlink" href="#links" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference external" href="http://persistent.readthedocs.io/en/latest/index.html">persistent.Persistent</a> provides
+additional documentation on the <code class="docutils literal"><span class="pre">Persistent</span></code> base class.</p>
+<p>The <a class="reference external" href="https://pypi.python.org/pypi/zc.blist/">zc.blist</a> package provides
+a scalable sequence implementation for many use cases.</p>
+<p>The <a class="reference external" href="https://pypi.python.org/pypi/zope.cachedescriptors">zope.cachedescriptors</a> package
+provides descriptor implementations that facilitate implementing
+caching attributes, especially <code class="docutils literal"><span class="pre">_v_</span></code> volatile attributes.</p>
+<p>The <a class="reference external" href="http://zopedeferredimport.readthedocs.io/en/latest/narrative.html">zope.deferredimport</a>
+package provides lazy import and support for deprecating import
+location, which is helpful when moving classes, especially persistent
+classes.</p>
+<p>The <a class="reference external" href="https://pypi.python.org/pypi/zope.generations">zope.generations</a> package provides a
+framework for managing schema-migration scripts.</p>
+<table class="docutils footnote" frame="void" id="cache" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>The <a class="reference external" href="https://pypi.python.org/pypi/zope.cachedescriptors">zope.cachedescriptors</a> package
+provides some descriptors that help implement attributes that cache
+data.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/zodb.png" alt="Logo"/>
+            </a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Writing persistent objects</a><ul>
+<li><a class="reference internal" href="#access-and-modification">Access and modification</a></li>
+<li><a class="reference internal" href="#rules-of-persistence">Rules of persistence</a><ul>
+<li><a class="reference internal" href="#using-tuples-for-small-sequences-instead-of-lists">Using tuples for small sequences instead of lists</a></li>
+<li><a class="reference internal" href="#using-persistent-data-structures">Using persistent data structures</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#properties">Properties</a></li>
+<li><a class="reference internal" href="#special-attributes">Special attributes</a></li>
+<li><a class="reference internal" href="#object-storage-and-management">Object storage and management</a></li>
+<li><a class="reference internal" href="#you-can-t-change-your-mind-in-subclassing-persistent">You can&#8217;t change your mind in subclassing persistent</a></li>
+<li><a class="reference internal" href="#schema-migration">Schema migration</a><ul>
+<li><a class="reference internal" href="#adding-attributes">Adding attributes</a></li>
+<li><a class="reference internal" href="#removing-attributes">Removing attributes</a></li>
+<li><a class="reference internal" href="#renaming-moving-classes">Renaming/moving classes</a></li>
+<li><a class="reference internal" href="#migration-scripts">Migration scripts</a><ul>
+<li><a class="reference internal" href="#upgrading-multiple-clients-without-down-time">Upgrading multiple clients without down time</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#object-life-cycle-states-and-special-attributes-advanced">Object life cycle states and special attributes (advanced)</a></li>
+<li><a class="reference internal" href="#other-things-you-can-do-but-shouldn-t-advanced">Other things you can do, but shouldn&#8217;t (advanced)</a><ul>
+<li><a class="reference internal" href="#overriding-getstate-and-setstate">Overriding <code class="docutils literal"><span class="pre">__getstate__</span></code> and <code class="docutils literal"><span class="pre">__setstate__</span></code></a></li>
+<li><a class="reference internal" href="#overriding-getattr-getattribute-or-setattribute">Overriding <code class="docutils literal"><span class="pre">__getattr__</span></code>, <code class="docutils literal"><span class="pre">__getattribute__</span></code>, or <code class="docutils literal"><span class="pre">__setattribute__</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#links">Links</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">ZODB programming guide</a><ul>
+      <li>Previous: <a href="install-and-run.html" title="previous chapter">Installing and running ZODB</a></li>
+      <li>Next: <a href="transactions-and-threading.html" title="next chapter">Transactions and concurrency</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/guide/writing-persistent-objects.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2009-2016, Zope Foundation.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="../_sources/guide/writing-persistent-objects.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

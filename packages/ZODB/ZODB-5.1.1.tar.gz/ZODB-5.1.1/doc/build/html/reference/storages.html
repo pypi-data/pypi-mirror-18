@@ -1,0 +1,926 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Storage APIs &#8212; ZODB  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../_static/zodb.ico"/>
+    <link rel="top" title="ZODB  documentation" href="../index.html" />
+    <link rel="up" title="Reference Documentation" href="index.html" />
+    <link rel="next" title="Transactions" href="transaction.html" />
+    <link rel="prev" title="ZODB APIs" href="zodb.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="storage-apis">
+<h1><a class="toc-backref" href="#id3">Storage APIs</a><a class="headerlink" href="#storage-apis" title="Permalink to this headline">¶</a></h1>
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#storage-apis" id="id3">Storage APIs</a><ul>
+<li><a class="reference internal" href="#storage-interfaces" id="id4">Storage interfaces</a><ul>
+<li><a class="reference internal" href="#istorage" id="id5">IStorage</a></li>
+<li><a class="reference internal" href="#istorageiteration" id="id6">IStorageIteration</a></li>
+<li><a class="reference internal" href="#istorageundoable" id="id7">IStorageUndoable</a></li>
+<li><a class="reference internal" href="#istoragecurrentrecorditeration" id="id8">IStorageCurrentRecordIteration</a></li>
+<li><a class="reference internal" href="#iblobstorage" id="id9">IBlobStorage</a></li>
+<li><a class="reference internal" href="#istoragerecordinformation" id="id10">IStorageRecordInformation</a></li>
+<li><a class="reference internal" href="#istoragetransactioninformation" id="id11">IStorageTransactionInformation</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#included-storages" id="id12">Included storages</a><ul>
+<li><a class="reference internal" href="#filestorage" id="id13">FileStorage</a><ul>
+<li><a class="reference internal" href="#filestorage-text-configuration" id="id14">FileStorage text configuration</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mappingstorage" id="id15">MappingStorage</a></li>
+<li><a class="reference internal" href="#mappingstorage-text-configuration" id="id16">MappingStorage text configuration</a></li>
+<li><a class="reference internal" href="#demostorage" id="id17">DemoStorage</a></li>
+<li><a class="reference internal" href="#demostorage-text-configuration" id="id18">DemoStorage text configuration</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#noteworthy-non-included-storages" id="id19">Noteworthy non-included storages</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="storage-interfaces">
+<h2><a class="toc-backref" href="#id4">Storage interfaces</a><a class="headerlink" href="#storage-interfaces" title="Permalink to this headline">¶</a></h2>
+<p>There are various storage implementations that implement standard
+storage interfaces. They differ primarily in their constructors.</p>
+<p>Application code rarely calls storage methods, and those it calls are
+generally called indirectly through databases.  There are
+interface-defined methods that are called internally by ZODB. These
+aren&#8217;t shown below.</p>
+<div class="section" id="istorage">
+<h3><a class="toc-backref" href="#id5">IStorage</a><a class="headerlink" href="#istorage" title="Permalink to this headline">¶</a></h3>
+<dl class="interface">
+<dt id="ZODB.interfaces.IStorage">
+<em class="property">interface </em><code class="descclassname">ZODB.interfaces.</code><code class="descname">IStorage</code><a class="headerlink" href="#ZODB.interfaces.IStorage" title="Permalink to this definition">¶</a></dt>
+<dd><p>A storage is responsible for storing and retrieving data of objects.</p>
+<p>Consistency and locking</p>
+<p>When transactions are committed, a storage assigns monotonically
+increasing transaction identifiers (tids) to the transactions and
+to the object versions written by the transactions.  ZODB relies
+on this to decide if data in object caches are up to date and to
+implement multi-version concurrency control.</p>
+<p>There are methods in IStorage and in derived interfaces that
+provide information about the current revisions (tids) for objects
+or for the database as a whole.  It is critical for the proper
+working of ZODB that the resulting tids are increasing with
+respect to the object identifier given or to the databases.  That
+is, if there are 2 results for an object or for the database, R1
+and R2, such that R1 is returned before R2, then the tid returned
+by R2 must be greater than or equal to the tid returned by R1.
+(When thinking about results for the database, think of these as
+results for all objects in the database.)</p>
+<p>This implies some sort of locking strategy.  The key method is
+tcp_finish, which causes new tids to be generated and also,
+through the callback passed to it, returns new current tids for
+the objects stored in a transaction and for the database as a whole.</p>
+<p>The IStorage methods affected are lastTransaction, load, store,
+and tpc_finish.  Derived interfaces may introduce additional
+methods.</p>
+<dl class="method">
+<dt id="ZODB.interfaces.IStorage.__len__">
+<code class="descname">__len__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.interfaces.IStorage.__len__" title="Permalink to this definition">¶</a></dt>
+<dd><p>The approximate number of objects in the storage</p>
+<p>This is used soley for informational purposes.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ZODB.interfaces.IStorage.close">
+<code class="descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.interfaces.IStorage.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Close the storage.</p>
+<p>Finalize the storage, releasing any external resources.  The
+storage should not be used after this method is called.</p>
+<p>Note that databses close their storages when they&#8217;re closed, so
+this method isn&#8217;t generally called from application code.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ZODB.interfaces.IStorage.getName">
+<code class="descname">getName</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.interfaces.IStorage.getName" title="Permalink to this definition">¶</a></dt>
+<dd><p>The name of the storage</p>
+<p>The format and interpretation of this name is storage
+dependent. It could be a file name, a database name, etc..</p>
+<p>This is used soley for informational purposes.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ZODB.interfaces.IStorage.getSize">
+<code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.interfaces.IStorage.getSize" title="Permalink to this definition">¶</a></dt>
+<dd><p>An approximate size of the database, in bytes.</p>
+<p>This is used soley for informational purposes.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ZODB.interfaces.IStorage.history">
+<code class="descname">history</code><span class="sig-paren">(</span><em>oid</em>, <em>size=1</em><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.interfaces.IStorage.history" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a sequence of history information dictionaries.</p>
+<p>Up to size objects (including no objects) may be returned.</p>
+<p>The information provides a log of the changes made to the
+object. Data are reported in reverse chronological order.</p>
+<p>Each dictionary has the following keys:</p>
+<dl class="docutils">
+<dt>time</dt>
+<dd>UTC seconds since the epoch (as in time.time) that the
+object revision was committed.</dd>
+<dt>tid</dt>
+<dd>The transaction identifier of the transaction that
+committed the version.</dd>
+<dt>serial</dt>
+<dd>An alias for tid, which expected by older clients.</dd>
+<dt>user_name</dt>
+<dd>The user identifier, if any (or an empty string) of the
+user on whos behalf the revision was committed.</dd>
+<dt>description</dt>
+<dd>The transaction description for the transaction that
+committed the revision.</dd>
+<dt>size</dt>
+<dd>The size of the revision data record.</dd>
+</dl>
+<p>If the transaction had extension items, then these items are
+also included if they don&#8217;t conflict with the keys above.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ZODB.interfaces.IStorage.isReadOnly">
+<code class="descname">isReadOnly</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.interfaces.IStorage.isReadOnly" title="Permalink to this definition">¶</a></dt>
+<dd><p>Test whether a storage allows committing new transactions</p>
+<p>For a given storage instance, this method always returns the
+same value.  Read-only-ness is a static property of a storage.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ZODB.interfaces.IStorage.lastTransaction">
+<code class="descname">lastTransaction</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.interfaces.IStorage.lastTransaction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the id of the last committed transaction.</p>
+<p>If no transactions have been committed, return a string of 8
+null (0) characters.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ZODB.interfaces.IStorage.pack">
+<code class="descname">pack</code><span class="sig-paren">(</span><em>pack_time</em>, <em>referencesf</em><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.interfaces.IStorage.pack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pack the storage</p>
+<p>It is up to the storage to interpret this call, however, the
+general idea is that the storage free space by:</p>
+<ul class="simple">
+<li>discarding object revisions that were old and not current as of the
+given pack time.</li>
+<li>garbage collecting objects that aren&#8217;t reachable from the
+root object via revisions remaining after discarding
+revisions that were not current as of the pack time.</li>
+</ul>
+<p>The pack time is given as a UTC time in seconds since the
+epoch.</p>
+<p>The second argument is a function that should be used to
+extract object references from database records.  This is
+needed to determine which objects are referenced from object
+revisions.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ZODB.interfaces.IStorage.sortKey">
+<code class="descname">sortKey</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.interfaces.IStorage.sortKey" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sort key used to order distributed transactions</p>
+<p>When a transaction involved multiple storages, 2-phase commit
+operations are applied in sort-key order.  This must be unique
+among storages used in a transaction. Obviously, the storage
+can&#8217;t assure this, but it should construct the sort key so it
+has a reasonable chance of being unique.</p>
+<p>The result must be a string.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="istorageiteration">
+<h3><a class="toc-backref" href="#id6">IStorageIteration</a><a class="headerlink" href="#istorageiteration" title="Permalink to this headline">¶</a></h3>
+<dl class="interface">
+<dt id="ZODB.interfaces.IStorageIteration">
+<em class="property">interface </em><code class="descclassname">ZODB.interfaces.</code><code class="descname">IStorageIteration</code><a class="headerlink" href="#ZODB.interfaces.IStorageIteration" title="Permalink to this definition">¶</a></dt>
+<dd><p>API for iterating over the contents of a storage.</p>
+<dl class="method">
+<dt id="ZODB.interfaces.IStorageIteration.iterator">
+<code class="descname">iterator</code><span class="sig-paren">(</span><em>start=None</em>, <em>stop=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.interfaces.IStorageIteration.iterator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an IStorageTransactionInformation iterator.</p>
+<p>If the start argument is not None, then iteration will start
+with the first transaction whose identifier is greater than or
+equal to start.</p>
+<p>If the stop argument is not None, then iteration will end with
+the last transaction whose identifier is less than or equal to
+stop.</p>
+<p>The iterator provides access to the data as available at the time when
+the iterator was retrieved.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="istorageundoable">
+<h3><a class="toc-backref" href="#id7">IStorageUndoable</a><a class="headerlink" href="#istorageundoable" title="Permalink to this headline">¶</a></h3>
+<dl class="interface">
+<dt id="ZODB.interfaces.IStorageUndoable">
+<em class="property">interface </em><code class="descclassname">ZODB.interfaces.</code><code class="descname">IStorageUndoable</code><a class="headerlink" href="#ZODB.interfaces.IStorageUndoable" title="Permalink to this definition">¶</a></dt>
+<dd><p>A storage supporting transactional undo.</p>
+<dl class="method">
+<dt id="ZODB.interfaces.IStorageUndoable.undoInfo">
+<code class="descname">undoInfo</code><span class="sig-paren">(</span><em>first=0</em>, <em>last=-20</em>, <em>specification=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.interfaces.IStorageUndoable.undoInfo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a sequence of descriptions for undoable transactions.</p>
+<p>This is like <cite>undoLog()</cite>, except for the <cite>specification</cite> argument.
+If given, <cite>specification</cite> is a dictionary, and <cite>undoInfo()</cite>
+synthesizes a <cite>filter</cite> function <cite>f</cite> for <cite>undoLog()</cite> such that
+<cite>f(desc)</cite> returns true for a transaction description mapping
+<cite>desc</cite> if and only if <cite>desc</cite> maps each key in <cite>specification</cite> to
+the same value <cite>specification</cite> maps that key to.  In other words,
+only extensions (or supersets) of <cite>specification</cite> match.</p>
+<p>ZEO note:  <cite>undoInfo()</cite> passes the <cite>specification</cite> argument from a
+ZEO client to its ZEO server (while a ZEO client ignores any <cite>filter</cite>
+argument passed to <cite>undoLog()</cite>).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ZODB.interfaces.IStorageUndoable.undoLog">
+<code class="descname">undoLog</code><span class="sig-paren">(</span><em>first</em>, <em>last</em>, <em>filter=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.interfaces.IStorageUndoable.undoLog" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a sequence of descriptions for undoable transactions.</p>
+<p>Application code should call undoLog() on a DB instance instead of on
+the storage directly.</p>
+<p>A transaction description is a mapping with at least these keys:</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>&#8220;time&#8221;:  The time, as float seconds since the epoch, when</dt>
+<dd>the transaction committed.</dd>
+<dt>&#8220;user_name&#8221;:  The value of the <cite>.user</cite> attribute on that</dt>
+<dd>transaction.</dd>
+<dt>&#8220;description&#8221;:  The value of the <cite>.description</cite> attribute on</dt>
+<dd>that transaction.</dd>
+<dt>&#8220;id`&#8221;  A string uniquely identifying the transaction to the</dt>
+<dd>storage.  If it&#8217;s desired to undo this transaction,
+this is the <cite>transaction_id</cite> to pass to <cite>undo()</cite>.</dd>
+</dl>
+</div></blockquote>
+<p>In addition, if any name+value pairs were added to the transaction
+by <cite>setExtendedInfo()</cite>, those may be added to the transaction
+description mapping too (for example, FileStorage&#8217;s <cite>undoLog()</cite> does
+this).</p>
+<p><cite>filter</cite> is a callable, taking one argument.  A transaction
+description mapping is passed to <cite>filter</cite> for each potentially
+undoable transaction.  The sequence returned by <cite>undoLog()</cite> excludes
+descriptions for which <cite>filter</cite> returns a false value.  By default,
+<cite>filter</cite> always returns a true value.</p>
+<p>ZEO note:  Arbitrary callables cannot be passed from a ZEO client
+to a ZEO server, and a ZEO client&#8217;s implementation of <cite>undoLog()</cite>
+ignores any <cite>filter</cite> argument that may be passed.  ZEO clients
+should use the related <cite>undoInfo()</cite> method instead (if they want
+to do filtering).</p>
+<p>Now picture a list containing descriptions of all undoable
+transactions that pass the filter, most recent transaction first (at
+index 0).  The <cite>first</cite> and <cite>last</cite> arguments specify the slice of this
+(conceptual) list to be returned:</p>
+<blockquote>
+<div><dl class="docutils">
+<dt><cite>first</cite>:  This is the index of the first transaction description</dt>
+<dd>in the slice.  It must be &gt;= 0.</dd>
+<dt><cite>last</cite>:  If &gt;= 0, first:last acts like a Python slice, selecting</dt>
+<dd>the descriptions at indices <cite>first</cite>, first+1, ..., up to
+but not including index <cite>last</cite>.  At most last-first
+descriptions are in the slice, and <cite>last</cite> should be at
+least as large as <cite>first</cite> in this case.  If <cite>last</cite> is
+less than 0, then abs(last) is taken to be the maximum
+number of descriptions in the slice (which still begins
+at index <cite>first</cite>).  When <cite>last</cite> &lt; 0, the same effect
+could be gotten by passing the positive first-last for
+<cite>last</cite> instead.</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="istoragecurrentrecorditeration">
+<h3><a class="toc-backref" href="#id8">IStorageCurrentRecordIteration</a><a class="headerlink" href="#istoragecurrentrecorditeration" title="Permalink to this headline">¶</a></h3>
+<dl class="interface">
+<dt id="ZODB.interfaces.IStorageCurrentRecordIteration">
+<em class="property">interface </em><code class="descclassname">ZODB.interfaces.</code><code class="descname">IStorageCurrentRecordIteration</code><a class="headerlink" href="#ZODB.interfaces.IStorageCurrentRecordIteration" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="ZODB.interfaces.IStorageCurrentRecordIteration.record_iternext">
+<code class="descname">record_iternext</code><span class="sig-paren">(</span><em>next=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.interfaces.IStorageCurrentRecordIteration.record_iternext" title="Permalink to this definition">¶</a></dt>
+<dd><p>Iterate over the records in a storage</p>
+<p>Use like this:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">next</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">oid</span><span class="p">,</span> <span class="n">tid</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="nb">next</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">record_iternext</span><span class="p">(</span><span class="nb">next</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="c1"># do things with oid, tid, and data</span>
+<span class="gp">... </span>    <span class="k">if</span> <span class="nb">next</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="k">break</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="iblobstorage">
+<h3><a class="toc-backref" href="#id9">IBlobStorage</a><a class="headerlink" href="#iblobstorage" title="Permalink to this headline">¶</a></h3>
+<dl class="interface">
+<dt id="ZODB.interfaces.IBlobStorage">
+<em class="property">interface </em><code class="descclassname">ZODB.interfaces.</code><code class="descname">IBlobStorage</code><a class="headerlink" href="#ZODB.interfaces.IBlobStorage" title="Permalink to this definition">¶</a></dt>
+<dd><p>A storage supporting BLOBs.</p>
+<dl class="method">
+<dt id="ZODB.interfaces.IBlobStorage.temporaryDirectory">
+<code class="descname">temporaryDirectory</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.interfaces.IBlobStorage.temporaryDirectory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a directory that should be used for uncommitted blob data.</p>
+<p>If Blobs use this, then commits can be performed with a simple rename.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="istoragerecordinformation">
+<h3><a class="toc-backref" href="#id10">IStorageRecordInformation</a><a class="headerlink" href="#istoragerecordinformation" title="Permalink to this headline">¶</a></h3>
+<dl class="interface">
+<dt id="ZODB.interfaces.IStorageRecordInformation">
+<em class="property">interface </em><code class="descclassname">ZODB.interfaces.</code><code class="descname">IStorageRecordInformation</code><a class="headerlink" href="#ZODB.interfaces.IStorageRecordInformation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provide information about a single storage record</p>
+<dl class="attribute">
+<dt id="ZODB.interfaces.IStorageRecordInformation.data">
+<code class="descname">data</code><em class="property"> = &lt;zope.interface.interface.Attribute object&gt;</em><a class="headerlink" href="#ZODB.interfaces.IStorageRecordInformation.data" title="Permalink to this definition">¶</a></dt>
+<dd><p>The data record</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ZODB.interfaces.IStorageRecordInformation.data_txn">
+<code class="descname">data_txn</code><em class="property"> = &lt;zope.interface.interface.Attribute object&gt;</em><a class="headerlink" href="#ZODB.interfaces.IStorageRecordInformation.data_txn" title="Permalink to this definition">¶</a></dt>
+<dd><p>The previous transaction id</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ZODB.interfaces.IStorageRecordInformation.oid">
+<code class="descname">oid</code><em class="property"> = &lt;zope.interface.interface.Attribute object&gt;</em><a class="headerlink" href="#ZODB.interfaces.IStorageRecordInformation.oid" title="Permalink to this definition">¶</a></dt>
+<dd><p>The object id</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ZODB.interfaces.IStorageRecordInformation.tid">
+<code class="descname">tid</code><em class="property"> = &lt;zope.interface.interface.Attribute object&gt;</em><a class="headerlink" href="#ZODB.interfaces.IStorageRecordInformation.tid" title="Permalink to this definition">¶</a></dt>
+<dd><p>The transaction id</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ZODB.interfaces.IStorageRecordInformation.version">
+<code class="descname">version</code><em class="property"> = &lt;zope.interface.interface.Attribute object&gt;</em><a class="headerlink" href="#ZODB.interfaces.IStorageRecordInformation.version" title="Permalink to this definition">¶</a></dt>
+<dd><p>The version id</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="istoragetransactioninformation">
+<h3><a class="toc-backref" href="#id11">IStorageTransactionInformation</a><a class="headerlink" href="#istoragetransactioninformation" title="Permalink to this headline">¶</a></h3>
+<dl class="interface">
+<dt id="ZODB.interfaces.IStorageTransactionInformation">
+<em class="property">interface </em><code class="descclassname">ZODB.interfaces.</code><code class="descname">IStorageTransactionInformation</code><a class="headerlink" href="#ZODB.interfaces.IStorageTransactionInformation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provide information about a storage transaction.</p>
+<p>Can be iterated over to retrieve the records modified in the transaction.</p>
+<dl class="method">
+<dt id="ZODB.interfaces.IStorageTransactionInformation.__iter__">
+<code class="descname">__iter__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.interfaces.IStorageTransactionInformation.__iter__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Iterate over the transaction&#8217;s records given as
+IStorageRecordInformation objects.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ZODB.interfaces.IStorageTransactionInformation.description">
+<code class="descname">description</code><em class="property"> = &lt;zope.interface.interface.Attribute object&gt;</em><a class="headerlink" href="#ZODB.interfaces.IStorageTransactionInformation.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transaction Description</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ZODB.interfaces.IStorageTransactionInformation.extension">
+<code class="descname">extension</code><em class="property"> = &lt;zope.interface.interface.Attribute object&gt;</em><a class="headerlink" href="#ZODB.interfaces.IStorageTransactionInformation.extension" title="Permalink to this definition">¶</a></dt>
+<dd><p>A dictionary carrying the transaction&#8217;s extension data</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ZODB.interfaces.IStorageTransactionInformation.status">
+<code class="descname">status</code><em class="property"> = &lt;zope.interface.interface.Attribute object&gt;</em><a class="headerlink" href="#ZODB.interfaces.IStorageTransactionInformation.status" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transaction Status</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ZODB.interfaces.IStorageTransactionInformation.tid">
+<code class="descname">tid</code><em class="property"> = &lt;zope.interface.interface.Attribute object&gt;</em><a class="headerlink" href="#ZODB.interfaces.IStorageTransactionInformation.tid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transaction id</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ZODB.interfaces.IStorageTransactionInformation.user">
+<code class="descname">user</code><em class="property"> = &lt;zope.interface.interface.Attribute object&gt;</em><a class="headerlink" href="#ZODB.interfaces.IStorageTransactionInformation.user" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transaction user</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="included-storages">
+<span id="included-storages-label"></span><h2><a class="toc-backref" href="#id12">Included storages</a><a class="headerlink" href="#included-storages" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="filestorage">
+<h3><a class="toc-backref" href="#id13">FileStorage</a><a class="headerlink" href="#filestorage" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="ZODB.FileStorage.FileStorage.FileStorage">
+<em class="property">class </em><code class="descclassname">ZODB.FileStorage.FileStorage.</code><code class="descname">FileStorage</code><span class="sig-paren">(</span><em>file_name</em>, <em>create=False</em>, <em>read_only=False</em>, <em>stop=None</em>, <em>quota=None</em>, <em>pack_gc=True</em>, <em>pack_keep_old=True</em>, <em>packer=None</em>, <em>blob_dir=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.FileStorage.FileStorage.FileStorage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Storage that saves data in a file</p>
+<dl class="method">
+<dt id="ZODB.FileStorage.FileStorage.FileStorage.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>file_name</em>, <em>create=False</em>, <em>read_only=False</em>, <em>stop=None</em>, <em>quota=None</em>, <em>pack_gc=True</em>, <em>pack_keep_old=True</em>, <em>packer=None</em>, <em>blob_dir=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.FileStorage.FileStorage.FileStorage.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a file storage</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>file_name</strong> (<em>str</em>) &#8211; Path to store data file</li>
+<li><strong>create</strong> (<em>bool</em>) &#8211; Flag indicating whether a file should be
+created even if it already exists.</li>
+<li><strong>read_only</strong> (<em>bool</em>) &#8211; Flag indicating whether the file is
+read only. Only one process is able to open the file
+non-read-only.</li>
+<li><strong>stop</strong> (<em>bytes</em>) &#8211; Time-travel transaction id
+When the file is opened, data will be read up to the given
+transaction id.  Transaction ids correspond to times and
+you can compute transaction ids for a given time using
+<a class="reference internal" href="zodb.html#ZODB.TimeStamp.TimeStamp" title="ZODB.TimeStamp.TimeStamp"><code class="xref py py-class docutils literal"><span class="pre">TimeStamp</span></code></a>.</li>
+<li><strong>quota</strong> (<em>int</em>) &#8211; File-size quota</li>
+<li><strong>pack_gc</strong> (<em>bool</em>) &#8211; Flag indicating whether garbage
+collection should be performed when packing.</li>
+<li><strong>pack_keep_old</strong> (<em>bool</em>) &#8211; flag indicating whether old data
+files should be retained after packing as a <code class="docutils literal"><span class="pre">.old</span></code> file.</li>
+<li><strong>packer</strong> (<em>callable</em>) &#8211; An alternative
+<a class="reference internal" href="#ZODB.FileStorage.interfaces.IFileStoragePacker" title="ZODB.FileStorage.interfaces.IFileStoragePacker"><code class="xref py py-interface docutils literal"><span class="pre">packer</span></code></a>.</li>
+<li><strong>blob_dir</strong> (<em>str</em>) &#8211; A blob-directory path name.
+Blobs will be supported if this option is provided.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>A file storage stores data in a single file that behaves like
+a traditional transaction log. New data records are appended
+to the end of the file.  Periodically, the file is packed to
+free up space.  When this is done, current records as of the
+pack time or later are copied to a new file, which replaces
+the old file.</p>
+<p>FileStorages keep in-memory indexes mapping object oids to the
+location of their current records in the file. Back pointers to
+previous records allow access to non-current records from the
+current records.</p>
+<p>In addition to the data file, some ancillary files are
+created. These can be lost without affecting data
+integrity, however losing the index file may cause extremely
+slow startup. Each has a name that&#8217;s a concatenation of the
+original file and a suffix. The files are listed below by
+suffix:</p>
+<dl class="docutils">
+<dt>.index</dt>
+<dd>Snapshot of the in-memory index.  This are created on
+shutdown, packing, and after rebuilding an index when one
+was not found.  For large databases, creating a
+file-storage object without an index file can take very
+long because it&#8217;s necessary to scan the data file to build
+the index.</dd>
+<dt>.lock</dt>
+<dd>A lock file preventing multiple processes from opening a
+file storage on non-read-only mode.</dd>
+<dt>.tmp</dt>
+<dd>A file used to store data being committed in the first phase
+of 2-phase commit</dd>
+<dt>.index_tmp</dt>
+<dd>A temporary file used when saving the in-memory index to
+avoid overwriting an existing index until a new index has
+been fully saved.</dd>
+<dt>.pack</dt>
+<dd>A temporary file written while packing containing current
+records as of and after the pack time.</dd>
+<dt>.old</dt>
+<dd>The previous database file after a pack.</dd>
+</dl>
+<p>When the database is packed, current records as of the pack
+time and later are written to the <code class="docutils literal"><span class="pre">.pack</span></code> file. At the end
+of packing, the <code class="docutils literal"><span class="pre">.old</span></code> file is removed, if it exists, and
+the data file is renamed to the <code class="docutils literal"><span class="pre">.old</span></code> file and finally the
+<code class="docutils literal"><span class="pre">.pack</span></code> file is rewritten to the data file.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="interface">
+<dt id="ZODB.FileStorage.interfaces.IFileStoragePacker">
+<em class="property">interface </em><code class="descclassname">ZODB.FileStorage.interfaces.</code><code class="descname">IFileStoragePacker</code><a class="headerlink" href="#ZODB.FileStorage.interfaces.IFileStoragePacker" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="ZODB.FileStorage.interfaces.IFileStoragePacker.__call__">
+<code class="descname">__call__</code><span class="sig-paren">(</span><em>storage</em>, <em>referencesf</em>, <em>stop</em>, <em>gc</em><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.FileStorage.interfaces.IFileStoragePacker.__call__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pack the file storage into a new file</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>storage</strong> (<a class="reference internal" href="#ZODB.FileStorage.FileStorage.FileStorage" title="ZODB.FileStorage.FileStorage.FileStorage"><em>FileStorage</em></a>) &#8211; The storage object to be packed</li>
+<li><strong>referencesf</strong> (<em>callable</em>) &#8211; A function that extracts object
+references from a pickle bytes string.  This is usually
+<code class="docutils literal"><span class="pre">ZODB.serialize.referencesf</span></code>.</li>
+<li><strong>stop</strong> (<em>bytes</em>) &#8211; A transaction id representing the time at
+which to stop packing.</li>
+<li><strong>gc</strong> (<em>bool</em>) &#8211; A flag indicating whether garbage collection
+should be performed.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>The new file will have the same name as the old file with
+<code class="docutils literal"><span class="pre">.pack</span></code> appended. (The packer can get the old file name via
+storage._file.name.) If blobs are supported, if the storages
+blob_dir attribute is not None or empty, then a .removed file
+must be created in the blob directory. This file contains records of
+the form:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">oid</span><span class="o">+</span><span class="n">serial</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;hex&#39;</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span>
+</pre></div>
+</div>
+<p>or, of the form:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">oid</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;hex&#39;</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span>
+</pre></div>
+</div>
+<p>If packing is unnecessary, or would not change the file, then
+no pack or removed files are created None is returned,
+otherwise a tuple is returned with:</p>
+<ul class="simple">
+<li>the size of the packed file, and</li>
+<li>the packed index</li>
+</ul>
+<p>If and only if packing was necessary (non-None) and there was
+no error, then the commit lock must be acquired.  In addition,
+it is up to FileStorage to:</p>
+<ul class="simple">
+<li>Rename the .pack file, and</li>
+<li>process the blob_dir/.removed file by removing the blobs
+corresponding to the file records.</li>
+</ul>
+</dd></dl>
+
+</dd></dl>
+
+<div class="section" id="filestorage-text-configuration">
+<h4><a class="toc-backref" href="#id14">FileStorage text configuration</a><a class="headerlink" href="#filestorage-text-configuration" title="Permalink to this headline">¶</a></h4>
+<p>File storages are configured using the <code class="docutils literal"><span class="pre">filestorage</span></code> section:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">filestorage</span><span class="o">&gt;</span>
+  <span class="n">path</span> <span class="n">Data</span><span class="o">.</span><span class="n">fs</span>
+<span class="o">&lt;/</span><span class="n">filestorage</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>which accepts the following options:</p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">blob-dir</span></code> (<em>existing-dirpath</em>)</dt>
+<dd>If supplied, the file storage will provide blob support and this
+is the name of a directory to hold blob data.  The directory will
+be created if it doesn&#8217;t exist.  If no value (or an empty value)
+is provided, then no blob support will be provided. (You can still
+use a BlobStorage to provide blob support.)</dd>
+<dt><code class="docutils literal"><span class="pre">create</span></code> (<em>boolean</em>)</dt>
+<dd>Flag that indicates whether the storage should be truncated if
+it already exists.</dd>
+<dt><code class="docutils literal"><span class="pre">pack-gc</span></code> (<em>boolean</em>, default: true)</dt>
+<dd>If false, then no garbage collection will be performed when
+packing.  This can make packing go much faster and can avoid
+problems when objects are referenced only from other
+databases.</dd>
+<dt><code class="docutils literal"><span class="pre">pack-keep-old</span></code> (<em>boolean</em>, default: true)</dt>
+<dd>If true, a copy of the database before packing is kept in a
+&#8221;.old&#8221; file.</dd>
+<dt><code class="docutils literal"><span class="pre">packer</span></code> (<em>string</em>)</dt>
+<dd>The dotted name (dotted module name and object name) of a
+packer object.  This is used to provide an alternative pack
+implementation.</dd>
+<dt><code class="docutils literal"><span class="pre">path</span></code> (<em>existing-dirpath</em>, <strong>required</strong>)</dt>
+<dd>Path name to the main storage file.  The names for
+supplemental files, including index and lock files, will be
+computed from this.</dd>
+<dt><code class="docutils literal"><span class="pre">quota</span></code> (<em>byte-size</em>)</dt>
+<dd>Maximum allowed size of the storage file.  Operations which
+would cause the size of the storage to exceed the quota will
+result in a ZODB.FileStorage.FileStorageQuotaError being
+raised.</dd>
+<dt><code class="docutils literal"><span class="pre">read-only</span></code> (<em>boolean</em>)</dt>
+<dd>If true, only reads may be executed against the storage.  Note
+that the &#8220;pack&#8221; operation is not considered a write operation
+and is still allowed on a read-only filestorage.</dd>
+</dl>
+</div>
+</div>
+<div class="section" id="mappingstorage">
+<h3><a class="toc-backref" href="#id15">MappingStorage</a><a class="headerlink" href="#mappingstorage" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="ZODB.MappingStorage.MappingStorage">
+<em class="property">class </em><code class="descclassname">ZODB.MappingStorage.</code><code class="descname">MappingStorage</code><span class="sig-paren">(</span><em>name='MappingStorage'</em><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.MappingStorage.MappingStorage" title="Permalink to this definition">¶</a></dt>
+<dd><p>In-memory storage implementation</p>
+<p>Note that this implementation is somewhat naive and inefficient
+with regard to locking.  Its implementation is primarily meant to
+be a simple illustration of storage implementation. It&#8217;s also
+useful for testing and exploration where scalability and efficiency
+are unimportant.</p>
+<dl class="method">
+<dt id="ZODB.MappingStorage.MappingStorage.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>name='MappingStorage'</em><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.MappingStorage.MappingStorage.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a mapping storage</p>
+<p>The name parameter is used by the
+<a class="reference internal" href="#ZODB.interfaces.IStorage.getName" title="ZODB.interfaces.IStorage.getName"><code class="xref py py-meth docutils literal"><span class="pre">getName()</span></code></a> and
+<a class="reference internal" href="#ZODB.interfaces.IStorage.sortKey" title="ZODB.interfaces.IStorage.sortKey"><code class="xref py py-meth docutils literal"><span class="pre">sortKey()</span></code></a> methods.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="mappingstorage-text-configuration">
+<span id="id1"></span><h3><a class="toc-backref" href="#id16">MappingStorage text configuration</a><a class="headerlink" href="#mappingstorage-text-configuration" title="Permalink to this headline">¶</a></h3>
+<p>File storages are configured using the <code class="docutils literal"><span class="pre">mappingstorage</span></code> section:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">mappingstorage</span><span class="o">&gt;</span>
+<span class="o">&lt;/</span><span class="n">mappingstorage</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>Options:</p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">name</span></code> (<em>string</em>, default: Mapping Storage)</dt>
+<dd>The storage name, used by the
+<a class="reference internal" href="#ZODB.interfaces.IStorage.getName" title="ZODB.interfaces.IStorage.getName"><code class="xref py py-meth docutils literal"><span class="pre">getName()</span></code></a> and
+<a class="reference internal" href="#ZODB.interfaces.IStorage.sortKey" title="ZODB.interfaces.IStorage.sortKey"><code class="xref py py-meth docutils literal"><span class="pre">sortKey()</span></code></a> methods.</dd>
+</dl>
+</div>
+<div class="section" id="demostorage">
+<h3><a class="toc-backref" href="#id17">DemoStorage</a><a class="headerlink" href="#demostorage" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="ZODB.DemoStorage.DemoStorage">
+<em class="property">class </em><code class="descclassname">ZODB.DemoStorage.</code><code class="descname">DemoStorage</code><span class="sig-paren">(</span><em>name=None</em>, <em>base=None</em>, <em>changes=None</em>, <em>close_base_on_close=None</em>, <em>close_changes_on_close=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.DemoStorage.DemoStorage" title="Permalink to this definition">¶</a></dt>
+<dd><p>A storage that stores changes against a read-only base database</p>
+<p>This storage was originally meant to support distribution of
+application demonstrations with populated read-only databases (on
+CDROM) and writable in-memory databases.</p>
+<p>Demo storages are extemely convenient for testing where setup of a
+base database can be shared by many tests.</p>
+<p>Demo storages are also handy for staging appplications where a
+read-only snapshot of a production database (often accomplished
+using a <a class="reference external" href="https://pypi.python.org/pypi/zc.beforestorage">beforestorage</a>) is combined
+with a changes database implemented with a
+<a class="reference internal" href="#ZODB.FileStorage.FileStorage.FileStorage" title="ZODB.FileStorage.FileStorage.FileStorage"><code class="xref py py-class docutils literal"><span class="pre">FileStorage</span></code></a>.</p>
+<dl class="method">
+<dt id="ZODB.DemoStorage.DemoStorage.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>name=None</em>, <em>base=None</em>, <em>changes=None</em>, <em>close_base_on_close=None</em>, <em>close_changes_on_close=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.DemoStorage.DemoStorage.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a demo storage</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> (<em>str</em>) &#8211; The storage name used by the
+<a class="reference internal" href="#ZODB.interfaces.IStorage.getName" title="ZODB.interfaces.IStorage.getName"><code class="xref py py-meth docutils literal"><span class="pre">getName()</span></code></a> and
+<a class="reference internal" href="#ZODB.interfaces.IStorage.sortKey" title="ZODB.interfaces.IStorage.sortKey"><code class="xref py py-meth docutils literal"><span class="pre">sortKey()</span></code></a> methods.</li>
+<li><strong>base</strong> (<em>object</em>) &#8211; base storage</li>
+<li><strong>changes</strong> (<em>object</em>) &#8211; changes storage</li>
+<li><strong>close_base_on_close</strong> (<em>bool</em>) &#8211; A Flag indicating whether the base
+database should be closed when the demo storage is closed.</li>
+<li><strong>close_changes_on_close</strong> (<em>bool</em>) &#8211; A Flag indicating whether the
+changes database should be closed when the demo storage is closed.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>If a base database isn&#8217;t provided, a
+<a class="reference internal" href="#ZODB.MappingStorage.MappingStorage" title="ZODB.MappingStorage.MappingStorage"><code class="xref py py-class docutils literal"><span class="pre">MappingStorage</span></code></a> will be
+constructed and used.</p>
+<p>If <code class="docutils literal"><span class="pre">close_base_on_close</span></code> isn&#8217;t specified, it will be <code class="docutils literal"><span class="pre">True</span></code> if
+a base database was provided and <code class="docutils literal"><span class="pre">False</span></code> otherwise.</p>
+<p>If a changes database isn&#8217;t provided, a
+<a class="reference internal" href="#ZODB.MappingStorage.MappingStorage" title="ZODB.MappingStorage.MappingStorage"><code class="xref py py-class docutils literal"><span class="pre">MappingStorage</span></code></a> will be
+constructed and used and blob support will be provided using a
+temporary blob directory.</p>
+<p>If <code class="docutils literal"><span class="pre">close_changes_on_close</span></code> isn&#8217;t specified, it will be <code class="docutils literal"><span class="pre">True</span></code> if
+a changes database was provided and <code class="docutils literal"><span class="pre">False</span></code> otherwise.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ZODB.DemoStorage.DemoStorage.pop">
+<code class="descname">pop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.DemoStorage.DemoStorage.pop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Close the changes database and return the base.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ZODB.DemoStorage.DemoStorage.push">
+<code class="descname">push</code><span class="sig-paren">(</span><em>changes=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ZODB.DemoStorage.DemoStorage.push" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new demo storage using the storage as a base.</p>
+<p>The given changes are used as the changes for the returned
+storage and <code class="docutils literal"><span class="pre">False</span></code> is passed as <code class="docutils literal"><span class="pre">close_base_on_close</span></code>.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="demostorage-text-configuration">
+<h3><a class="toc-backref" href="#id18">DemoStorage text configuration</a><a class="headerlink" href="#demostorage-text-configuration" title="Permalink to this headline">¶</a></h3>
+<p>Demo storages are configured using the <code class="docutils literal"><span class="pre">demostorage</span></code> section:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">demostorage</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">filestorage</span> <span class="n">base</span><span class="o">&gt;</span>
+    <span class="n">path</span> <span class="n">base</span><span class="o">.</span><span class="n">fs</span>
+  <span class="o">&lt;/</span><span class="n">filestorage</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">mappingstorage</span> <span class="n">changes</span><span class="o">&gt;</span>
+    <span class="n">name</span> <span class="n">Changes</span>
+  <span class="o">&lt;/</span><span class="n">mappingstorage</span><span class="o">&gt;</span>
+<span class="o">&lt;/</span><span class="n">demostorage</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">demostorage</span></code> sections can contain up to 2 storage subsections,
+named <code class="docutils literal"><span class="pre">base</span></code> and <code class="docutils literal"><span class="pre">changes</span></code>, specifying the demo storage&#8217;s base and
+changes storages.  See <a class="reference internal" href="#ZODB.DemoStorage.DemoStorage.__init__" title="ZODB.DemoStorage.DemoStorage.__init__"><code class="xref py py-meth docutils literal"><span class="pre">ZODB.DemoStorage.DemoStorage.__init__()</span></code></a>
+for more on the base anc changes storages.</p>
+<p>Options:</p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">name</span></code> (<em>string</em>)</dt>
+<dd>The storage name, used by the
+<a class="reference internal" href="#ZODB.interfaces.IStorage.getName" title="ZODB.interfaces.IStorage.getName"><code class="xref py py-meth docutils literal"><span class="pre">getName()</span></code></a> and
+<a class="reference internal" href="#ZODB.interfaces.IStorage.sortKey" title="ZODB.interfaces.IStorage.sortKey"><code class="xref py py-meth docutils literal"><span class="pre">sortKey()</span></code></a> methods.</dd>
+</dl>
+</div>
+</div>
+<div class="section" id="noteworthy-non-included-storages">
+<h2><a class="toc-backref" href="#id19">Noteworthy non-included storages</a><a class="headerlink" href="#noteworthy-non-included-storages" title="Permalink to this headline">¶</a></h2>
+<p>A number of important ZODB storages are distributed separately, including:</p>
+<dl class="docutils">
+<dt>RelStorage</dt>
+<dd><p class="first"><a class="reference external" href="http://relstorage.readthedocs.io/en/latest/">RelStorage</a>
+stores data in relational databases.  This is especially
+useful when you have requirements or existing infrastructure for
+storing data in relational databases.  Unlike the included storages,
+multiple processes can share the same database.</p>
+<p class="last">For more information, see <a class="reference external" href="http://relstorage.readthedocs.io/en/latest/">http://relstorage.readthedocs.io/en/latest/</a>.</p>
+</dd>
+<dt>ZEO</dt>
+<dd><p class="first"><a class="reference external" href="https://github.com/zopefoundation/ZEO">ZEO</a> is a client-server
+database implementation for ZODB.  To use ZEO, you run a ZEO server,
+and use ZEO clients in your application.  Unlike the included
+storages, multiple processes can share the same database.</p>
+<p class="last">For more information, see <a class="reference external" href="https://github.com/zopefoundation/ZEO">https://github.com/zopefoundation/ZEO</a>.</p>
+</dd>
+<dt>ZRS</dt>
+<dd><p class="first"><a class="reference external" href="https://github.com/zc/zrs">ZRS</a>
+provides replication from one database to another.  It&#8217;s most
+commonly used with ZEO.  With ZRS, you create a ZRS primary database
+around a <a class="reference internal" href="#ZODB.FileStorage.FileStorage.FileStorage" title="ZODB.FileStorage.FileStorage.FileStorage"><code class="xref py py-class docutils literal"><span class="pre">FileStorage</span></code></a> and in a
+separate process, you creatre a ZRS secondary storage around any
+<a class="reference internal" href="#ZODB.interfaces.IStorage" title="ZODB.interfaces.IStorage"><code class="xref py py-interface docutils literal"><span class="pre">storage</span></code></a>. As transactions are
+committed on the primary, they&#8217;re copied asynchronously to
+secondaries.</p>
+<p class="last">For more information, see <a class="reference external" href="https://github.com/zc/zrs">https://github.com/zc/zrs</a>.</p>
+</dd>
+<dt>zlibstorage</dt>
+<dd><p class="first"><a class="reference external" href="https://pypi.python.org/pypi/zc.zlibstorage">zlibstorage</a>
+compresses database records using the compression
+algorithm used by <a class="reference external" href="http://www.gzip.org/">gzip</a>.</p>
+<p class="last">For more information, see <a class="reference external" href="https://pypi.python.org/pypi/zc.zlibstorage">https://pypi.python.org/pypi/zc.zlibstorage</a>.</p>
+</dd>
+<dt>beforestorage</dt>
+<dd><p class="first"><a class="reference external" href="https://pypi.python.org/pypi/zc.beforestorage">beforestorage</a>
+provides a point-in-time view of a database that might
+be changing.  This can be useful to provide a non-changing view of a
+production database for use with a <a class="reference internal" href="#ZODB.DemoStorage.DemoStorage" title="ZODB.DemoStorage.DemoStorage"><code class="xref py py-class docutils literal"><span class="pre">DemoStorage</span></code></a>.</p>
+<p class="last">For more information, see <a class="reference external" href="https://pypi.python.org/pypi/zc.beforestorage">https://pypi.python.org/pypi/zc.beforestorage</a>.</p>
+</dd>
+<dt>cipher.encryptingstorage</dt>
+<dd><p class="first"><a class="reference external" href="https://pypi.python.org/pypi/cipher.encryptingstorage/">cipher.encryptingstorage</a> provided
+compression and encryption of database records.</p>
+<p class="last">For more information, see
+<a class="reference external" href="https://pypi.python.org/pypi/cipher.encryptingstorage/">https://pypi.python.org/pypi/cipher.encryptingstorage/</a>.</p>
+</dd>
+</dl>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/zodb.png" alt="Logo"/>
+            </a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Storage APIs</a><ul>
+<li><a class="reference internal" href="#storage-interfaces">Storage interfaces</a><ul>
+<li><a class="reference internal" href="#istorage">IStorage</a></li>
+<li><a class="reference internal" href="#istorageiteration">IStorageIteration</a></li>
+<li><a class="reference internal" href="#istorageundoable">IStorageUndoable</a></li>
+<li><a class="reference internal" href="#istoragecurrentrecorditeration">IStorageCurrentRecordIteration</a></li>
+<li><a class="reference internal" href="#iblobstorage">IBlobStorage</a></li>
+<li><a class="reference internal" href="#istoragerecordinformation">IStorageRecordInformation</a></li>
+<li><a class="reference internal" href="#istoragetransactioninformation">IStorageTransactionInformation</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#included-storages">Included storages</a><ul>
+<li><a class="reference internal" href="#filestorage">FileStorage</a><ul>
+<li><a class="reference internal" href="#filestorage-text-configuration">FileStorage text configuration</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mappingstorage">MappingStorage</a></li>
+<li><a class="reference internal" href="#mappingstorage-text-configuration">MappingStorage text configuration</a></li>
+<li><a class="reference internal" href="#demostorage">DemoStorage</a></li>
+<li><a class="reference internal" href="#demostorage-text-configuration">DemoStorage text configuration</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#noteworthy-non-included-storages">Noteworthy non-included storages</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Reference Documentation</a><ul>
+      <li>Previous: <a href="zodb.html" title="previous chapter">ZODB APIs</a></li>
+      <li>Next: <a href="transaction.html" title="next chapter">Transactions</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/reference/storages.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2009-2016, Zope Foundation.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="../_sources/reference/storages.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

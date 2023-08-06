@@ -1,0 +1,482 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Introduction to the ZODB (by Michel Pelletier) &#8212; ZODB  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../_static/zodb.ico"/>
+    <link rel="top" title="ZODB  documentation" href="../index.html" />
+    <link rel="up" title="ZODB articles" href="index.html" />
+    <link rel="next" title="Advanced ZODB for Python Programmers" href="ZODB2.html" />
+    <link rel="prev" title="An overview of the ZODB (by Laurence Rowe)" href="ZODB-overview.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="introduction-to-the-zodb-by-michel-pelletier">
+<h1>Introduction to the ZODB (by Michel Pelletier)<a class="headerlink" href="#introduction-to-the-zodb-by-michel-pelletier" title="Permalink to this headline">¶</a></h1>
+<p>In this article, we cover the very basics of the Zope Object
+Database (ZODB) for Python programmers.  This short article
+documents almost everything you need to know about using this
+powerful object database in Python. In a later article, I will
+cover some of the more advanced features of ZODB for Python
+programmers.</p>
+<p>ZODB is a database for Python objects that comes with
+<a class="reference external" href="http://www.zope.org">Zope</a>.  If you&#8217;ve ever worked with a
+relational database, like PostgreSQL, MySQL, or Oracle, than you
+should be familiar with the role of a database.  It&#8217;s a long term
+or short term storage for your application data.</p>
+<p>For many tasks, relational databases are clearly a good solution,
+but sometimes relational databases don&#8217;t fit well with your object
+model.  If you have lots of different kinds of interconnected
+objects with complex relationships, and changing schemas then ZODB
+might be worth giving a try.</p>
+<p>A major feature of ZODB is transparency.  You do not need to write
+any code to explicitly read or write your objects to or from a
+database.  You just put your <em>persistent</em> objects into a container
+that works just like a Python dictionary.  Everything inside this
+dictionary is saved in the database.  This dictionary is said to
+be the &#8220;root&#8221; of the database. It&#8217;s like a magic bag; any Python
+object that you put inside it becomes persistent.</p>
+<p>Actually there are a few restrictions on what you can store in the
+ZODB. You can store any objects that can be &#8220;pickled&#8221; into a
+standard, cross-platform serial format.  Objects like lists,
+dictionaries, and numbers can be pickled.  Objects like files,
+sockets, and Python code objects, cannot be stored in the database
+because they cannot be pickled.  For more information on
+&#8220;pickling&#8221;, see the Python pickle module documentation at
+<a class="reference external" href="http://www.python.org/doc/current/lib/module-pickle.html">http://www.python.org/doc/current/lib/module-pickle.html</a></p>
+<div class="section" id="a-simple-example">
+<h2>A Simple Example<a class="headerlink" href="#a-simple-example" title="Permalink to this headline">¶</a></h2>
+<p>The first thing you need to do to start working with ZODB is to
+create a &#8220;root object&#8221;.  This process involves first opening a
+connection to a &#8220;storage&#8221;, which is the actual back-end that stores
+your data.</p>
+<p>ZODB supports many pluggable storage back-ends, but for the
+purposes of this article I&#8217;m going to show you how to use the
+&#8216;FileStorage&#8217; back-end storage, which stores your object data in a
+file.  Other storages include storing objects in relational
+databases, Berkeley databases, and a client to server storage that
+stores objects on a remote storage server.</p>
+<p>To set up a ZODB, you must first install it.  ZODB comes with
+Zope, so the easiest way to install ZODB is to install Zope and
+use the ZODB that comes with your Zope installation.  For those of
+you who don&#8217;t want all of Zope, but just ZODB, see the
+instructions for downloading StandaloneZODB from the <a class="reference external" href="http://www.zope.org/Wikis/ZODB/FrontPage">ZODB web
+page</a>.</p>
+<p>StandaloneZODB can be installed into your system&#8217;s Python
+libraries using the standard &#8216;distutils&#8217; Python module.</p>
+<p>After installing ZODB, you can start to experiment with it right
+from the Python command line interpreter.  For example, try the
+following python code in your interpreter:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">ZODB</span> <span class="k">import</span> <span class="n">FileStorage</span><span class="p">,</span> <span class="n">DB</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">storage</span> <span class="o">=</span> <span class="n">FileStorage</span><span class="o">.</span><span class="n">FileStorage</span><span class="p">(</span><span class="s1">&#39;mydatabase.fs&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">db</span> <span class="o">=</span> <span class="n">DB</span><span class="p">(</span><span class="n">storage</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">connection</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">open</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">root</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">root</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Here, you create storage and use the &#8216;mydatabse.fs&#8217; file to store
+the object information.  Then, you create a database that uses
+that storage.</p>
+<p>Next, the database needs to be &#8220;opened&#8221; by calling the &#8216;open()&#8217;
+method.  This will return a connection object to the database.
+The connection object then gives you access to the &#8216;root&#8217; of the
+database with the &#8216;root()&#8217; method.</p>
+<p>The &#8216;root&#8217; object is the dictionary that holds all of your
+persistent objects.  For example, you can store a simple list of
+strings in the root object:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">root</span><span class="p">[</span><span class="s1">&#39;employees&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Mary&#39;</span><span class="p">,</span> <span class="s1">&#39;Jo&#39;</span><span class="p">,</span> <span class="s1">&#39;Bob&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Now, you have changed the persistent database by adding a new
+object, but this change is so far only temporary.  In order to
+make the change permanent, you must commit the current
+transaction:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">transaction</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">transaction</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Transactions group of lots of changes in one atomic operation.  In
+a later article, I&#8217;ll show you how this is a very powerful
+feature.  For now, you can think of committing transactions as
+&#8220;checkpoints&#8221; where you save the changes you&#8217;ve made to your
+objects so far.  Later on, I&#8217;ll show you how to abort those
+changes, and how to undo them after they are committed.</p>
+<p>Now let&#8217;s find out if our data was actually saved. First close the
+database connection:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">connection</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Then quit Python. Now start the Python interpreter up again, and
+connect to the database you just created:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">ZODB</span> <span class="k">import</span> <span class="n">FileStorage</span><span class="p">,</span> <span class="n">DB</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">storage</span> <span class="o">=</span> <span class="n">FileStorage</span><span class="o">.</span><span class="n">FileStorage</span><span class="p">(</span><span class="s1">&#39;mydatabase.fs&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">db</span> <span class="o">=</span> <span class="n">DB</span><span class="p">(</span><span class="n">storage</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">connection</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">open</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">root</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">root</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Now, let&#8217;s see what&#8217;s in the root:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">root</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+<span class="go">[(&#39;employees&#39;, [&#39;Mary&#39;, &#39;Jo&#39;, &#39;Bob&#39;])]</span>
+</pre></div>
+</div>
+<p>There&#8217;s your list.  If you had used a relational database, you
+would have had to issue a SQL query to save even a simple Python
+list like the above example.  You would have also needed some code
+to convert a SQL query back into the list when you wanted to use
+it again.  You don&#8217;t have to do any of this work when using ZODB.
+Using ZODB is almost completely transparent, in fact, ZODB based
+programs often look suspiciously simple!</p>
+<p>Keep in mind that ZODB&#8217;s persistent dictionary is just the tip of
+the persistent iceberg.  Persistent objects can have attributes
+that are themselves persistent.  In other words, even though you
+may have only one or two &#8220;top level&#8221; persistent objects as values
+in the persistent dictionary, you can still have thousands of
+sub-objects below them.  This is, in fact, how Zope does it.  In
+Zope, there is only <em>one</em> top level object that is the root
+&#8220;application&#8221; object for all other objects in Zope.</p>
+</div>
+<div class="section" id="detecting-changes">
+<h2>Detecting Changes<a class="headerlink" href="#detecting-changes" title="Permalink to this headline">¶</a></h2>
+<p>One thing that makes ZODB so easy to use is that it doesn&#8217;t
+require you to keep track of your changes. All you have to do is
+to make changes to persistent objects and then commit a
+transaction. Anything that has changed will be stored in the
+database.</p>
+<p>There is one exception to this rule when it comes to simple
+mutable Python types like lists and dictionaries.  If you change a
+list or dictionary that is already stored in the database, then
+the change will <em>not</em> take effect.  Consider this example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">root</span><span class="p">[</span><span class="s1">&#39;employees&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Bill&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">transaction</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>You would expect this to work, but it doesn&#8217;t.  The reason for
+this is that ZODB cannot detect that the &#8216;employees&#8217; list
+changed. The &#8216;employees&#8217; list is a mutable object that does not
+notify ZODB when it changes.</p>
+<p>There are a couple of very simple ways around this problem.  The
+simplest is to re-assign the changed object:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">employees</span> <span class="o">=</span> <span class="n">root</span><span class="p">[</span><span class="s1">&#39;employees&#39;</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">employees</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Bill&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">root</span><span class="p">[</span><span class="s1">&#39;employees&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">employees</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">transaction</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Here, you move the employees list to a local variable, change the
+list, and then <em>reassign</em> the list back into the database and
+commit the transaction.  This reassignment notifies the database
+that the list changed and needs to be saved to the database.</p>
+<p>Later in this article, we&#8217;ll show you another technique for
+notifying the ZODB that your objects have changed.  Also, in a
+later article, we&#8217;ll show you how to use simple, ZODB-aware list
+and dictionary classes that come pre-packaged with ZODB for your
+convenience.</p>
+</div>
+<div class="section" id="persistent-classes">
+<h2>Persistent Classes<a class="headerlink" href="#persistent-classes" title="Permalink to this headline">¶</a></h2>
+<p>The easiest way to create mutable objects that notify the ZODB of
+changes is to create a persistent class.  Persistent classes let
+you store your own kinds of objects in the database.  For example,
+consider a class that represents a employee:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">ZODB</span>
+<span class="kn">from</span> <span class="nn">Persistence</span> <span class="k">import</span> <span class="n">Persistent</span>
+
+<span class="k">class</span> <span class="nc">Employee</span><span class="p">(</span><span class="n">Persistent</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">setName</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+</pre></div>
+</div>
+<p>To create a persistent class, simply subclass from
+&#8216;Persistent.Persistent&#8217;. Because of some special magic that ZODB
+does, you must first import ZODB before you can import Persistent.
+The &#8216;Persistent&#8217; module is actually <em>created</em> when you import
+&#8216;ZODB&#8217;.</p>
+<p>Now, you can put Employee objects in your database:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">employees</span><span class="o">=</span><span class="p">[]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;Mary&#39;</span><span class="p">,</span> <span class="s1">&#39;Joe&#39;</span><span class="p">,</span> <span class="s1">&#39;Bob&#39;</span><span class="p">]:</span>
+<span class="gp">... </span>    <span class="n">employee</span> <span class="o">=</span> <span class="n">Employee</span><span class="p">()</span>
+<span class="gp">... </span>    <span class="n">employee</span><span class="o">.</span><span class="n">setName</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">employees</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">employee</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">root</span><span class="p">[</span><span class="s1">&#39;employees&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">employees</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">transaction</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Don&#8217;t forget to call &#8216;commit()&#8217;, so that the changes you have made
+so far are committed to the database, and a new transaction is
+begun.</p>
+<p>Now you can change your employees and they will be saved in the
+database. For example you can change Bob&#8217;s name to &#8220;Robert&#8221;:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bob</span><span class="o">=</span><span class="n">root</span><span class="p">[</span><span class="s1">&#39;employees&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bob</span><span class="o">.</span><span class="n">setName</span><span class="p">(</span><span class="s1">&#39;Robert&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">transaction</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>You can even change attributes of persistent instaces without
+calling methods:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bob</span><span class="o">=</span><span class="n">root</span><span class="p">[</span><span class="s1">&#39;employees&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bob</span><span class="o">.</span><span class="n">_coffee_prefs</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;Cream&#39;</span><span class="p">,</span> <span class="s1">&#39;Sugar&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">transaction</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>It doesn&#8217;t matter whether you change an attribute directly, or
+whether it&#8217;s changed by a method.  As you can tell, all of the
+normal Python language rules still work as you&#8217;d expect.</p>
+</div>
+<div class="section" id="mutable-attributes">
+<h2>Mutable Attributes<a class="headerlink" href="#mutable-attributes" title="Permalink to this headline">¶</a></h2>
+<p>Earlier you saw how ZODB can&#8217;t detect changes to normal mutable
+objects like Python lists. This issue still affects you when using
+persistent instances. This is because persistent instances can
+have attributes which are normal mutable objects. For example,
+consider this class:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Employee</span><span class="p">(</span><span class="n">Persistent</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tasks</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">setName</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+
+    <span class="k">def</span> <span class="nf">addTask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>When you call &#8216;addTask&#8217;, the ZODB won&#8217;t know that the mutable
+attribute &#8216;self.tasks&#8217; has changed.  As you saw earlier, you can
+reassign &#8216;self.tasks&#8217; after you change it to get around this
+problem. However, when you&#8217;re using persistent instances, you have
+another choice. You can signal the ZODB that your instance has
+changed with the &#8216;_p_changed&#8217; attribute:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Employee</span><span class="p">(</span><span class="n">Persistent</span><span class="p">):</span>
+    <span class="o">...</span>
+
+    <span class="k">def</span> <span class="nf">addTask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_p_changed</span> <span class="o">=</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>To signal that this object has change, set the &#8216;_p_changed&#8217;
+attribute to 1. You only need to signal ZODB once, even if you
+change many mutable attributes.</p>
+<p>The &#8216;_p_changed&#8217; flag leads us to one of the few rules of you must
+follow when creating persistent classes: your instances <em>cannot</em>
+have attributes that begin with &#8216;_p_&#8217;, those names are reserved
+for use by the ZODB.</p>
+</div>
+<div class="section" id="a-complete-example">
+<h2>A Complete Example<a class="headerlink" href="#a-complete-example" title="Permalink to this headline">¶</a></h2>
+<p>Here&#8217;s a complete example program. It builds on the employee
+examples used so far:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ZODB</span> <span class="k">import</span> <span class="n">DB</span>
+<span class="kn">from</span> <span class="nn">ZODB.FileStorage</span> <span class="k">import</span> <span class="n">FileStorage</span>
+<span class="kn">from</span> <span class="nn">ZODB.PersistentMapping</span> <span class="k">import</span> <span class="n">PersistentMapping</span>
+<span class="kn">from</span> <span class="nn">Persistence</span> <span class="k">import</span> <span class="n">Persistent</span>
+<span class="kn">import</span> <span class="nn">transaction</span>
+
+<span class="k">class</span> <span class="nc">Employee</span><span class="p">(</span><span class="n">Persistent</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;An employee&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">manager</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="o">=</span><span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">=</span><span class="n">manager</span>
+
+<span class="c1"># setup the database</span>
+<span class="n">storage</span><span class="o">=</span><span class="n">FileStorage</span><span class="p">(</span><span class="s2">&quot;employees.fs&quot;</span><span class="p">)</span>
+<span class="n">db</span><span class="o">=</span><span class="n">DB</span><span class="p">(</span><span class="n">storage</span><span class="p">)</span>
+<span class="n">connection</span><span class="o">=</span><span class="n">db</span><span class="o">.</span><span class="n">open</span><span class="p">()</span>
+<span class="n">root</span><span class="o">=</span><span class="n">connection</span><span class="o">.</span><span class="n">root</span><span class="p">()</span>
+
+<span class="c1"># get the employees mapping, creating an empty mapping if</span>
+<span class="c1"># necessary</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">root</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="s2">&quot;employees&quot;</span><span class="p">):</span>
+    <span class="n">root</span><span class="p">[</span><span class="s2">&quot;employees&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">employees</span><span class="o">=</span><span class="n">root</span><span class="p">[</span><span class="s2">&quot;employees&quot;</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">listEmployees</span><span class="p">():</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">employees</span><span class="o">.</span><span class="n">values</span><span class="p">())</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="s2">&quot;There are no employees.&quot;</span>
+        <span class="nb">print</span>
+        <span class="k">return</span>
+    <span class="k">for</span> <span class="n">employee</span> <span class="ow">in</span> <span class="n">employees</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+        <span class="nb">print</span> <span class="s2">&quot;Name: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">employee</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">if</span> <span class="n">employee</span><span class="o">.</span><span class="n">manager</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">print</span> <span class="s2">&quot;Manager&#39;s name: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">employee</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">name</span>
+        <span class="nb">print</span>
+
+<span class="k">def</span> <span class="nf">addEmployee</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">manager_name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">employees</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+        <span class="nb">print</span> <span class="s2">&quot;There is already an employee with this name.&quot;</span>
+        <span class="k">return</span>
+    <span class="k">if</span> <span class="n">manager_name</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">manager</span><span class="o">=</span><span class="n">employees</span><span class="p">[</span><span class="n">manager_name</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="nb">print</span>
+            <span class="nb">print</span> <span class="s2">&quot;No such manager&quot;</span>
+            <span class="nb">print</span>
+            <span class="k">return</span>
+        <span class="n">employees</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">=</span><span class="n">Employee</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">manager</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">employees</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">=</span><span class="n">Employee</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="n">root</span><span class="p">[</span><span class="s1">&#39;employees&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">employees</span>  <span class="c1"># reassign to change</span>
+    <span class="n">transaction</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+    <span class="nb">print</span> <span class="s2">&quot;Employee </span><span class="si">%s</span><span class="s2"> added.&quot;</span> <span class="o">%</span> <span class="n">name</span>
+    <span class="nb">print</span>
+
+
+<span class="k">if</span> <span class="n">__name__</span><span class="o">==</span><span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">choice</span><span class="o">=</span><span class="n">raw_input</span><span class="p">(</span><span class="s2">&quot;Press &#39;L&#39; to list employees, &#39;A&#39; to add&quot;</span>
+                         <span class="s2">&quot;an employee, or &#39;Q&#39; to quit:&quot;</span><span class="p">)</span>
+        <span class="n">choice</span><span class="o">=</span><span class="n">choice</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">choice</span><span class="o">==</span><span class="s2">&quot;l&quot;</span><span class="p">:</span>
+            <span class="n">listEmployees</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">choice</span><span class="o">==</span><span class="s2">&quot;a&quot;</span><span class="p">:</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">raw_input</span><span class="p">(</span><span class="s2">&quot;Employee name:&quot;</span><span class="p">)</span>
+            <span class="n">manager_name</span><span class="o">=</span><span class="n">raw_input</span><span class="p">(</span><span class="s2">&quot;Manager name:&quot;</span><span class="p">)</span>
+            <span class="n">addEmployee</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">manager_name</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">choice</span><span class="o">==</span><span class="s2">&quot;q&quot;</span><span class="p">:</span>
+            <span class="k">break</span>
+
+    <span class="c1"># close database</span>
+    <span class="n">connection</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This program demonstrates a couple interesting things. First, this
+program shows how persistent objects can refer to each other. The
+&#8216;self.manger&#8217; attribute of &#8216;Employee&#8217; instances can refer to other
+&#8216;Employee&#8217; instances. Unlike a relational database, there is no
+need to use indirection such as object ids when referring from one
+persistent object to another. You can just use normal Python
+references. In fact, you can even use circular references.</p>
+<p>A final trick used by this program is to look for a persistent
+object and create it if it is not present. This allows you to just
+run this program without having to run a setup script to build the
+database first. If there is not database present, the program will
+create one and initialize it.</p>
+</div>
+<div class="section" id="conclusion">
+<h2>Conclusion<a class="headerlink" href="#conclusion" title="Permalink to this headline">¶</a></h2>
+<p>ZODB is a very simple, transparent object database for Python that
+is a freely available component of the Zope application server.
+As these examples illustrate, only a few lines of code are needed
+to start storing Python objects in ZODB, with no need to write SQL
+queries.  In the next article on ZODB, we&#8217;ll show you some more
+advanced techniques for using ZODB, like using ZODB&#8217;s distributed
+object protocol to distribute your persistent objects across many
+machines.</p>
+<p>ZODB Resources</p>
+<ul class="simple">
+<li><a class="reference external" href="http://web.archive.org/web/20030606003753/http://amk.ca/zodb/">Andrew Kuchling&#8217;s &#8220;ZODB pages&#8221;</a> (archived)</li>
+<li><a class="reference external" href="http://www.zope.org/Wikis/ZODB/FrontPage">Zope.org &#8220;ZODB Wiki&#8221;</a></li>
+<li><a class="reference external" href="http://www.python.org/workshops/2000-01/proceedings/papers/fulton/zodb3.html">Jim Fulton&#8217;s &#8220;Introduction to the Zope Object Database&#8221;</a></li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/zodb.png" alt="Logo"/>
+            </a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Introduction to the ZODB (by Michel Pelletier)</a><ul>
+<li><a class="reference internal" href="#a-simple-example">A Simple Example</a></li>
+<li><a class="reference internal" href="#detecting-changes">Detecting Changes</a></li>
+<li><a class="reference internal" href="#persistent-classes">Persistent Classes</a></li>
+<li><a class="reference internal" href="#mutable-attributes">Mutable Attributes</a></li>
+<li><a class="reference internal" href="#a-complete-example">A Complete Example</a></li>
+<li><a class="reference internal" href="#conclusion">Conclusion</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">ZODB articles</a><ul>
+      <li>Previous: <a href="ZODB-overview.html" title="previous chapter">An overview of the ZODB (by Laurence Rowe)</a></li>
+      <li>Next: <a href="ZODB2.html" title="next chapter">Advanced ZODB for Python Programmers</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/articles/ZODB1.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2009-2016, Zope Foundation.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="../_sources/articles/ZODB1.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,273 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Introduction &#8212; ZODB  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/zodb.ico"/>
+    <link rel="top" title="ZODB  documentation" href="../../index.html" />
+    <link rel="up" title="Very old ZODB programming guide" href="index.html" />
+    <link rel="next" title="ZODB Programming" href="prog-zodb.html" />
+    <link rel="prev" title="Very old ZODB programming guide" href="index.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="introduction">
+<h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
+<p>This guide explains how to write Python programs that use the Z Object Database
+(ZODB) and Zope Enterprise Objects (ZEO).  The latest version of the guide is
+always available at <a class="reference external" href="http://www.zope.org/Wikis/ZODB/guide/index.html">http://www.zope.org/Wikis/ZODB/guide/index.html</a>.</p>
+<div class="section" id="what-is-the-zodb">
+<h2>What is the ZODB?<a class="headerlink" href="#what-is-the-zodb" title="Permalink to this headline">¶</a></h2>
+<p>The ZODB is a persistence system for Python objects.  Persistent programming
+languages provide facilities that automatically write objects to disk and read
+them in again when they&#8217;re required by a running program.  By installing the
+ZODB, you add such facilities to Python.</p>
+<p>It&#8217;s certainly possible to build your own system for making Python objects
+persistent.  The usual starting points are the <code class="xref py py-mod docutils literal"><span class="pre">pickle</span></code> module, for
+converting objects into a string representation, and various database modules,
+such as the <code class="xref py py-mod docutils literal"><span class="pre">gdbm</span></code> or <code class="xref py py-mod docutils literal"><span class="pre">bsddb</span></code> modules, that provide ways to write
+strings to disk and read them back.  It&#8217;s straightforward to combine the
+<code class="xref py py-mod docutils literal"><span class="pre">pickle</span></code> module and a database module to store and retrieve objects, and in
+fact the <code class="xref py py-mod docutils literal"><span class="pre">shelve</span></code> module, included in Python&#8217;s standard library, does this.</p>
+<p>The downside is that the programmer has to explicitly manage objects, reading an
+object when it&#8217;s needed and writing it out to disk when the object is no longer
+required.  The ZODB manages objects for you, keeping them in a cache, writing
+them out to disk when they are modified, and dropping them from the cache if
+they haven&#8217;t been used in a while.</p>
+</div>
+<div class="section" id="oodbs-vs-relational-dbs">
+<h2>OODBs vs. Relational DBs<a class="headerlink" href="#oodbs-vs-relational-dbs" title="Permalink to this headline">¶</a></h2>
+<p>Another way to look at it is that the ZODB is a Python-specific object-oriented
+database (OODB).  Commercial object databases for C++ or Java often require that
+you jump through some hoops, such as using a special preprocessor or avoiding
+certain data types.  As we&#8217;ll see, the ZODB has some hoops of its own to jump
+through, but in comparison the naturalness of the ZODB is astonishing.</p>
+<p>Relational databases (RDBs) are far more common than OODBs. Relational databases
+store information in tables; a table consists of any number of rows, each row
+containing several columns of information.  (Rows are more formally called
+relations, which is where the term &#8220;relational database&#8221; originates.)</p>
+<p>Let&#8217;s look at a concrete example.  The example comes from my day job working for
+the MEMS Exchange, in a greatly simplified version.  The job is to track process
+runs, which are lists of manufacturing steps to be performed in a semiconductor
+fab.  A run is owned by a particular user, and has a name and assigned ID
+number.  Runs consist of a number of operations; an operation is a single step
+to be performed, such as depositing something on a wafer or etching something
+off it.</p>
+<p>Operations may have parameters, which are additional information required to
+perform an operation.  For example, if you&#8217;re depositing something on a wafer,
+you need to know two things: 1) what you&#8217;re depositing, and 2) how much should
+be deposited.  You might deposit 100 microns of silicon oxide, or 1 micron of
+copper.</p>
+<p>Mapping these structures to a relational database is straightforward:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">CREATE</span> <span class="n">TABLE</span> <span class="n">runs</span> <span class="p">(</span>
+  <span class="nb">int</span>      <span class="n">run_id</span><span class="p">,</span>
+  <span class="n">varchar</span>  <span class="n">owner</span><span class="p">,</span>
+  <span class="n">varchar</span>  <span class="n">title</span><span class="p">,</span>
+  <span class="nb">int</span>      <span class="n">acct_num</span><span class="p">,</span>
+  <span class="n">primary</span> <span class="n">key</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
+<span class="p">);</span>
+
+<span class="n">CREATE</span> <span class="n">TABLE</span> <span class="n">operations</span> <span class="p">(</span>
+  <span class="nb">int</span>      <span class="n">run_id</span><span class="p">,</span>
+  <span class="nb">int</span>      <span class="n">step_num</span><span class="p">,</span>
+  <span class="n">varchar</span>  <span class="n">process_id</span><span class="p">,</span>
+  <span class="n">PRIMARY</span> <span class="n">KEY</span><span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="n">step_num</span><span class="p">),</span>
+  <span class="n">FOREIGN</span> <span class="n">KEY</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span> <span class="n">REFERENCES</span> <span class="n">runs</span><span class="p">(</span><span class="n">run_id</span><span class="p">),</span>
+<span class="p">);</span>
+
+<span class="n">CREATE</span> <span class="n">TABLE</span> <span class="n">parameters</span> <span class="p">(</span>
+  <span class="nb">int</span>      <span class="n">run_id</span><span class="p">,</span>
+  <span class="nb">int</span>      <span class="n">step_num</span><span class="p">,</span>
+  <span class="n">varchar</span>  <span class="n">param_name</span><span class="p">,</span>
+  <span class="n">varchar</span>  <span class="n">param_value</span><span class="p">,</span>
+  <span class="n">PRIMARY</span> <span class="n">KEY</span><span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="n">step_num</span><span class="p">,</span> <span class="n">param_name</span><span class="p">)</span>
+  <span class="n">FOREIGN</span> <span class="n">KEY</span><span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="n">step_num</span><span class="p">)</span>
+     <span class="n">REFERENCES</span> <span class="n">operations</span><span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="n">step_num</span><span class="p">),</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<p>In Python, you would write three classes named <code class="xref py py-class docutils literal"><span class="pre">Run</span></code>, <code class="xref py py-class docutils literal"><span class="pre">Operation</span></code>,
+and <code class="xref py py-class docutils literal"><span class="pre">Parameter</span></code>.  I won&#8217;t present code for defining these classes, since
+that code is uninteresting at this point. Each class would contain a single
+method to begin with, an <code class="xref py py-meth docutils literal"><span class="pre">__init__()</span></code> method that assigns default values,
+such as 0 or <code class="docutils literal"><span class="pre">None</span></code>, to each attribute of the class.</p>
+<p>It&#8217;s not difficult to write Python code that will create a <code class="xref py py-class docutils literal"><span class="pre">Run</span></code> instance
+and populate it with the data from the relational tables; with a little more
+effort, you can build a straightforward tool, usually called an object-
+relational mapper, to do this automatically. (See
+<a class="reference external" href="http://www.amk.ca/python/unmaintained/ordb.html">http://www.amk.ca/python/unmaintained/ordb.html</a> for a quick hack at a
+Python object-relational mapper, and
+<a class="reference external" href="http://www.python.org/workshops/1997-10/proceedings/shprentz.html">http://www.python.org/workshops/1997-10/proceedings/shprentz.html</a> for Joel
+Shprentz&#8217;s more successful implementation of the same idea; Unlike mine,
+Shprentz&#8217;s system has been used for actual work.)</p>
+<p>However, it is difficult to make an object-relational mapper reasonably quick; a
+simple-minded implementation like mine is quite slow because it has to do
+several queries to access all of an object&#8217;s data.  Higher performance object-
+relational mappers cache objects to improve performance, only performing SQL
+queries when they actually need to.</p>
+<p>That helps if you want to access run number 123 all of a sudden.  But what if
+you want to find all runs where a step has a parameter named &#8216;thickness&#8217; with a
+value of 2.0?  In the relational version, you have two unappealing choices:</p>
+<ol class="arabic">
+<li><p class="first">Write a specialized SQL query for this case: <code class="docutils literal"><span class="pre">SELECT</span> <span class="pre">run_id</span> <span class="pre">FROM</span> <span class="pre">operations</span>
+<span class="pre">WHERE</span> <span class="pre">param_name</span> <span class="pre">=</span> <span class="pre">'thickness'</span> <span class="pre">AND</span> <span class="pre">param_value</span> <span class="pre">=</span> <span class="pre">2.0</span></code></p>
+<p>If such queries are common, you can end up with lots of specialized queries.
+When the database tables get rearranged, all these queries will need to be
+modified.</p>
+</li>
+<li><p class="first">An object-relational mapper doesn&#8217;t help much.  Scanning through the runs
+means that the the mapper will perform the required SQL queries to read run #1,
+and then a simple Python loop can check whether any of its steps have the
+parameter you&#8217;re looking for. Repeat for run #2, 3, and so forth.  This does a
+vast number of SQL queries, and therefore is incredibly slow.</p>
+</li>
+</ol>
+<p>An object database such as ZODB simply stores internal pointers from object to
+object, so reading in a single object is much faster than doing a bunch of SQL
+queries and assembling the results. Scanning all runs, therefore, is still
+inefficient, but not grossly inefficient.</p>
+</div>
+<div class="section" id="what-is-zeo">
+<h2>What is ZEO?<a class="headerlink" href="#what-is-zeo" title="Permalink to this headline">¶</a></h2>
+<p>The ZODB comes with a few different classes that implement the <code class="xref py py-class docutils literal"><span class="pre">Storage</span></code>
+interface.  Such classes handle the job of writing out Python objects to a
+physical storage medium, which can be a disk file (the <code class="xref py py-class docutils literal"><span class="pre">FileStorage</span></code>
+class), a BerkeleyDB file (<code class="xref py py-class docutils literal"><span class="pre">BDBFullStorage</span></code>), a relational database
+(<code class="xref py py-class docutils literal"><span class="pre">DCOracleStorage</span></code>), or some other medium.  ZEO adds
+<code class="xref py py-class docutils literal"><span class="pre">ClientStorage</span></code>, a new <code class="xref py py-class docutils literal"><span class="pre">Storage</span></code> that doesn&#8217;t write to physical
+media but just forwards all requests across a network to a server.  The server,
+which is running an instance of the <code class="xref py py-class docutils literal"><span class="pre">StorageServer</span></code> class, simply acts as
+a front-end for some physical <code class="xref py py-class docutils literal"><span class="pre">Storage</span></code> class.  It&#8217;s a fairly simple
+idea, but as we&#8217;ll see later on in this document, it opens up many
+possibilities.</p>
+</div>
+<div class="section" id="about-this-guide">
+<h2>About this guide<a class="headerlink" href="#about-this-guide" title="Permalink to this headline">¶</a></h2>
+<p>The primary author of this guide works on a project which uses the ZODB and ZEO
+as its primary storage technology.  We use the ZODB to store process runs and
+operations, a catalog of available processes, user information, accounting
+information, and other data.  Part of the goal of writing this document is to
+make our experience more widely available.  A few times we&#8217;ve spent hours or
+even days trying to figure out a problem, and this guide is an attempt to gather
+up the knowledge we&#8217;ve gained so that others don&#8217;t have to make the same
+mistakes we did while learning.</p>
+<p>The author&#8217;s ZODB project is described in a paper available here,
+<a class="reference external" href="http://www.amk.ca/python/writing/mx-architecture/">http://www.amk.ca/python/writing/mx-architecture/</a></p>
+<p>This document will always be a work in progress.  If you wish to suggest
+clarifications or additional topics, please send your comments to the
+<a class="reference external" href="https://groups.google.com/forum/#!forum/zodb">ZODB-dev mailing list</a>.</p>
+</div>
+<div class="section" id="acknowledgements">
+<h2>Acknowledgements<a class="headerlink" href="#acknowledgements" title="Permalink to this headline">¶</a></h2>
+<p>Andrew Kuchling wrote the original version of this guide, which provided some of
+the first ZODB documentation for Python programmers. His initial version has
+been updated over time by Jeremy Hylton and Tim Peters.</p>
+<p>I&#8217;d like to thank the people who&#8217;ve pointed out inaccuracies and bugs, offered
+suggestions on the text, or proposed new topics that should be covered: Jeff
+Bauer, Willem Broekema, Thomas Guettler, Chris McDonough, George Runyan.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../index.html">
+              <img class="logo" src="../../_static/zodb.png" alt="Logo"/>
+            </a></p>
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Introduction</a><ul>
+<li><a class="reference internal" href="#what-is-the-zodb">What is the ZODB?</a></li>
+<li><a class="reference internal" href="#oodbs-vs-relational-dbs">OODBs vs. Relational DBs</a></li>
+<li><a class="reference internal" href="#what-is-zeo">What is ZEO?</a></li>
+<li><a class="reference internal" href="#about-this-guide">About this guide</a></li>
+<li><a class="reference internal" href="#acknowledgements">Acknowledgements</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">ZODB articles</a><ul>
+  <li><a href="index.html">Very old ZODB programming guide</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Very old ZODB programming guide</a></li>
+      <li>Next: <a href="prog-zodb.html" title="next chapter">ZODB Programming</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/articles/old-guide/introduction.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2009-2016, Zope Foundation.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="../../_sources/articles/old-guide/introduction.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

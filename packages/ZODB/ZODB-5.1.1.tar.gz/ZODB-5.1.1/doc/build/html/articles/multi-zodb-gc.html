@@ -1,0 +1,321 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Using zc.zodbdgc (fix PosKeyError’s) &#8212; ZODB  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../_static/zodb.ico"/>
+    <link rel="top" title="ZODB  documentation" href="../index.html" />
+    <link rel="up" title="ZODB articles" href="index.html" />
+    <link rel="prev" title="GNU Free Documentation License" href="old-guide/gfdl.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="using-zc-zodbdgc-fix-poskeyerror-s">
+<h1>Using zc.zodbdgc (fix PosKeyError&#8217;s)<a class="headerlink" href="#using-zc-zodbdgc-fix-poskeyerror-s" title="Permalink to this headline">¶</a></h1>
+<p><em>This article was written by Hanno Schlichting</em></p>
+<p>The <a class="reference external" href="http://pypi.python.org/pypi/zc.zodbdgc">zc.zodbdgc</a> library contains two
+useful features. On the one hand it supports advanced ZODB packing and garbage
+collection approaches and on the other hand it includes the ability to create a
+database of all persistent references.</p>
+<p>The second feature allows us to debug and repair PosKeyErrors by finding the
+persistent object(s) that point to the lost object.</p>
+<p>Note: This documentation applies to ZODB 3.9 and later. Earlier versions of the
+ZODB are not supported, as they lack the fast storage iteration API&#8217;s required
+by <cite>zc.zodbdgc</cite>.</p>
+<p>This documentation does not apply to
+<a class="reference external" href="http://pypi.python.org/pypi/RelStorage">RelStorage</a> which has the same
+features built-in, but accessible in different ways. Look at the options for
+the <cite>zodbpack</cite> script. The <cite>&#8211;prepack</cite> option creates a table containing the
+same information as we are creating in the reference database.</p>
+<div class="section" id="setup">
+<h2>Setup<a class="headerlink" href="#setup" title="Permalink to this headline">¶</a></h2>
+<p>We&#8217;ll assume you are familiar with a buildout setup. A typical config might
+look like this:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>[buildout]
+parts =
+  zeo
+  zeopy
+  zeo-conf
+  zodbdgc
+  refdb-conf
+
+[zeo]
+recipe = plone.recipe.zeoserver
+zeo-address = 127.0.0.1:8100
+blob-storage = ${buildout:directory}/var/blobstorage
+pack-gc = false
+pack-keep-old = false
+
+[zeopy]
+recipe = zc.recipe.egg
+eggs =
+    ZODB3
+    zc.zodbdgc
+interpreter = zeopy
+scripts = zeopy
+
+[zeo-conf]
+recipe = collective.recipe.template
+input = inline:
+  &lt;zodb main&gt;
+    &lt;zeoclient&gt;
+      blob-dir ${buildout:directory}/var/blobstorage
+      shared-blob-dir yes
+      server ${zeo:zeo-address}
+      storage 1
+      name zeostorage
+      var ${buildout:directory}/var
+    &lt;/zeoclient&gt;
+  &lt;/zodb&gt;
+output = ${buildout:directory}/etc/zeo.conf
+
+[zodbdgc]
+recipe = zc.recipe.egg
+eggs = zc.zodbdgc
+
+[refdb-conf]
+recipe = collective.recipe.template
+input = inline:
+  &lt;zodb main&gt;
+    &lt;filestorage 1&gt;
+      path ${buildout:directory}/var/refdb.fs
+    &lt;/filestorage&gt;
+  &lt;/zodb&gt;
+output = ${buildout:directory}/etc/refdb.conf
+</pre></div>
+</div>
+</div>
+<div class="section" id="garbage-collection">
+<h2>Garbage collection<a class="headerlink" href="#garbage-collection" title="Permalink to this headline">¶</a></h2>
+<p>We configured the ZEO server to skip garbage collection as part of the normal
+pack in the above config (<cite>pack-gc = false</cite>). Instead we use explicit garbage
+collection via a different job:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="nb">bin</span><span class="o">/</span><span class="n">multi</span><span class="o">-</span><span class="n">zodb</span><span class="o">-</span><span class="n">gc</span> <span class="n">etc</span><span class="o">/</span><span class="n">zeo</span><span class="o">.</span><span class="n">conf</span>
+</pre></div>
+</div>
+<p>On larger databases garbage collection can take a couple hours. We can run this
+only once a week or even less frequent. All explicitly deleted objects will
+still be packed away by the normal pack, so the database doesn&#8217;t grow
+out-of-bound. We can also run the analysis against a database copy, taking away
+load from the live database and only write the resulting deletions to the
+production database.</p>
+</div>
+<div class="section" id="packing">
+<h2>Packing<a class="headerlink" href="#packing" title="Permalink to this headline">¶</a></h2>
+<p>We can do regular packing every day while the ZEO server is running, via:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="nb">bin</span><span class="o">/</span><span class="n">zeopack</span>
+</pre></div>
+</div>
+<p>Packing without garbage collection is much faster.</p>
+</div>
+<div class="section" id="reference-analysis-and-poskeyerrors">
+<h2>Reference analysis and POSKeyErrors<a class="headerlink" href="#reference-analysis-and-poskeyerrors" title="Permalink to this headline">¶</a></h2>
+<p>If our database has any POSKeyErrors, we can find and repair those.</p>
+<p>Either we already have the oids of lost objects, or we can check the entire
+database for any errors. To check everything we run the following command:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ bin/multi-zodb-check-refs etc/zeo.conf
+</pre></div>
+</div>
+<p>This can take about 15 to 30 minutes on moderately sized databases of up to
+10gb, dependent on disk speed. We&#8217;ll write down the reported errors, as we&#8217;ll
+need them later on to analyze them.</p>
+<p>If there are any lost objects, we can create a reference database to make it
+easier to debug and find those lost objects:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ bin/multi-zodb-check-refs -r var/refdb.fs etc/zeo.conf
+</pre></div>
+</div>
+<p>This is significantly slower and can take several hours to complete. Once this
+is complete we can open the generated database via our interpreter:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ bin/zeopy
+
+&gt;&gt;&gt; import ZODB.config
+&gt;&gt;&gt; db = ZODB.config.databaseFromFile(open(&#39;./etc/refdb.conf&#39;))
+&gt;&gt;&gt; conn = db.open()
+&gt;&gt;&gt; refs = conn.root()[&#39;references&#39;]
+</pre></div>
+</div>
+<p>If we&#8217;ve gotten this error report:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>!!! main 13184375 ?
+POSKeyError: 0xc92d77
+</pre></div>
+</div>
+<p>We can look up the persistent oid it was referenced from via:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">parent</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">refs</span><span class="p">[</span><span class="s1">&#39;main&#39;</span><span class="p">][</span><span class="mi">13184375</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parent</span>
+<span class="go">[13178389]</span>
+</pre></div>
+</div>
+<p>We can also get the hex representation:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">ZODB.utils</span> <span class="k">import</span> <span class="n">p64</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">p64</span><span class="p">(</span><span class="n">parent</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="go">&#39;\x00\x00\x00\x00\x00\xc9\x16\x15&#39;</span>
+</pre></div>
+</div>
+<p>With this information, we should get back to our actual database and look
+up this object. We&#8217;ll leave the ref db open, as we might need to recursively
+look up some more objects, until we get one we can identify and work on.</p>
+<p>We could load the parent. In a debug prompt we could do something like:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">app</span><span class="o">.</span><span class="n">_p_jar</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\x00\x00\x00\x00\x00\xc9\x16\x15</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="go">2010-04-28 14:28:28 ERROR ZODB.Connection Couldn&#39;t load state for 0xc91615</span>
+<span class="gt">Traceback (most recent call last):</span>
+<span class="c">...</span>
+<span class="gr">ZODB.POSException.POSKeyError</span>: <span class="n">0xc92d77</span>
+</pre></div>
+</div>
+<p>Gah, this gives us the POSKeyError of course. But we can load the actual data
+of the parent, to get an idea of what this is:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">app</span><span class="o">.</span><span class="n">_p_jar</span><span class="o">.</span><span class="n">db</span><span class="p">()</span><span class="o">.</span><span class="n">_storage</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\x00\x00\x00\x00\x00\xc9\x16\x15</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="go">(&#39;cBTrees.IOBTree</span>
+<span class="go">IOBucket</span>
+<span class="go">q\x01.((J$KT\x02ccopy_reg</span>
+<span class="go">_reconstructor</span>
+<span class="go">q\x02(cfive.intid.keyreference</span>
+<span class="go">KeyReferenceToPersistent</span>
+<span class="gp">...</span>
+</pre></div>
+</div>
+<p>Now we can be real evil and create a new fake object in place of the missing
+one:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">transaction</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">transaction</span><span class="o">.</span><span class="n">begin</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The persistent oid that was reported missing was <code class="docutils literal"><span class="pre">13184375</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">ZODB.utils</span> <span class="k">import</span> <span class="n">p64</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">p64</span><span class="p">(</span><span class="mi">13184375</span><span class="p">)</span>
+<span class="go">&#39;\x00\x00\x00\x00\x00\xc9-w&#39;</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">persistent</span> <span class="k">import</span> <span class="n">Persistent</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">Persistent</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">_p_oid</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\x00\x00\x00\x00\x00\xc9</span><span class="s1">-w&#39;</span>
+</pre></div>
+</div>
+<p>We cannot use the <code class="docutils literal"><span class="pre">add</span></code> method of the connection, as this would assign the
+object a new persistent oid. So we replicate its internals here:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">_p_jar</span> <span class="o">=</span> <span class="n">app</span><span class="o">.</span><span class="n">_p_jar</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">app</span><span class="o">.</span><span class="n">_p_jar</span><span class="o">.</span><span class="n">_register</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">app</span><span class="o">.</span><span class="n">_p_jar</span><span class="o">.</span><span class="n">_added</span><span class="p">[</span><span class="n">a</span><span class="o">.</span><span class="n">_p_oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">transaction</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Both getting the object as well as its parent will work now:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">app</span><span class="o">.</span><span class="n">_p_jar</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\x00\x00\x00\x00\x00\xc9</span><span class="s1">-w&#39;</span><span class="p">)</span>
+<span class="go">&lt;persistent.Persistent object at 0xa3e348c&gt;</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">app</span><span class="o">.</span><span class="n">_p_jar</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\x00\x00\x00\x00\x00\xc9\x16\x15</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="go">BTrees.IOBTree.IOBucket([(39078692, &lt;five.intid.keyreference...</span>
+</pre></div>
+</div>
+<p>Once we are finished we should be nice and close all databases:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">db</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Depending on the class of object that went missing, we might need to use a
+different persistent class, like a persistent mapping or a BTree bucket.</p>
+<p>In general it&#8217;s best to remove the parent object and thus our fake object from
+the database and rebuild the data structure again via the proper application
+level API&#8217;s.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/zodb.png" alt="Logo"/>
+            </a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Using zc.zodbdgc (fix PosKeyError&#8217;s)</a><ul>
+<li><a class="reference internal" href="#setup">Setup</a></li>
+<li><a class="reference internal" href="#garbage-collection">Garbage collection</a></li>
+<li><a class="reference internal" href="#packing">Packing</a></li>
+<li><a class="reference internal" href="#reference-analysis-and-poskeyerrors">Reference analysis and POSKeyErrors</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">ZODB articles</a><ul>
+      <li>Previous: <a href="old-guide/gfdl.html" title="previous chapter">GNU Free Documentation License</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/articles/multi-zodb-gc.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2009-2016, Zope Foundation.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="../_sources/articles/multi-zodb-gc.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

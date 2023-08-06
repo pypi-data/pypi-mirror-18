@@ -1,0 +1,363 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Tutorial &#8212; ZODB  documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="shortcut icon" href="_static/zodb.ico"/>
+    <link rel="top" title="ZODB  documentation" href="index.html" />
+    <link rel="next" title="ZODB programming guide" href="guide/index.html" />
+    <link rel="prev" title="ZODB - a native object database for Python" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="tutorial">
+<span id="tutorial-label"></span><h1>Tutorial<a class="headerlink" href="#tutorial" title="Permalink to this headline">¶</a></h1>
+<p>This tutorial is intended to guide developers with a step-by-step introduction
+of how to develop an application which stores its data in the ZODB.</p>
+<div class="section" id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<p>To save application data in ZODB, you&#8217;ll generally define classes that
+subclass <code class="docutils literal"><span class="pre">persistent.Persistent</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># account.py</span>
+
+<span class="kn">import</span> <span class="nn">persistent</span>
+
+<span class="k">class</span> <span class="nc">Account</span><span class="p">(</span><span class="n">persistent</span><span class="o">.</span><span class="n">Persistent</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">balance</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+    <span class="k">def</span> <span class="nf">deposit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">amount</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">balance</span> <span class="o">+=</span> <span class="n">amount</span>
+
+    <span class="k">def</span> <span class="nf">cash</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">amount</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">amount</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">balance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">balance</span> <span class="o">-=</span> <span class="n">amount</span>
+</pre></div>
+</div>
+<p>This code defines a simple class that holds the balance of a bank
+account and provides two methods to manipulate the balance: deposit
+and cash.</p>
+<p>Subclassing <code class="docutils literal"><span class="pre">Persistent</span></code> provides a number of features:</p>
+<ul>
+<li><p class="first">The database will automatically track object changes made by setting
+attributes <a class="footnote-reference" href="#changed" id="id1">[1]</a>.</p>
+</li>
+<li><p class="first">Data will be saved in its own database record.</p>
+<p>You can save data that doesn&#8217;t subclass <code class="docutils literal"><span class="pre">Persistent</span></code>, but it will be
+stored in the database record of whatever persistent object
+references it.</p>
+</li>
+<li><p class="first">Objects will have unique persistent identity.</p>
+<p>Multiple objects can refer to the same persistent object and they&#8217;ll
+continue to refer to the same object even after being saved
+and loaded from the database.</p>
+<p>Non-persistent objects are essentially owned by their containing
+persistent object and if multiple persistent objects refer to the
+same non-persistent subobject, they&#8217;ll (eventually) get their own
+copies.</p>
+</li>
+</ul>
+<p>Note that we put the class in a named module.  Classes aren&#8217;t stored
+in the ZODB <a class="footnote-reference" href="#persistentclasses" id="id2">[2]</a>.  They exist on the file system and
+their names, consisting of their class and module names, are stored in
+the database. It&#8217;s sometimes tempting to create persistent classes in
+scripts or in interactive sessions, but if you do, then their module
+name will be <code class="docutils literal"><span class="pre">'__main__'</span></code> and you&#8217;ll always have to define them that
+way.</p>
+</div>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>Before being able to use ZODB we have to install it. A common way to
+do this is with pip:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ pip install ZODB
+</pre></div>
+</div>
+</div>
+<div class="section" id="creating-databases">
+<h2>Creating Databases<a class="headerlink" href="#creating-databases" title="Permalink to this headline">¶</a></h2>
+<p>When a program wants to use the ZODB it has to establish a connection,
+like any other database. For the ZODB we need 3 different parts: a
+storage, a database and finally a connection:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">ZODB</span><span class="o">,</span> <span class="nn">ZODB.FileStorage</span>
+
+<span class="n">storage</span> <span class="o">=</span> <span class="n">ZODB</span><span class="o">.</span><span class="n">FileStorage</span><span class="o">.</span><span class="n">FileStorage</span><span class="p">(</span><span class="s1">&#39;mydata.fs&#39;</span><span class="p">)</span>
+<span class="n">db</span> <span class="o">=</span> <span class="n">ZODB</span><span class="o">.</span><span class="n">DB</span><span class="p">(</span><span class="n">storage</span><span class="p">)</span>
+<span class="n">connection</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">open</span><span class="p">()</span>
+<span class="n">root</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">root</span>
+</pre></div>
+</div>
+<p>ZODB has a pluggable storage framework.  This means there are a
+variety of storage implementations to meet different needs, from
+in-memory databases, to databases stored in local files, to databases
+on remote database servers, and specialized databases for compression,
+encryption, and so on.  In the example above, we created a database
+that stores its data in a local file, using the <code class="docutils literal"><span class="pre">FileStorage</span></code>
+class.</p>
+<p>Having a storage, we then use it to instantiate a database, which we
+then connect to by calling <code class="docutils literal"><span class="pre">open()</span></code>.  A process with multiple
+threads will often have multiple connections to the same database,
+with different threads having different connections.</p>
+<p>There are a number of convenient shortcuts you can use for some of the
+commonly used storages:</p>
+<ul>
+<li><p class="first">You can pass a file name to the <code class="docutils literal"><span class="pre">DB</span></code> constructor to have it construct
+a FileStorage for you:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">db</span> <span class="o">=</span> <span class="n">ZODB</span><span class="o">.</span><span class="n">DB</span><span class="p">(</span><span class="s1">&#39;mydata.fs&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can pass None to create an in-memory database:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">memory_db</span> <span class="o">=</span> <span class="n">ZODB</span><span class="o">.</span><span class="n">DB</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">If you&#8217;re only going to use one connection, you can call the
+<code class="docutils literal"><span class="pre">connection</span></code> function:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">connection</span> <span class="o">=</span> <span class="n">ZODB</span><span class="o">.</span><span class="n">connection</span><span class="p">(</span><span class="s1">&#39;mydata.fs&#39;</span><span class="p">)</span>
+<span class="n">memory_connection</span> <span class="o">=</span> <span class="n">ZODB</span><span class="o">.</span><span class="n">connection</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</div>
+<div class="section" id="storing-objects">
+<h2>Storing objects<a class="headerlink" href="#storing-objects" title="Permalink to this headline">¶</a></h2>
+<p>To store an object in the ZODB we simply attach it to any other object
+that already lives in the database. Hence, the root object functions
+as a boot-strapping point.  The root object is meant to serve as a
+namespace for top-level objects in your database.  We could store
+account objects directly on the root object:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">account</span>
+
+<span class="c1"># Probably a bad idea:</span>
+<span class="n">root</span><span class="o">.</span><span class="n">account1</span> <span class="o">=</span> <span class="n">account</span><span class="o">.</span><span class="n">Account</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>But if you&#8217;re going to store many objects, you&#8217;ll want to use a
+collection object <a class="footnote-reference" href="#root" id="id3">[3]</a>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">account</span><span class="o">,</span> <span class="nn">BTrees.OOBTree</span>
+
+<span class="n">root</span><span class="o">.</span><span class="n">accounts</span> <span class="o">=</span> <span class="n">BTrees</span><span class="o">.</span><span class="n">OOBTree</span><span class="o">.</span><span class="n">BTree</span><span class="p">()</span>
+<span class="n">root</span><span class="o">.</span><span class="n">accounts</span><span class="p">[</span><span class="s1">&#39;account-1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">Account</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Another common practice is to store a persistent object in the root of
+the database that provides an application-specific root:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">root</span><span class="o">.</span><span class="n">accounts</span> <span class="o">=</span> <span class="n">AccountManagementApplication</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>That can facilitate encapsulation of an application that shares a
+database with other applications.  This is a little bit like using
+modules to avoid namespace colisions in Python programs.</p>
+</div>
+<div class="section" id="containers-and-search">
+<h2>Containers and search<a class="headerlink" href="#containers-and-search" title="Permalink to this headline">¶</a></h2>
+<p>BTrees provide the core scalable containers and indexing facility for
+ZODB. There are different families of BTrees.  The most general are
+OOBTrees, which have object keys and values. There are specialized
+BTrees that support integer keys and values.  Integers can be stored
+more efficiently, and compared more quickly than objects and they&#8217;re
+often used as application-level object identifiers.  It&#8217;s critical,
+when using BTrees, to make sure that its keys have a stable ordering.</p>
+<p>ZODB doesn&#8217;t provide a query engine.  The primary way to access
+objects in ZODB is by traversing (accessing attributes or items, or
+calling methods) other objects.  Object traversal is typically much
+faster than search.</p>
+<p>You can use BTrees to build indexes for efficient search, when
+necessary.  If your application is search centric, or if you prefer to
+approach data access that way, then ZODB might not be the best
+technology for you.</p>
+</div>
+<div class="section" id="transactions">
+<h2>Transactions<a class="headerlink" href="#transactions" title="Permalink to this headline">¶</a></h2>
+<p>You now have objects in your root object and in your database.
+However, they are not permanently stored yet. The ZODB uses
+transactions and to make your changes permanent, you have to commit
+the transaction:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">transaction</span>
+
+<span class="n">transaction</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Now you can stop and start your application and look at the root object again,
+and you will find the data you saved.</p>
+<p>If your application makes changes during a transaction and finds that it does
+not want to commit those changes, then you can abort the transaction and have
+the changes rolled back <a class="footnote-reference" href="#rollback" id="id4">[4]</a> for you:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">transaction</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Transactions are a very powerful way to protect the integrity of a
+database.  Transactions have the property that all of the changes made
+in a transaction are saved, or none of them are.  If in the midst of a
+program, there&#8217;s an error after making changes, you can simply abort
+the transaction (or not commit it) and all of the intermediate changes
+you make are automatically discarded.</p>
+</div>
+<div class="section" id="memory-management">
+<h2>Memory Management<a class="headerlink" href="#memory-management" title="Permalink to this headline">¶</a></h2>
+<p>ZODB manages moving objects in and out of memory for you.  The unit of
+storage is the persistent object.  When you access attributes of a
+persistent objects, it&#8217;s loaded from the database automatically, if
+necessary. If too many objects are in memory, then objects used least
+recently are evicted <a class="footnote-reference" href="#eviction" id="id5">[5]</a>.  The maximum number of objects or
+bytes in memory is configurable.</p>
+</div>
+<div class="section" id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h2>
+<p>You have seen how to install ZODB and how to open a database in your
+application and to start storing objects in it. We also touched the
+two simple transaction commands: <code class="docutils literal"><span class="pre">commit</span></code> and <code class="docutils literal"><span class="pre">abort</span></code>. The
+reference documentation contains sections with more information on the
+individual topics.</p>
+<table class="docutils footnote" frame="void" id="changed" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>You can manually mark an object as changed by setting its
+<code class="docutils literal"><span class="pre">_p_changed__</span></code> attribute to <code class="docutils literal"><span class="pre">True</span></code>. You might do this if you
+update a subobject, such as a standard Python <code class="docutils literal"><span class="pre">list</span></code> or <code class="docutils literal"><span class="pre">set</span></code>,
+that doesn&#8217;t subclass <code class="docutils literal"><span class="pre">Persistent</span></code>.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="persistentclasses" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[2]</a></td><td>Actually, there is semi-experimental support for storing classes in
+the database, but applications rarely do this.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="root" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id3">[3]</a></td><td><p class="first">The root object is a fairy simple persistent object that&#8217;s stored
+in a single database record.  If you stored many objects in it,
+its database record would become very large, causing updates to be
+inefficient and causing memory to be used ineffeciently.</p>
+<p class="last">Another reason not to store items directly in the root object is
+that doing so would make adding a second collection of objects
+later awkward.</p>
+</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="rollback" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id4">[4]</a></td><td>A caveat is that ZODB can only roll back changes to objects that
+have been stored and committed to the database.  Objects not
+previously committed can&#8217;t be rolled back because there&#8217;s no
+previous state to roll back to.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="eviction" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id5">[5]</a></td><td>Objects aren&#8217;t actually evicted, but their state is released, so
+they take up much less memory and any objects they referenced can
+be removed from memory.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/zodb.png" alt="Logo"/>
+            </a></p>
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Tutorial</a><ul>
+<li><a class="reference internal" href="#introduction">Introduction</a></li>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#creating-databases">Creating Databases</a></li>
+<li><a class="reference internal" href="#storing-objects">Storing objects</a></li>
+<li><a class="reference internal" href="#containers-and-search">Containers and search</a></li>
+<li><a class="reference internal" href="#transactions">Transactions</a></li>
+<li><a class="reference internal" href="#memory-management">Memory Management</a></li>
+<li><a class="reference internal" href="#summary">Summary</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">ZODB - a native object database for Python</a></li>
+      <li>Next: <a href="guide/index.html" title="next chapter">ZODB programming guide</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/tutorial.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2009-2016, Zope Foundation.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="_sources/tutorial.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

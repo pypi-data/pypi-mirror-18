@@ -1,0 +1,83 @@
+============================
+Transactions and concurency
+============================
+
+`Transactions <https://en.wikipedia.org/wiki/Database_transaction>`_
+are a core feature of ZODB.  Much has been written about transactions,
+and we won't go into much detail here.  Transactions provide 2 core
+benefits:
+
+Atomicty
+  When a transaction executes, it succeeds or fails completely. If
+  some data are updated and then an error occurs, causing the
+  transaction to fail, the updates are rolled back automatically. The
+  application using the transactional system doesn't have to undo
+  partial changes.  This takes a significant burden from developers
+  and increases the reliability of applications.
+
+Concurrency
+  Transactions provide a way of managing concurrent updates to data.
+  Different programs operate on the data independently, without having
+  to use low-level techniques to moderate their access. Coordination
+  and synchronization happens via transactions.
+
+ZODB and atomicity
+==================
+
+ZODB provides atomic transactions. When using ZODB, it's important to
+align work with transactions.  Once a transaction is committed, it
+can't be rolled back [#undo]_ automatically.  For applications, this
+implies that work that should be atomic shouldn't be split over
+multiple transactions.  This may seem somewhat obvious, but the rule
+can be broken in non-obvious ways. For example a Web API that splits
+logical operations over multiple web requests, as is often done in
+`REST
+<https://en.wikipedia.org/wiki/Representational_state_transfer>`_
+APIs, violate this rule.
+
+Partial transaction error recovery using savepoints
+---------------------------------------------------
+
+A transaction can be split into multiple steps that can be rolled back
+individually.  This is done by creating savepoints.  Changes in a
+savepoint can be rolled back without rolling back an entire
+transaction::
+
+  import ZODB
+  db = ZODB.DB(None) # using a mapping storage
+  with db.transaction() as conn:
+      conn.root.x = 1
+      conn.root.y = 0
+      savepoint = conn.transaction_manager.savepoint()
+      conn.root.y = 2
+      savepoint.rollback()
+
+  with db.transaction() as conn:
+      print(conn.root.x, conn.root.y)
+
+.. -> src
+
+   >>> exec(src)
+   1 0
+
+If we executed this code, it would print 1 and 0, because while the
+initial changes were committed, the changes in the savepoint were
+rolled back.
+
+A secondary benefit of savepoints is that they save any changes made
+before the savepoint to a file, so that memory of changes objects can
+be freed of they aren't used later in the transaction.
+
+
+
+
+
+
+
+
+
+
+
+.. [#undo] Transactions can't be rolled back, but they may be undone
+           in some cases, especially of subsequent transactions
+           haven't modified the same objects.

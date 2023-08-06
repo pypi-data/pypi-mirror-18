@@ -1,0 +1,54 @@
+========================
+``load(oid)`` must die!
+========================
+
+Currently, we use ``load(oid)`` to load current data for an object
+unless we've recieved an invalidation for an object.  This leads ti
+complex code that:
+
+- checkes to see if an object has been invalidated and if not:
+
+- loads the object
+
+- if while loading the object was invalidated, it then reloads using
+  loadBefore.
+
+The ``IStorage.load`` method is problematic because it's required to
+load current data.  This leads to delicate handling ordering of
+``load`` results and invalidations, which also provide information
+about the current version of an object.  In FileStorage, we also have
+to get a read lock on the file before we load current data, to prevent
+writes.
+
+In reviewing NEO, I realized that there's no reason for ``load`` to
+exist, and in fact, NEO doesn't really implement it.
+
+First of all, it makes no sense to use ``load`` if the transaction
+time (``Connection._txn_time``) is known.  We should just use
+``loadBefore`` with the transaction time.
+
+Second, one can choose a suitable transaction time at the beginning of
+a transaction.  A suitable transaction time is just past (because we
+use ``loadBefore``) the database transaction time.  We don't want to
+read any data that was written later, regardless of what we've gotten
+invalidations for.  We can use ``IStorage.lastTransaction()`` to
+determine the last transaction id(/time). For storages with remote
+data, like ZEO or NEO, we might choose to request the last transaction
+id from the remote server to make sure we've processed any in-flight
+transactions.  This is what NEO does,
+
+By determining the transaction time at the start of a transaction, we
+can:
+
+- Always call ``loadBefore`` which can have a much more efficiently
+  implemented than ``load()``.
+
+- Greatly simplify ``Connection._setstate``.
+
+- Greatly simplify logic of ZEO and perhaps RelStorage (at least
+  eventually, given that, in the case of ZEO, we'll have to support
+  older clients).
+
+
+
+  Set transaction time using ``p64(u64(storage.lastTransaction()) + 1)`` at the start of a transaction.

@@ -1,0 +1,371 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Transactions &#8212; ZODB  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../_static/zodb.ico"/>
+    <link rel="top" title="ZODB  documentation" href="../index.html" />
+    <link rel="up" title="Reference Documentation" href="index.html" />
+    <link rel="next" title="ZODB articles" href="../articles/index.html" />
+    <link rel="prev" title="Storage APIs" href="storages.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="transactions">
+<h1>Transactions<a class="headerlink" href="#transactions" title="Permalink to this headline">¶</a></h1>
+<p>Transaction support is provided by the <a class="reference external" href="http://transaction.readthedocs.io/en/latest/">transaction</a> package
+<a class="footnote-reference" href="#transaction-package-can-be-used-wo-zodb" id="id1">[1]</a>, which is installed
+automatically when you install ZODB.  There are two important APIs
+provided by the transaction package, <code class="docutils literal"><span class="pre">ITransactionManager</span></code> and
+<code class="docutils literal"><span class="pre">ITransaction</span></code>, described below.</p>
+<div class="section" id="itransactionmanager">
+<h2>ITransactionManager<a class="headerlink" href="#itransactionmanager" title="Permalink to this headline">¶</a></h2>
+<dl class="interface">
+<dt id="transaction.interfaces.ITransactionManager">
+<em class="property">interface </em><code class="descclassname">transaction.interfaces.</code><code class="descname">ITransactionManager</code><a class="headerlink" href="#transaction.interfaces.ITransactionManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>An object that manages a sequence of transactions.</p>
+<p>Applications use transaction managers to establish transaction boundaries.</p>
+<dl class="method">
+<dt id="transaction.interfaces.ITransactionManager.abort">
+<code class="descname">abort</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#transaction.interfaces.ITransactionManager.abort" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abort the current transaction.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="transaction.interfaces.ITransactionManager.begin">
+<code class="descname">begin</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#transaction.interfaces.ITransactionManager.begin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Begin a new transaction.</p>
+<p>If an existing transaction is in progress, it will be aborted.</p>
+<p>The newTransaction() method of registered synchronizers is called,
+passing the new transaction object.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="transaction.interfaces.ITransactionManager.commit">
+<code class="descname">commit</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#transaction.interfaces.ITransactionManager.commit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Commit the current transaction.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="transaction.interfaces.ITransactionManager.doom">
+<code class="descname">doom</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#transaction.interfaces.ITransactionManager.doom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Doom the current transaction.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="transaction.interfaces.ITransactionManager.get">
+<code class="descname">get</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#transaction.interfaces.ITransactionManager.get" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the current transaction.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="transaction.interfaces.ITransactionManager.isDoomed">
+<code class="descname">isDoomed</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#transaction.interfaces.ITransactionManager.isDoomed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns True if the current transaction is doomed, otherwise False.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="transaction.interfaces.ITransactionManager.savepoint">
+<code class="descname">savepoint</code><span class="sig-paren">(</span><em>optimistic=False</em><span class="sig-paren">)</span><a class="headerlink" href="#transaction.interfaces.ITransactionManager.savepoint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a savepoint from the current transaction.</p>
+<p>If the optimistic argument is true, then data managers that
+don&#8217;t support savepoints can be used, but an error will be
+raised if the savepoint is rolled back.</p>
+<p>An ISavepoint object is returned.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="itransaction">
+<h2>ITransaction<a class="headerlink" href="#itransaction" title="Permalink to this headline">¶</a></h2>
+<dl class="interface">
+<dt id="transaction.interfaces.ITransaction">
+<em class="property">interface </em><code class="descclassname">transaction.interfaces.</code><code class="descname">ITransaction</code><a class="headerlink" href="#transaction.interfaces.ITransaction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object representing a running transaction.</p>
+<p>Objects with this interface may represent different transactions
+during their lifetime (.begin() can be called to start a new
+transaction using the same instance, although that example is
+deprecated and will go away in ZODB 3.6).</p>
+<dl class="method">
+<dt id="transaction.interfaces.ITransaction.abort">
+<code class="descname">abort</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#transaction.interfaces.ITransaction.abort" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abort the transaction.</p>
+<p>This is called from the application.  This can only be called
+before the two-phase commit protocol has been started.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="transaction.interfaces.ITransaction.addAfterCommitHook">
+<code class="descname">addAfterCommitHook</code><span class="sig-paren">(</span><em>hook</em>, <em>args=()</em>, <em>kws=None</em><span class="sig-paren">)</span><a class="headerlink" href="#transaction.interfaces.ITransaction.addAfterCommitHook" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register a hook to call after a transaction commit attempt.</p>
+<p>The specified hook function will be called after the transaction
+commit succeeds or aborts.  The first argument passed to the hook
+is a Boolean value, true if the commit succeeded, or false if the
+commit aborted.  <cite>args</cite> specifies additional positional, and <cite>kws</cite>
+keyword, arguments to pass to the hook.  <cite>args</cite> is a sequence of
+positional arguments to be passed, defaulting to an empty tuple
+(only the true/false success argument is passed).  <cite>kws</cite> is a
+dictionary of keyword argument names and values to be passed, or
+the default None (no keyword arguments are passed).</p>
+<p>Multiple hooks can be registered and will be called in the order they
+were registered (first registered, first called).  This method can
+also be called from a hook:  an executing hook can register more
+hooks.  Applications should take care to avoid creating infinite loops
+by recursively registering hooks.</p>
+<p>Hooks are called only for a top-level commit.  A
+savepoint creation does not call any hooks.  Calling a
+hook &#8220;consumes&#8221; its registration:  hook registrations do not
+persist across transactions.  If it&#8217;s desired to call the same
+hook on every transaction commit, then addAfterCommitHook() must be
+called with that hook during every transaction; in such a case
+consider registering a synchronizer object via a TransactionManager&#8217;s
+registerSynch() method instead.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="transaction.interfaces.ITransaction.addBeforeCommitHook">
+<code class="descname">addBeforeCommitHook</code><span class="sig-paren">(</span><em>hook</em>, <em>args=()</em>, <em>kws=None</em><span class="sig-paren">)</span><a class="headerlink" href="#transaction.interfaces.ITransaction.addBeforeCommitHook" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register a hook to call before the transaction is committed.</p>
+<p>The specified hook function will be called after the transaction&#8217;s
+commit method has been called, but before the commit process has been
+started.  The hook will be passed the specified positional (<cite>args</cite>)
+and keyword (<cite>kws</cite>) arguments.  <cite>args</cite> is a sequence of positional
+arguments to be passed, defaulting to an empty tuple (no positional
+arguments are passed).  <cite>kws</cite> is a dictionary of keyword argument
+names and values to be passed, or the default None (no keyword
+arguments are passed).</p>
+<p>Multiple hooks can be registered and will be called in the order they
+were registered (first registered, first called).  This method can
+also be called from a hook:  an executing hook can register more
+hooks.  Applications should take care to avoid creating infinite loops
+by recursively registering hooks.</p>
+<p>Hooks are called only for a top-level commit.  A
+savepoint creation does not call any hooks.  If the
+transaction is aborted, hooks are not called, and are discarded.
+Calling a hook &#8220;consumes&#8221; its registration too:  hook registrations
+do not persist across transactions.  If it&#8217;s desired to call the same
+hook on every transaction commit, then addBeforeCommitHook() must be
+called with that hook during every transaction; in such a case
+consider registering a synchronizer object via a TransactionManager&#8217;s
+registerSynch() method instead.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="transaction.interfaces.ITransaction.commit">
+<code class="descname">commit</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#transaction.interfaces.ITransaction.commit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finalize the transaction.</p>
+<p>This executes the two-phase commit algorithm for all
+IDataManager objects associated with the transaction.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="transaction.interfaces.ITransaction.description">
+<code class="descname">description</code><em class="property"> = &lt;zope.interface.interface.Attribute object&gt;</em><a class="headerlink" href="#transaction.interfaces.ITransaction.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>A textual description of the transaction.</p>
+<p>The value is of Python type str.  Method note() is the intended
+way to set the value.  Storages record the description, as meta-data,
+when a transaction commits.</p>
+<p>A storage may impose a limit on the size of the description; behavior
+is undefined if such a limit is exceeded (for example, a storage may
+raise an exception, or truncate the value).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="transaction.interfaces.ITransaction.doom">
+<code class="descname">doom</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#transaction.interfaces.ITransaction.doom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Doom the transaction.</p>
+<p>Dooms the current transaction. This will cause
+DoomedTransactionException to be raised on any attempt to commit the
+transaction.</p>
+<p>Otherwise the transaction will behave as if it was active.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="transaction.interfaces.ITransaction.getAfterCommitHooks">
+<code class="descname">getAfterCommitHooks</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#transaction.interfaces.ITransaction.getAfterCommitHooks" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return iterable producing the registered addAfterCommit hooks.</p>
+<p>A triple (hook, args, kws) is produced for each registered hook.
+The hooks are produced in the order in which they would be invoked
+by a top-level transaction commit.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="transaction.interfaces.ITransaction.getBeforeCommitHooks">
+<code class="descname">getBeforeCommitHooks</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#transaction.interfaces.ITransaction.getBeforeCommitHooks" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return iterable producing the registered addBeforeCommit hooks.</p>
+<p>A triple (hook, args, kws) is produced for each registered hook.
+The hooks are produced in the order in which they would be invoked
+by a top-level transaction commit.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="transaction.interfaces.ITransaction.note">
+<code class="descname">note</code><span class="sig-paren">(</span><em>text</em><span class="sig-paren">)</span><a class="headerlink" href="#transaction.interfaces.ITransaction.note" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add text to the transaction description.</p>
+<p>This modifies the <cite>.description</cite> attribute; see its docs for more
+detail.  First surrounding whitespace is stripped from <cite>text</cite>.  If
+<cite>.description</cite> is currently an empty string, then the stripped text
+becomes its value, else two newlines and the stripped text are
+appended to <cite>.description</cite>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="transaction.interfaces.ITransaction.savepoint">
+<code class="descname">savepoint</code><span class="sig-paren">(</span><em>optimistic=False</em><span class="sig-paren">)</span><a class="headerlink" href="#transaction.interfaces.ITransaction.savepoint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a savepoint.</p>
+<p>If the optimistic argument is true, then data managers that don&#8217;t
+support savepoints can be used, but an error will be raised if the
+savepoint is rolled back.</p>
+<p>An ISavepoint object is returned.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="transaction.interfaces.ITransaction.setExtendedInfo">
+<code class="descname">setExtendedInfo</code><span class="sig-paren">(</span><em>name</em>, <em>value</em><span class="sig-paren">)</span><a class="headerlink" href="#transaction.interfaces.ITransaction.setExtendedInfo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add extension data to the transaction.</p>
+<p>name is the name of the extension property to set, of Python type
+str; value must be picklable.  Multiple calls may be made to set
+multiple extension properties, provided the names are distinct.</p>
+<p>Storages record the extension data, as meta-data, when a transaction
+commits.</p>
+<p>A storage may impose a limit on the size of extension data; behavior
+is undefined if such a limit is exceeded (for example, a storage may
+raise an exception, or remove <cite>&lt;name, value&gt;</cite> pairs).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="transaction.interfaces.ITransaction.setUser">
+<code class="descname">setUser</code><span class="sig-paren">(</span><em>user_name</em>, <em>path='/'</em><span class="sig-paren">)</span><a class="headerlink" href="#transaction.interfaces.ITransaction.setUser" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the user name.</p>
+<p>path should be provided if needed to further qualify the
+identified user.  This is a convenience method used by Zope.
+It sets the .user attribute to str(path) + &#8221; &#8221; + str(user_name).
+This sets the <cite>.user</cite> attribute; see its docs for more detail.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="transaction.interfaces.ITransaction.user">
+<code class="descname">user</code><em class="property"> = &lt;zope.interface.interface.Attribute object&gt;</em><a class="headerlink" href="#transaction.interfaces.ITransaction.user" title="Permalink to this definition">¶</a></dt>
+<dd><p>A user name associated with the transaction.</p>
+<p>The format of the user name is defined by the application.  The value
+is of Python type str.  Storages record the user value, as meta-data,
+when a transaction commits.</p>
+<p>A storage may impose a limit on the size of the value; behavior is
+undefined if such a limit is exceeded (for example, a storage may
+raise an exception, or truncate the value).</p>
+</dd></dl>
+
+</dd></dl>
+
+<table class="docutils footnote" frame="void" id="transaction-package-can-be-used-wo-zodb" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>The :mod:transaction
+package is a general purpose package for managing <a class="reference external" href="https://en.wikipedia.org/wiki/Distributed_transaction">distributed
+transactions</a> with a
+<a class="reference external" href="https://en.wikipedia.org/wiki/Two-phase_commit_protocol">two-phase commit protocol</a>.  It
+can and occasionally is used with packages other than ZODB.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/zodb.png" alt="Logo"/>
+            </a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Transactions</a><ul>
+<li><a class="reference internal" href="#itransactionmanager">ITransactionManager</a></li>
+<li><a class="reference internal" href="#itransaction">ITransaction</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Reference Documentation</a><ul>
+      <li>Previous: <a href="storages.html" title="previous chapter">Storage APIs</a></li>
+      <li>Next: <a href="../articles/index.html" title="next chapter">ZODB articles</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/reference/transaction.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2009-2016, Zope Foundation.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="../_sources/reference/transaction.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

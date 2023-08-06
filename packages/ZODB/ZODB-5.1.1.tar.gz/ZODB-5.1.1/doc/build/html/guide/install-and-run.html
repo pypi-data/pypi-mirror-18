@@ -1,0 +1,334 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Installing and running ZODB &#8212; ZODB  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../_static/zodb.ico"/>
+    <link rel="top" title="ZODB  documentation" href="../index.html" />
+    <link rel="up" title="ZODB programming guide" href="index.html" />
+    <link rel="next" title="Writing persistent objects" href="writing-persistent-objects.html" />
+    <link rel="prev" title="ZODB programming guide" href="index.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="installing-and-running-zodb">
+<h1>Installing and running ZODB<a class="headerlink" href="#installing-and-running-zodb" title="Permalink to this headline">¶</a></h1>
+<p>This topic discusses some boring nitty-gritty details needed to
+actually run ZODB.</p>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>Installation of ZODB is pretty straightforward using Python&#8217;s
+packaging system. For example, using pip:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">ZODB</span>
+</pre></div>
+</div>
+<p>You may need additional optional packages, such as <a class="reference external" href="https://pypi.python.org/pypi/ZEO">ZEO</a> or <a class="reference external" href="https://pypi.python.org/pypi/RelStorage">RelStorage</a>, depending your deployment
+choices.</p>
+</div>
+<div class="section" id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Permalink to this headline">¶</a></h2>
+<p>You can set up ZODB in your application using either Python, or
+ZODB&#8217;s configuration language.  For simple database setup, and
+especially for exploration, the Python APIs are sufficient.</p>
+<p>For more complex configurations, you&#8217;ll probably find ZODB&#8217;s
+configuration language easier to use.</p>
+<p>To understand database setup, it&#8217;s important to understand ZODB&#8217;s
+architecture.  ZODB separates database functionality
+from storage concerns. When you create a database object,
+you specify a storage object for it to use, as in:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">ZODB</span><span class="o">,</span> <span class="nn">ZODB.FileStorage</span>
+
+<span class="n">storage</span> <span class="o">=</span> <span class="n">ZODB</span><span class="o">.</span><span class="n">FileStorage</span><span class="o">.</span><span class="n">FileStorage</span><span class="p">(</span><span class="s1">&#39;mydata.fs&#39;</span><span class="p">)</span>
+<span class="n">db</span> <span class="o">=</span> <span class="n">ZODB</span><span class="o">.</span><span class="n">DB</span><span class="p">(</span><span class="n">storage</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>So when you define a database, you&#8217;ll also define a storage. In the
+example above, we define a <a class="reference internal" href="../reference/storages.html#ZODB.FileStorage.FileStorage.FileStorage" title="ZODB.FileStorage.FileStorage.FileStorage"><code class="xref py py-class docutils literal"><span class="pre">file</span> <span class="pre">storage</span></code></a> and then use it to define
+a database.</p>
+<p>Sometimes, storages are created through composition.  For example, if
+we want to save space, we could layer a <code class="docutils literal"><span class="pre">ZlibStorage</span></code>
+<a class="footnote-reference" href="#zlibstoragefn" id="id1">[1]</a> over the file storage:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">ZODB</span><span class="o">,</span> <span class="nn">ZODB.FileStorage</span><span class="o">,</span> <span class="nn">zc.zlibstorage</span>
+
+<span class="n">storage</span> <span class="o">=</span> <span class="n">ZODB</span><span class="o">.</span><span class="n">FileStorage</span><span class="o">.</span><span class="n">FileStorage</span><span class="p">(</span><span class="s1">&#39;mydata.fs&#39;</span><span class="p">)</span>
+<span class="n">compressed_storage</span> <span class="o">=</span> <span class="n">zc</span><span class="o">.</span><span class="n">zlibstorage</span><span class="o">.</span><span class="n">ZlibStorage</span><span class="p">(</span><span class="n">storage</span><span class="p">)</span>
+<span class="n">db</span> <span class="o">=</span> <span class="n">ZODB</span><span class="o">.</span><span class="n">DB</span><span class="p">(</span><span class="n">compressed_storage</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><a class="reference external" href="https://pypi.python.org/pypi/zc.zlibstorage">ZlibStorage</a>
+compresses database records <a class="footnote-reference" href="#zlib" id="id2">[2]</a>.</p>
+<div class="section" id="python-configuration">
+<h3>Python configuration<a class="headerlink" href="#python-configuration" title="Permalink to this headline">¶</a></h3>
+<p>To set up a database with Python, you&#8217;ll construct a storage using the
+<a class="reference internal" href="../reference/storages.html#included-storages-label"><span class="std std-ref">storage APIs</span></a>, and then pass the
+storage to the <a class="reference internal" href="../reference/zodb.html#ZODB.DB" title="ZODB.DB"><code class="xref py py-class docutils literal"><span class="pre">DB</span></code></a> class to create a database, as shown
+in the examples in the previous section.</p>
+<p>The <a class="reference internal" href="../reference/zodb.html#ZODB.DB" title="ZODB.DB"><code class="xref py py-class docutils literal"><span class="pre">DB</span></code></a> class also accepts a string path name as its
+storage argument to automatically create a file storage.  You can also
+pass <code class="docutils literal"><span class="pre">None</span></code> as the storage to automatically use a
+<a class="reference internal" href="../reference/storages.html#ZODB.MappingStorage.MappingStorage" title="ZODB.MappingStorage.MappingStorage"><code class="xref py py-class docutils literal"><span class="pre">MappingStorage</span></code></a>, which is convenient when
+exploring ZODB:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">db</span> <span class="o">=</span> <span class="n">ZODB</span><span class="o">.</span><span class="n">DB</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span> <span class="c1"># Create an in-memory database.</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="text-configuration">
+<h3>Text configuration<a class="headerlink" href="#text-configuration" title="Permalink to this headline">¶</a></h3>
+<p>ZODB supports a text-based configuration language.  It uses a syntax
+similar to Apache configuration files.  The syntax was chosen to be
+familiar to site administrators.</p>
+<p>ZODB&#8217;s text configuration uses <a class="reference external" href="https://pypi.python.org/pypi/ZConfig">ZConfig</a>. You can use ZConfig to
+create your application&#8217;s configuration, but it&#8217;s more common to
+include ZODB configuration strings in their own files or embedded in
+simpler configuration files, such as <a class="reference external" href="https://docs.python.org/3/library/configparser.html#module-configparser">configarser</a>
+files.</p>
+<p>A database configuration string has a <code class="docutils literal"><span class="pre">zodb</span></code> section wrapping a
+storage section, as in:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">zodb</span><span class="o">&gt;</span>
+  <span class="n">cache</span><span class="o">-</span><span class="n">size</span><span class="o">-</span><span class="nb">bytes</span> <span class="mi">100</span><span class="n">MB</span>
+  <span class="o">&lt;</span><span class="n">mappingstorage</span><span class="o">&gt;</span>
+  <span class="o">&lt;/</span><span class="n">mappingstorage</span><span class="o">&gt;</span>
+<span class="o">&lt;/</span><span class="n">zodb</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>In the example above, the <a class="reference internal" href="../reference/storages.html#mappingstorage-text-configuration"><span class="std std-ref">mappingstorage</span></a> section defines the storage used
+by the database.</p>
+<p>To create a database from a string, use
+<a class="reference internal" href="../reference/zodb.html#ZODB.config.databaseFromString" title="ZODB.config.databaseFromString"><code class="xref py py-func docutils literal"><span class="pre">ZODB.config.databaseFromString()</span></code></a>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">ZODB.config</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">db</span> <span class="o">=</span> <span class="n">ZODB</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">databaseFromString</span><span class="p">(</span><span class="n">snippet</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To load databases from file names or URLs, use
+<a class="reference internal" href="../reference/zodb.html#ZODB.config.databaseFromURL" title="ZODB.config.databaseFromURL"><code class="xref py py-func docutils literal"><span class="pre">ZODB.config.databaseFromURL()</span></code></a>.</p>
+</div>
+<div class="section" id="uri-based-configuration">
+<h3>URI-based configuration<a class="headerlink" href="#uri-based-configuration" title="Permalink to this headline">¶</a></h3>
+<p>Another database configuration option is provided by the <a class="reference external" href="https://pypi.python.org/pypi/zodburi">zodburi</a> package. See:
+<a class="reference external" href="http://docs.pylonsproject.org/projects/zodburi">http://docs.pylonsproject.org/projects/zodburi</a>.  It&#8217;s less powerful
+than the Python or text configuration options, but allows
+configuration to be reduced to a single URI and handles most cases.</p>
+</div>
+</div>
+<div class="section" id="using-databases-connections">
+<h2>Using databases: connections<a class="headerlink" href="#using-databases-connections" title="Permalink to this headline">¶</a></h2>
+<p>Once you have a database, you need to get a database connection to to
+much of anything.  Connections take care of loading and saving objects
+and manage object caches. Each connection has it&#8217;s own cache
+<a class="footnote-reference" href="#caches-are-expensive" id="id3">[3]</a>.</p>
+<div class="section" id="getting-connections">
+<span id="id4"></span><h3>Getting connections<a class="headerlink" href="#getting-connections" title="Permalink to this headline">¶</a></h3>
+<p>Amongst <a class="footnote-reference" href="#amongst" id="id5">[4]</a> the common ways of getting a connection:</p>
+<dl class="docutils">
+<dt>db.open()</dt>
+<dd><p class="first">The database <a class="reference internal" href="../reference/zodb.html#ZODB.DB.open" title="ZODB.DB.open"><code class="xref py py-meth docutils literal"><span class="pre">open()</span></code></a> method opens a
+connection, returning a connection object:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">conn</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">open</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>It&#8217;s up to the application to call
+<a class="reference internal" href="../reference/zodb.html#ZODB.Connection.Connection.close" title="ZODB.Connection.Connection.close"><code class="xref py py-meth docutils literal"><span class="pre">close()</span></code></a> when the application is
+done using the connection.</p>
+<p class="last">If changes are made, the application <a class="reference internal" href="transactions-and-threading.html#using-transactions-label"><span class="std std-ref">commits transactions</span></a> to make them permanent.</p>
+</dd>
+<dt>db.transaction()</dt>
+<dd><p class="first">The database <a class="reference internal" href="../reference/zodb.html#ZODB.DB.transaction" title="ZODB.DB.transaction"><code class="xref py py-meth docutils literal"><span class="pre">transaction()</span></code></a> method
+returns a context manager that can be used with the <a class="reference external" href="https://docs.python.org/3/reference/compound_stmts.html#grammar-token-with_stmt">python with
+statement</a>
+to execute a block of code in a transaction:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">db</span><span class="o">.</span><span class="n">transaction</span><span class="p">()</span> <span class="k">as</span> <span class="n">connection</span><span class="p">:</span>
+    <span class="n">connection</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">foo</span> <span class="o">=</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p class="last">In the example above, we used <code class="docutils literal"><span class="pre">as</span> <span class="pre">connection</span></code> to get the database
+connection used in the variable <code class="docutils literal"><span class="pre">connection</span></code>.</p>
+</dd>
+<dt>some_object._p_jar</dt>
+<dd>For code that&#8217;s already running in the context of an open
+connection, you can get the current connection as the <code class="docutils literal"><span class="pre">_p_jar</span></code>
+attribute of some persistent object that was accessed via the
+connection.</dd>
+</dl>
+</div>
+<div class="section" id="getting-objects">
+<h3>Getting objects<a class="headerlink" href="#getting-objects" title="Permalink to this headline">¶</a></h3>
+<p>Once you have a connection, you access objects by traversing the
+object graph from the root object.</p>
+<p>The database root object is a mapping object that holds the top level
+objects in the database.  There should only be a small number of
+top-level objects (often only one).  You can get the root object by calling a
+connection&#8217;s <code class="docutils literal"><span class="pre">root</span></code> attribute:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">root</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">root</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">root</span>
+<span class="go">{&#39;foo&#39;: 1}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">root</span><span class="p">[</span><span class="s1">&#39;foo&#39;</span><span class="p">]</span>
+<span class="go">1</span>
+</pre></div>
+</div>
+<p>For convenience <a class="footnote-reference" href="#root-convenience" id="id6">[5]</a>, you can also get top-level
+objects by accessing attributes of the connection root object:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">conn</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">foo</span>
+<span class="go">1</span>
+</pre></div>
+</div>
+<p>Once you have a top-level object, you use its methods, attributes, or
+operations to access other objects and so on to get the objects you
+need.  Often indexing data structures like <a class="reference external" href="https://pythonhosted.org/BTrees/">BTrees</a> are used to
+make it possible to search objects in large collections.</p>
+<table class="docutils footnote" frame="void" id="zlibstoragefn" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td><a class="reference external" href="https://pypi.python.org/pypi/zc.zlibstorage">zc.zlibstorage</a> is an optional
+package that you need to install separately.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="zlib" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[2]</a></td><td>ZlibStorage uses the <code class="xref py py-mod docutils literal"><span class="pre">zlib</span></code> standard module, which
+uses the <a class="reference external" href="http://www.zlib.net/">zlib library</a>.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="caches-are-expensive" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id3">[3]</a></td><td>ZODB can be very efficient at caching data
+in memory, especially if your <a class="reference external" href="https://en.wikipedia.org/wiki/Working_set">working set</a> is small enough to
+fit in memory, because the cache is simply an object tree and
+accessing a cached object typically requires no database
+interaction.  Because each connection has its own cache,
+connections can be expensive, depending on their cache sizes.  For
+this reason, you&#8217;ll generally want to limit the number of open
+connections you have at any one time.  Connections are pooled, so
+opening a connection is inexpensive.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="amongst" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id5">[4]</a></td><td><a class="reference external" href="https://www.youtube.com/watch?v=7WJXHY2OXGE">https://www.youtube.com/watch?v=7WJXHY2OXGE</a></td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="root-convenience" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id6">[5]</a></td><td>The ability to access top-level objects of the
+database as root attributes is a recent convenience. Originally,
+the <code class="docutils literal"><span class="pre">root()</span></code> method was used to access the root object which was
+then accessed as a mapping.  It&#8217;s still potentially useful to
+access top-level objects using the mapping interface if their names
+aren&#8217;t valid attribute names.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/zodb.png" alt="Logo"/>
+            </a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Installing and running ZODB</a><ul>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#configuration">Configuration</a><ul>
+<li><a class="reference internal" href="#python-configuration">Python configuration</a></li>
+<li><a class="reference internal" href="#text-configuration">Text configuration</a></li>
+<li><a class="reference internal" href="#uri-based-configuration">URI-based configuration</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#using-databases-connections">Using databases: connections</a><ul>
+<li><a class="reference internal" href="#getting-connections">Getting connections</a></li>
+<li><a class="reference internal" href="#getting-objects">Getting objects</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">ZODB programming guide</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">ZODB programming guide</a></li>
+      <li>Next: <a href="writing-persistent-objects.html" title="next chapter">Writing persistent objects</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/guide/install-and-run.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2009-2016, Zope Foundation.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="../_sources/guide/install-and-run.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

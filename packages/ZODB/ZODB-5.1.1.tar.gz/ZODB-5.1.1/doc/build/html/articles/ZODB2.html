@@ -1,0 +1,442 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Advanced ZODB for Python Programmers &#8212; ZODB  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../_static/zodb.ico"/>
+    <link rel="top" title="ZODB  documentation" href="../index.html" />
+    <link rel="up" title="ZODB articles" href="index.html" />
+    <link rel="next" title="Very old ZODB programming guide" href="old-guide/index.html" />
+    <link rel="prev" title="Introduction to the ZODB (by Michel Pelletier)" href="ZODB1.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="advanced-zodb-for-python-programmers">
+<h1>Advanced ZODB for Python Programmers<a class="headerlink" href="#advanced-zodb-for-python-programmers" title="Permalink to this headline">¶</a></h1>
+<p>In the first article in this series, &#8220;ZODB for Python
+Programmers&#8221;:ZODB1 I covered some of the simpler aspects of Python
+object persistence.  In this article, I&#8217;ll go over some of the more
+advanced features of ZODB.</p>
+<p>In addition to simple persistence, ZODB offers some very useful
+extras for the advanced Python application.  Specificly, we&#8217;ll cover
+the following advanced features in this article:</p>
+<ul class="simple">
+<li>Persistent-Aware Types &#8211; ZODB comes with some special,
+&#8220;persistent-aware&#8221; data types for storing data in a ZODB.  The
+most useful of these is the &#8220;BTree&#8221;, which is a fast, efficient
+storage object for lots of data.</li>
+<li>Voalitile Data &#8211; Not all your data is meant to be stored in the
+database, ZODB let&#8217;s you have volatile data on your objects that
+does not get saved.</li>
+<li>Pluggable Storages &#8211; ZODB offers you the ability to use many
+different storage back-ends to store your object data, including
+files, relational databases and a special client-server storage
+that stores objects on a remote server.</li>
+<li>Conflict Resolution &#8211; When many threads try to write to the same
+object at the same time, you can get conflicts.  ZODB offers a
+conflict resolution protocol that allows you to mitigate most
+conflicting writes to your data.</li>
+<li>Transactions &#8211; When you want your changes to be &#8220;all or nothing&#8221;
+transactions come to the rescue.</li>
+</ul>
+<div class="section" id="persistent-aware-types">
+<h2>Persistent-Aware Types<a class="headerlink" href="#persistent-aware-types" title="Permalink to this headline">¶</a></h2>
+<p>You can also get around the mutable attribute problem discussed in
+the first article by using special types that are &#8220;persistent
+aware&#8221;.  ZODB comes with the following persistent aware mutable
+object types:</p>
+<ul class="simple">
+<li>PersistentList &#8211; This type works just like a list, except that
+changing it does not require setting _p_changed or explicitly
+re-assigning the attribute.</li>
+<li>PersistentMapping &#8211; A persistent aware dictionary, much like
+PersistentList.</li>
+<li>BTree &#8211; A dictionary-like object that can hold large
+collections of objects in an ordered, fast, efficient way.</li>
+</ul>
+<p>BTrees offer a very powerful facility to the Python programmer:</p>
+<ul class="simple">
+<li>BTrees can hold a large collection of information in an
+efficient way; more objects than your computer has enough
+memory to hold at one time.</li>
+<li>BTrees are integrated into the persistence machinery to work
+effectively with ZODB&#8217;s object cache.  Recently, or heavily
+used objects are kept in a memory cache for speed.</li>
+<li>BTrees can be searched very quickly, because they are stored
+in an fast, balanced tree data structure.</li>
+<li>BTrees come in three flavors, OOBTrees, IOBTrees, OIBTrees, and
+IIBTrees.  The last three are optimized for integer keys, values,
+and key-value pairs, respectively.  This means that, for example,
+an IOBTree is meant to map an integer to an object, and is
+optimized for having integers keys.</li>
+</ul>
+</div>
+<div class="section" id="using-btrees">
+<h2>Using BTrees<a class="headerlink" href="#using-btrees" title="Permalink to this headline">¶</a></h2>
+<p>Suppose you track the movement of all your employees with
+heat-seeking cameras hidden in the ceiling tiles.  Since your
+employees tend to frequently congregate against you, all of the
+tracking information could end up to be a lot of data, possibly
+thousands of coordinates per day per employee.  Further, you want
+to key the coordinate on the time that it was taken, so that you
+can only look at where your employees were during certain times:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">BTrees</span> <span class="k">import</span> <span class="n">IOBTree</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="k">import</span> <span class="n">time</span>
+
+<span class="k">class</span> <span class="nc">Employee</span><span class="p">(</span><span class="n">Persistent</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">movements</span> <span class="o">=</span> <span class="n">IOBTree</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">fix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coords</span><span class="p">):</span>
+        <span class="s2">&quot;get a fix on the employee&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">movements</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="p">())]</span> <span class="o">=</span> <span class="n">coords</span>
+
+    <span class="k">def</span> <span class="nf">trackToday</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s2">&quot;return all the movements of the</span>
+        <span class="n">employee</span> <span class="ow">in</span> <span class="n">the</span> <span class="n">last</span> <span class="mi">24</span> <span class="n">hours</span><span class="s2">&quot;</span>
+        <span class="n">current_time</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="p">())</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">movements</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="n">current_time</span> <span class="o">-</span> <span class="mi">86400</span><span class="p">,</span>
+                                    <span class="n">current_time</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In this example, the &#8216;fix&#8217; method is called every time one of your
+cameras sees that employee.  This information is then stored in a
+BTree, with the current &#8216;time()&#8217; as the key and the &#8216;coordinates&#8217;
+as the value.</p>
+<p>Because BTrees store their information is a ordered structure,
+they can be quickly searched for a range of key values.  The
+&#8216;trackToday&#8217; method uses this feature to return a sequence of
+coordinates from 24 hours hence to the present.</p>
+<p>This example shows how BTrees can be quickly searched for a range
+of values from a minimum to a maximum, and how you can use this
+technique to oppress your workforce.  BTrees have a very rich API,
+including doing unions and intersections of result sets.</p>
+</div>
+<div class="section" id="not-all-objects-are-persistent">
+<h2>Not All Objects are Persistent<a class="headerlink" href="#not-all-objects-are-persistent" title="Permalink to this headline">¶</a></h2>
+<p>You don&#8217;t have to make all of your objects persistent.
+Non-persistent objects are often useful to represent either
+&#8220;canned&#8221; behavior (classes that define methods but no state), or
+objects that are useful only as a &#8220;cache&#8221; that can be thrown away
+when your persistent object is deactivated (removed from memory
+when not used).</p>
+<p>ZODB provides you with the ability to have <em>volatile</em> attributes.
+Volatile attributes are attributes of persistent objects that are
+never saved in the database, even if they are capable of being
+persistent.  Volatile attributes begin with &#8216;_v_&#8217; are good for
+keeping cached information around for optimization.  ZODB also
+provides you with access to special pickling hooks that allow you
+to set volatile information when an object is activated.</p>
+<p>Imagine you had a class that stored a complex image that you
+needed to calculate.  This calculation is expensive.  Instead of
+calculating the image every time you called a method, it would be
+better to calculate it <em>once</em> and then cache the result in a
+volatile attribute:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">image</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="s2">&quot;a large and complex image of the terrain&quot;</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_v_image&#39;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v_image</span>
+    <span class="n">image</span><span class="o">=</span><span class="n">expensive_calculation</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_v_image</span><span class="o">=</span><span class="n">image</span>
+    <span class="k">return</span> <span class="n">image</span>
+</pre></div>
+</div>
+<p>Here, calling &#8216;image&#8217; the first time the object is activated will
+cause the method to do the expensive calculation.  After the first
+call, the image will be cached in a volatile attribute.  If the
+object is removed from memory, the &#8216;_v_image&#8217; attribute is not
+saved, so the cached image is thrown away, only to be recalculated
+the next time you call &#8216;image&#8217;.</p>
+</div>
+<div class="section" id="zodb-and-concurrency">
+<h2>ZODB and Concurrency<a class="headerlink" href="#zodb-and-concurrency" title="Permalink to this headline">¶</a></h2>
+<p>Different, threads, processes, and computers on a network can open
+connections to a single ZODB object database.  Each of these
+different processes keeps its own copy of the objects that it uses
+in memory.</p>
+<p>The problem with allowing concurrent access is that conflicts can
+occur.  If different threads try to commit changes to the same
+objects at the same time, one of the threads will raise a
+ConflictError.  If you want, you can write your application to
+either resolve or retry conflicts a reasonable number of times.</p>
+<p>Zope will retry a conflicting ZODB operation three times.  This is
+usually pretty reasonable behavior.  Because conflicts only happen
+when two threads write to the same object, retrying a conflict
+means that one thread will win the conflict and write itself, and
+the other thread will retry a few seconds later.</p>
+</div>
+<div class="section" id="pluggable-storages">
+<h2>Pluggable Storages<a class="headerlink" href="#pluggable-storages" title="Permalink to this headline">¶</a></h2>
+<p>Different processes and computers can connection to the same
+database using a special kind of storage called a &#8216;ClientStorage&#8217;.
+A &#8216;ClientStorage&#8217; connects to a &#8216;StorageServer&#8217; over a network.</p>
+<p>In the very beginning, you created a connection to the database by
+first creating a storage.  This was of the type &#8216;FileStorage&#8217;.
+Zope comes with several different back end storage objects, but
+one of the most interesting is the &#8216;ClientStorage&#8217; from the Zope
+Enterprise Objects product (ZEO).</p>
+<p>The &#8216;ClientStorage&#8217; storage makes a TCP/IP connection to a
+&#8216;StorageServer&#8217; (also provided with ZEO).  This allows many
+different processes on one or machines to work with the same
+object database and, hence, the same objects.  Each process gets a
+cached &#8220;copy&#8221; of a particular object for speed.  All of the
+&#8216;ClientStorages&#8217; connected to a &#8216;StorageServer&#8217; speak a special
+object transport and cache invalidation protocol to keep all of
+your computers synchronized.</p>
+<p>Opening a &#8216;ClientStorage&#8217; connection is simple.  The following
+code creates a database connection and gets the root object for a
+&#8216;StorageServer&#8217; listening on &#8220;localhost:12345&#8221;:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ZODB</span> <span class="k">import</span> <span class="n">DB</span>
+<span class="kn">from</span> <span class="nn">ZEO</span> <span class="k">import</span> <span class="n">ClientStorage</span>
+<span class="n">storage</span> <span class="o">=</span> <span class="n">ClientStorage</span><span class="o">.</span><span class="n">ClientStorage</span><span class="p">(</span><span class="s1">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">12345</span><span class="p">)</span>
+<span class="n">db</span> <span class="o">=</span> <span class="n">DB</span><span class="p">(</span> <span class="n">storage</span> <span class="p">)</span>
+<span class="n">connection</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">open</span><span class="p">()</span>
+<span class="n">root</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">root</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>In the rare event that two processes (or threads) modify the same
+object at the same time, ZODB provides you with the ability to
+retry or resolve these conflicts yourself.</p>
+</div>
+<div class="section" id="resolving-conflicts">
+<h2>Resolving Conflicts<a class="headerlink" href="#resolving-conflicts" title="Permalink to this headline">¶</a></h2>
+<p>If a conflict happens, you have two choices. The first choice is
+that you live with the error and you try again.  Statistically,
+conflicts are going to happen, but only in situations where objects
+are &#8220;hot-spots&#8221;.  Most problems like this can be &#8220;designed away&#8221;;
+if you can redesign your application so that the changes get
+spread around to many different objects then you can usually get
+rid of the hot spot.</p>
+<p>Your second choice is to try and <em>resolve</em> the conflict. In many
+situations, this can be done. For example, consider the following
+persistent object:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Counter</span><span class="p">(</span><span class="n">Persistent</span><span class="p">):</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">hit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">+</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>This is a simple counter.  If you hit this counter with a lot of
+requests though, it will cause conflict errors as different threads
+try to change the count attribute simultaneously.</p>
+<p>But resolving the conflict between conflicting threads in this
+case is easy.  Both threads want to increment the self.count
+attribute by a value, so the resolution is to increment the
+attribute by the sum of the two values and make both commits
+happy.</p>
+<p>To resolve a conflict, a class should define an
+&#8216;_p_resolveConflict&#8217; method. This method takes three arguments:</p>
+<ul class="simple">
+<li>&#8216;oldState&#8217; &#8211; The state of the object that the changes made by
+the current transaction were based on. The method is permitted
+to modify this value.</li>
+<li>&#8216;savedState&#8217; &#8211; The state of the object that is currently
+stored in the database. This state was written after &#8216;oldState&#8217;
+and reflects changes made by a transaction that committed
+before the current transaction. The method is permitted to
+modify this value.</li>
+<li>&#8216;newState&#8217; &#8211; The state after changes made by the current
+transaction.  The method is <em>not</em> permitted to modify this
+value. This method should compute a new state by merging
+changes reflected in &#8216;savedState&#8217; and &#8216;newState&#8217;, relative to
+&#8216;oldState&#8217;.</li>
+</ul>
+<p>The method should return the state of the object after resolving
+the differences.</p>
+<p>Here is an example of a &#8216;_p_resolveConflict&#8217; in the &#8216;Counter&#8217;
+class:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Counter</span><span class="p">(</span><span class="n">Persistent</span><span class="p">):</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">hit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">+</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">_p_resolveConflict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">oldState</span><span class="p">,</span> <span class="n">savedState</span><span class="p">,</span> <span class="n">newState</span><span class="p">):</span>
+
+        <span class="c1"># Figure out how each state is different:</span>
+        <span class="n">savedDiff</span><span class="o">=</span> <span class="n">savedState</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">oldState</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span>
+        <span class="n">newDiff</span><span class="o">=</span> <span class="n">newState</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="o">-</span> <span class="n">oldState</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span>
+
+        <span class="c1"># Apply both sets of changes to old state:</span>
+        <span class="k">return</span> <span class="n">oldState</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">savedDiff</span> <span class="o">+</span> <span class="n">newDiff</span>
+</pre></div>
+</div>
+<p>In the above example, &#8216;_p_resolveConflict&#8217; resolves the difference
+between the two conflicting transactions.</p>
+</div>
+<div class="section" id="transactions-and-subtransactions">
+<h2>Transactions and Subtransactions<a class="headerlink" href="#transactions-and-subtransactions" title="Permalink to this headline">¶</a></h2>
+<p>Transactions are a very powerful concept in databases.
+Transactions let you make many changes to your information as if
+they were all one big change.  Imagine software that did online
+banking and allowed you to transfer money from one account to
+another.  You would do this by deducting the amount of the
+transfer from one account, and adding  that amount onto the
+other.</p>
+<p>If an error happened while you were adding the money to the
+receiving account (say, the bank&#8217;s computers were unavailable),
+then you would want to abort the transaction so that the state of
+the accounts went back to the way they were before you changed
+anything.</p>
+<p>To abort a transaction, you need to call the &#8216;abort&#8217; method of the
+transactions object:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">transaction</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">transaction</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span>
+
+<span class="go">This will throw away all the currently changed objects and start a</span>
+<span class="go">new, empty transaction.</span>
+</pre></div>
+</div>
+<p>Subtransactions, sometimes called &#8220;inner transactions&#8221;, are
+transactions that happen inside another transaction.
+Subtransactions can be commited and aborted like regular &#8220;outer&#8221;
+transactions.  Subtransactions mostly provide you with an
+optimization technique.</p>
+<p>Subtransactions can be commited and aborted.  Commiting or
+aborting a subtransaction does not commit or abort its outer
+transaction, just the subtransaction.  This lets you use many,
+fine-grained transactions within one big transaction.</p>
+<p>Why is this important?  Well, in order for a transaction to be
+&#8220;rolled back&#8221; the changes in the transaction must be stored in
+memory until commit time.  By commiting a subtransaction, you are
+telling Zope that &#8220;I&#8217;m pretty sure what I&#8217;ve done so far is
+permenant, you can store this subtransaction somewhere other than
+in memory&#8221;.  For very, very large transactions, this can be a big
+memory win for you.</p>
+<p>If you abort an outer transaction, then all of its inner
+subtransactions will also be aborted and not saved.  If you abort
+an inner subtransaction, then only the changes made during that
+subtransaction are aborted, and the outer transaction is <em>not</em>
+aborted and more changes can be made and commited, including more
+subtransactions.</p>
+<p>You can commit or abort a subtransaction by calling either
+commit() or abort() with an argument of 1:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">transaction</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># or</span>
+<span class="n">transaction</span><span class="o">.</span><span class="n">abort</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Subtransactions offer you a nice way to &#8220;batch&#8221; all of your &#8220;all
+or none&#8221; actions into smaller &#8220;all or none&#8221; actions while still
+keeping the outer level &#8220;all or none&#8221; transaction intact.  As a
+bonus, they also give you much better memory resource performance.</p>
+</div>
+<div class="section" id="conclusion">
+<h2>Conclusion<a class="headerlink" href="#conclusion" title="Permalink to this headline">¶</a></h2>
+<p>ZODB offers many advanced features to help you develop simple, but
+powerful python programs.  In this article, you used some of the
+more advanced features of ZODB to handle different application
+needs, like storing information in large sets, using the database
+concurrently, and maintaining transactional integrity.  For more
+information on ZODB, join the discussion list at <a class="reference external" href="mailto:zodb-dev&#37;&#52;&#48;zope&#46;org">zodb-dev<span>&#64;</span>zope<span>&#46;</span>org</a>
+where you can find out more about this powerful component of Zope.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/zodb.png" alt="Logo"/>
+            </a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Advanced ZODB for Python Programmers</a><ul>
+<li><a class="reference internal" href="#persistent-aware-types">Persistent-Aware Types</a></li>
+<li><a class="reference internal" href="#using-btrees">Using BTrees</a></li>
+<li><a class="reference internal" href="#not-all-objects-are-persistent">Not All Objects are Persistent</a></li>
+<li><a class="reference internal" href="#zodb-and-concurrency">ZODB and Concurrency</a></li>
+<li><a class="reference internal" href="#pluggable-storages">Pluggable Storages</a></li>
+<li><a class="reference internal" href="#resolving-conflicts">Resolving Conflicts</a></li>
+<li><a class="reference internal" href="#transactions-and-subtransactions">Transactions and Subtransactions</a></li>
+<li><a class="reference internal" href="#conclusion">Conclusion</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">ZODB articles</a><ul>
+      <li>Previous: <a href="ZODB1.html" title="previous chapter">Introduction to the ZODB (by Michel Pelletier)</a></li>
+      <li>Next: <a href="old-guide/index.html" title="next chapter">Very old ZODB programming guide</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/articles/ZODB2.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2009-2016, Zope Foundation.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="../_sources/articles/ZODB2.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

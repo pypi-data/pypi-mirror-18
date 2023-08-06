@@ -1,0 +1,690 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>test.randomgen &mdash; Dunshire 0.1.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.xhtml',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Dunshire 0.1.1 documentation" href="../../index.xhtml" />
+    <link rel="up" title="test" href="../test.xhtml" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for test.randomgen</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Random thing generators used in the rest of the test suite.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">random</span> <span class="kn">import</span> <span class="n">randint</span><span class="p">,</span> <span class="n">uniform</span>
+
+<span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">sqrt</span>
+<span class="kn">from</span> <span class="nn">cvxopt</span> <span class="kn">import</span> <span class="n">matrix</span>
+<span class="kn">from</span> <span class="nn">dunshire.cones</span> <span class="kn">import</span> <span class="n">NonnegativeOrthant</span><span class="p">,</span> <span class="n">IceCream</span>
+<span class="kn">from</span> <span class="nn">dunshire.games</span> <span class="kn">import</span> <span class="n">SymmetricLinearGame</span>
+<span class="kn">from</span> <span class="nn">dunshire.matrices</span> <span class="kn">import</span> <span class="p">(</span><span class="n">append_col</span><span class="p">,</span> <span class="n">append_row</span><span class="p">,</span> <span class="n">identity</span><span class="p">)</span>
+
+<span class="n">MAX_COND</span> <span class="o">=</span> <span class="mi">125</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">The maximum condition number of a randomly-generated game. When the</span>
+<span class="sd">condition number of the games gets too high, we start to see</span>
+<span class="sd">:class:`PoorScalingException` being thrown. There&#39;s no science to</span>
+<span class="sd">choosing the upper bound -- it got lowered until those exceptions</span>
+<span class="sd">stopped popping up. It&#39;s at ``125`` because ``129`` doesn&#39;t work.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">RANDOM_MAX</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">When generating random real numbers or integers, this is used as the</span>
+<span class="sd">largest allowed magnitude. It keeps our condition numbers down and other</span>
+<span class="sd">properties within reason.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="random_scalar"><a class="viewcode-back" href="../../developer-api.xhtml#test.randomgen.random_scalar">[docs]</a><span class="k">def</span> <span class="nf">random_scalar</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a random scalar.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    float</span>
+<span class="sd">        A random real number between negative and positive</span>
+<span class="sd">        :const:`RANDOM_MAX`, inclusive.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; abs(random_scalar()) &lt;= RANDOM_MAX</span>
+<span class="sd">        True</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="n">RANDOM_MAX</span><span class="p">,</span> <span class="n">RANDOM_MAX</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="random_nn_scalar"><a class="viewcode-back" href="../../developer-api.xhtml#test.randomgen.random_nn_scalar">[docs]</a><span class="k">def</span> <span class="nf">random_nn_scalar</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a random nonnegative scalar.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    float</span>
+<span class="sd">        A random nonnegative real number between zero and</span>
+<span class="sd">        :const:`RANDOM_MAX`, inclusive.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; 0 &lt;= random_nn_scalar() &lt;= RANDOM_MAX</span>
+<span class="sd">        True</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">abs</span><span class="p">(</span><span class="n">random_scalar</span><span class="p">())</span>
+
+</div>
+<div class="viewcode-block" id="random_natural"><a class="viewcode-back" href="../../developer-api.xhtml#test.randomgen.random_natural">[docs]</a><span class="k">def</span> <span class="nf">random_natural</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a random natural number.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    int</span>
+<span class="sd">        A random natural number between ``1`` and :const:`RANDOM_MAX`,</span>
+<span class="sd">        inclusive.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; 1 &lt;= random_natural() &lt;= RANDOM_MAX</span>
+<span class="sd">        True</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">RANDOM_MAX</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="random_matrix"><a class="viewcode-back" href="../../developer-api.xhtml#test.randomgen.random_matrix">[docs]</a><span class="k">def</span> <span class="nf">random_matrix</span><span class="p">(</span><span class="n">row_count</span><span class="p">,</span> <span class="n">column_count</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a random matrix.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    row_count : int</span>
+<span class="sd">        The number of rows you want in the returned matrix.</span>
+
+<span class="sd">    column_count: int</span>
+<span class="sd">        The number of columns you want in the returned matrix (default:</span>
+<span class="sd">        the same as ``row_count``).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    matrix</span>
+<span class="sd">        A new matrix whose entries are random floats chosen uniformly</span>
+<span class="sd">        between negative and positive :const:`RANDOM_MAX`.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; A = random_matrix(3)</span>
+<span class="sd">        &gt;&gt;&gt; A.size</span>
+<span class="sd">        (3, 3)</span>
+
+<span class="sd">        &gt;&gt;&gt; A = random_matrix(3,2)</span>
+<span class="sd">        &gt;&gt;&gt; A.size</span>
+<span class="sd">        (3, 2)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">column_count</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">column_count</span> <span class="o">=</span> <span class="n">row_count</span>
+
+    <span class="n">entries</span> <span class="o">=</span> <span class="p">[</span><span class="n">random_scalar</span><span class="p">()</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">row_count</span><span class="o">*</span><span class="n">column_count</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="n">matrix</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="p">(</span><span class="n">row_count</span><span class="p">,</span> <span class="n">column_count</span><span class="p">))</span>
+
+</div>
+<div class="viewcode-block" id="random_nonnegative_matrix"><a class="viewcode-back" href="../../developer-api.xhtml#test.randomgen.random_nonnegative_matrix">[docs]</a><span class="k">def</span> <span class="nf">random_nonnegative_matrix</span><span class="p">(</span><span class="n">row_count</span><span class="p">,</span> <span class="n">column_count</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a random matrix with nonnegative entries.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    row_count : int</span>
+<span class="sd">        The number of rows you want in the returned matrix.</span>
+
+<span class="sd">    column_count : int</span>
+<span class="sd">        The number of columns you want in the returned matrix (default:</span>
+<span class="sd">        the same as ``row_count``).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    matrix</span>
+<span class="sd">        A new matrix whose entries are chosen by :func:`random_nn_scalar`.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; A = random_nonnegative_matrix(3)</span>
+<span class="sd">        &gt;&gt;&gt; A.size</span>
+<span class="sd">        (3, 3)</span>
+<span class="sd">        &gt;&gt;&gt; all([entry &gt;= 0 for entry in A])</span>
+<span class="sd">        True</span>
+
+<span class="sd">        &gt;&gt;&gt; A = random_nonnegative_matrix(3,2)</span>
+<span class="sd">        &gt;&gt;&gt; A.size</span>
+<span class="sd">        (3, 2)</span>
+<span class="sd">        &gt;&gt;&gt; all([entry &gt;= 0 for entry in A])</span>
+<span class="sd">        True</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">column_count</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">column_count</span> <span class="o">=</span> <span class="n">row_count</span>
+
+    <span class="n">entries</span> <span class="o">=</span> <span class="p">[</span><span class="n">random_nn_scalar</span><span class="p">()</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">row_count</span><span class="o">*</span><span class="n">column_count</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="n">matrix</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="p">(</span><span class="n">row_count</span><span class="p">,</span> <span class="n">column_count</span><span class="p">))</span>
+
+</div>
+<div class="viewcode-block" id="random_diagonal_matrix"><a class="viewcode-back" href="../../developer-api.xhtml#test.randomgen.random_diagonal_matrix">[docs]</a><span class="k">def</span> <span class="nf">random_diagonal_matrix</span><span class="p">(</span><span class="n">dims</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a random square matrix with zero off-diagonal entries.</span>
+
+<span class="sd">    These matrices are Lyapunov-like on the nonnegative orthant, as is</span>
+<span class="sd">    fairly easy to see.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    dims : int</span>
+<span class="sd">        The number of rows/columns you want in the returned matrix.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    matrix</span>
+<span class="sd">        A new matrix whose diagonal entries are random floats chosen</span>
+<span class="sd">        using :func:`random_scalar` and whose off-diagonal entries are</span>
+<span class="sd">        zero.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; A = random_diagonal_matrix(3)</span>
+<span class="sd">        &gt;&gt;&gt; A.size</span>
+<span class="sd">        (3, 3)</span>
+<span class="sd">        &gt;&gt;&gt; A[0,1] == A[0,2] == A[1,0] == A[2,0] == A[1,2] == A[2,1] == 0</span>
+<span class="sd">        True</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">matrix</span><span class="p">([[</span><span class="n">random_scalar</span><span class="p">()</span><span class="o">*</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span> <span class="o">==</span> <span class="n">j</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">dims</span><span class="p">)]</span>
+                   <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">dims</span><span class="p">)])</span>
+
+</div>
+<div class="viewcode-block" id="random_skew_symmetric_matrix"><a class="viewcode-back" href="../../developer-api.xhtml#test.randomgen.random_skew_symmetric_matrix">[docs]</a><span class="k">def</span> <span class="nf">random_skew_symmetric_matrix</span><span class="p">(</span><span class="n">dims</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a random skew-symmetrix matrix.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    dims : int</span>
+<span class="sd">        The number of rows/columns you want in the returned matrix.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    matrix</span>
+<span class="sd">        A new skew-matrix whose strictly above-diagonal entries are</span>
+<span class="sd">        random floats chosen with :func:`random_scalar`.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; A = random_skew_symmetric_matrix(3)</span>
+<span class="sd">        &gt;&gt;&gt; A.size</span>
+<span class="sd">        (3, 3)</span>
+
+<span class="sd">        &gt;&gt;&gt; from dunshire.options import ABS_TOL</span>
+<span class="sd">        &gt;&gt;&gt; from dunshire.matrices import norm</span>
+<span class="sd">        &gt;&gt;&gt; A = random_skew_symmetric_matrix(random_natural())</span>
+<span class="sd">        &gt;&gt;&gt; norm(A + A.trans()) &lt; ABS_TOL</span>
+<span class="sd">        True</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">strict_ut</span> <span class="o">=</span> <span class="p">[[</span><span class="n">random_scalar</span><span class="p">()</span><span class="o">*</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span> <span class="o">&lt;</span> <span class="n">j</span><span class="p">)</span>
+                  <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">dims</span><span class="p">)]</span>
+                 <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">dims</span><span class="p">)]</span>
+
+    <span class="n">strict_ut</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">(</span><span class="n">strict_ut</span><span class="p">,</span> <span class="p">(</span><span class="n">dims</span><span class="p">,</span> <span class="n">dims</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">strict_ut</span> <span class="o">-</span> <span class="n">strict_ut</span><span class="o">.</span><span class="n">trans</span><span class="p">()</span>
+
+</div>
+<div class="viewcode-block" id="random_lyapunov_like_icecream"><a class="viewcode-back" href="../../developer-api.xhtml#test.randomgen.random_lyapunov_like_icecream">[docs]</a><span class="k">def</span> <span class="nf">random_lyapunov_like_icecream</span><span class="p">(</span><span class="n">dims</span><span class="p">):</span>
+    <span class="sd">r&quot;&quot;&quot;</span>
+<span class="sd">    Generate a random matrix Lyapunov-like on the ice-cream cone.</span>
+
+<span class="sd">    The form of these matrices is cited in Gowda and Tao</span>
+<span class="sd">    [GowdaTao]_. The scalar ``a`` and the vector ``b`` (using their</span>
+<span class="sd">    notation) are easy to generate. The submatrix ``D`` is a little</span>
+<span class="sd">    trickier, but it can be found noticing that :math:`C + C^{T} = 0`</span>
+<span class="sd">    for a skew-symmetric matrix :math:`C` implying that :math:`C + C^{T}</span>
+<span class="sd">    + \left(2a\right)I = \left(2a\right)I`. Thus we can stick an</span>
+<span class="sd">    :math:`aI` with each of :math:`C,C^{T}` and let those be our</span>
+<span class="sd">    :math:`D,D^{T}`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    dims : int</span>
+<span class="sd">        The dimension of the ice-cream cone (not of the matrix you want!)</span>
+<span class="sd">        on which the returned matrix should be Lyapunov-like.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    matrix</span>
+<span class="sd">        A new matrix, Lyapunov-like on the ice-cream cone in ``dims``</span>
+<span class="sd">        dimensions, whose free entries are random floats chosen uniformly</span>
+<span class="sd">        between negative and positive :const:`RANDOM_MAX`.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    .. [GowdaTao] M. S. Gowda and J. Tao. On the bilinearity rank of a</span>
+<span class="sd">       proper cone and Lyapunov-like transformations. Mathematical</span>
+<span class="sd">       Programming, 147:155-170, 2014.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; L = random_lyapunov_like_icecream(3)</span>
+<span class="sd">        &gt;&gt;&gt; L.size</span>
+<span class="sd">        (3, 3)</span>
+
+<span class="sd">        &gt;&gt;&gt; from dunshire.options import ABS_TOL</span>
+<span class="sd">        &gt;&gt;&gt; from dunshire.matrices import inner_product</span>
+<span class="sd">        &gt;&gt;&gt; x = matrix([1,1,0])</span>
+<span class="sd">        &gt;&gt;&gt; s = matrix([1,-1,0])</span>
+<span class="sd">        &gt;&gt;&gt; abs(inner_product(L*x, s)) &lt; ABS_TOL</span>
+<span class="sd">        True</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">([</span><span class="n">random_scalar</span><span class="p">()],</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">([</span><span class="n">random_scalar</span><span class="p">()</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">dims</span><span class="o">-</span><span class="mi">1</span><span class="p">)],</span> <span class="p">(</span><span class="n">dims</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="n">D</span> <span class="o">=</span> <span class="n">random_skew_symmetric_matrix</span><span class="p">(</span><span class="n">dims</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">a</span><span class="o">*</span><span class="n">identity</span><span class="p">(</span><span class="n">dims</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">row1</span> <span class="o">=</span> <span class="n">append_col</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="o">.</span><span class="n">trans</span><span class="p">())</span>
+    <span class="n">row2</span> <span class="o">=</span> <span class="n">append_col</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">D</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">append_row</span><span class="p">(</span><span class="n">row1</span><span class="p">,</span> <span class="n">row2</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="random_orthant_game"><a class="viewcode-back" href="../../developer-api.xhtml#test.randomgen.random_orthant_game">[docs]</a><span class="k">def</span> <span class="nf">random_orthant_game</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a random game over the nonnegative orthant.</span>
+
+<span class="sd">    We generate each of ``L``, ``K``, ``e1``, and ``e2`` randomly within</span>
+<span class="sd">    the constraints of the nonnegative orthant, and then construct a</span>
+<span class="sd">    game from them. The process is repeated until we generate a game with</span>
+<span class="sd">    a condition number under :const:`MAX_COND`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    SymmetricLinearGame</span>
+<span class="sd">        A random game over some nonnegative orthant.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; random_orthant_game()</span>
+<span class="sd">        &lt;dunshire.games.SymmetricLinearGame object at 0x...&gt;</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ambient_dim</span> <span class="o">=</span> <span class="n">random_natural</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">K</span> <span class="o">=</span> <span class="n">NonnegativeOrthant</span><span class="p">(</span><span class="n">ambient_dim</span><span class="p">)</span>
+    <span class="n">e1</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.1</span> <span class="o">+</span> <span class="n">random_nn_scalar</span><span class="p">()</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">K</span><span class="o">.</span><span class="n">dimension</span><span class="p">())]</span>
+    <span class="n">e2</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.1</span> <span class="o">+</span> <span class="n">random_nn_scalar</span><span class="p">()</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">K</span><span class="o">.</span><span class="n">dimension</span><span class="p">())]</span>
+    <span class="n">L</span> <span class="o">=</span> <span class="n">random_matrix</span><span class="p">(</span><span class="n">K</span><span class="o">.</span><span class="n">dimension</span><span class="p">())</span>
+    <span class="n">G</span> <span class="o">=</span> <span class="n">SymmetricLinearGame</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">G</span><span class="o">.</span><span class="n">condition</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="n">MAX_COND</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">G</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">random_orthant_game</span><span class="p">()</span>
+
+</div>
+<div class="viewcode-block" id="random_icecream_game"><a class="viewcode-back" href="../../developer-api.xhtml#test.randomgen.random_icecream_game">[docs]</a><span class="k">def</span> <span class="nf">random_icecream_game</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a random game over the ice-cream cone.</span>
+
+<span class="sd">    We generate each of ``L``, ``K``, ``e1``, and ``e2`` randomly within</span>
+<span class="sd">    the constraints of the ice-cream cone, and then construct a game</span>
+<span class="sd">    from them. The process is repeated until we generate a game with a</span>
+<span class="sd">    condition number under :const:`MAX_COND`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    SymmetricLinearGame</span>
+<span class="sd">        A random game over some ice-cream cone.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; random_icecream_game()</span>
+<span class="sd">        &lt;dunshire.games.SymmetricLinearGame object at 0x...&gt;</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Use a minimum dimension of two to avoid divide-by-zero in</span>
+    <span class="c1"># the fudge factor we make up later.</span>
+    <span class="n">ambient_dim</span> <span class="o">=</span> <span class="n">random_natural</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">K</span> <span class="o">=</span> <span class="n">IceCream</span><span class="p">(</span><span class="n">ambient_dim</span><span class="p">)</span>
+    <span class="n">e1</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="c1"># Set the &quot;height&quot; of e1 to one</span>
+    <span class="n">e2</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="c1"># And the same for e2</span>
+
+    <span class="c1"># If we choose the rest of the components of e1,e2 randomly</span>
+    <span class="c1"># between 0 and 1, then the largest the squared norm of the</span>
+    <span class="c1"># non-height part of e1,e2 could be is the 1*(dim(K) - 1). We</span>
+    <span class="c1"># need to make it less than one (the height of the cone) so</span>
+    <span class="c1"># that the whole thing is in the cone. The norm of the</span>
+    <span class="c1"># non-height part is sqrt(dim(K) - 1), and we can divide by</span>
+    <span class="c1"># twice that.</span>
+    <span class="n">fudge_factor</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span><span class="o">*</span><span class="n">sqrt</span><span class="p">(</span><span class="n">K</span><span class="o">.</span><span class="n">dimension</span><span class="p">()</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">))</span>
+    <span class="n">e1</span> <span class="o">+=</span> <span class="p">[</span><span class="n">fudge_factor</span><span class="o">*</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">K</span><span class="o">.</span><span class="n">dimension</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)]</span>
+    <span class="n">e2</span> <span class="o">+=</span> <span class="p">[</span><span class="n">fudge_factor</span><span class="o">*</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">K</span><span class="o">.</span><span class="n">dimension</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)]</span>
+    <span class="n">L</span> <span class="o">=</span> <span class="n">random_matrix</span><span class="p">(</span><span class="n">K</span><span class="o">.</span><span class="n">dimension</span><span class="p">())</span>
+    <span class="n">G</span> <span class="o">=</span> <span class="n">SymmetricLinearGame</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">G</span><span class="o">.</span><span class="n">condition</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="n">MAX_COND</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">G</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">random_icecream_game</span><span class="p">()</span>
+
+</div>
+<div class="viewcode-block" id="random_ll_orthant_game"><a class="viewcode-back" href="../../developer-api.xhtml#test.randomgen.random_ll_orthant_game">[docs]</a><span class="k">def</span> <span class="nf">random_ll_orthant_game</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return a random Lyapunov game over some nonnegative orthant.</span>
+
+<span class="sd">    We first construct a :func:`random_orthant_game` and then modify it</span>
+<span class="sd">    to have a :func:`random_diagonal_matrix` as its operator. Such</span>
+<span class="sd">    things are Lyapunov-like on the nonnegative orthant. That process is</span>
+<span class="sd">    repeated until the condition number of the resulting game is within</span>
+<span class="sd">    :const:`MAX_COND`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    SymmetricLinearGame</span>
+
+<span class="sd">        A random game over some nonnegative orthant whose</span>
+<span class="sd">        :meth:`dunshire.games.SymmetricLinearGame.payoff` method is</span>
+<span class="sd">        based on a Lyapunov-like</span>
+<span class="sd">        :meth:`dunshire.games.SymmetricLinearGame.L` operator.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; random_ll_orthant_game()</span>
+<span class="sd">        &lt;dunshire.games.SymmetricLinearGame object at 0x...&gt;</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">G</span> <span class="o">=</span> <span class="n">random_orthant_game</span><span class="p">()</span>
+    <span class="n">L</span> <span class="o">=</span> <span class="n">random_diagonal_matrix</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">dimension</span><span class="p">())</span>
+
+    <span class="c1"># Replace the totally-random ``L`` with random Lyapunov-like one.</span>
+    <span class="n">G</span> <span class="o">=</span> <span class="n">SymmetricLinearGame</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">G</span><span class="o">.</span><span class="n">K</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e1</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e2</span><span class="p">())</span>
+
+    <span class="k">while</span> <span class="n">G</span><span class="o">.</span><span class="n">condition</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">MAX_COND</span><span class="p">:</span>
+        <span class="c1"># Try again until the condition number is satisfactory.</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_orthant_game</span><span class="p">()</span>
+        <span class="n">L</span> <span class="o">=</span> <span class="n">random_diagonal_matrix</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">dimension</span><span class="p">())</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">SymmetricLinearGame</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">G</span><span class="o">.</span><span class="n">K</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e1</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e2</span><span class="p">())</span>
+
+    <span class="k">return</span> <span class="n">G</span>
+
+</div>
+<div class="viewcode-block" id="random_ll_icecream_game"><a class="viewcode-back" href="../../developer-api.xhtml#test.randomgen.random_ll_icecream_game">[docs]</a><span class="k">def</span> <span class="nf">random_ll_icecream_game</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return a random Lyapunov game over some ice-cream cone.</span>
+
+<span class="sd">    We first construct a :func:`random_icecream_game` and then modify it</span>
+<span class="sd">    to have a :func:`random_lyapunov_like_icecream` operator. That</span>
+<span class="sd">    process is repeated until the condition number of the resulting game</span>
+<span class="sd">    is within :const:`MAX_COND`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    SymmetricLinearGame</span>
+<span class="sd">        A random game over some ice-cream cone whose</span>
+<span class="sd">        :meth:`dunshire.games.SymmetricLinearGame.payoff` method</span>
+<span class="sd">        is based on a Lyapunov-like</span>
+<span class="sd">        :meth:`dunshire.games.SymmetricLinearGame.L` operator.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; random_ll_icecream_game()</span>
+<span class="sd">        &lt;dunshire.games.SymmetricLinearGame object at 0x...&gt;</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">G</span> <span class="o">=</span> <span class="n">random_icecream_game</span><span class="p">()</span>
+    <span class="n">L</span> <span class="o">=</span> <span class="n">random_lyapunov_like_icecream</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">dimension</span><span class="p">())</span>
+
+    <span class="c1"># Replace the totally-random ``L`` with random Lyapunov-like one.</span>
+    <span class="n">G</span> <span class="o">=</span> <span class="n">SymmetricLinearGame</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">G</span><span class="o">.</span><span class="n">K</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e1</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e2</span><span class="p">())</span>
+
+    <span class="k">while</span> <span class="n">G</span><span class="o">.</span><span class="n">condition</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">MAX_COND</span><span class="p">:</span>
+        <span class="c1"># Try again until the condition number is satisfactory.</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_icecream_game</span><span class="p">()</span>
+        <span class="n">L</span> <span class="o">=</span> <span class="n">random_lyapunov_like_icecream</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">dimension</span><span class="p">())</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">SymmetricLinearGame</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">G</span><span class="o">.</span><span class="n">K</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e1</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e2</span><span class="p">())</span>
+
+    <span class="k">return</span> <span class="n">G</span>
+
+</div>
+<div class="viewcode-block" id="random_positive_orthant_game"><a class="viewcode-back" href="../../developer-api.xhtml#test.randomgen.random_positive_orthant_game">[docs]</a><span class="k">def</span> <span class="nf">random_positive_orthant_game</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return a random game over the nonnegative orthant with a positive</span>
+<span class="sd">    operator.</span>
+
+<span class="sd">    We first construct a :func:`random_orthant_game` and then modify it</span>
+<span class="sd">    to have a :func:`random_nonnegative_matrix` as its operator. That</span>
+<span class="sd">    process is repeated until the condition number of the resulting game</span>
+<span class="sd">    is within :const:`MAX_COND`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    SymmetricLinearGame</span>
+<span class="sd">        A random game over some nonnegative orthant whose</span>
+<span class="sd">        :meth:`dunshire.games.SymmetricLinearGame.payoff` method</span>
+<span class="sd">        is based on a positive</span>
+<span class="sd">        :meth:`dunshire.games.SymmetricLinearGame.L` operator.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; random_positive_orthant_game()</span>
+<span class="sd">        &lt;dunshire.games.SymmetricLinearGame object at 0x...&gt;</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">G</span> <span class="o">=</span> <span class="n">random_orthant_game</span><span class="p">()</span>
+    <span class="n">L</span> <span class="o">=</span> <span class="n">random_nonnegative_matrix</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">dimension</span><span class="p">())</span>
+
+    <span class="c1"># Replace the totally-random ``L`` with the random nonnegative one.</span>
+    <span class="n">G</span> <span class="o">=</span> <span class="n">SymmetricLinearGame</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">G</span><span class="o">.</span><span class="n">K</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e1</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e2</span><span class="p">())</span>
+
+    <span class="k">while</span> <span class="n">G</span><span class="o">.</span><span class="n">condition</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">MAX_COND</span><span class="p">:</span>
+        <span class="c1"># Try again until the condition number is satisfactory.</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_orthant_game</span><span class="p">()</span>
+        <span class="n">L</span> <span class="o">=</span> <span class="n">random_nonnegative_matrix</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">dimension</span><span class="p">())</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">SymmetricLinearGame</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">G</span><span class="o">.</span><span class="n">K</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e1</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e2</span><span class="p">())</span>
+
+    <span class="k">return</span> <span class="n">G</span>
+
+</div>
+<div class="viewcode-block" id="random_nn_scaling"><a class="viewcode-back" href="../../developer-api.xhtml#test.randomgen.random_nn_scaling">[docs]</a><span class="k">def</span> <span class="nf">random_nn_scaling</span><span class="p">(</span><span class="n">G</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Scale the given game by a random nonnegative amount.</span>
+
+<span class="sd">    We re-attempt the scaling with a new random number until the</span>
+<span class="sd">    resulting scaled game has an acceptable condition number.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    G : SymmetricLinearGame</span>
+<span class="sd">        The game that you would like to scale.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    (float, SymmetricLinearGame)</span>
+<span class="sd">        A pair containing the both the scaling factor and the new scaled game.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; from dunshire.matrices import norm</span>
+<span class="sd">        &gt;&gt;&gt; from dunshire.options import ABS_TOL</span>
+<span class="sd">        &gt;&gt;&gt; G = random_orthant_game()</span>
+<span class="sd">        &gt;&gt;&gt; (alpha, H) = random_nn_scaling(G)</span>
+<span class="sd">        &gt;&gt;&gt; alpha &gt;= 0</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; G.K() == H.K()</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; norm(G.e1() - H.e1()) &lt; ABS_TOL</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; norm(G.e2() - H.e2()) &lt; ABS_TOL</span>
+<span class="sd">        True</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="n">random_nn_scalar</span><span class="p">()</span>
+    <span class="n">H</span> <span class="o">=</span> <span class="n">SymmetricLinearGame</span><span class="p">(</span><span class="n">alpha</span><span class="o">*</span><span class="n">G</span><span class="o">.</span><span class="n">L</span><span class="p">()</span><span class="o">.</span><span class="n">trans</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">K</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e1</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e2</span><span class="p">())</span>
+
+    <span class="k">while</span> <span class="n">H</span><span class="o">.</span><span class="n">condition</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">MAX_COND</span><span class="p">:</span>
+        <span class="c1"># Loop until the condition number of H doesn&#39;t suck.</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="n">random_nn_scalar</span><span class="p">()</span>
+        <span class="n">H</span> <span class="o">=</span> <span class="n">SymmetricLinearGame</span><span class="p">(</span><span class="n">alpha</span><span class="o">*</span><span class="n">G</span><span class="o">.</span><span class="n">L</span><span class="p">()</span><span class="o">.</span><span class="n">trans</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">K</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e1</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e2</span><span class="p">())</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="random_translation"><a class="viewcode-back" href="../../developer-api.xhtml#test.randomgen.random_translation">[docs]</a><span class="k">def</span> <span class="nf">random_translation</span><span class="p">(</span><span class="n">G</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Translate the given game by a random amount.</span>
+
+<span class="sd">    We re-attempt the translation with new random scalars until the</span>
+<span class="sd">    resulting translated game has an acceptable condition number.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    G : SymmetricLinearGame</span>
+<span class="sd">        The game that you would like to translate.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    (float, SymmetricLinearGame)</span>
+<span class="sd">        A pair containing the both the translation distance and the new</span>
+<span class="sd">        scaled game.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; from dunshire.matrices import norm</span>
+<span class="sd">        &gt;&gt;&gt; from dunshire.options import ABS_TOL</span>
+<span class="sd">        &gt;&gt;&gt; G = random_orthant_game()</span>
+<span class="sd">        &gt;&gt;&gt; (alpha, H) = random_translation(G)</span>
+<span class="sd">        &gt;&gt;&gt; G.K() == H.K()</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; norm(G.e1() - H.e1()) &lt; ABS_TOL</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; norm(G.e2() - H.e2()) &lt; ABS_TOL</span>
+<span class="sd">        True</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="n">random_scalar</span><span class="p">()</span>
+    <span class="n">tensor_prod</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">e1</span><span class="p">()</span> <span class="o">*</span> <span class="n">G</span><span class="o">.</span><span class="n">e2</span><span class="p">()</span><span class="o">.</span><span class="n">trans</span><span class="p">()</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">L</span><span class="p">()</span> <span class="o">+</span> <span class="n">alpha</span><span class="o">*</span><span class="n">tensor_prod</span>
+
+    <span class="n">H</span> <span class="o">=</span> <span class="n">SymmetricLinearGame</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">trans</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">K</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e1</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e2</span><span class="p">())</span>
+    <span class="k">while</span> <span class="n">H</span><span class="o">.</span><span class="n">condition</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">MAX_COND</span><span class="p">:</span>
+        <span class="c1"># Loop until the condition number of H doesn&#39;t suck.</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="n">random_scalar</span><span class="p">()</span>
+        <span class="n">M</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">L</span><span class="p">()</span> <span class="o">+</span> <span class="n">alpha</span><span class="o">*</span><span class="n">tensor_prod</span>
+        <span class="n">H</span> <span class="o">=</span> <span class="n">SymmetricLinearGame</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">trans</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">K</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e1</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e2</span><span class="p">())</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.xhtml">Dunshire</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.xhtml">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../requirements.xhtml">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-api.xhtml">User API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../background.xhtml">Background</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../references.xhtml">References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer-api.xhtml">Developer API Documentation</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

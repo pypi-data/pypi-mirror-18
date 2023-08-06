@@ -1,0 +1,102 @@
+Overview
+--------
+
+Dunshire is a library for solving linear games over symmetric
+cones. The notion of a symmetric linear (cone) game was introduced by
+Gowda and Ravindran [GowdaRav]_, and extended by Orlitzky to
+asymmetric cones with two interior points.
+
+The state-of-the-art is that only symmetric games can be solved
+efficiently, and thus the linear games supported by Dunshire are a
+compromise between the two: the cones are symmetric, but the players
+get to choose two interior points.
+
+In this game, we have two players who are competing for a "payoff."
+There is a symmetric cone :math:`K`, a linear transformation :math:`L`
+on the space in which :math:`K` lives, and two points :math:`e_{1}`
+and :math:`e_{2}` in the interior of :math:`K`. The players make their
+"moves" by choosing points from two strategy sets. Player one chooses
+an :math:`\bar{x}` from
+
+.. math::
+  \Delta_{1} =
+    \left\lbrace
+      x \in K\ \middle|\ \left\langle x,e_{2} \right\rangle = 1
+    \right\rbrace
+
+and player two chooses a :math:`\bar{y}` from
+
+.. math::
+  \Delta_{2} &=
+    \left\lbrace
+      y \in K\ \middle|\ \left\langle y,e_{1} \right\rangle = 1
+    \right\rbrace.
+
+That ends the turn, and player one is paid :math:`\left\langle
+L\left(\bar{x}\right),\bar{y}\right\rangle` out of player two's
+pocket. As is usual in game theory, we suppose that player one wants
+to maximize his worst-case payoff, and that player two wants to
+minimize his worst-case *payout*. In other words, player one wants to
+solve the optimization problem,
+
+.. math::
+  \text{find }
+  \underset{x \in \Delta_{1}}{\max}\
+  \underset{y\in \Delta_{2}}{\min}\
+  \left\langle L\left(x\right),y \right\rangle
+
+while player two tries to (simultaneously) solve a similar problem,
+
+.. math::
+  \text{find }
+  \underset{y\in \Delta_{2}}{\min}\
+  \underset{x \in \Delta_{1}}{\max}\
+  \left\langle L\left(x\right),y \right\rangle.
+
+There is at least one pair :math:`\left(\bar{x},\bar{y}\right)` that
+solves these problems optimally, and Dunshire can find it. The optimal
+payoff, called *the value of the game*, is unique. At the moment, the
+symmetric cone :math:`K` can be either the nonnegative orthant or the
+Lorentz "ice cream" cone in :math:`\mathbb{R}^{n}`. Here are two of
+the simplest possible examples, showing off the ability to solve a
+game over both of those cones.
+
+First, we use the nonnegative orthant in :math:`\mathbb{R}^{2}`:
+
+.. doctest::
+
+  >>> from dunshire import *
+  >>> K = NonnegativeOrthant(2)
+  >>> L = [[1,0],[0,1]]
+  >>> e1 = [1,1]
+  >>> e2 = e1
+  >>> G = SymmetricLinearGame(L,K,e1,e2)
+  >>> print(G.solution())
+  Game value: 0.500...
+  Player 1 optimal:
+    [0.500...]
+    [0.500...]
+  Player 2 optimal:
+    [0.500...]
+    [0.500...]
+
+Next we try the Lorentz ice-cream cone in :math:`\mathbb{R}^{2}`:
+
+.. doctest::
+
+  >>> from dunshire import *
+  >>> K = IceCream(2)
+  >>> L = [[1,0],[0,1]]
+  >>> e1 = [1,0]
+  >>> e2 = e1
+  >>> G = SymmetricLinearGame(L,K,e1,e2)
+  >>> print(G.solution())
+  Game value: 1.000...
+  Player 1 optimal:
+    [1.000...]
+    [0.000...]
+  Player 2 optimal:
+    [1.000...]
+    [0.000...]
+
+Note that these solutions are not unique, although the game values are.

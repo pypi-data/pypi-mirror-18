@@ -1,0 +1,1402 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>dunshire.games &mdash; Dunshire 0.1.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.xhtml',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Dunshire 0.1.1 documentation" href="../../index.xhtml" />
+    <link rel="up" title="Module code" href="../index.xhtml" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for dunshire.games</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Symmetric linear games and their solutions.</span>
+
+<span class="sd">This module contains the main :class:`SymmetricLinearGame` class that</span>
+<span class="sd">knows how to solve a linear game.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">cvxopt</span> <span class="kn">import</span> <span class="n">matrix</span><span class="p">,</span> <span class="n">printing</span><span class="p">,</span> <span class="n">solvers</span>
+<span class="kn">from</span> <span class="nn">.cones</span> <span class="kn">import</span> <span class="n">CartesianProduct</span>
+<span class="kn">from</span> <span class="nn">.errors</span> <span class="kn">import</span> <span class="n">GameUnsolvableException</span><span class="p">,</span> <span class="n">PoorScalingException</span>
+<span class="kn">from</span> <span class="nn">.matrices</span> <span class="kn">import</span> <span class="p">(</span><span class="n">append_col</span><span class="p">,</span> <span class="n">append_row</span><span class="p">,</span> <span class="n">condition_number</span><span class="p">,</span> <span class="n">identity</span><span class="p">,</span>
+                       <span class="n">inner_product</span><span class="p">,</span> <span class="n">norm</span><span class="p">,</span> <span class="n">specnorm</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.options</span> <span class="kn">import</span> <span class="n">ABS_TOL</span><span class="p">,</span> <span class="n">FLOAT_FORMAT</span><span class="p">,</span> <span class="n">DEBUG_FLOAT_FORMAT</span>
+
+<span class="n">printing</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="s1">&#39;dformat&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">FLOAT_FORMAT</span>
+
+
+<div class="viewcode-block" id="Solution"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.Solution">[docs]</a><span class="k">class</span> <span class="nc">Solution</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A representation of the solution of a linear game. It should contain</span>
+<span class="sd">    the value of the game, and both players&#39; strategies.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; print(Solution(10, matrix([1,2]), matrix([3,4])))</span>
+<span class="sd">        Game value: 10.000...</span>
+<span class="sd">        Player 1 optimal:</span>
+<span class="sd">          [ 1]</span>
+<span class="sd">          [ 2]</span>
+<span class="sd">        Player 2 optimal:</span>
+<span class="sd">          [ 3]</span>
+<span class="sd">          [ 4]</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">game_value</span><span class="p">,</span> <span class="n">p1_optimal</span><span class="p">,</span> <span class="n">p2_optimal</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a new Solution object from a game value and two optimal</span>
+<span class="sd">        strategies for the players.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_game_value</span> <span class="o">=</span> <span class="n">game_value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_player1_optimal</span> <span class="o">=</span> <span class="n">p1_optimal</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_player2_optimal</span> <span class="o">=</span> <span class="n">p2_optimal</span>
+
+<div class="viewcode-block" id="Solution.__str__"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.Solution.__str__">[docs]</a>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a string describing the solution of a linear game.</span>
+
+<span class="sd">        The three data that are described are,</span>
+
+<span class="sd">          * The value of the game.</span>
+<span class="sd">          * The optimal strategy of player one.</span>
+<span class="sd">          * The optimal strategy of player two.</span>
+
+<span class="sd">        The two optimal strategy vectors are indented by two spaces.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tpl</span> <span class="o">=</span> <span class="s1">&#39;Game value: {:.7f}</span><span class="se">\n</span><span class="s1">&#39;</span> \
+              <span class="s1">&#39;Player 1 optimal:{:s}</span><span class="se">\n</span><span class="s1">&#39;</span> \
+              <span class="s1">&#39;Player 2 optimal:{:s}&#39;</span>
+
+        <span class="n">p1_str</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">{!s}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">player1_optimal</span><span class="p">())</span>
+        <span class="n">p1_str</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">  &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">p1_str</span><span class="o">.</span><span class="n">splitlines</span><span class="p">())</span>
+        <span class="n">p2_str</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">{!s}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">player2_optimal</span><span class="p">())</span>
+        <span class="n">p2_str</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">  &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">p2_str</span><span class="o">.</span><span class="n">splitlines</span><span class="p">())</span>
+
+        <span class="k">return</span> <span class="n">tpl</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">game_value</span><span class="p">(),</span> <span class="n">p1_str</span><span class="p">,</span> <span class="n">p2_str</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="Solution.game_value"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.Solution.game_value">[docs]</a>    <span class="k">def</span> <span class="nf">game_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the game value for this solution.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; s = Solution(10, matrix([1,2]), matrix([3,4]))</span>
+<span class="sd">            &gt;&gt;&gt; s.game_value()</span>
+<span class="sd">            10</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_game_value</span>
+
+</div>
+<div class="viewcode-block" id="Solution.player1_optimal"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.Solution.player1_optimal">[docs]</a>    <span class="k">def</span> <span class="nf">player1_optimal</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return player one&#39;s optimal strategy in this solution.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; s = Solution(10, matrix([1,2]), matrix([3,4]))</span>
+<span class="sd">            &gt;&gt;&gt; print(s.player1_optimal())</span>
+<span class="sd">            [ 1]</span>
+<span class="sd">            [ 2]</span>
+<span class="sd">            &lt;BLANKLINE&gt;</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_player1_optimal</span>
+
+</div>
+<div class="viewcode-block" id="Solution.player2_optimal"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.Solution.player2_optimal">[docs]</a>    <span class="k">def</span> <span class="nf">player2_optimal</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return player two&#39;s optimal strategy in this solution.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; s = Solution(10, matrix([1,2]), matrix([3,4]))</span>
+<span class="sd">            &gt;&gt;&gt; print(s.player2_optimal())</span>
+<span class="sd">            [ 3]</span>
+<span class="sd">            [ 4]</span>
+<span class="sd">            &lt;BLANKLINE&gt;</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_player2_optimal</span>
+
+</div></div>
+<div class="viewcode-block" id="SymmetricLinearGame"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.SymmetricLinearGame">[docs]</a><span class="k">class</span> <span class="nc">SymmetricLinearGame</span><span class="p">:</span>
+    <span class="sd">r&quot;&quot;&quot;</span>
+<span class="sd">    A representation of a symmetric linear game.</span>
+
+<span class="sd">    The data for a symmetric linear game are,</span>
+
+<span class="sd">      * A &quot;payoff&quot; operator ``L``.</span>
+<span class="sd">      * A symmetric cone ``K``.</span>
+<span class="sd">      * Two points ``e1`` and ``e2`` in the interior of ``K``.</span>
+
+<span class="sd">    The ambient space is assumed to be the span of ``K``.</span>
+
+<span class="sd">    With those data understood, the game is played as follows. Players</span>
+<span class="sd">    one and two choose points :math:`x` and :math:`y` respectively, from</span>
+<span class="sd">    their respective strategy sets,</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        \begin{aligned}</span>
+<span class="sd">            \Delta_{1}</span>
+<span class="sd">            &amp;=</span>
+<span class="sd">            \left\{</span>
+<span class="sd">              x \in K \ \middle|\ \left\langle x, e_{2} \right\rangle = 1</span>
+<span class="sd">            \right\}\\</span>
+<span class="sd">            \Delta_{2}</span>
+<span class="sd">            &amp;=</span>
+<span class="sd">            \left\{</span>
+<span class="sd">              y \in K \ \middle|\ \left\langle y, e_{1} \right\rangle = 1</span>
+<span class="sd">            \right\}.</span>
+<span class="sd">        \end{aligned}</span>
+
+<span class="sd">    Afterwards, a &quot;payout&quot; is computed as :math:`\left\langle</span>
+<span class="sd">    L\left(x\right), y \right\rangle` and is paid to player one out of</span>
+<span class="sd">    player two&#39;s pocket. The game is therefore zero sum, and we suppose</span>
+<span class="sd">    that player one would like to guarantee himself the largest minimum</span>
+<span class="sd">    payout possible. That is, player one wishes to,</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        \begin{aligned}</span>
+<span class="sd">            \text{maximize }</span>
+<span class="sd">              &amp;\underset{y \in \Delta_{2}}{\min}\left(</span>
+<span class="sd">                \left\langle L\left(x\right), y \right\rangle</span>
+<span class="sd">              \right)\\</span>
+<span class="sd">            \text{subject to } &amp; x \in \Delta_{1}.</span>
+<span class="sd">        \end{aligned}</span>
+
+<span class="sd">    Player two has the simultaneous goal to,</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        \begin{aligned}</span>
+<span class="sd">            \text{minimize }</span>
+<span class="sd">              &amp;\underset{x \in \Delta_{1}}{\max}\left(</span>
+<span class="sd">                \left\langle L\left(x\right), y \right\rangle</span>
+<span class="sd">              \right)\\</span>
+<span class="sd">            \text{subject to } &amp; y \in \Delta_{2}.</span>
+<span class="sd">        \end{aligned}</span>
+
+<span class="sd">    These goals obviously conflict (the game is zero sum), but an</span>
+<span class="sd">    existence theorem guarantees at least one optimal min-max solution</span>
+<span class="sd">    from which neither player would like to deviate. This class is</span>
+<span class="sd">    able to find such a solution.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    L : list of list of float</span>
+<span class="sd">        A matrix represented as a list of **rows**. This representation</span>
+<span class="sd">        agrees with (for example) `SageMath &lt;http://www.sagemath.org/&gt;`_</span>
+<span class="sd">        and `NumPy &lt;http://www.numpy.org/&gt;`_, but not with CVXOPT (whose</span>
+<span class="sd">        matrix constructor accepts a list of columns). In reality, ``L``</span>
+<span class="sd">        can be any iterable type of the correct length; however, you</span>
+<span class="sd">        should be extremely wary of the way we interpret anything other</span>
+<span class="sd">        than a list of rows.</span>
+
+<span class="sd">    K : dunshire.cones.SymmetricCone</span>
+<span class="sd">        The symmetric cone instance over which the game is played.</span>
+
+<span class="sd">    e1 : iterable float</span>
+<span class="sd">        The interior point of ``K`` belonging to player one; it</span>
+<span class="sd">        can be of any iterable type having the correct length.</span>
+
+<span class="sd">    e2 : iterable float</span>
+<span class="sd">        The interior point of ``K`` belonging to player two; it</span>
+<span class="sd">        can be of any enumerable type having the correct length.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+
+<span class="sd">    ValueError</span>
+<span class="sd">        If either ``e1`` or ``e2`` lie outside of the cone ``K``.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">        &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">        &gt;&gt;&gt; L = [[1,-5,-15],[-1,2,-3],[-12,-15,1]]</span>
+<span class="sd">        &gt;&gt;&gt; e1 = [1,1,1]</span>
+<span class="sd">        &gt;&gt;&gt; e2 = [1,2,3]</span>
+<span class="sd">        &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">        &gt;&gt;&gt; print(SLG)</span>
+<span class="sd">        The linear game (L, K, e1, e2) where</span>
+<span class="sd">          L = [  1  -5 -15]</span>
+<span class="sd">              [ -1   2  -3]</span>
+<span class="sd">              [-12 -15   1],</span>
+<span class="sd">          K = Nonnegative orthant in the real 3-space,</span>
+<span class="sd">          e1 = [ 1]</span>
+<span class="sd">               [ 1]</span>
+<span class="sd">               [ 1],</span>
+<span class="sd">          e2 = [ 1]</span>
+<span class="sd">               [ 2]</span>
+<span class="sd">               [ 3]</span>
+
+<span class="sd">    Lists can (and probably should) be used for every argument::</span>
+
+<span class="sd">        &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">        &gt;&gt;&gt; K = NonnegativeOrthant(2)</span>
+<span class="sd">        &gt;&gt;&gt; L = [[1,0],[0,1]]</span>
+<span class="sd">        &gt;&gt;&gt; e1 = [1,1]</span>
+<span class="sd">        &gt;&gt;&gt; e2 = [1,1]</span>
+<span class="sd">        &gt;&gt;&gt; G = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">        &gt;&gt;&gt; print(G)</span>
+<span class="sd">        The linear game (L, K, e1, e2) where</span>
+<span class="sd">          L = [ 1  0]</span>
+<span class="sd">              [ 0  1],</span>
+<span class="sd">          K = Nonnegative orthant in the real 2-space,</span>
+<span class="sd">          e1 = [ 1]</span>
+<span class="sd">               [ 1],</span>
+<span class="sd">          e2 = [ 1]</span>
+<span class="sd">               [ 1]</span>
+
+<span class="sd">    The points ``e1`` and ``e2`` can also be passed as some other</span>
+<span class="sd">    enumerable type (of the correct length) without much harm, since</span>
+<span class="sd">    there is no row/column ambiguity::</span>
+
+<span class="sd">        &gt;&gt;&gt; import cvxopt</span>
+<span class="sd">        &gt;&gt;&gt; import numpy</span>
+<span class="sd">        &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">        &gt;&gt;&gt; K = NonnegativeOrthant(2)</span>
+<span class="sd">        &gt;&gt;&gt; L = [[1,0],[0,1]]</span>
+<span class="sd">        &gt;&gt;&gt; e1 = cvxopt.matrix([1,1])</span>
+<span class="sd">        &gt;&gt;&gt; e2 = numpy.matrix([1,1])</span>
+<span class="sd">        &gt;&gt;&gt; G = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">        &gt;&gt;&gt; print(G)</span>
+<span class="sd">        The linear game (L, K, e1, e2) where</span>
+<span class="sd">          L = [ 1  0]</span>
+<span class="sd">              [ 0  1],</span>
+<span class="sd">          K = Nonnegative orthant in the real 2-space,</span>
+<span class="sd">          e1 = [ 1]</span>
+<span class="sd">               [ 1],</span>
+<span class="sd">          e2 = [ 1]</span>
+<span class="sd">               [ 1]</span>
+
+<span class="sd">    However, ``L`` will always be intepreted as a list of rows, even</span>
+<span class="sd">    if it is passed as a :class:`cvxopt.base.matrix` which is</span>
+<span class="sd">    otherwise indexed by columns::</span>
+
+<span class="sd">        &gt;&gt;&gt; import cvxopt</span>
+<span class="sd">        &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">        &gt;&gt;&gt; K = NonnegativeOrthant(2)</span>
+<span class="sd">        &gt;&gt;&gt; L = [[1,2],[3,4]]</span>
+<span class="sd">        &gt;&gt;&gt; e1 = [1,1]</span>
+<span class="sd">        &gt;&gt;&gt; e2 = e1</span>
+<span class="sd">        &gt;&gt;&gt; G = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">        &gt;&gt;&gt; print(G)</span>
+<span class="sd">        The linear game (L, K, e1, e2) where</span>
+<span class="sd">          L = [ 1  2]</span>
+<span class="sd">              [ 3  4],</span>
+<span class="sd">          K = Nonnegative orthant in the real 2-space,</span>
+<span class="sd">          e1 = [ 1]</span>
+<span class="sd">               [ 1],</span>
+<span class="sd">          e2 = [ 1]</span>
+<span class="sd">               [ 1]</span>
+<span class="sd">        &gt;&gt;&gt; L = cvxopt.matrix(L)</span>
+<span class="sd">        &gt;&gt;&gt; print(L)</span>
+<span class="sd">        [ 1  3]</span>
+<span class="sd">        [ 2  4]</span>
+<span class="sd">        &lt;BLANKLINE&gt;</span>
+<span class="sd">        &gt;&gt;&gt; G = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">        &gt;&gt;&gt; print(G)</span>
+<span class="sd">        The linear game (L, K, e1, e2) where</span>
+<span class="sd">          L = [ 1  2]</span>
+<span class="sd">              [ 3  4],</span>
+<span class="sd">          K = Nonnegative orthant in the real 2-space,</span>
+<span class="sd">          e1 = [ 1]</span>
+<span class="sd">               [ 1],</span>
+<span class="sd">          e2 = [ 1]</span>
+<span class="sd">               [ 1]</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a new SymmetricLinearGame object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_K</span> <span class="o">=</span> <span class="n">K</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_e1</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="p">(</span><span class="n">K</span><span class="o">.</span><span class="n">dimension</span><span class="p">(),</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_e2</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">(</span><span class="n">e2</span><span class="p">,</span> <span class="p">(</span><span class="n">K</span><span class="o">.</span><span class="n">dimension</span><span class="p">(),</span> <span class="mi">1</span><span class="p">))</span>
+
+        <span class="c1"># Our input ``L`` is indexed by rows but CVXOPT matrices are</span>
+        <span class="c1"># indexed by columns, so we need to transpose the input before</span>
+        <span class="c1"># feeding it to CVXOPT.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_L</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="p">(</span><span class="n">K</span><span class="o">.</span><span class="n">dimension</span><span class="p">(),</span> <span class="n">K</span><span class="o">.</span><span class="n">dimension</span><span class="p">()))</span><span class="o">.</span><span class="n">trans</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_e1</span> <span class="ow">in</span> <span class="n">K</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;the point e1 must lie in the interior of K&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_e2</span> <span class="ow">in</span> <span class="n">K</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;the point e2 must lie in the interior of K&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Initial value of cached method.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_L_specnorm_value</span> <span class="o">=</span> <span class="bp">None</span>
+
+
+<div class="viewcode-block" id="SymmetricLinearGame.__str__"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.SymmetricLinearGame.__str__">[docs]</a>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a string representation of this game.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tpl</span> <span class="o">=</span> <span class="s1">&#39;The linear game (L, K, e1, e2) where</span><span class="se">\n</span><span class="s1">&#39;</span> \
+              <span class="s1">&#39;  L = {:s},</span><span class="se">\n</span><span class="s1">&#39;</span> \
+              <span class="s1">&#39;  K = {!s},</span><span class="se">\n</span><span class="s1">&#39;</span> \
+              <span class="s1">&#39;  e1 = {:s},</span><span class="se">\n</span><span class="s1">&#39;</span> \
+              <span class="s1">&#39;  e2 = {:s}&#39;</span>
+        <span class="n">indented_L</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">      &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">L</span><span class="p">())</span><span class="o">.</span><span class="n">splitlines</span><span class="p">())</span>
+        <span class="n">indented_e1</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">       &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">e1</span><span class="p">())</span><span class="o">.</span><span class="n">splitlines</span><span class="p">())</span>
+        <span class="n">indented_e2</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">       &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">e2</span><span class="p">())</span><span class="o">.</span><span class="n">splitlines</span><span class="p">())</span>
+
+        <span class="k">return</span> <span class="n">tpl</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">indented_L</span><span class="p">,</span>
+                          <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">()),</span>
+                          <span class="n">indented_e1</span><span class="p">,</span>
+                          <span class="n">indented_e2</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGame.L"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.SymmetricLinearGame.L">[docs]</a>    <span class="k">def</span> <span class="nf">L</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the matrix ``L`` passed to the constructor.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        matrix</span>
+<span class="sd">            The matrix that defines this game&#39;s :meth:`payoff` operator.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">            &gt;&gt;&gt; L = [[1,-5,-15],[-1,2,-3],[-12,-15,1]]</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [1,1,1]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = [1,2,3]</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">            &gt;&gt;&gt; print(SLG.L())</span>
+<span class="sd">            [  1  -5 -15]</span>
+<span class="sd">            [ -1   2  -3]</span>
+<span class="sd">            [-12 -15   1]</span>
+<span class="sd">            &lt;BLANKLINE&gt;</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_L</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGame.K"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.SymmetricLinearGame.K">[docs]</a>    <span class="k">def</span> <span class="nf">K</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the cone over which this game is played.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        SymmetricCone</span>
+<span class="sd">            The :class:`SymmetricCone` over which this game is played.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">            &gt;&gt;&gt; L = [[1,-5,-15],[-1,2,-3],[-12,-15,1]]</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [1,1,1]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = [1,2,3]</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">            &gt;&gt;&gt; print(SLG.K())</span>
+<span class="sd">            Nonnegative orthant in the real 3-space</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_K</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGame.e1"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.SymmetricLinearGame.e1">[docs]</a>    <span class="k">def</span> <span class="nf">e1</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return player one&#39;s interior point.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        matrix</span>
+<span class="sd">            The point interior to :meth:`K` affiliated with player one.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">            &gt;&gt;&gt; L = [[1,-5,-15],[-1,2,-3],[-12,-15,1]]</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [1,1,1]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = [1,2,3]</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">            &gt;&gt;&gt; print(SLG.e1())</span>
+<span class="sd">            [ 1]</span>
+<span class="sd">            [ 1]</span>
+<span class="sd">            [ 1]</span>
+<span class="sd">            &lt;BLANKLINE&gt;</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_e1</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGame.e2"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.SymmetricLinearGame.e2">[docs]</a>    <span class="k">def</span> <span class="nf">e2</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return player two&#39;s interior point.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        matrix</span>
+<span class="sd">            The point interior to :meth:`K` affiliated with player one.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">            &gt;&gt;&gt; L = [[1,-5,-15],[-1,2,-3],[-12,-15,1]]</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [1,1,1]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = [1,2,3]</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">            &gt;&gt;&gt; print(SLG.e2())</span>
+<span class="sd">            [ 1]</span>
+<span class="sd">            [ 2]</span>
+<span class="sd">            [ 3]</span>
+<span class="sd">            &lt;BLANKLINE&gt;</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_e2</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGame.payoff"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.SymmetricLinearGame.payoff">[docs]</a>    <span class="k">def</span> <span class="nf">payoff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy1</span><span class="p">,</span> <span class="n">strategy2</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;</span>
+<span class="sd">        Return the payoff associated with ``strategy1`` and ``strategy2``.</span>
+
+<span class="sd">        The payoff operator takes pairs of strategies to a real</span>
+<span class="sd">        number. For example, if player one&#39;s strategy is :math:`x` and</span>
+<span class="sd">        player two&#39;s strategy is :math:`y`, then the associated payoff</span>
+<span class="sd">        is :math:`\left\langle L\left(x\right),y \right\rangle \in</span>
+<span class="sd">        \mathbb{R}`. Here, :math:`L` denotes the same linear operator as</span>
+<span class="sd">        :meth:`L`. This method computes the payoff given the two</span>
+<span class="sd">        players&#39; strategies.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        strategy1 : matrix</span>
+<span class="sd">            Player one&#39;s strategy.</span>
+
+<span class="sd">        strategy2 : matrix</span>
+<span class="sd">            Player two&#39;s strategy.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        float</span>
+<span class="sd">            The payoff for the game when player one plays ``strategy1``</span>
+<span class="sd">            and player two plays ``strategy2``.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        The value of the game should be the payoff at the optimal</span>
+<span class="sd">        strategies::</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">            &gt;&gt;&gt; L = [[1,-5,-15],[-1,2,-3],[-12,-15,1]]</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [1,1,1]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = [1,1,1]</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">            &gt;&gt;&gt; soln = SLG.solution()</span>
+<span class="sd">            &gt;&gt;&gt; x_bar = soln.player1_optimal()</span>
+<span class="sd">            &gt;&gt;&gt; y_bar = soln.player2_optimal()</span>
+<span class="sd">            &gt;&gt;&gt; SLG.payoff(x_bar, y_bar) == soln.game_value()</span>
+<span class="sd">            True</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">inner_product</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">L</span><span class="p">()</span><span class="o">*</span><span class="n">strategy1</span><span class="p">,</span> <span class="n">strategy2</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGame.dimension"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.SymmetricLinearGame.dimension">[docs]</a>    <span class="k">def</span> <span class="nf">dimension</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the dimension of this game.</span>
+
+<span class="sd">        The dimension of a game is not needed for the theory, but it is</span>
+<span class="sd">        useful for the implementation. We define the dimension of a game</span>
+<span class="sd">        to be the dimension of its underlying cone. Or what is the same,</span>
+<span class="sd">        the dimension of the space from which the strategies are chosen.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        int</span>
+<span class="sd">            The dimension of the cone :meth:`K`, or of the space where</span>
+<span class="sd">            this game is played.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        The dimension of a game over the nonnegative quadrant in the</span>
+<span class="sd">        plane should be two (the dimension of the plane)::</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(2)</span>
+<span class="sd">            &gt;&gt;&gt; L = [[1,-5],[-1,2]]</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [1,1]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = [1,4]</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">            &gt;&gt;&gt; SLG.dimension()</span>
+<span class="sd">            2</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">()</span><span class="o">.</span><span class="n">dimension</span><span class="p">()</span>
+
+</div>
+    <span class="k">def</span> <span class="nf">_zero</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a column of zeros that fits ``K``.</span>
+
+<span class="sd">        This is used in our CVXOPT construction.</span>
+
+<span class="sd">        .. warning::</span>
+
+<span class="sd">            It is not safe to cache any of the matrices passed to</span>
+<span class="sd">            CVXOPT, because it can clobber them.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        matrix</span>
+<span class="sd">            A ``self.dimension()``-by-``1`` column vector of zeros.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">            &gt;&gt;&gt; L = identity(3)</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [1,1,1]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = e1</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">            &gt;&gt;&gt; print(SLG._zero())</span>
+<span class="sd">            [0.0000000]</span>
+<span class="sd">            [0.0000000]</span>
+<span class="sd">            [0.0000000]</span>
+<span class="sd">            &lt;BLANKLINE&gt;</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">matrix</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">(),</span> <span class="mi">1</span><span class="p">),</span> <span class="n">tc</span><span class="o">=</span><span class="s1">&#39;d&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="SymmetricLinearGame.A"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.SymmetricLinearGame.A">[docs]</a>    <span class="k">def</span> <span class="nf">A</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;</span>
+<span class="sd">        Return the matrix ``A`` used in our CVXOPT construction.</span>
+
+<span class="sd">        This matrix :math:`A` appears on the right-hand side of</span>
+<span class="sd">        :math:`Ax = b` in the `statement of the CVXOPT conelp program</span>
+<span class="sd">        &lt;http://cvxopt.org/userguide/coneprog.html#linear-cone-programs&gt;`_.</span>
+
+<span class="sd">        .. warning::</span>
+
+<span class="sd">            It is not safe to cache any of the matrices passed to</span>
+<span class="sd">            CVXOPT, because it can clobber them.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        matrix</span>
+<span class="sd">            A ``1``-by-``(1 + self.dimension())`` row vector. Its first</span>
+<span class="sd">            entry is zero, and the rest are the entries of :meth:`e2`.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">            &gt;&gt;&gt; L = [[1,1,1],[1,1,1],[1,1,1]]</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [1,1,1]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = [1,2,3]</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">            &gt;&gt;&gt; print(SLG.A())</span>
+<span class="sd">            [0.0000000 1.0000000 2.0000000 3.0000000]</span>
+<span class="sd">            &lt;BLANKLINE&gt;</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">e2</span><span class="p">()],</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="s1">&#39;d&#39;</span><span class="p">)</span>
+
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGame.G"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.SymmetricLinearGame.G">[docs]</a>    <span class="k">def</span> <span class="nf">G</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;</span>
+<span class="sd">        Return the matrix ``G`` used in our CVXOPT construction.</span>
+
+<span class="sd">        Thus matrix :math:`G` appears on the left-hand side of :math:`Gx</span>
+<span class="sd">        + s = h` in the `statement of the CVXOPT conelp program</span>
+<span class="sd">        &lt;http://cvxopt.org/userguide/coneprog.html#linear-cone-programs&gt;`_.</span>
+
+<span class="sd">        .. warning::</span>
+
+<span class="sd">            It is not safe to cache any of the matrices passed to</span>
+<span class="sd">            CVXOPT, because it can clobber them.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        matrix</span>
+<span class="sd">            A ``2*self.dimension()``-by-``(1 + self.dimension())`` matrix.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">            &gt;&gt;&gt; L = [[4,5,6],[7,8,9],[10,11,12]]</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [1,2,3]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = [1,1,1]</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">            &gt;&gt;&gt; print(SLG.G())</span>
+<span class="sd">            [  0.0000000  -1.0000000   0.0000000   0.0000000]</span>
+<span class="sd">            [  0.0000000   0.0000000  -1.0000000   0.0000000]</span>
+<span class="sd">            [  0.0000000   0.0000000   0.0000000  -1.0000000]</span>
+<span class="sd">            [  1.0000000  -4.0000000  -5.0000000  -6.0000000]</span>
+<span class="sd">            [  2.0000000  -7.0000000  -8.0000000  -9.0000000]</span>
+<span class="sd">            [  3.0000000 -10.0000000 -11.0000000 -12.0000000]</span>
+<span class="sd">            &lt;BLANKLINE&gt;</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">identity_matrix</span> <span class="o">=</span> <span class="n">identity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">append_row</span><span class="p">(</span><span class="n">append_col</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_zero</span><span class="p">(),</span> <span class="o">-</span><span class="n">identity_matrix</span><span class="p">),</span>
+                          <span class="n">append_col</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">e1</span><span class="p">(),</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">L</span><span class="p">()))</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGame.c"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.SymmetricLinearGame.c">[docs]</a>    <span class="k">def</span> <span class="nf">c</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;</span>
+<span class="sd">        Return the vector ``c`` used in our CVXOPT construction.</span>
+
+<span class="sd">        The column vector :math:`c` appears in the objective function</span>
+<span class="sd">        value :math:`\left\langle c,x \right\rangle` in the `statement</span>
+<span class="sd">        of the CVXOPT conelp program</span>
+<span class="sd">        &lt;http://cvxopt.org/userguide/coneprog.html#linear-cone-programs&gt;`_.</span>
+
+<span class="sd">        .. warning::</span>
+
+<span class="sd">            It is not safe to cache any of the matrices passed to</span>
+<span class="sd">            CVXOPT, because it can clobber them.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        matrix</span>
+<span class="sd">            A :meth:`dimension`-by-``1`` column vector.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">            &gt;&gt;&gt; L = [[4,5,6],[7,8,9],[10,11,12]]</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [1,2,3]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = [1,1,1]</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">            &gt;&gt;&gt; print(SLG.c())</span>
+<span class="sd">            [-1.0000000]</span>
+<span class="sd">            [ 0.0000000]</span>
+<span class="sd">            [ 0.0000000]</span>
+<span class="sd">            [ 0.0000000]</span>
+<span class="sd">            &lt;BLANKLINE&gt;</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">matrix</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_zero</span><span class="p">()])</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGame.C"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.SymmetricLinearGame.C">[docs]</a>    <span class="k">def</span> <span class="nf">C</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the cone ``C`` used in our CVXOPT construction.</span>
+
+<span class="sd">        This is the cone over which the `CVXOPT conelp program</span>
+<span class="sd">        &lt;http://cvxopt.org/userguide/coneprog.html#linear-cone-programs&gt;`_</span>
+<span class="sd">        takes place.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        CartesianProduct</span>
+<span class="sd">            The cartesian product of ``K`` with itself.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">            &gt;&gt;&gt; L = [[4,5,6],[7,8,9],[10,11,12]]</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [1,2,3]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = [1,1,1]</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">            &gt;&gt;&gt; print(SLG.C())</span>
+<span class="sd">            Cartesian product of dimension 6 with 2 factors:</span>
+<span class="sd">              * Nonnegative orthant in the real 3-space</span>
+<span class="sd">              * Nonnegative orthant in the real 3-space</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">CartesianProduct</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_K</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_K</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="SymmetricLinearGame.h"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.SymmetricLinearGame.h">[docs]</a>    <span class="k">def</span> <span class="nf">h</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;</span>
+<span class="sd">        Return the ``h`` vector used in our CVXOPT construction.</span>
+
+<span class="sd">        The :math:`h` vector appears on the right-hand side of :math:`Gx</span>
+<span class="sd">        + s = h` in the `statement of the CVXOPT conelp program</span>
+<span class="sd">        &lt;http://cvxopt.org/userguide/coneprog.html#linear-cone-programs&gt;`_.</span>
+
+<span class="sd">        .. warning::</span>
+
+<span class="sd">            It is not safe to cache any of the matrices passed to</span>
+<span class="sd">            CVXOPT, because it can clobber them.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        matrix</span>
+<span class="sd">            A ``2*self.dimension()``-by-``1`` column vector of zeros.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">            &gt;&gt;&gt; L = [[4,5,6],[7,8,9],[10,11,12]]</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [1,2,3]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = [1,1,1]</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">            &gt;&gt;&gt; print(SLG.h())</span>
+<span class="sd">            [0.0000000]</span>
+<span class="sd">            [0.0000000]</span>
+<span class="sd">            [0.0000000]</span>
+<span class="sd">            [0.0000000]</span>
+<span class="sd">            [0.0000000]</span>
+<span class="sd">            [0.0000000]</span>
+<span class="sd">            &lt;BLANKLINE&gt;</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">matrix</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_zero</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_zero</span><span class="p">()])</span>
+
+</div>
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="SymmetricLinearGame.b"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.SymmetricLinearGame.b">[docs]</a>    <span class="k">def</span> <span class="nf">b</span><span class="p">():</span>
+        <span class="sd">r&quot;&quot;&quot;</span>
+<span class="sd">        Return the ``b`` vector used in our CVXOPT construction.</span>
+
+<span class="sd">        The vector :math:`b` appears on the right-hand side of :math:`Ax</span>
+<span class="sd">        = b` in the `statement of the CVXOPT conelp program</span>
+<span class="sd">        &lt;http://cvxopt.org/userguide/coneprog.html#linear-cone-programs&gt;`_.</span>
+
+<span class="sd">        This method is static because the dimensions and entries of</span>
+<span class="sd">        ``b`` are known beforehand, and don&#39;t depend on any other</span>
+<span class="sd">        properties of the game.</span>
+
+<span class="sd">        .. warning::</span>
+
+<span class="sd">            It is not safe to cache any of the matrices passed to</span>
+<span class="sd">            CVXOPT, because it can clobber them.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        matrix</span>
+<span class="sd">            A ``1``-by-``1`` matrix containing a single entry ``1``.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">            &gt;&gt;&gt; L = [[4,5,6],[7,8,9],[10,11,12]]</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [1,2,3]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = [1,1,1]</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">            &gt;&gt;&gt; print(SLG.b())</span>
+<span class="sd">            [1.0000000]</span>
+<span class="sd">            &lt;BLANKLINE&gt;</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">matrix</span><span class="p">([</span><span class="mi">1</span><span class="p">],</span> <span class="n">tc</span><span class="o">=</span><span class="s1">&#39;d&#39;</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGame.player1_start"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.SymmetricLinearGame.player1_start">[docs]</a>    <span class="k">def</span> <span class="nf">player1_start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a feasible starting point for player one.</span>
+
+<span class="sd">        This starting point is for the CVXOPT formulation and not for</span>
+<span class="sd">        the original game. The basic premise is that if you scale</span>
+<span class="sd">        :meth:`e2` by the reciprocal of its squared norm, then you get a</span>
+<span class="sd">        point in :meth:`K` that makes a unit inner product with</span>
+<span class="sd">        :meth:`e2`. We then get to choose the primal objective function</span>
+<span class="sd">        value such that the constraint involving :meth:`L` is satisfied.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        dict</span>
+<span class="sd">            A dictionary with two keys, ``&#39;x&#39;`` and ``&#39;s&#39;``, which</span>
+<span class="sd">            contain the vectors of the same name in the CVXOPT primal</span>
+<span class="sd">            problem formulation.</span>
+
+<span class="sd">            The vector ``x`` consists of the primal objective function</span>
+<span class="sd">            value concatenated with the strategy (for player one) that</span>
+<span class="sd">            achieves it. The vector ``s`` is essentially a dummy</span>
+<span class="sd">            variable, and is computed from the equality constraing in</span>
+<span class="sd">            the CVXOPT primal problem.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">e2</span><span class="p">()</span> <span class="o">/</span> <span class="p">(</span><span class="n">norm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">e2</span><span class="p">())</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">dist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">()</span><span class="o">.</span><span class="n">ball_radius</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">e1</span><span class="p">())</span>
+        <span class="n">nu</span> <span class="o">=</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_L_specnorm</span><span class="p">()</span><span class="o">/</span><span class="p">(</span><span class="n">dist</span><span class="o">*</span><span class="n">norm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">e2</span><span class="p">()))</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">([</span><span class="n">nu</span><span class="p">,</span> <span class="n">p</span><span class="p">],</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">G</span><span class="p">()</span><span class="o">*</span><span class="n">x</span>
+
+        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span> <span class="s1">&#39;s&#39;</span><span class="p">:</span> <span class="n">s</span><span class="p">}</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGame.player2_start"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.SymmetricLinearGame.player2_start">[docs]</a>    <span class="k">def</span> <span class="nf">player2_start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a feasible starting point for player two.</span>
+
+<span class="sd">        This starting point is for the CVXOPT formulation and not for</span>
+<span class="sd">        the original game. The basic premise is that if you scale</span>
+<span class="sd">        :meth:`e1` by the reciprocal of its squared norm, then you get a</span>
+<span class="sd">        point in :meth:`K` that makes a unit inner product with</span>
+<span class="sd">        :meth:`e1`. We then get to choose the dual objective function</span>
+<span class="sd">        value such that the constraint involving :meth:`L` is satisfied.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        dict</span>
+<span class="sd">            A dictionary with two keys, ``&#39;y&#39;`` and ``&#39;z&#39;``, which</span>
+<span class="sd">            contain the vectors of the same name in the CVXOPT dual</span>
+<span class="sd">            problem formulation.</span>
+
+<span class="sd">            The ``1``-by-``1`` vector ``y`` consists of the dual</span>
+<span class="sd">            objective function value. The last :meth:`dimension` entries</span>
+<span class="sd">            of the vector ``z`` contain the strategy (for player two)</span>
+<span class="sd">            that achieves it. The remaining entries of ``z`` are</span>
+<span class="sd">            essentially dummy variables, computed from the equality</span>
+<span class="sd">            constraint in the CVXOPT dual problem.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">e1</span><span class="p">()</span> <span class="o">/</span> <span class="p">(</span><span class="n">norm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">e1</span><span class="p">())</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">dist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">()</span><span class="o">.</span><span class="n">ball_radius</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">e2</span><span class="p">())</span>
+        <span class="n">omega</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_L_specnorm</span><span class="p">()</span><span class="o">/</span><span class="p">(</span><span class="n">dist</span><span class="o">*</span><span class="n">norm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">e1</span><span class="p">()))</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">([</span><span class="n">omega</span><span class="p">])</span>
+        <span class="n">z2</span> <span class="o">=</span> <span class="n">q</span>
+        <span class="n">z1</span> <span class="o">=</span> <span class="n">y</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">e2</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">L</span><span class="p">()</span><span class="o">.</span><span class="n">trans</span><span class="p">()</span><span class="o">*</span><span class="n">z2</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">([</span><span class="n">z1</span><span class="p">,</span> <span class="n">z2</span><span class="p">],</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">()</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;y&#39;</span><span class="p">:</span> <span class="n">y</span><span class="p">,</span> <span class="s1">&#39;z&#39;</span><span class="p">:</span> <span class="n">z</span><span class="p">}</span>
+
+</div>
+    <span class="k">def</span> <span class="nf">_L_specnorm</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the spectral norm of :meth:`L` and cache it.</span>
+
+<span class="sd">        The spectral norm of the matrix :meth:`L` is used in a few</span>
+<span class="sd">        places. Since it can be expensive to compute, we want to cache</span>
+<span class="sd">        its value. That is not possible in :func:`specnorm`, which lies</span>
+<span class="sd">        outside of a class, so this is the place to do it.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        float</span>
+<span class="sd">            A nonnegative real number; the largest singular value of</span>
+<span class="sd">            the matrix :meth:`L`.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; from dunshire.matrices import specnorm</span>
+<span class="sd">            &gt;&gt;&gt; L = [[1,2],[3,4]]</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(2)</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [1,1]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = e1</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L,K,e1,e2)</span>
+<span class="sd">            &gt;&gt;&gt; specnorm(SLG.L()) == SLG._L_specnorm()</span>
+<span class="sd">            True</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_L_specnorm_value</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_L_specnorm_value</span> <span class="o">=</span> <span class="n">specnorm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">L</span><span class="p">())</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_L_specnorm_value</span>
+
+
+<div class="viewcode-block" id="SymmetricLinearGame.tolerance_scale"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.SymmetricLinearGame.tolerance_scale">[docs]</a>    <span class="k">def</span> <span class="nf">tolerance_scale</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solution</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;</span>
+
+<span class="sd">        Return a scaling factor that should be applied to</span>
+<span class="sd">        :const:`dunshire.options.ABS_TOL` for this game.</span>
+
+<span class="sd">        When performing certain comparisons, the default tolerance</span>
+<span class="sd">        :const:`dunshire.options.ABS_TOL` may not be appropriate. For</span>
+<span class="sd">        example, if we expect ``x`` and ``y`` to be within</span>
+<span class="sd">        :const:`dunshire.options.ABS_TOL` of each other, than the inner</span>
+<span class="sd">        product of ``L*x`` and ``y`` can be as far apart as the spectral</span>
+<span class="sd">        norm of ``L`` times the sum of the norms of ``x`` and</span>
+<span class="sd">        ``y``. Such a comparison is made in :meth:`solution`, and in</span>
+<span class="sd">        many of our unit tests.</span>
+
+<span class="sd">        The returned scaling factor found from the inner product</span>
+<span class="sd">        mentioned above is</span>
+
+<span class="sd">        .. math::</span>
+
+<span class="sd">            \left\lVert L \right\rVert_{2}</span>
+<span class="sd">            \left( \left\lVert \bar{x} \right\rVert</span>
+<span class="sd">                   + \left\lVert \bar{y} \right\rVert</span>
+<span class="sd">            \right),</span>
+
+<span class="sd">        where :math:`\bar{x}` and :math:`\bar{y}` are optimal solutions</span>
+<span class="sd">        for players one and two respectively. This scaling factor is not</span>
+<span class="sd">        formally justified, but attempting anything smaller leads to</span>
+<span class="sd">        test failures.</span>
+
+<span class="sd">        .. warning::</span>
+
+<span class="sd">            Optimal solutions are not unique, so the scaling factor</span>
+<span class="sd">            obtained from ``solution`` may not work when comparing other</span>
+<span class="sd">            solutions.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        solution : Solution</span>
+<span class="sd">            A solution of this game, used to obtain the norms of the</span>
+<span class="sd">            optimal strategies.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        float</span>
+<span class="sd">            A scaling factor to be multiplied by</span>
+<span class="sd">            :const:`dunshire.options.ABS_TOL` when</span>
+<span class="sd">            making comparisons involving solutions of this game.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        The spectral norm of ``L`` in this case is around ``5.464``, and</span>
+<span class="sd">        the optimal strategies both have norm one, so we expect the</span>
+<span class="sd">        tolerance scale to be somewhere around ``2 * 5.464``, or</span>
+<span class="sd">        ``10.929``::</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; L = [[1,2],[3,4]]</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(2)</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [1,1]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = e1</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L,K,e1,e2)</span>
+<span class="sd">            &gt;&gt;&gt; SLG.tolerance_scale(SLG.solution())</span>
+<span class="sd">            10.929...</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">norm_p1_opt</span> <span class="o">=</span> <span class="n">norm</span><span class="p">(</span><span class="n">solution</span><span class="o">.</span><span class="n">player1_optimal</span><span class="p">())</span>
+        <span class="n">norm_p2_opt</span> <span class="o">=</span> <span class="n">norm</span><span class="p">(</span><span class="n">solution</span><span class="o">.</span><span class="n">player2_optimal</span><span class="p">())</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_L_specnorm</span><span class="p">()</span><span class="o">*</span><span class="p">(</span><span class="n">norm_p1_opt</span> <span class="o">+</span> <span class="n">norm_p2_opt</span><span class="p">)</span>
+
+        <span class="c1"># Don&#39;t return anything smaller than 1... we can&#39;t go below</span>
+        <span class="c1"># out &quot;minimum tolerance.&quot;</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">scale</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGame.solution"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.SymmetricLinearGame.solution">[docs]</a>    <span class="k">def</span> <span class="nf">solution</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Solve this linear game and return a :class:`Solution`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        Solution</span>
+<span class="sd">            A :class:`Solution` object describing the game&#39;s value and</span>
+<span class="sd">            the optimal strategies of both players.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        GameUnsolvableException</span>
+<span class="sd">            If the game could not be solved (if an optimal solution to its</span>
+<span class="sd">            associated cone program was not found).</span>
+
+<span class="sd">        PoorScalingException</span>
+<span class="sd">            If the game could not be solved because CVXOPT crashed while</span>
+<span class="sd">            trying to take the square root of a negative number.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        This example is computed in Gowda and Ravindran in the section</span>
+<span class="sd">        &quot;The value of a Z-transformation&quot;::</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">            &gt;&gt;&gt; L = [[1,-5,-15],[-1,2,-3],[-12,-15,1]]</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [1,1,1]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = [1,1,1]</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">            &gt;&gt;&gt; print(SLG.solution())</span>
+<span class="sd">            Game value: -6.172...</span>
+<span class="sd">            Player 1 optimal:</span>
+<span class="sd">              [0.551...]</span>
+<span class="sd">              [0.000...]</span>
+<span class="sd">              [0.448...]</span>
+<span class="sd">            Player 2 optimal:</span>
+<span class="sd">              [0.448...]</span>
+<span class="sd">              [0.000...]</span>
+<span class="sd">              [0.551...]</span>
+
+<span class="sd">        The value of the following game can be computed using the fact</span>
+<span class="sd">        that the identity is invertible::</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">            &gt;&gt;&gt; L = [[1,0,0],[0,1,0],[0,0,1]]</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [1,2,3]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = [4,5,6]</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">            &gt;&gt;&gt; print(SLG.solution())</span>
+<span class="sd">            Game value: 0.031...</span>
+<span class="sd">            Player 1 optimal:</span>
+<span class="sd">              [0.031...]</span>
+<span class="sd">              [0.062...]</span>
+<span class="sd">              [0.093...]</span>
+<span class="sd">            Player 2 optimal:</span>
+<span class="sd">              [0.125...]</span>
+<span class="sd">              [0.156...]</span>
+<span class="sd">              [0.187...]</span>
+
+<span class="sd">        This is another Gowda/Ravindran example that is supposed to have</span>
+<span class="sd">        a negative game value::</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; from dunshire.options import ABS_TOL</span>
+<span class="sd">            &gt;&gt;&gt; L = [[1, -2], [-2, 1]]</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(2)</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [1, 1]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = e1</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">            &gt;&gt;&gt; SLG.solution().game_value() &lt; -ABS_TOL</span>
+<span class="sd">            True</span>
+
+<span class="sd">        The following two games are problematic numerically, but we</span>
+<span class="sd">        should be able to solve them::</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; L = [[-0.95237953890954685221, 1.83474556206462535712],</span>
+<span class="sd">            ...      [ 1.30481749924621448500, 1.65278664543326403447]]</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(2)</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [0.95477167524644313001, 0.63270781756540095397]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = [0.39633793037154141370, 0.10239281495640320530]</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">            &gt;&gt;&gt; print(SLG.solution())</span>
+<span class="sd">            Game value: 18.767...</span>
+<span class="sd">            Player 1 optimal:</span>
+<span class="sd">              [0.000...]</span>
+<span class="sd">              [9.766...]</span>
+<span class="sd">            Player 2 optimal:</span>
+<span class="sd">              [1.047...]</span>
+<span class="sd">              [0.000...]</span>
+
+<span class="sd">        ::</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; L = [[1.54159395026049472754, 2.21344728574316684799],</span>
+<span class="sd">            ...      [1.33147433507846657541, 1.17913616272988108769]]</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(2)</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [0.39903040089404784307, 0.12377403622479113410]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = [0.15695181142215544612, 0.85527381344651265405]</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">            &gt;&gt;&gt; print(SLG.solution())</span>
+<span class="sd">            Game value: 24.614...</span>
+<span class="sd">            Player 1 optimal:</span>
+<span class="sd">              [6.371...]</span>
+<span class="sd">              [0.000...]</span>
+<span class="sd">            Player 2 optimal:</span>
+<span class="sd">              [2.506...]</span>
+<span class="sd">              [0.000...]</span>
+
+<span class="sd">        This is another one that was difficult numerically, and caused</span>
+<span class="sd">        trouble even after we fixed the first two::</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; L = [[57.22233908627052301199, 41.70631373437460354126],</span>
+<span class="sd">            ...      [83.04512571985074487202, 57.82581810406928468637]]</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(2)</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [7.31887017043399268346, 0.89744171905822367474]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = [0.11099824781179848388, 6.12564670639315345113]</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L,K,e1,e2)</span>
+<span class="sd">            &gt;&gt;&gt; print(SLG.solution())</span>
+<span class="sd">            Game value: 70.437...</span>
+<span class="sd">            Player 1 optimal:</span>
+<span class="sd">              [9.009...]</span>
+<span class="sd">              [0.000...]</span>
+<span class="sd">            Player 2 optimal:</span>
+<span class="sd">              [0.136...]</span>
+<span class="sd">              [0.000...]</span>
+
+<span class="sd">        And finally, here&#39;s one that returns an &quot;optimal&quot; solution, but</span>
+<span class="sd">        whose primal/dual objective function values are far apart::</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; L = [[ 6.49260076597376212248, -0.60528030227678542019],</span>
+<span class="sd">            ...      [ 2.59896077096751731972, -0.97685530240286766457]]</span>
+<span class="sd">            &gt;&gt;&gt; K = IceCream(2)</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [1, 0.43749513972645248661]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = [1, 0.46008379832200291260]</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">            &gt;&gt;&gt; print(SLG.solution())</span>
+<span class="sd">            Game value: 11.596...</span>
+<span class="sd">            Player 1 optimal:</span>
+<span class="sd">              [ 1.852...]</span>
+<span class="sd">              [-1.852...]</span>
+<span class="sd">            Player 2 optimal:</span>
+<span class="sd">              [ 1.777...]</span>
+<span class="sd">              [-1.777...]</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">opts</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;show_progress&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">}</span>
+            <span class="n">soln_dict</span> <span class="o">=</span> <span class="n">solvers</span><span class="o">.</span><span class="n">conelp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">c</span><span class="p">(),</span>
+                                       <span class="bp">self</span><span class="o">.</span><span class="n">G</span><span class="p">(),</span>
+                                       <span class="bp">self</span><span class="o">.</span><span class="n">h</span><span class="p">(),</span>
+                                       <span class="bp">self</span><span class="o">.</span><span class="n">C</span><span class="p">()</span><span class="o">.</span><span class="n">cvxopt_dims</span><span class="p">(),</span>
+                                       <span class="bp">self</span><span class="o">.</span><span class="n">A</span><span class="p">(),</span>
+                                       <span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="p">(),</span>
+                                       <span class="n">primalstart</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">player1_start</span><span class="p">(),</span>
+                                       <span class="n">dualstart</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">player2_start</span><span class="p">(),</span>
+                                       <span class="n">options</span><span class="o">=</span><span class="n">opts</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">error</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;math domain error&#39;</span><span class="p">:</span>
+                <span class="c1"># Oops, CVXOPT tried to take the square root of a</span>
+                <span class="c1"># negative number. Report some details about the game</span>
+                <span class="c1"># rather than just the underlying CVXOPT crash.</span>
+                <span class="n">printing</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="s1">&#39;dformat&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">DEBUG_FLOAT_FORMAT</span>
+                <span class="k">raise</span> <span class="n">PoorScalingException</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">error</span>
+
+        <span class="c1"># The optimal strategies are named ``p`` and ``q`` in the</span>
+        <span class="c1"># background documentation, and we need to extract them from</span>
+        <span class="c1"># the CVXOPT ``x`` and ``z`` variables. The objective values</span>
+        <span class="c1"># :math:`nu` and :math:`omega` can also be found in the CVXOPT</span>
+        <span class="c1"># ``x`` and ``y`` variables; however, they&#39;re stored</span>
+        <span class="c1"># conveniently as separate entries in the solution dictionary.</span>
+        <span class="n">p1_value</span> <span class="o">=</span> <span class="o">-</span><span class="n">soln_dict</span><span class="p">[</span><span class="s1">&#39;primal objective&#39;</span><span class="p">]</span>
+        <span class="n">p2_value</span> <span class="o">=</span> <span class="o">-</span><span class="n">soln_dict</span><span class="p">[</span><span class="s1">&#39;dual objective&#39;</span><span class="p">]</span>
+        <span class="n">p1_optimal</span> <span class="o">=</span> <span class="n">soln_dict</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="n">p2_optimal</span> <span class="o">=</span> <span class="n">soln_dict</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">():]</span>
+
+        <span class="c1"># The &quot;status&quot; field contains &quot;optimal&quot; if everything went</span>
+        <span class="c1"># according to plan. Other possible values are &quot;primal</span>
+        <span class="c1"># infeasible&quot;, &quot;dual infeasible&quot;, &quot;unknown&quot;, all of which mean</span>
+        <span class="c1"># we didn&#39;t get a solution.</span>
+        <span class="c1">#</span>
+        <span class="c1"># The &quot;infeasible&quot; ones are the worst, since they indicate</span>
+        <span class="c1"># that CVXOPT is convinced the problem is infeasible (and that</span>
+        <span class="c1"># cannot happen).</span>
+        <span class="k">if</span> <span class="n">soln_dict</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;primal infeasible&#39;</span><span class="p">,</span> <span class="s1">&#39;dual infeasible&#39;</span><span class="p">]:</span>
+            <span class="n">printing</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="s1">&#39;dformat&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">DEBUG_FLOAT_FORMAT</span>
+            <span class="k">raise</span> <span class="n">GameUnsolvableException</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">soln_dict</span><span class="p">)</span>
+
+        <span class="c1"># For the game value, we could use any of:</span>
+        <span class="c1">#</span>
+        <span class="c1">#   * p1_value</span>
+        <span class="c1">#   * p2_value</span>
+        <span class="c1">#   * (p1_value + p2_value)/2</span>
+        <span class="c1">#   * the game payoff</span>
+        <span class="c1">#</span>
+        <span class="c1"># We want the game value to be the payoff, however, so it</span>
+        <span class="c1"># makes the most sense to just use that, even if it means we</span>
+        <span class="c1"># can&#39;t test the fact that p1_value/p2_value are close to the</span>
+        <span class="c1"># payoff.</span>
+        <span class="n">payoff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">payoff</span><span class="p">(</span><span class="n">p1_optimal</span><span class="p">,</span> <span class="n">p2_optimal</span><span class="p">)</span>
+        <span class="n">soln</span> <span class="o">=</span> <span class="n">Solution</span><span class="p">(</span><span class="n">payoff</span><span class="p">,</span> <span class="n">p1_optimal</span><span class="p">,</span> <span class="n">p2_optimal</span><span class="p">)</span>
+
+        <span class="c1"># The &quot;optimal&quot; and &quot;unknown&quot; results, we actually treat the</span>
+        <span class="c1"># same. Even if CVXOPT bails out due to numerical difficulty,</span>
+        <span class="c1"># it will have some candidate points in mind. If those</span>
+        <span class="c1"># candidates are good enough, we take them. We do the same</span>
+        <span class="c1"># check for &quot;optimal&quot; results.</span>
+        <span class="c1">#</span>
+        <span class="c1"># First we check that the primal/dual objective values are</span>
+        <span class="c1"># close enough because otherwise CVXOPT might return &quot;unknown&quot;</span>
+        <span class="c1"># and give us two points in the cone that are nowhere near</span>
+        <span class="c1"># optimal. And in fact, we need to ensure that they&#39;re close</span>
+        <span class="c1"># for &quot;optimal&quot; results, too, because we need to know how</span>
+        <span class="c1"># lenient to be in our testing.</span>
+        <span class="c1">#</span>
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">p1_value</span> <span class="o">-</span> <span class="n">p2_value</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">tolerance_scale</span><span class="p">(</span><span class="n">soln</span><span class="p">)</span><span class="o">*</span><span class="n">ABS_TOL</span><span class="p">:</span>
+            <span class="n">printing</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="s1">&#39;dformat&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">DEBUG_FLOAT_FORMAT</span>
+            <span class="k">raise</span> <span class="n">GameUnsolvableException</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">soln_dict</span><span class="p">)</span>
+
+        <span class="c1"># And we also check that the points it gave us belong to the</span>
+        <span class="c1"># cone, just in case...</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">p1_optimal</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_K</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">p2_optimal</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_K</span><span class="p">):</span>
+            <span class="n">printing</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="s1">&#39;dformat&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">DEBUG_FLOAT_FORMAT</span>
+            <span class="k">raise</span> <span class="n">GameUnsolvableException</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">soln_dict</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">soln</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGame.condition"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.SymmetricLinearGame.condition">[docs]</a>    <span class="k">def</span> <span class="nf">condition</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;</span>
+<span class="sd">        Return the condition number of this game.</span>
+
+<span class="sd">        In the CVXOPT construction of this game, two matrices ``G`` and</span>
+<span class="sd">        ``A`` appear. When those matrices are nasty, numerical problems</span>
+<span class="sd">        can show up. We define the condition number of this game to be</span>
+<span class="sd">        the average of the condition numbers of ``G`` and ``A`` in the</span>
+<span class="sd">        CVXOPT construction. If the condition number of this game is</span>
+<span class="sd">        high, you can problems like :class:`PoorScalingException`.</span>
+
+<span class="sd">        Random testing shows that a condition number of around ``125``</span>
+<span class="sd">        is about the best that we can solve reliably. However, the</span>
+<span class="sd">        failures are intermittent, and you may get lucky with an</span>
+<span class="sd">        ill-conditioned game.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        float</span>
+<span class="sd">            A real number greater than or equal to one that measures how</span>
+<span class="sd">            bad this game is numerically.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">        &gt;&gt;&gt; K = NonnegativeOrthant(1)</span>
+<span class="sd">        &gt;&gt;&gt; L = [[1]]</span>
+<span class="sd">        &gt;&gt;&gt; e1 = [1]</span>
+<span class="sd">        &gt;&gt;&gt; e2 = e1</span>
+<span class="sd">        &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">        &gt;&gt;&gt; SLG.condition()</span>
+<span class="sd">        1.809...</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">condition_number</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">G</span><span class="p">())</span> <span class="o">+</span> <span class="n">condition_number</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">A</span><span class="p">()))</span><span class="o">/</span><span class="mi">2</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGame.dual"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.games.SymmetricLinearGame.dual">[docs]</a>    <span class="k">def</span> <span class="nf">dual</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;</span>
+<span class="sd">        Return the dual game to this game.</span>
+
+<span class="sd">        If :math:`G = \left(L,K,e_{1},e_{2}\right)` is a linear game,</span>
+<span class="sd">        then its dual is :math:`G^{*} =</span>
+<span class="sd">        \left(L^{*},K^{*},e_{2},e_{1}\right)`. However, since this cone</span>
+<span class="sd">        is symmetric, :math:`K^{*} = K`.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; from dunshire import *</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">            &gt;&gt;&gt; L = [[1,-5,-15],[-1,2,-3],[-12,-15,1]]</span>
+<span class="sd">            &gt;&gt;&gt; e1 = [1,1,1]</span>
+<span class="sd">            &gt;&gt;&gt; e2 = [1,2,3]</span>
+<span class="sd">            &gt;&gt;&gt; SLG = SymmetricLinearGame(L, K, e1, e2)</span>
+<span class="sd">            &gt;&gt;&gt; print(SLG.dual())</span>
+<span class="sd">            The linear game (L, K, e1, e2) where</span>
+<span class="sd">              L = [  1  -1 -12]</span>
+<span class="sd">                  [ -5   2 -15]</span>
+<span class="sd">                  [-15  -3   1],</span>
+<span class="sd">              K = Nonnegative orthant in the real 3-space,</span>
+<span class="sd">              e1 = [ 1]</span>
+<span class="sd">                   [ 2]</span>
+<span class="sd">                   [ 3],</span>
+<span class="sd">              e2 = [ 1]</span>
+<span class="sd">                   [ 1]</span>
+<span class="sd">                   [ 1]</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># We pass ``self.L()`` right back into the constructor, because</span>
+        <span class="c1"># it will be transposed there. And keep in mind that ``self._K``</span>
+        <span class="c1"># is its own dual.</span>
+        <span class="k">return</span> <span class="n">SymmetricLinearGame</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">L</span><span class="p">(),</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">(),</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">e2</span><span class="p">(),</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">e1</span><span class="p">())</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.xhtml">Dunshire</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.xhtml">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../requirements.xhtml">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-api.xhtml">User API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../background.xhtml">Background</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../references.xhtml">References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer-api.xhtml">Developer API Documentation</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

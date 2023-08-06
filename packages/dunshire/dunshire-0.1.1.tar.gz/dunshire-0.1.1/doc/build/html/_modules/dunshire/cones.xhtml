@@ -1,0 +1,870 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>dunshire.cones &mdash; Dunshire 0.1.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.xhtml',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Dunshire 0.1.1 documentation" href="../../index.xhtml" />
+    <link rel="up" title="Module code" href="../index.xhtml" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for dunshire.cones</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Class definitions for all of the symmetric cones (and their superclass,</span>
+<span class="sd">:class:`SymmetricCone`) supported by CVXOPT.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">cvxopt</span> <span class="kn">import</span> <span class="n">matrix</span>
+
+<span class="kn">from</span> <span class="nn">.matrices</span> <span class="kn">import</span> <span class="n">eigenvalues</span><span class="p">,</span> <span class="n">norm</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">options</span>
+
+<div class="viewcode-block" id="SymmetricCone"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.cones.SymmetricCone">[docs]</a><span class="k">class</span> <span class="nc">SymmetricCone</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An instance of a symmetric (self-dual and homogeneous) cone.</span>
+
+<span class="sd">    There are three types of symmetric cones supported by CVXOPT:</span>
+
+<span class="sd">      1. The nonnegative orthant in the real n-space.</span>
+<span class="sd">      2. The Lorentz &quot;ice cream&quot; cone, or the second-order cone.</span>
+<span class="sd">      3. The cone of symmetric positive-semidefinite matrices.</span>
+
+<span class="sd">    This class is intended to encompass them all.</span>
+
+<span class="sd">    When constructing a single symmetric cone (i.e. not a</span>
+<span class="sd">    :class:`CartesianProduct` of them), the only information that we</span>
+<span class="sd">    need is its dimension. We take that dimension as a parameter, and</span>
+<span class="sd">    store it for later.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    dimension : int</span>
+<span class="sd">        The dimension of this cone.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+
+<span class="sd">    ValueError</span>
+<span class="sd">        If you try to create a cone with dimension zero or less.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dimension</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A generic constructor for symmetric cones.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">dimension</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;cones must have dimension greater than zero&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dimension</span> <span class="o">=</span> <span class="n">dimension</span>
+
+
+<div class="viewcode-block" id="SymmetricCone.__contains__"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.cones.SymmetricCone.__contains__">[docs]</a>    <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return whether or not ``point`` belongs to this cone.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        point : matrix</span>
+<span class="sd">            The point to test for membership in this cone.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+<span class="sd">        NotImplementedError</span>
+<span class="sd">            Always, this method must be implemented in subclasses.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; K = SymmetricCone(5)</span>
+<span class="sd">            &gt;&gt;&gt; matrix([1,2]) in K</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            NotImplementedError</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricCone.ball_radius"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.cones.SymmetricCone.ball_radius">[docs]</a>    <span class="k">def</span> <span class="nf">ball_radius</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the radius of a ball around ``point`` in this cone.</span>
+
+<span class="sd">        Since a radius cannot be negative, the ``point`` must be</span>
+<span class="sd">        contained in this cone; otherwise, an error is raised.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        point : matrix</span>
+<span class="sd">            A point contained in this cone.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        float</span>
+<span class="sd">            A radius ``r`` such that the ball of radius ``r`` centered at</span>
+<span class="sd">            ``point`` is contained entirely within this cone.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+<span class="sd">        NotImplementedError</span>
+<span class="sd">            Always, this method must be implemented in subclasses.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; K = SymmetricCone(5)</span>
+<span class="sd">            &gt;&gt;&gt; K.ball_radius(matrix([1,1,1,1,1]))</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            NotImplementedError</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricCone.dimension"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.cones.SymmetricCone.dimension">[docs]</a>    <span class="k">def</span> <span class="nf">dimension</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the dimension of this symmetric cone.</span>
+
+<span class="sd">        The dimension of this symmetric cone is recorded during its</span>
+<span class="sd">        creation. This method simply returns the recorded value, and</span>
+<span class="sd">        should not need to be overridden in subclasses. We prefer to do</span>
+<span class="sd">        any special computation in ``__init__()`` and record the result</span>
+<span class="sd">        in ``self._dimension``.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        int</span>
+<span class="sd">            The stored dimension (from when this cone was constructed)</span>
+<span class="sd">            of this cone.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; K = SymmetricCone(5)</span>
+<span class="sd">            &gt;&gt;&gt; K.dimension()</span>
+<span class="sd">            5</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dimension</span>
+
+</div></div>
+<div class="viewcode-block" id="NonnegativeOrthant"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.cones.NonnegativeOrthant">[docs]</a><span class="k">class</span> <span class="nc">NonnegativeOrthant</span><span class="p">(</span><span class="n">SymmetricCone</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The nonnegative orthant in the given number of dimensions.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">        &gt;&gt;&gt; print(K)</span>
+<span class="sd">        Nonnegative orthant in the real 3-space</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="NonnegativeOrthant.__str__"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.cones.NonnegativeOrthant.__str__">[docs]</a>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Output a human-readable description of myself.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tpl</span> <span class="o">=</span> <span class="s1">&#39;Nonnegative orthant in the real {:d}-space&#39;</span>
+        <span class="k">return</span> <span class="n">tpl</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">())</span>
+
+</div>
+<div class="viewcode-block" id="NonnegativeOrthant.__contains__"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.cones.NonnegativeOrthant.__contains__">[docs]</a>    <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return whether or not ``point`` belongs to this cone.</span>
+
+<span class="sd">        Since this test is expected to work on points whose components</span>
+<span class="sd">        are floating point numbers, it doesn&#39;t make any sense to</span>
+<span class="sd">        distinguish between strict and non-strict containment -- the</span>
+<span class="sd">        test uses a tolerance parameter.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        point : matrix</span>
+<span class="sd">            A :class:`cvxopt.base.matrix` having dimensions ``(n,1)``</span>
+<span class="sd">            where ``n`` is the :meth:`dimension` of this cone.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        bool</span>
+
+<span class="sd">           ``True`` if ``point`` belongs to this cone, ``False`` otherwise.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+<span class="sd">        TypeError</span>
+<span class="sd">            If ``point`` is not a :class:`cvxopt.base.matrix`.</span>
+
+<span class="sd">        TypeError</span>
+<span class="sd">            If ``point`` has the wrong dimensions.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        All of these coordinates are positive enough:</span>
+
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">            &gt;&gt;&gt; matrix([1,2,3]) in K</span>
+<span class="sd">            True</span>
+
+<span class="sd">        The one negative coordinate pushes this point outside of ``K``:</span>
+
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">            &gt;&gt;&gt; matrix([1,-0.1,3]) in K</span>
+<span class="sd">            False</span>
+
+<span class="sd">        A boundary point is considered inside of ``K``:</span>
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">            &gt;&gt;&gt; matrix([1,0,3]) in K</span>
+<span class="sd">            True</span>
+
+<span class="sd">        Junk arguments don&#39;t work:</span>
+
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">            &gt;&gt;&gt; [1,2,3] in K</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            TypeError: the given point is not a cvxopt.base.matrix</span>
+
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(3)</span>
+<span class="sd">            &gt;&gt;&gt; matrix([1,2]) in K</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            TypeError: the given point has the wrong dimensions</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="n">matrix</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;the given point is not a cvxopt.base.matrix&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">point</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">(),</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;the given point has the wrong dimensions&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">all</span><span class="p">([</span><span class="n">x</span> <span class="o">&gt;</span> <span class="o">-</span><span class="n">options</span><span class="o">.</span><span class="n">ABS_TOL</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">point</span><span class="p">])</span>
+
+</div>
+<div class="viewcode-block" id="NonnegativeOrthant.ball_radius"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.cones.NonnegativeOrthant.ball_radius">[docs]</a>    <span class="k">def</span> <span class="nf">ball_radius</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the radius of a ball around ``point`` in this cone.</span>
+
+<span class="sd">        Since a radius cannot be negative, the ``point`` must be</span>
+<span class="sd">        contained in this cone; otherwise, an error is raised.</span>
+
+<span class="sd">        The minimum distance from ``point`` to the complement of this</span>
+<span class="sd">        cone will always occur at its projection onto that set. It is</span>
+<span class="sd">        not hard to see that the projection is directly along one of the</span>
+<span class="sd">        coordinates, and so the minimum distance from ``point`` to the</span>
+<span class="sd">        boundary of this cone is the smallest coordinate of</span>
+<span class="sd">        ``point``. Therefore any radius less than that will work; we</span>
+<span class="sd">        divide it in half somewhat arbitrarily.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        point : matrix</span>
+<span class="sd">            A point contained in this cone.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        float</span>
+<span class="sd">            A radius ``r`` such that the ball of radius ``r`` centered at</span>
+<span class="sd">            ``point`` is contained entirely within this cone.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+<span class="sd">        TypeError</span>
+<span class="sd">            If ``point`` is not a :class:`cvxopt.base.matrix`.</span>
+
+<span class="sd">        TypeError</span>
+<span class="sd">            If ``point`` has the wrong dimensions.</span>
+
+<span class="sd">        ValueError</span>
+<span class="sd">            if ``point`` is not contained in this cone.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; K = NonnegativeOrthant(5)</span>
+<span class="sd">            &gt;&gt;&gt; K.ball_radius(matrix([1,2,3,4,5]))</span>
+<span class="sd">            0.5</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="n">matrix</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;the given point is not a cvxopt.base.matrix&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">point</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">(),</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;the given point has the wrong dimensions&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">point</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;the given point does not lie in the cone&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">point</span><span class="p">))</span> <span class="o">/</span> <span class="mf">2.0</span>
+
+
+</div></div>
+<div class="viewcode-block" id="IceCream"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.cones.IceCream">[docs]</a><span class="k">class</span> <span class="nc">IceCream</span><span class="p">(</span><span class="n">SymmetricCone</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Lorentz &quot;ice cream&quot; cone in the given number of dimensions.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; K = IceCream(3)</span>
+<span class="sd">        &gt;&gt;&gt; print(K)</span>
+<span class="sd">        Lorentz &quot;ice cream&quot; cone in the real 3-space</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="IceCream.__str__"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.cones.IceCream.__str__">[docs]</a>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Output a human-readable description of myself.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tpl</span> <span class="o">=</span> <span class="s1">&#39;Lorentz &quot;ice cream&quot; cone in the real {:d}-space&#39;</span>
+        <span class="k">return</span> <span class="n">tpl</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">())</span>
+
+</div>
+<div class="viewcode-block" id="IceCream.__contains__"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.cones.IceCream.__contains__">[docs]</a>    <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return whether or not ``point`` belongs to this cone.</span>
+
+<span class="sd">        Since this test is expected to work on points whose components</span>
+<span class="sd">        are floating point numbers, it doesn&#39;t make any sense to</span>
+<span class="sd">        distinguish between strict and non-strict containment -- the</span>
+<span class="sd">        test uses a tolerance parameter.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        point : matrix</span>
+<span class="sd">            A :class:`cvxopt.base.matrix` having dimensions ``(n,1)``</span>
+<span class="sd">            where ``n`` is the :meth:`dimension` of this cone.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        bool</span>
+
+<span class="sd">           ``True`` if ``point`` belongs to this cone, ``False`` otherwise.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+<span class="sd">        TypeError</span>
+<span class="sd">            If ``point`` is not a :class:`cvxopt.base.matrix`.</span>
+
+<span class="sd">        TypeError</span>
+<span class="sd">            If ``point`` has the wrong dimensions.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        This point lies well within the ice cream cone:</span>
+
+<span class="sd">            &gt;&gt;&gt; K = IceCream(3)</span>
+<span class="sd">            &gt;&gt;&gt; matrix([1,0.5,0.5]) in K</span>
+<span class="sd">            True</span>
+
+<span class="sd">        This one lies on its boundary:</span>
+
+<span class="sd">            &gt;&gt;&gt; K = IceCream(3)</span>
+<span class="sd">            &gt;&gt;&gt; matrix([1,0,1]) in K</span>
+<span class="sd">            True</span>
+
+<span class="sd">        This point lies entirely outside of the ice cream cone:</span>
+
+<span class="sd">            &gt;&gt;&gt; K = IceCream(3)</span>
+<span class="sd">            &gt;&gt;&gt; matrix([1,1,1]) in K</span>
+<span class="sd">            False</span>
+
+<span class="sd">        Junk arguments don&#39;t work:</span>
+
+<span class="sd">            &gt;&gt;&gt; K = IceCream(3)</span>
+<span class="sd">            &gt;&gt;&gt; [1,2,3] in K</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            TypeError: the given point is not a cvxopt.base.matrix</span>
+
+<span class="sd">            &gt;&gt;&gt; K = IceCream(3)</span>
+<span class="sd">            &gt;&gt;&gt; matrix([1,2]) in K</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            TypeError: the given point has the wrong dimensions</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="n">matrix</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;the given point is not a cvxopt.base.matrix&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">point</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">(),</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;the given point has the wrong dimensions&#39;</span><span class="p">)</span>
+
+        <span class="n">height</span> <span class="o">=</span> <span class="n">point</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># In one dimension, the ice cream cone is the nonnegative</span>
+            <span class="c1"># orthant.</span>
+            <span class="k">return</span> <span class="n">height</span> <span class="o">&gt;</span> <span class="o">-</span><span class="n">options</span><span class="o">.</span><span class="n">ABS_TOL</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">radius</span> <span class="o">=</span> <span class="n">point</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+            <span class="k">return</span> <span class="n">norm</span><span class="p">(</span><span class="n">radius</span><span class="p">)</span> <span class="o">&lt;</span> <span class="p">(</span><span class="n">height</span> <span class="o">+</span> <span class="n">options</span><span class="o">.</span><span class="n">ABS_TOL</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="IceCream.ball_radius"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.cones.IceCream.ball_radius">[docs]</a>    <span class="k">def</span> <span class="nf">ball_radius</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;</span>
+<span class="sd">        Return the radius of a ball around ``point`` in this cone.</span>
+
+<span class="sd">        Since a radius cannot be negative, the ``point`` must be</span>
+<span class="sd">        contained in this cone; otherwise, an error is raised.</span>
+
+<span class="sd">        The minimum distance from ``point`` to the complement of this</span>
+<span class="sd">        cone will always occur at its projection onto that set. It is</span>
+<span class="sd">        not hard to see that the projection is at a &quot;down and out&quot; angle</span>
+<span class="sd">        of :math:`\pi/4` towards the outside of the cone. If one draws a</span>
+<span class="sd">        right triangle involving the ``point`` and that projection, it</span>
+<span class="sd">        becomes clear that the distance between ``point`` and its</span>
+<span class="sd">        projection is a factor of :math:`1/\sqrt(2)` times the &quot;horizontal&quot;</span>
+<span class="sd">        distance from ``point`` to boundary of this cone. For simplicity</span>
+<span class="sd">        we take :math:`1/2` instead.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        point : matrix</span>
+<span class="sd">            A point contained in this cone.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        float</span>
+<span class="sd">            A radius ``r`` such that the ball of radius ``r`` centered at</span>
+<span class="sd">            ``point`` is contained entirely within this cone.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+<span class="sd">        TypeError</span>
+<span class="sd">            If ``point`` is not a :class:`cvxopt.base.matrix`.</span>
+
+<span class="sd">        TypeError</span>
+<span class="sd">            If ``point`` has the wrong dimensions.</span>
+
+<span class="sd">        ValueError</span>
+<span class="sd">            if ``point`` is not contained in this cone.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        The height of ``x`` below is one (its first coordinate), and so</span>
+<span class="sd">        the radius of the circle obtained from a height-one cross</span>
+<span class="sd">        section is also one. Note that the last two coordinates of ``x``</span>
+<span class="sd">        are half of the way to the boundary of the cone, and in the</span>
+<span class="sd">        direction of a 30-60-90 triangle. If one follows those</span>
+<span class="sd">        coordinates, they hit at :math:`\left(1, \frac{\sqrt(3)}{2},</span>
+<span class="sd">        \frac{1}{2}\right)` having unit norm. Thus the &quot;horizontal&quot;</span>
+<span class="sd">        distance to the boundary of the cone is :math:`1 - \left\lVert x</span>
+<span class="sd">        \right\rVert`, which simplifies to :math:`1/2`. And rather than</span>
+<span class="sd">        involve a square root, we divide by two for a final safe radius</span>
+<span class="sd">        of :math:`1/4`.</span>
+
+<span class="sd">            &gt;&gt;&gt; from math import sqrt</span>
+<span class="sd">            &gt;&gt;&gt; K = IceCream(3)</span>
+<span class="sd">            &gt;&gt;&gt; x = matrix([1, sqrt(3)/4.0, 1/4.0])</span>
+<span class="sd">            &gt;&gt;&gt; K.ball_radius(x)</span>
+<span class="sd">            0.25</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="n">matrix</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;the given point is not a cvxopt.base.matrix&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">point</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">(),</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;the given point has the wrong dimensions&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">point</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;the given point does not lie in the cone&#39;</span><span class="p">)</span>
+
+        <span class="n">height</span> <span class="o">=</span> <span class="n">point</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">radius</span> <span class="o">=</span> <span class="n">norm</span><span class="p">(</span><span class="n">point</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">height</span> <span class="o">-</span> <span class="n">radius</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
+
+</div></div>
+<div class="viewcode-block" id="SymmetricPSD"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.cones.SymmetricPSD">[docs]</a><span class="k">class</span> <span class="nc">SymmetricPSD</span><span class="p">(</span><span class="n">SymmetricCone</span><span class="p">):</span>
+    <span class="sd">r&quot;&quot;&quot;</span>
+<span class="sd">    The cone of real symmetric positive-semidefinite matrices.</span>
+
+<span class="sd">    This cone has a dimension ``n`` associated with it, but we let ``n``</span>
+<span class="sd">    refer to the dimension of the domain of our matrices and not the</span>
+<span class="sd">    dimension of the (much larger) space in which the matrices</span>
+<span class="sd">    themselves live. In other words, our ``n`` is the ``n`` that appears</span>
+<span class="sd">    in the usual notation :math:`S^{n}` for symmetric matrices.</span>
+
+<span class="sd">    As a result, the cone ``SymmetricPSD(n)`` lives in a space of dimension</span>
+<span class="sd">    :math:`\left(n^{2} + n\right)/2)`.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; K = SymmetricPSD(3)</span>
+<span class="sd">        &gt;&gt;&gt; print(K)</span>
+<span class="sd">        Cone of symmetric positive-semidefinite matrices on the real 3-space</span>
+<span class="sd">        &gt;&gt;&gt; K.dimension()</span>
+<span class="sd">        3</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="SymmetricPSD.__str__"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.cones.SymmetricPSD.__str__">[docs]</a>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Output a human-readable description of myself.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tpl</span> <span class="o">=</span> <span class="s1">&#39;Cone of symmetric positive-semidefinite matrices &#39;</span> \
+              <span class="s1">&#39;on the real {:d}-space&#39;</span>
+        <span class="k">return</span> <span class="n">tpl</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">())</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricPSD.__contains__"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.cones.SymmetricPSD.__contains__">[docs]</a>    <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return whether or not ``point`` belongs to this cone.</span>
+
+<span class="sd">        Since this test is expected to work on points whose components</span>
+<span class="sd">        are floating point numbers, it doesn&#39;t make any sense to</span>
+<span class="sd">        distinguish between strict and non-strict containment -- the</span>
+<span class="sd">        test uses a tolerance parameter.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        point : matrix</span>
+<span class="sd">            A :class:`cvxopt.base.matrix` having dimensions ``(n,n)``</span>
+<span class="sd">            where ``n`` is the :meth:`dimension` of this cone.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        bool</span>
+
+<span class="sd">           ``True`` if ``point`` belongs to this cone, ``False`` otherwise.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+<span class="sd">        TypeError</span>
+<span class="sd">            If ``point`` is not a :class:`cvxopt.base.matrix`.</span>
+
+<span class="sd">        TypeError</span>
+<span class="sd">            If ``point`` has the wrong dimensions.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        These all lie in the interior of the Symmetric PSD cone:</span>
+
+<span class="sd">            &gt;&gt;&gt; K = SymmetricPSD(2)</span>
+<span class="sd">            &gt;&gt;&gt; matrix([[1,0],[0,1]]) in K</span>
+<span class="sd">            True</span>
+
+<span class="sd">            &gt;&gt;&gt; K = SymmetricPSD(3)</span>
+<span class="sd">            &gt;&gt;&gt; matrix([[2,-1,0],[-1,2,-1],[0,-1,2]]) in K</span>
+<span class="sd">            True</span>
+
+<span class="sd">            &gt;&gt;&gt; K = SymmetricPSD(5)</span>
+<span class="sd">            &gt;&gt;&gt; A = matrix([[5,4,3,2,1],</span>
+<span class="sd">            ...             [4,5,4,3,2],</span>
+<span class="sd">            ...             [3,4,5,4,3],</span>
+<span class="sd">            ...             [2,3,4,5,4],</span>
+<span class="sd">            ...             [1,2,3,4,5]])</span>
+<span class="sd">            &gt;&gt;&gt; A in K</span>
+<span class="sd">            True</span>
+
+<span class="sd">        Boundary points lie in the cone as well:</span>
+
+<span class="sd">            &gt;&gt;&gt; K = SymmetricPSD(2)</span>
+<span class="sd">            &gt;&gt;&gt; matrix([[0,0],[0,0]]) in K</span>
+<span class="sd">            True</span>
+
+<span class="sd">            &gt;&gt;&gt; K = SymmetricPSD(5)</span>
+<span class="sd">            &gt;&gt;&gt; A = matrix([[1,0,0,0,0],</span>
+<span class="sd">            ...             [0,1,0,0,0],</span>
+<span class="sd">            ...             [0,0,0,0,0],</span>
+<span class="sd">            ...             [0,0,0,1,0],</span>
+<span class="sd">            ...             [0,0,0,0,1]])</span>
+<span class="sd">            &gt;&gt;&gt; A in K</span>
+<span class="sd">            True</span>
+
+<span class="sd">        However, this matrix has a negative eigenvalue:</span>
+
+<span class="sd">           &gt;&gt;&gt; K = SymmetricPSD(2)</span>
+<span class="sd">           &gt;&gt;&gt; A = matrix([[ 1, -2],</span>
+<span class="sd">           ...             [-2,  1]])</span>
+<span class="sd">           &gt;&gt;&gt; A in K</span>
+<span class="sd">           False</span>
+
+<span class="sd">        An asymmetric cone with positive eigenvalues is not in the cone:</span>
+
+<span class="sd">           &gt;&gt;&gt; K = SymmetricPSD(2)</span>
+<span class="sd">           &gt;&gt;&gt; A = matrix([[10, 2],</span>
+<span class="sd">           ...             [4,  8]])</span>
+<span class="sd">           &gt;&gt;&gt; A in K</span>
+<span class="sd">           False</span>
+
+<span class="sd">        Junk arguments don&#39;t work:</span>
+
+<span class="sd">            &gt;&gt;&gt; K = SymmetricPSD(2)</span>
+<span class="sd">            &gt;&gt;&gt; [[1,2],[2,3]] in K</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            TypeError: the given point is not a cvxopt.base.matrix</span>
+
+<span class="sd">            &gt;&gt;&gt; K = SymmetricPSD(3)</span>
+<span class="sd">            &gt;&gt;&gt; matrix([[1,2],[3,4]]) in K</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            TypeError: the given point has the wrong dimensions</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="n">matrix</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;the given point is not a cvxopt.base.matrix&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">point</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">()):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;the given point has the wrong dimensions&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">point</span><span class="o">.</span><span class="n">typecode</span> <span class="o">==</span> <span class="s1">&#39;d&#39;</span><span class="p">:</span>
+            <span class="n">point</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">()),</span> <span class="s1">&#39;d&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">norm</span><span class="p">(</span><span class="n">point</span> <span class="o">-</span> <span class="n">point</span><span class="o">.</span><span class="n">trans</span><span class="p">())</span> <span class="o">&lt;</span> <span class="n">options</span><span class="o">.</span><span class="n">ABS_TOL</span><span class="p">:</span>
+            <span class="c1"># It&#39;s not symmetric.</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="nb">all</span><span class="p">([</span><span class="n">e</span> <span class="o">&gt;</span> <span class="o">-</span><span class="n">options</span><span class="o">.</span><span class="n">ABS_TOL</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">eigenvalues</span><span class="p">(</span><span class="n">point</span><span class="p">)])</span>
+
+
+</div></div>
+<div class="viewcode-block" id="CartesianProduct"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.cones.CartesianProduct">[docs]</a><span class="k">class</span> <span class="nc">CartesianProduct</span><span class="p">(</span><span class="n">SymmetricCone</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A cartesian product of symmetric cones, which is itself a symmetric</span>
+<span class="sd">    cone.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; K = CartesianProduct(NonnegativeOrthant(3), IceCream(2))</span>
+<span class="sd">        &gt;&gt;&gt; print(K)</span>
+<span class="sd">        Cartesian product of dimension 5 with 2 factors:</span>
+<span class="sd">          * Nonnegative orthant in the real 3-space</span>
+<span class="sd">          * Lorentz &quot;ice cream&quot; cone in the real 2-space</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">factors</span><span class="p">):</span>
+        <span class="n">my_dimension</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="n">f</span><span class="o">.</span><span class="n">dimension</span><span class="p">()</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">factors</span><span class="p">])</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">my_dimension</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_factors</span> <span class="o">=</span> <span class="n">factors</span>
+
+
+<div class="viewcode-block" id="CartesianProduct.__str__"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.cones.CartesianProduct.__str__">[docs]</a>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Output a human-readable description of myself.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tpl</span> <span class="o">=</span> <span class="s1">&#39;Cartesian product of dimension {:d} with {:d} factors:&#39;</span>
+        <span class="n">tpl</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">  * {!s}&#39;</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">factors</span><span class="p">())</span>
+        <span class="n">format_args</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">(),</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">factors</span><span class="p">())]</span>
+        <span class="n">format_args</span> <span class="o">+=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">factors</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">tpl</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">*</span><span class="n">format_args</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="CartesianProduct.__contains__"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.cones.CartesianProduct.__contains__">[docs]</a>    <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return whether or not ``point`` belongs to this cone.</span>
+
+<span class="sd">        The ``point`` is expected to be a tuple of points which will be</span>
+<span class="sd">        tested for membership in this cone&#39;s factors. If each point in</span>
+<span class="sd">        the tuple belongs to its corresponding factor, then the whole</span>
+<span class="sd">        point belongs to this cone. Otherwise, it doesn&#39;t.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        point : tuple of matrix</span>
+<span class="sd">            A tuple of :class:`cvxopt.base.matrix` corresponding to the</span>
+<span class="sd">            :meth:`factors` of this cartesian product.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        bool</span>
+
+<span class="sd">           ``True`` if ``point`` belongs to this cone, ``False`` otherwise.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+
+<span class="sd">        TypeError</span>
+<span class="sd">            If ``point`` is not a tuple of :class:`cvxopt.base.matrix`.</span>
+
+<span class="sd">        TypeError</span>
+<span class="sd">            If any element of ``point`` has the wrong dimensions.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        The result depends on how containment is defined for our factors:</span>
+
+<span class="sd">            &gt;&gt;&gt; K = CartesianProduct(NonnegativeOrthant(3), IceCream(3))</span>
+<span class="sd">            &gt;&gt;&gt; (matrix([1,2,3]), matrix([1,0.5,0.5])) in K</span>
+<span class="sd">            True</span>
+
+<span class="sd">            &gt;&gt;&gt; K = CartesianProduct(NonnegativeOrthant(3), IceCream(3))</span>
+<span class="sd">            &gt;&gt;&gt; (matrix([0,0,0]), matrix([1,0,1])) in K</span>
+<span class="sd">            True</span>
+
+<span class="sd">            &gt;&gt;&gt; K = CartesianProduct(NonnegativeOrthant(3), IceCream(3))</span>
+<span class="sd">            &gt;&gt;&gt; (matrix([1,1,1]), matrix([1,1,1])) in K</span>
+<span class="sd">            False</span>
+
+<span class="sd">            &gt;&gt;&gt; K = CartesianProduct(NonnegativeOrthant(3), IceCream(3))</span>
+<span class="sd">            &gt;&gt;&gt; (matrix([1,-1,1]), matrix([1,0,1])) in K</span>
+<span class="sd">            False</span>
+
+<span class="sd">        Junk arguments don&#39;t work:</span>
+
+<span class="sd">            &gt;&gt;&gt; K = CartesianProduct(NonnegativeOrthant(3), IceCream(3))</span>
+<span class="sd">            &gt;&gt;&gt; [[1,2,3],[4,5,6]] in K</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            TypeError: the given point is not a cvxopt.base.matrix</span>
+
+<span class="sd">            &gt;&gt;&gt; K = CartesianProduct(NonnegativeOrthant(3), IceCream(3))</span>
+<span class="sd">            &gt;&gt;&gt; (matrix([1,2]), matrix([3,4,5,6])) in K</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            TypeError: the given point has the wrong dimensions</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">all</span><span class="p">([</span><span class="n">p</span> <span class="ow">in</span> <span class="n">f</span> <span class="k">for</span> <span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">factors</span><span class="p">())])</span>
+
+
+</div>
+<div class="viewcode-block" id="CartesianProduct.factors"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.cones.CartesianProduct.factors">[docs]</a>    <span class="k">def</span> <span class="nf">factors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a tuple containing the factors (in order) of this</span>
+<span class="sd">        cartesian product.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        tuple of SymmetricCone.</span>
+<span class="sd">            The factors of this cartesian product.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; K = CartesianProduct(NonnegativeOrthant(3), IceCream(2))</span>
+<span class="sd">            &gt;&gt;&gt; len(K.factors())</span>
+<span class="sd">            2</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factors</span>
+
+</div>
+<div class="viewcode-block" id="CartesianProduct.cvxopt_dims"><a class="viewcode-back" href="../../user-api.xhtml#dunshire.cones.CartesianProduct.cvxopt_dims">[docs]</a>    <span class="k">def</span> <span class="nf">cvxopt_dims</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a dictionary of dimensions corresponding to the</span>
+<span class="sd">        factors of this cartesian product. The format of this dictionary</span>
+<span class="sd">        is described in the `CVXOPT user&#39;s guide</span>
+<span class="sd">        &lt;http://cvxopt.org/userguide/coneprog.html#linear-cone-programs&gt;`_.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        dict</span>
+<span class="sd">            A dimension dictionary suitable to feed to CVXOPT.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">            &gt;&gt;&gt; K = CartesianProduct(NonnegativeOrthant(3),</span>
+<span class="sd">            ...                      IceCream(2),</span>
+<span class="sd">            ...                      IceCream(3))</span>
+<span class="sd">            &gt;&gt;&gt; d = K.cvxopt_dims()</span>
+<span class="sd">            &gt;&gt;&gt; (d[&#39;l&#39;], d[&#39;q&#39;], d[&#39;s&#39;])</span>
+<span class="sd">            (3, [2, 3], [])</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">dims</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;l&#39;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;q&#39;</span><span class="p">:[],</span> <span class="s1">&#39;s&#39;</span><span class="p">:[]}</span>
+        <span class="n">dims</span><span class="p">[</span><span class="s1">&#39;l&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">sum</span><span class="p">([</span><span class="n">K</span><span class="o">.</span><span class="n">dimension</span><span class="p">()</span>
+                          <span class="k">for</span> <span class="n">K</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">factors</span><span class="p">()</span>
+                          <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="n">NonnegativeOrthant</span><span class="p">)])</span>
+        <span class="n">dims</span><span class="p">[</span><span class="s1">&#39;q&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">K</span><span class="o">.</span><span class="n">dimension</span><span class="p">()</span>
+                     <span class="k">for</span> <span class="n">K</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">factors</span><span class="p">()</span>
+                     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="n">IceCream</span><span class="p">)]</span>
+        <span class="n">dims</span><span class="p">[</span><span class="s1">&#39;s&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">K</span><span class="o">.</span><span class="n">dimension</span><span class="p">()</span>
+                     <span class="k">for</span> <span class="n">K</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">factors</span><span class="p">()</span>
+                     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="n">SymmetricPSD</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="n">dims</span>
+</pre></div></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.xhtml">Dunshire</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.xhtml">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../requirements.xhtml">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-api.xhtml">User API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../background.xhtml">Background</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../references.xhtml">References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer-api.xhtml">Developer API Documentation</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

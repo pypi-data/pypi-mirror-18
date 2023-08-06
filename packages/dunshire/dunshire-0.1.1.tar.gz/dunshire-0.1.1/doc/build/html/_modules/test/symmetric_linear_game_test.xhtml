@@ -1,0 +1,456 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>test.symmetric_linear_game_test &mdash; Dunshire 0.1.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.xhtml',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Dunshire 0.1.1 documentation" href="../../index.xhtml" />
+    <link rel="up" title="test" href="../test.xhtml" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for test.symmetric_linear_game_test</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Unit tests for the :class:`SymmetricLinearGame` class.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">unittest</span> <span class="kn">import</span> <span class="n">TestCase</span>
+
+<span class="kn">from</span> <span class="nn">dunshire.games</span> <span class="kn">import</span> <span class="n">SymmetricLinearGame</span>
+<span class="kn">from</span> <span class="nn">dunshire.matrices</span> <span class="kn">import</span> <span class="n">eigenvalues_re</span><span class="p">,</span> <span class="n">inner_product</span><span class="p">,</span> <span class="n">norm</span>
+<span class="kn">from</span> <span class="nn">dunshire</span> <span class="kn">import</span> <span class="n">options</span>
+<span class="kn">from</span> <span class="nn">.randomgen</span> <span class="kn">import</span> <span class="p">(</span><span class="n">random_icecream_game</span><span class="p">,</span> <span class="n">random_ll_icecream_game</span><span class="p">,</span>
+                        <span class="n">random_ll_orthant_game</span><span class="p">,</span> <span class="n">random_nn_scaling</span><span class="p">,</span>
+                        <span class="n">random_orthant_game</span><span class="p">,</span> <span class="n">random_positive_orthant_game</span><span class="p">,</span>
+                        <span class="n">random_translation</span><span class="p">)</span>
+
+
+<span class="c1"># Tell pylint to shut up about the large number of methods.</span>
+<div class="viewcode-block" id="SymmetricLinearGameTest"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest">[docs]</a><span class="k">class</span> <span class="nc">SymmetricLinearGameTest</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span> <span class="c1"># pylint: disable=R0904</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Tests for the SymmetricLinearGame and Solution classes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="SymmetricLinearGameTest.assert_within_tol"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.assert_within_tol">[docs]</a>    <span class="k">def</span> <span class="nf">assert_within_tol</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">first</span><span class="p">,</span> <span class="n">second</span><span class="p">,</span> <span class="n">modifier</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Test that ``first`` and ``second`` are equal within a multiple of</span>
+<span class="sd">        our default tolerances.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        first : float</span>
+<span class="sd">            The first number to compare.</span>
+
+<span class="sd">        second : float</span>
+<span class="sd">            The second number to compare.</span>
+
+<span class="sd">        modifier : float</span>
+<span class="sd">            A scaling factor (default: 1) applied to the default</span>
+<span class="sd">            tolerance for this comparison. If you have a poorly-</span>
+<span class="sd">            conditioned matrix, for example, you may want to set this</span>
+<span class="sd">            greater than one.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">first</span> <span class="o">-</span> <span class="n">second</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">options</span><span class="o">.</span><span class="n">ABS_TOL</span><span class="o">*</span><span class="n">modifier</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.test_solutions_dont_change_orthant"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.test_solutions_dont_change_orthant">[docs]</a>    <span class="k">def</span> <span class="nf">test_solutions_dont_change_orthant</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        If we solve the same game twice over the nonnegative orthant,</span>
+<span class="sd">        then we should get the same solution both times. The solution to</span>
+<span class="sd">        a game is not unique, but the process we use is (as far as we</span>
+<span class="sd">        know) deterministic.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_orthant_game</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_solutions_dont_change</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.test_solutions_dont_change_icecream"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.test_solutions_dont_change_icecream">[docs]</a>    <span class="k">def</span> <span class="nf">test_solutions_dont_change_icecream</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        If we solve the same game twice over the ice-cream cone, then we</span>
+<span class="sd">        should get the same solution both times. The solution to a game</span>
+<span class="sd">        is not unique, but the process we use is (as far as we know)</span>
+<span class="sd">        deterministic.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_icecream_game</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_solutions_dont_change</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.assert_solutions_dont_change"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.assert_solutions_dont_change">[docs]</a>    <span class="k">def</span> <span class="nf">assert_solutions_dont_change</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">G</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Solve ``G`` twice and check that the solutions agree.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">soln1</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">solution</span><span class="p">()</span>
+        <span class="n">soln2</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">solution</span><span class="p">()</span>
+        <span class="n">p1_diff</span> <span class="o">=</span> <span class="n">norm</span><span class="p">(</span><span class="n">soln1</span><span class="o">.</span><span class="n">player1_optimal</span><span class="p">()</span> <span class="o">-</span> <span class="n">soln2</span><span class="o">.</span><span class="n">player1_optimal</span><span class="p">())</span>
+        <span class="n">p2_diff</span> <span class="o">=</span> <span class="n">norm</span><span class="p">(</span><span class="n">soln1</span><span class="o">.</span><span class="n">player2_optimal</span><span class="p">()</span> <span class="o">-</span> <span class="n">soln2</span><span class="o">.</span><span class="n">player2_optimal</span><span class="p">())</span>
+        <span class="n">gv_diff</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">soln1</span><span class="o">.</span><span class="n">game_value</span><span class="p">()</span> <span class="o">-</span> <span class="n">soln2</span><span class="o">.</span><span class="n">game_value</span><span class="p">())</span>
+
+        <span class="n">p1_close</span> <span class="o">=</span> <span class="n">p1_diff</span> <span class="o">&lt;</span> <span class="n">options</span><span class="o">.</span><span class="n">ABS_TOL</span>
+        <span class="n">p2_close</span> <span class="o">=</span> <span class="n">p2_diff</span> <span class="o">&lt;</span> <span class="n">options</span><span class="o">.</span><span class="n">ABS_TOL</span>
+        <span class="n">gv_close</span> <span class="o">=</span> <span class="n">gv_diff</span> <span class="o">&lt;</span> <span class="n">options</span><span class="o">.</span><span class="n">ABS_TOL</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">p1_close</span> <span class="ow">and</span> <span class="n">p2_close</span> <span class="ow">and</span> <span class="n">gv_close</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.assert_player1_start_valid"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.assert_player1_start_valid">[docs]</a>    <span class="k">def</span> <span class="nf">assert_player1_start_valid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">G</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Ensure that player one&#39;s starting point satisfies both the</span>
+<span class="sd">        equality and cone inequality in the CVXOPT primal problem.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">player1_start</span><span class="p">()[</span><span class="s1">&#39;x&#39;</span><span class="p">]</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">player1_start</span><span class="p">()[</span><span class="s1">&#39;s&#39;</span><span class="p">]</span>
+        <span class="n">s1</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">G</span><span class="o">.</span><span class="n">dimension</span><span class="p">()]</span>
+        <span class="n">s2</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="n">G</span><span class="o">.</span><span class="n">dimension</span><span class="p">():]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_within_tol</span><span class="p">(</span><span class="n">norm</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">A</span><span class="p">()</span><span class="o">*</span><span class="n">x</span> <span class="o">-</span> <span class="n">G</span><span class="o">.</span><span class="n">b</span><span class="p">()),</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">((</span><span class="n">s1</span><span class="p">,</span> <span class="n">s2</span><span class="p">)</span> <span class="ow">in</span> <span class="n">G</span><span class="o">.</span><span class="n">C</span><span class="p">())</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.test_player1_start_valid_orthant"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.test_player1_start_valid_orthant">[docs]</a>    <span class="k">def</span> <span class="nf">test_player1_start_valid_orthant</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Ensure that player one&#39;s starting point is feasible over the</span>
+<span class="sd">        nonnegative orthant.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_orthant_game</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_player1_start_valid</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.test_player1_start_valid_icecream"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.test_player1_start_valid_icecream">[docs]</a>    <span class="k">def</span> <span class="nf">test_player1_start_valid_icecream</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Ensure that player one&#39;s starting point is feasible over the</span>
+<span class="sd">        ice-cream cone.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_icecream_game</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_player1_start_valid</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.assert_player2_start_valid"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.assert_player2_start_valid">[docs]</a>    <span class="k">def</span> <span class="nf">assert_player2_start_valid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">G</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check that player two&#39;s starting point satisfies both the</span>
+<span class="sd">        cone inequality in the CVXOPT dual problem.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">player2_start</span><span class="p">()[</span><span class="s1">&#39;z&#39;</span><span class="p">]</span>
+        <span class="n">z1</span> <span class="o">=</span> <span class="n">z</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">G</span><span class="o">.</span><span class="n">dimension</span><span class="p">()]</span>
+        <span class="n">z2</span> <span class="o">=</span> <span class="n">z</span><span class="p">[</span><span class="n">G</span><span class="o">.</span><span class="n">dimension</span><span class="p">():]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">((</span><span class="n">z1</span><span class="p">,</span> <span class="n">z2</span><span class="p">)</span> <span class="ow">in</span> <span class="n">G</span><span class="o">.</span><span class="n">C</span><span class="p">())</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.test_player2_start_valid_orthant"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.test_player2_start_valid_orthant">[docs]</a>    <span class="k">def</span> <span class="nf">test_player2_start_valid_orthant</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Ensure that player two&#39;s starting point is feasible over the</span>
+<span class="sd">        nonnegative orthant.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_orthant_game</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_player2_start_valid</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.test_player2_start_valid_icecream"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.test_player2_start_valid_icecream">[docs]</a>    <span class="k">def</span> <span class="nf">test_player2_start_valid_icecream</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Ensure that player two&#39;s starting point is feasible over the</span>
+<span class="sd">        ice-cream cone.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_icecream_game</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_player2_start_valid</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.test_condition_lower_bound"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.test_condition_lower_bound">[docs]</a>    <span class="k">def</span> <span class="nf">test_condition_lower_bound</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Ensure that the condition number of a game is greater than or</span>
+<span class="sd">        equal to one.</span>
+
+<span class="sd">        It should be safe to compare these floats directly: we compute</span>
+<span class="sd">        the condition number as the ratio of one nonnegative real number</span>
+<span class="sd">        to a smaller nonnegative real number.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_orthant_game</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">condition</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_icecream_game</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">condition</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="mf">1.0</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.assert_scaling_works"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.assert_scaling_works">[docs]</a>    <span class="k">def</span> <span class="nf">assert_scaling_works</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">G</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Test that scaling ``L`` by a nonnegative number scales the value</span>
+<span class="sd">        of the game by the same number.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span> <span class="o">=</span> <span class="n">random_nn_scaling</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+        <span class="n">soln1</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">solution</span><span class="p">()</span>
+        <span class="n">soln2</span> <span class="o">=</span> <span class="n">H</span><span class="o">.</span><span class="n">solution</span><span class="p">()</span>
+        <span class="n">value1</span> <span class="o">=</span> <span class="n">soln1</span><span class="o">.</span><span class="n">game_value</span><span class="p">()</span>
+        <span class="n">value2</span> <span class="o">=</span> <span class="n">soln2</span><span class="o">.</span><span class="n">game_value</span><span class="p">()</span>
+        <span class="n">modifier1</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">tolerance_scale</span><span class="p">(</span><span class="n">soln1</span><span class="p">)</span>
+        <span class="n">modifier2</span> <span class="o">=</span> <span class="n">H</span><span class="o">.</span><span class="n">tolerance_scale</span><span class="p">(</span><span class="n">soln2</span><span class="p">)</span>
+        <span class="n">modifier</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">modifier1</span><span class="p">,</span> <span class="n">modifier2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_within_tol</span><span class="p">(</span><span class="n">alpha</span><span class="o">*</span><span class="n">value1</span><span class="p">,</span> <span class="n">value2</span><span class="p">,</span> <span class="n">modifier</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.test_scaling_orthant"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.test_scaling_orthant">[docs]</a>    <span class="k">def</span> <span class="nf">test_scaling_orthant</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Test that scaling ``L`` by a nonnegative number scales the value</span>
+<span class="sd">        of the game by the same number over the nonnegative orthant.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_orthant_game</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_scaling_works</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.test_scaling_icecream"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.test_scaling_icecream">[docs]</a>    <span class="k">def</span> <span class="nf">test_scaling_icecream</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The same test as :meth:`test_nonnegative_scaling_orthant`,</span>
+<span class="sd">        except over the ice cream cone.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_icecream_game</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_scaling_works</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.assert_translation_works"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.assert_translation_works">[docs]</a>    <span class="k">def</span> <span class="nf">assert_translation_works</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">G</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check that translating ``L`` by alpha*(e1*e2.trans()) increases</span>
+<span class="sd">        the value of the associated game by alpha.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># We need to use ``L`` later, so make sure we transpose it</span>
+        <span class="c1"># before passing it in as a column-indexed matrix.</span>
+        <span class="n">soln1</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">solution</span><span class="p">()</span>
+        <span class="n">value1</span> <span class="o">=</span> <span class="n">soln1</span><span class="o">.</span><span class="n">game_value</span><span class="p">()</span>
+        <span class="n">x_bar</span> <span class="o">=</span> <span class="n">soln1</span><span class="o">.</span><span class="n">player1_optimal</span><span class="p">()</span>
+        <span class="n">y_bar</span> <span class="o">=</span> <span class="n">soln1</span><span class="o">.</span><span class="n">player2_optimal</span><span class="p">()</span>
+
+        <span class="c1"># This is the &quot;correct&quot; representation of ``M``, but COLUMN</span>
+        <span class="c1"># indexed...</span>
+        <span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span> <span class="o">=</span> <span class="n">random_translation</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+        <span class="n">value2</span> <span class="o">=</span> <span class="n">H</span><span class="o">.</span><span class="n">solution</span><span class="p">()</span><span class="o">.</span><span class="n">game_value</span><span class="p">()</span>
+
+        <span class="n">modifier</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">tolerance_scale</span><span class="p">(</span><span class="n">soln1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_within_tol</span><span class="p">(</span><span class="n">value1</span> <span class="o">+</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">value2</span><span class="p">,</span> <span class="n">modifier</span><span class="p">)</span>
+
+        <span class="c1"># Make sure the same optimal pair works.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_within_tol</span><span class="p">(</span><span class="n">value2</span><span class="p">,</span> <span class="n">H</span><span class="o">.</span><span class="n">payoff</span><span class="p">(</span><span class="n">x_bar</span><span class="p">,</span> <span class="n">y_bar</span><span class="p">),</span> <span class="n">modifier</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.test_translation_orthant"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.test_translation_orthant">[docs]</a>    <span class="k">def</span> <span class="nf">test_translation_orthant</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Test that translation works over the nonnegative orthant.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_orthant_game</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_translation_works</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.test_translation_icecream"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.test_translation_icecream">[docs]</a>    <span class="k">def</span> <span class="nf">test_translation_icecream</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The same as :meth:`test_translation_orthant`, except over the</span>
+<span class="sd">        ice cream cone.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_icecream_game</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_translation_works</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.assert_opposite_game_works"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.assert_opposite_game_works">[docs]</a>    <span class="k">def</span> <span class="nf">assert_opposite_game_works</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">G</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check the value of the &quot;opposite&quot; game that gives rise to a</span>
+<span class="sd">        value that is the negation of the original game. Comes from</span>
+<span class="sd">        some corollary.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># This is the &quot;correct&quot; representation of ``M``, but</span>
+        <span class="c1"># COLUMN indexed...</span>
+        <span class="n">M</span> <span class="o">=</span> <span class="o">-</span><span class="n">G</span><span class="o">.</span><span class="n">L</span><span class="p">()</span><span class="o">.</span><span class="n">trans</span><span class="p">()</span>
+
+        <span class="c1"># so we have to transpose it when we feed it to the constructor.</span>
+        <span class="c1"># Note: the condition number of ``H`` should be comparable to ``G``.</span>
+        <span class="n">H</span> <span class="o">=</span> <span class="n">SymmetricLinearGame</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">trans</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">K</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e2</span><span class="p">(),</span> <span class="n">G</span><span class="o">.</span><span class="n">e1</span><span class="p">())</span>
+
+        <span class="n">soln1</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">solution</span><span class="p">()</span>
+        <span class="n">x_bar</span> <span class="o">=</span> <span class="n">soln1</span><span class="o">.</span><span class="n">player1_optimal</span><span class="p">()</span>
+        <span class="n">y_bar</span> <span class="o">=</span> <span class="n">soln1</span><span class="o">.</span><span class="n">player2_optimal</span><span class="p">()</span>
+        <span class="n">soln2</span> <span class="o">=</span> <span class="n">H</span><span class="o">.</span><span class="n">solution</span><span class="p">()</span>
+
+        <span class="n">modifier</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">tolerance_scale</span><span class="p">(</span><span class="n">soln1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_within_tol</span><span class="p">(</span><span class="o">-</span><span class="n">soln1</span><span class="o">.</span><span class="n">game_value</span><span class="p">(),</span>
+                               <span class="n">soln2</span><span class="o">.</span><span class="n">game_value</span><span class="p">(),</span>
+                               <span class="n">modifier</span><span class="p">)</span>
+
+        <span class="c1"># Make sure the switched optimal pair works. Since x_bar and</span>
+        <span class="c1"># y_bar come from G, we use the same modifier.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_within_tol</span><span class="p">(</span><span class="n">soln2</span><span class="o">.</span><span class="n">game_value</span><span class="p">(),</span>
+                               <span class="n">H</span><span class="o">.</span><span class="n">payoff</span><span class="p">(</span><span class="n">y_bar</span><span class="p">,</span> <span class="n">x_bar</span><span class="p">),</span>
+                               <span class="n">modifier</span><span class="p">)</span>
+
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.test_opposite_game_orthant"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.test_opposite_game_orthant">[docs]</a>    <span class="k">def</span> <span class="nf">test_opposite_game_orthant</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Test the value of the &quot;opposite&quot; game over the nonnegative</span>
+<span class="sd">        orthant.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_orthant_game</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_opposite_game_works</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.test_opposite_game_icecream"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.test_opposite_game_icecream">[docs]</a>    <span class="k">def</span> <span class="nf">test_opposite_game_icecream</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Like :meth:`test_opposite_game_orthant`, except over the</span>
+<span class="sd">        ice-cream cone.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_icecream_game</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_opposite_game_works</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.assert_orthogonality"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.assert_orthogonality">[docs]</a>    <span class="k">def</span> <span class="nf">assert_orthogonality</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">G</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Two orthogonality relations hold at an optimal solution, and we</span>
+<span class="sd">        check them here.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">soln</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">solution</span><span class="p">()</span>
+        <span class="n">x_bar</span> <span class="o">=</span> <span class="n">soln</span><span class="o">.</span><span class="n">player1_optimal</span><span class="p">()</span>
+        <span class="n">y_bar</span> <span class="o">=</span> <span class="n">soln</span><span class="o">.</span><span class="n">player2_optimal</span><span class="p">()</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">soln</span><span class="o">.</span><span class="n">game_value</span><span class="p">()</span>
+
+        <span class="n">ip1</span> <span class="o">=</span> <span class="n">inner_product</span><span class="p">(</span><span class="n">y_bar</span><span class="p">,</span> <span class="n">G</span><span class="o">.</span><span class="n">L</span><span class="p">()</span><span class="o">*</span><span class="n">x_bar</span> <span class="o">-</span> <span class="n">value</span><span class="o">*</span><span class="n">G</span><span class="o">.</span><span class="n">e1</span><span class="p">())</span>
+        <span class="n">ip2</span> <span class="o">=</span> <span class="n">inner_product</span><span class="p">(</span><span class="n">value</span><span class="o">*</span><span class="n">G</span><span class="o">.</span><span class="n">e2</span><span class="p">()</span> <span class="o">-</span> <span class="n">G</span><span class="o">.</span><span class="n">L</span><span class="p">()</span><span class="o">.</span><span class="n">trans</span><span class="p">()</span><span class="o">*</span><span class="n">y_bar</span><span class="p">,</span> <span class="n">x_bar</span><span class="p">)</span>
+
+        <span class="n">modifier</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">tolerance_scale</span><span class="p">(</span><span class="n">soln</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_within_tol</span><span class="p">(</span><span class="n">ip1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">modifier</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_within_tol</span><span class="p">(</span><span class="n">ip2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">modifier</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.test_orthogonality_orthant"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.test_orthogonality_orthant">[docs]</a>    <span class="k">def</span> <span class="nf">test_orthogonality_orthant</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check the orthgonality relationships that hold for a solution</span>
+<span class="sd">        over the nonnegative orthant.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_orthant_game</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_orthogonality</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.test_orthogonality_icecream"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.test_orthogonality_icecream">[docs]</a>    <span class="k">def</span> <span class="nf">test_orthogonality_icecream</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check the orthgonality relationships that hold for a solution</span>
+<span class="sd">        over the ice-cream cone.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_icecream_game</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_orthogonality</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.test_positive_operator_value"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.test_positive_operator_value">[docs]</a>    <span class="k">def</span> <span class="nf">test_positive_operator_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Test that a positive operator on the nonnegative orthant gives</span>
+<span class="sd">        rise to a a game with a nonnegative value.</span>
+
+<span class="sd">        This test theoretically applies to the ice-cream cone as well,</span>
+<span class="sd">        but we don&#39;t know how to make positive operators on that cone.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_positive_orthant_game</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">solution</span><span class="p">()</span><span class="o">.</span><span class="n">game_value</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="o">-</span><span class="n">options</span><span class="o">.</span><span class="n">ABS_TOL</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.assert_lyapunov_works"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.assert_lyapunov_works">[docs]</a>    <span class="k">def</span> <span class="nf">assert_lyapunov_works</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">G</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check that Lyapunov games act the way we expect.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">soln</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">solution</span><span class="p">()</span>
+
+        <span class="c1"># We only check for positive/negative stability if the game</span>
+        <span class="c1"># value is not basically zero. If the value is that close to</span>
+        <span class="c1"># zero, we just won&#39;t check any assertions.</span>
+        <span class="c1">#</span>
+        <span class="c1"># See :meth:`assert_within_tol` for an explanation of the</span>
+        <span class="c1"># fudge factors.</span>
+        <span class="n">eigs</span> <span class="o">=</span> <span class="n">eigenvalues_re</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">L</span><span class="p">())</span>
+
+        <span class="k">if</span> <span class="n">soln</span><span class="o">.</span><span class="n">game_value</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">options</span><span class="o">.</span><span class="n">ABS_TOL</span><span class="p">:</span>
+            <span class="c1"># L should be positive stable</span>
+            <span class="n">positive_stable</span> <span class="o">=</span> <span class="nb">all</span><span class="p">([</span><span class="n">eig</span> <span class="o">&gt;</span> <span class="o">-</span><span class="n">options</span><span class="o">.</span><span class="n">ABS_TOL</span> <span class="k">for</span> <span class="n">eig</span> <span class="ow">in</span> <span class="n">eigs</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">positive_stable</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">soln</span><span class="o">.</span><span class="n">game_value</span><span class="p">()</span> <span class="o">&lt;</span> <span class="o">-</span><span class="n">options</span><span class="o">.</span><span class="n">ABS_TOL</span><span class="p">:</span>
+            <span class="c1"># L should be negative stable</span>
+            <span class="n">negative_stable</span> <span class="o">=</span> <span class="nb">all</span><span class="p">([</span><span class="n">eig</span> <span class="o">&lt;</span> <span class="n">options</span><span class="o">.</span><span class="n">ABS_TOL</span> <span class="k">for</span> <span class="n">eig</span> <span class="ow">in</span> <span class="n">eigs</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">negative_stable</span><span class="p">)</span>
+
+        <span class="n">dualsoln</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">dual</span><span class="p">()</span><span class="o">.</span><span class="n">solution</span><span class="p">()</span>
+        <span class="n">mod</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">tolerance_scale</span><span class="p">(</span><span class="n">soln</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_within_tol</span><span class="p">(</span><span class="n">dualsoln</span><span class="o">.</span><span class="n">game_value</span><span class="p">(),</span> <span class="n">soln</span><span class="o">.</span><span class="n">game_value</span><span class="p">(),</span> <span class="n">mod</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.test_lyapunov_orthant"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.test_lyapunov_orthant">[docs]</a>    <span class="k">def</span> <span class="nf">test_lyapunov_orthant</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Test that a Lyapunov game on the nonnegative orthant works.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_ll_orthant_game</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_lyapunov_works</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SymmetricLinearGameTest.test_lyapunov_icecream"><a class="viewcode-back" href="../../developer-api.xhtml#test.symmetric_linear_game_test.SymmetricLinearGameTest.test_lyapunov_icecream">[docs]</a>    <span class="k">def</span> <span class="nf">test_lyapunov_icecream</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Test that a Lyapunov game on the ice-cream cone works.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">random_ll_icecream_game</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_lyapunov_works</span><span class="p">(</span><span class="n">G</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.xhtml">Dunshire</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.xhtml">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../requirements.xhtml">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-api.xhtml">User API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../background.xhtml">Background</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../references.xhtml">References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer-api.xhtml">Developer API Documentation</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

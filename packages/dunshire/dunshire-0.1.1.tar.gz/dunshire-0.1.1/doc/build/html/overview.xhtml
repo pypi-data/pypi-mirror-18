@@ -1,0 +1,172 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Overview &mdash; Dunshire 0.1.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.xhtml',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Dunshire 0.1.1 documentation" href="index.xhtml" />
+    <link rel="next" title="Requirements" href="requirements.xhtml" />
+    <link rel="prev" title="Dunshire" href="index.xhtml" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="overview">
+<h1>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h1>
+<p>Dunshire is a library for solving linear games over symmetric
+cones. The notion of a symmetric linear (cone) game was introduced by
+Gowda and Ravindran <a class="reference internal" href="references.xhtml#gowdarav" id="id1">[GowdaRav]</a>, and extended by Orlitzky to
+asymmetric cones with two interior points.</p>
+<p>The state-of-the-art is that only symmetric games can be solved
+efficiently, and thus the linear games supported by Dunshire are a
+compromise between the two: the cones are symmetric, but the players
+get to choose two interior points.</p>
+<p>In this game, we have two players who are competing for a &#8220;payoff.&#8221;
+There is a symmetric cone <span class="math">\(K\)</span>, a linear transformation <span class="math">\(L\)</span>
+on the space in which <span class="math">\(K\)</span> lives, and two points <span class="math">\(e_{1}\)</span>
+and <span class="math">\(e_{2}\)</span> in the interior of <span class="math">\(K\)</span>. The players make their
+&#8220;moves&#8221; by choosing points from two strategy sets. Player one chooses
+an <span class="math">\(\bar{x}\)</span> from</p>
+<div class="math">
+\[\Delta_{1} =
+  \left\lbrace
+    x \in K\ \middle|\ \left\langle x,e_{2} \right\rangle = 1
+  \right\rbrace\]</div>
+<p>and player two chooses a <span class="math">\(\bar{y}\)</span> from</p>
+<div class="math">
+\[\begin{split}\Delta_{2} &amp;=
+  \left\lbrace
+    y \in K\ \middle|\ \left\langle y,e_{1} \right\rangle = 1
+  \right\rbrace.\end{split}\]</div>
+<p>That ends the turn, and player one is paid <span class="math">\(\left\langle
+L\left(\bar{x}\right),\bar{y}\right\rangle\)</span> out of player two&#8217;s
+pocket. As is usual in game theory, we suppose that player one wants
+to maximize his worst-case payoff, and that player two wants to
+minimize his worst-case <em>payout</em>. In other words, player one wants to
+solve the optimization problem,</p>
+<div class="math">
+\[\text{find }
+\underset{x \in \Delta_{1}}{\max}\
+\underset{y\in \Delta_{2}}{\min}\
+\left\langle L\left(x\right),y \right\rangle\]</div>
+<p>while player two tries to (simultaneously) solve a similar problem,</p>
+<div class="math">
+\[\text{find }
+\underset{y\in \Delta_{2}}{\min}\
+\underset{x \in \Delta_{1}}{\max}\
+\left\langle L\left(x\right),y \right\rangle.\]</div>
+<p>There is at least one pair <span class="math">\(\left(\bar{x},\bar{y}\right)\)</span> that
+solves these problems optimally, and Dunshire can find it. The optimal
+payoff, called <em>the value of the game</em>, is unique. At the moment, the
+symmetric cone <span class="math">\(K\)</span> can be either the nonnegative orthant or the
+Lorentz &#8220;ice cream&#8221; cone in <span class="math">\(\mathbb{R}^{n}\)</span>. Here are two of
+the simplest possible examples, showing off the ability to solve a
+game over both of those cones.</p>
+<p>First, we use the nonnegative orthant in <span class="math">\(\mathbb{R}^{2}\)</span>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">dunshire</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">K</span> <span class="o">=</span> <span class="n">NonnegativeOrthant</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">L</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">],[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">e1</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">e2</span> <span class="o">=</span> <span class="n">e1</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">G</span> <span class="o">=</span> <span class="n">SymmetricLinearGame</span><span class="p">(</span><span class="n">L</span><span class="p">,</span><span class="n">K</span><span class="p">,</span><span class="n">e1</span><span class="p">,</span><span class="n">e2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">solution</span><span class="p">())</span>
+<span class="go">Game value: 0.500...</span>
+<span class="go">Player 1 optimal:</span>
+<span class="go">  [0.500...]</span>
+<span class="go">  [0.500...]</span>
+<span class="go">Player 2 optimal:</span>
+<span class="go">  [0.500...]</span>
+<span class="go">  [0.500...]</span>
+</pre></div>
+</div>
+<p>Next we try the Lorentz ice-cream cone in <span class="math">\(\mathbb{R}^{2}\)</span>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">dunshire</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">K</span> <span class="o">=</span> <span class="n">IceCream</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">L</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">],[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">e1</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">e2</span> <span class="o">=</span> <span class="n">e1</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">G</span> <span class="o">=</span> <span class="n">SymmetricLinearGame</span><span class="p">(</span><span class="n">L</span><span class="p">,</span><span class="n">K</span><span class="p">,</span><span class="n">e1</span><span class="p">,</span><span class="n">e2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">solution</span><span class="p">())</span>
+<span class="go">Game value: 1.000...</span>
+<span class="go">Player 1 optimal:</span>
+<span class="go">  [1.000...]</span>
+<span class="go">  [0.000...]</span>
+<span class="go">Player 2 optimal:</span>
+<span class="go">  [1.000...]</span>
+<span class="go">  [0.000...]</span>
+</pre></div>
+</div>
+<p>Note that these solutions are not unique, although the game values are.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.xhtml">Dunshire</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="requirements.xhtml">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user-api.xhtml">User API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="background.xhtml">Background</a></li>
+<li class="toctree-l1"><a class="reference internal" href="references.xhtml">References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer-api.xhtml">Developer API Documentation</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

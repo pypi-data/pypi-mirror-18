@@ -1,0 +1,264 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>test.matrices_test &mdash; Dunshire 0.1.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.xhtml',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Dunshire 0.1.1 documentation" href="../../index.xhtml" />
+    <link rel="up" title="test" href="../test.xhtml" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for test.matrices_test</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Unit tests for the functions in the :mod:`dunshire.matrices` module.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+<span class="kn">from</span> <span class="nn">unittest</span> <span class="kn">import</span> <span class="n">TestCase</span>
+
+<span class="kn">from</span> <span class="nn">dunshire.matrices</span> <span class="kn">import</span> <span class="p">(</span><span class="n">append_col</span><span class="p">,</span> <span class="n">append_row</span><span class="p">,</span> <span class="n">condition_number</span><span class="p">,</span>
+                               <span class="n">eigenvalues</span><span class="p">,</span> <span class="n">eigenvalues_re</span><span class="p">,</span> <span class="n">identity</span><span class="p">,</span>
+                               <span class="n">inner_product</span><span class="p">,</span> <span class="n">norm</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">dunshire.options</span> <span class="kn">import</span> <span class="n">ABS_TOL</span>
+<span class="kn">from</span> <span class="nn">.randomgen</span> <span class="kn">import</span> <span class="n">random_matrix</span><span class="p">,</span> <span class="n">random_natural</span>
+
+
+<div class="viewcode-block" id="AppendColTest"><a class="viewcode-back" href="../../developer-api.xhtml#test.matrices_test.AppendColTest">[docs]</a><span class="k">class</span> <span class="nc">AppendColTest</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Tests for the :func:`append_col` function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AppendColTest.test_new_dimensions"><a class="viewcode-back" href="../../developer-api.xhtml#test.matrices_test.AppendColTest.test_new_dimensions">[docs]</a>    <span class="k">def</span> <span class="nf">test_new_dimensions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        If we append one matrix to another side-by-side, then the result</span>
+<span class="sd">        should have the same number of rows as the two original</span>
+<span class="sd">        matrices. However, the number of their columns should add up to</span>
+<span class="sd">        the number of columns in the new combined matrix.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="n">random_natural</span><span class="p">()</span>
+        <span class="n">cols1</span> <span class="o">=</span> <span class="n">random_natural</span><span class="p">()</span>
+        <span class="n">cols2</span> <span class="o">=</span> <span class="n">random_natural</span><span class="p">()</span>
+        <span class="n">mat1</span> <span class="o">=</span> <span class="n">random_matrix</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols1</span><span class="p">)</span>
+        <span class="n">mat2</span> <span class="o">=</span> <span class="n">random_matrix</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols2</span><span class="p">)</span>
+        <span class="n">bigmat</span> <span class="o">=</span> <span class="n">append_col</span><span class="p">(</span><span class="n">mat1</span><span class="p">,</span> <span class="n">mat2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">bigmat</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">rows</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">bigmat</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">cols1</span><span class="o">+</span><span class="n">cols2</span><span class="p">)</span>
+
+</div></div>
+<div class="viewcode-block" id="AppendRowTest"><a class="viewcode-back" href="../../developer-api.xhtml#test.matrices_test.AppendRowTest">[docs]</a><span class="k">class</span> <span class="nc">AppendRowTest</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Tests for the :func:`dunshire.matrices.append_row` function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AppendRowTest.test_new_dimensions"><a class="viewcode-back" href="../../developer-api.xhtml#test.matrices_test.AppendRowTest.test_new_dimensions">[docs]</a>    <span class="k">def</span> <span class="nf">test_new_dimensions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        If we append one matrix to another top-to-bottom, then</span>
+<span class="sd">        the result should have the same number of columns as the two</span>
+<span class="sd">        original matrices. However, the number of their rows should add</span>
+<span class="sd">        up to the number of rows in the the new combined matrix.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">rows1</span> <span class="o">=</span> <span class="n">random_natural</span><span class="p">()</span>
+        <span class="n">rows2</span> <span class="o">=</span> <span class="n">random_natural</span><span class="p">()</span>
+        <span class="n">cols</span> <span class="o">=</span> <span class="n">random_natural</span><span class="p">()</span>
+        <span class="n">mat1</span> <span class="o">=</span> <span class="n">random_matrix</span><span class="p">(</span><span class="n">rows1</span><span class="p">,</span> <span class="n">cols</span><span class="p">)</span>
+        <span class="n">mat2</span> <span class="o">=</span> <span class="n">random_matrix</span><span class="p">(</span><span class="n">rows2</span><span class="p">,</span> <span class="n">cols</span><span class="p">)</span>
+        <span class="n">bigmat</span> <span class="o">=</span> <span class="n">append_row</span><span class="p">(</span><span class="n">mat1</span><span class="p">,</span> <span class="n">mat2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">bigmat</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">rows1</span><span class="o">+</span><span class="n">rows2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">bigmat</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">cols</span><span class="p">)</span>
+
+</div></div>
+<div class="viewcode-block" id="EigenvaluesTest"><a class="viewcode-back" href="../../developer-api.xhtml#test.matrices_test.EigenvaluesTest">[docs]</a><span class="k">class</span> <span class="nc">EigenvaluesTest</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Tests for the :func:`dunshire.matrices.eigenvalues` function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="EigenvaluesTest.test_eigenvalues_input_not_clobbered"><a class="viewcode-back" href="../../developer-api.xhtml#test.matrices_test.EigenvaluesTest.test_eigenvalues_input_not_clobbered">[docs]</a>    <span class="k">def</span> <span class="nf">test_eigenvalues_input_not_clobbered</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The eigenvalue functions provided by CVXOPT/LAPACK like to</span>
+<span class="sd">        overwrite the matrices that you pass into them as</span>
+<span class="sd">        arguments. This test makes sure that our :func:`eigenvalues`</span>
+<span class="sd">        function does not do the same.</span>
+
+<span class="sd">        We use a ``deepcopy`` here in case the ``copy`` used in the</span>
+<span class="sd">        :func:`eigenvalues` function is insufficient. If ``copy`` didn&#39;t</span>
+<span class="sd">        work and this test used it too, then this test would pass when</span>
+<span class="sd">        it shouldn&#39;t.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mat</span> <span class="o">=</span> <span class="n">random_matrix</span><span class="p">(</span><span class="n">random_natural</span><span class="p">())</span>
+        <span class="n">symmat</span> <span class="o">=</span> <span class="n">mat</span> <span class="o">+</span> <span class="n">mat</span><span class="o">.</span><span class="n">trans</span><span class="p">()</span>
+        <span class="n">symmat_copy</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">symmat</span><span class="p">)</span>
+        <span class="n">dummy</span> <span class="o">=</span> <span class="n">eigenvalues</span><span class="p">(</span><span class="n">symmat</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">norm</span><span class="p">(</span><span class="n">symmat</span> <span class="o">-</span> <span class="n">symmat_copy</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">ABS_TOL</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="EigenvaluesTest.test_eigenvalues_of_symmat_are_real"><a class="viewcode-back" href="../../developer-api.xhtml#test.matrices_test.EigenvaluesTest.test_eigenvalues_of_symmat_are_real">[docs]</a>    <span class="k">def</span> <span class="nf">test_eigenvalues_of_symmat_are_real</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A real symmetric matrix has real eigenvalues, so if we start</span>
+<span class="sd">        with a symmetric matrix, then the two functions</span>
+<span class="sd">        :func:`dunshire.matrices.eigenvalues` and</span>
+<span class="sd">        :func:`dunshire.matrices.eigenvalues_re` should agree on it.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mat</span> <span class="o">=</span> <span class="n">random_matrix</span><span class="p">(</span><span class="n">random_natural</span><span class="p">())</span>
+        <span class="n">symmat</span> <span class="o">=</span> <span class="n">mat</span> <span class="o">+</span> <span class="n">mat</span><span class="o">.</span><span class="n">trans</span><span class="p">()</span>
+        <span class="n">eigs1</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">eigenvalues</span><span class="p">(</span><span class="n">symmat</span><span class="p">))</span>
+        <span class="n">eigs2</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">eigenvalues_re</span><span class="p">(</span><span class="n">symmat</span><span class="p">))</span>
+        <span class="n">diffs</span> <span class="o">=</span> <span class="p">[</span><span class="nb">abs</span><span class="p">(</span><span class="n">e1</span> <span class="o">-</span> <span class="n">e2</span><span class="p">)</span> <span class="k">for</span> <span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">eigs1</span><span class="p">,</span> <span class="n">eigs2</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="nb">all</span><span class="p">([</span><span class="n">diff</span> <span class="o">&lt;</span> <span class="n">ABS_TOL</span> <span class="k">for</span> <span class="n">diff</span> <span class="ow">in</span> <span class="n">diffs</span><span class="p">]))</span>
+</div>
+<div class="viewcode-block" id="EigenvaluesTest.test_eigenvalues_of_identity"><a class="viewcode-back" href="../../developer-api.xhtml#test.matrices_test.EigenvaluesTest.test_eigenvalues_of_identity">[docs]</a>    <span class="k">def</span> <span class="nf">test_eigenvalues_of_identity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        All eigenvalues of the identity matrix should be one.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mat</span> <span class="o">=</span> <span class="n">identity</span><span class="p">(</span><span class="n">random_natural</span><span class="p">(),</span> <span class="n">typecode</span><span class="o">=</span><span class="s1">&#39;d&#39;</span><span class="p">)</span>
+        <span class="n">eigs</span> <span class="o">=</span> <span class="n">eigenvalues</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="nb">all</span><span class="p">([</span><span class="nb">abs</span><span class="p">(</span><span class="n">ev</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">ABS_TOL</span> <span class="k">for</span> <span class="n">ev</span> <span class="ow">in</span> <span class="n">eigs</span><span class="p">]))</span>
+
+</div></div>
+<div class="viewcode-block" id="EigenvaluesRealPartTest"><a class="viewcode-back" href="../../developer-api.xhtml#test.matrices_test.EigenvaluesRealPartTest">[docs]</a><span class="k">class</span> <span class="nc">EigenvaluesRealPartTest</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Tests for the :func:`dunshire.matrices.eigenvalues_re` function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="EigenvaluesRealPartTest.test_eigenvalues_re_input_not_clobbered"><a class="viewcode-back" href="../../developer-api.xhtml#test.matrices_test.EigenvaluesRealPartTest.test_eigenvalues_re_input_not_clobbered">[docs]</a>    <span class="k">def</span> <span class="nf">test_eigenvalues_re_input_not_clobbered</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The eigenvalue functions provided by CVXOPT/LAPACK like</span>
+<span class="sd">        to overwrite the matrices that you pass into them as</span>
+<span class="sd">        arguments. This test makes sure that our</span>
+<span class="sd">        :func:`dunshire.matrices.eigenvalues_re` function does not do</span>
+<span class="sd">        the same.</span>
+
+<span class="sd">        We use a ``deepcopy`` here in case the ``copy`` used in the</span>
+<span class="sd">        :func:`dunshire.matrices.eigenvalues_re` function is</span>
+<span class="sd">        insufficient. If ``copy`` didn&#39;t work and this test used it too,</span>
+<span class="sd">        then this test would pass when it shouldn&#39;t.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mat</span> <span class="o">=</span> <span class="n">random_matrix</span><span class="p">(</span><span class="n">random_natural</span><span class="p">())</span>
+        <span class="n">mat_copy</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span>
+        <span class="n">dummy</span> <span class="o">=</span> <span class="n">eigenvalues_re</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">norm</span><span class="p">(</span><span class="n">mat</span> <span class="o">-</span> <span class="n">mat_copy</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">ABS_TOL</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="EigenvaluesRealPartTest.test_eigenvalues_re_of_identity"><a class="viewcode-back" href="../../developer-api.xhtml#test.matrices_test.EigenvaluesRealPartTest.test_eigenvalues_re_of_identity">[docs]</a>    <span class="k">def</span> <span class="nf">test_eigenvalues_re_of_identity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        All eigenvalues of the identity matrix should be one.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mat</span> <span class="o">=</span> <span class="n">identity</span><span class="p">(</span><span class="n">random_natural</span><span class="p">(),</span> <span class="n">typecode</span><span class="o">=</span><span class="s1">&#39;d&#39;</span><span class="p">)</span>
+        <span class="n">eigs</span> <span class="o">=</span> <span class="n">eigenvalues_re</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="nb">all</span><span class="p">([</span><span class="nb">abs</span><span class="p">(</span><span class="n">ev</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">ABS_TOL</span> <span class="k">for</span> <span class="n">ev</span> <span class="ow">in</span> <span class="n">eigs</span><span class="p">]))</span>
+
+</div></div>
+<div class="viewcode-block" id="InnerProductTest"><a class="viewcode-back" href="../../developer-api.xhtml#test.matrices_test.InnerProductTest">[docs]</a><span class="k">class</span> <span class="nc">InnerProductTest</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Tests for the :func:`dunshire.matrices.inner_product` function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="InnerProductTest.test_inner_product_with_self_is_norm_squared"><a class="viewcode-back" href="../../developer-api.xhtml#test.matrices_test.InnerProductTest.test_inner_product_with_self_is_norm_squared">[docs]</a>    <span class="k">def</span> <span class="nf">test_inner_product_with_self_is_norm_squared</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Ensure that the func:`dunshire.matrices.inner_product` and</span>
+<span class="sd">        :func:`dunshire.matrices.norm` functions are compatible by</span>
+<span class="sd">        checking that the square of the norm of a vector is its inner</span>
+<span class="sd">        product with itself.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">vec</span> <span class="o">=</span> <span class="n">random_matrix</span><span class="p">(</span><span class="n">random_natural</span><span class="p">(),</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">actual</span> <span class="o">=</span> <span class="n">inner_product</span><span class="p">(</span><span class="n">vec</span><span class="p">,</span> <span class="n">vec</span><span class="p">)</span>
+        <span class="n">expected</span> <span class="o">=</span> <span class="n">norm</span><span class="p">(</span><span class="n">vec</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">actual</span> <span class="o">-</span> <span class="n">expected</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">ABS_TOL</span><span class="p">)</span>
+
+</div></div>
+<div class="viewcode-block" id="NormTest"><a class="viewcode-back" href="../../developer-api.xhtml#test.matrices_test.NormTest">[docs]</a><span class="k">class</span> <span class="nc">NormTest</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Tests for the :func:`dunshire.matrices.norm` function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="NormTest.test_norm_is_nonnegative"><a class="viewcode-back" href="../../developer-api.xhtml#test.matrices_test.NormTest.test_norm_is_nonnegative">[docs]</a>    <span class="k">def</span> <span class="nf">test_norm_is_nonnegative</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Test one of the properties of a norm, that it is nonnegative.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mat</span> <span class="o">=</span> <span class="n">random_matrix</span><span class="p">(</span><span class="n">random_natural</span><span class="p">(),</span> <span class="n">random_natural</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">norm</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>
+
+</div></div>
+<div class="viewcode-block" id="ConditionNumberTest"><a class="viewcode-back" href="../../developer-api.xhtml#test.matrices_test.ConditionNumberTest">[docs]</a><span class="k">class</span> <span class="nc">ConditionNumberTest</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Tests for the :func:`dunshire.matrices.condition_number` function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ConditionNumberTest.test_condition_number_ge_one"><a class="viewcode-back" href="../../developer-api.xhtml#test.matrices_test.ConditionNumberTest.test_condition_number_ge_one">[docs]</a>    <span class="k">def</span> <span class="nf">test_condition_number_ge_one</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        From the way that it is defined, the condition number should</span>
+<span class="sd">        always be greater than or equal to one.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mat</span> <span class="o">=</span> <span class="n">random_matrix</span><span class="p">(</span><span class="n">random_natural</span><span class="p">(),</span> <span class="n">random_natural</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">condition_number</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.xhtml">Dunshire</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.xhtml">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../requirements.xhtml">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-api.xhtml">User API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../background.xhtml">Background</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../references.xhtml">References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer-api.xhtml">Developer API Documentation</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

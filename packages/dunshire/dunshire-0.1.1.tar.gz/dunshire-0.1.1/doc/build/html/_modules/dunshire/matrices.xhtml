@@ -1,0 +1,578 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>dunshire.matrices &mdash; Dunshire 0.1.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.xhtml',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Dunshire 0.1.1 documentation" href="../../index.xhtml" />
+    <link rel="up" title="Module code" href="../index.xhtml" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for dunshire.matrices</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Utility functions for working with CVXOPT matrices (instances of the</span>
+<span class="sd">class:`cvxopt.base.matrix` class).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">copy</span>
+<span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">sqrt</span>
+<span class="kn">from</span> <span class="nn">cvxopt</span> <span class="kn">import</span> <span class="n">matrix</span>
+<span class="kn">from</span> <span class="nn">cvxopt.lapack</span> <span class="kn">import</span> <span class="n">gees</span><span class="p">,</span> <span class="n">gesdd</span><span class="p">,</span> <span class="n">syevr</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">options</span>
+
+
+<div class="viewcode-block" id="append_col"><a class="viewcode-back" href="../../developer-api.xhtml#dunshire.matrices.append_col">[docs]</a><span class="k">def</span> <span class="nf">append_col</span><span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Append two matrices side-by-side.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    left : matrix</span>
+<span class="sd">        The &quot;original&quot; matrix, the one that will wind up on the left.</span>
+
+<span class="sd">    right : matrix</span>
+<span class="sd">        The matrix to be appended on the right of ``left``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    matrix</span>
+<span class="sd">        A new matrix consisting of ``right`` appended to the right</span>
+<span class="sd">        of ``left``.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; A = matrix([1,2,3,4], (2,2))</span>
+<span class="sd">        &gt;&gt;&gt; B = matrix([5,6,7,8,9,10], (2,3))</span>
+<span class="sd">        &gt;&gt;&gt; print(A)</span>
+<span class="sd">        [ 1  3]</span>
+<span class="sd">        [ 2  4]</span>
+<span class="sd">        &lt;BLANKLINE&gt;</span>
+<span class="sd">        &gt;&gt;&gt; print(B)</span>
+<span class="sd">        [  5   7   9]</span>
+<span class="sd">        [  6   8  10]</span>
+<span class="sd">        &lt;BLANKLINE&gt;</span>
+<span class="sd">        &gt;&gt;&gt; print(append_col(A,B))</span>
+<span class="sd">        [  1   3   5   7   9]</span>
+<span class="sd">        [  2   4   6   8  10]</span>
+<span class="sd">        &lt;BLANKLINE&gt;</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">matrix</span><span class="p">([</span><span class="n">left</span><span class="o">.</span><span class="n">trans</span><span class="p">(),</span> <span class="n">right</span><span class="o">.</span><span class="n">trans</span><span class="p">()])</span><span class="o">.</span><span class="n">trans</span><span class="p">()</span>
+
+</div>
+<div class="viewcode-block" id="append_row"><a class="viewcode-back" href="../../developer-api.xhtml#dunshire.matrices.append_row">[docs]</a><span class="k">def</span> <span class="nf">append_row</span><span class="p">(</span><span class="n">top</span><span class="p">,</span> <span class="n">bottom</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Append two matrices top-to-bottom.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    top : matrix</span>
+<span class="sd">        The &quot;original&quot; matrix, the one that will wind up on top.</span>
+
+<span class="sd">    bottom : matrix</span>
+<span class="sd">        The matrix to be appended below ``top``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    matrix</span>
+<span class="sd">        A new matrix consisting of ``bottom`` appended below ``top``.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; A = matrix([1,2,3,4], (2,2))</span>
+<span class="sd">        &gt;&gt;&gt; B = matrix([5,6,7,8,9,10], (3,2))</span>
+<span class="sd">        &gt;&gt;&gt; print(A)</span>
+<span class="sd">        [ 1  3]</span>
+<span class="sd">        [ 2  4]</span>
+<span class="sd">        &lt;BLANKLINE&gt;</span>
+<span class="sd">        &gt;&gt;&gt; print(B)</span>
+<span class="sd">        [  5   8]</span>
+<span class="sd">        [  6   9]</span>
+<span class="sd">        [  7  10]</span>
+<span class="sd">        &lt;BLANKLINE&gt;</span>
+<span class="sd">        &gt;&gt;&gt; print(append_row(A,B))</span>
+<span class="sd">        [  1   3]</span>
+<span class="sd">        [  2   4]</span>
+<span class="sd">        [  5   8]</span>
+<span class="sd">        [  6   9]</span>
+<span class="sd">        [  7  10]</span>
+<span class="sd">        &lt;BLANKLINE&gt;</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">matrix</span><span class="p">([</span><span class="n">top</span><span class="p">,</span> <span class="n">bottom</span><span class="p">])</span>
+
+</div>
+<div class="viewcode-block" id="eigenvalues"><a class="viewcode-back" href="../../developer-api.xhtml#dunshire.matrices.eigenvalues">[docs]</a><span class="k">def</span> <span class="nf">eigenvalues</span><span class="p">(</span><span class="n">symmat</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the eigenvalues of the given symmetric real matrix.</span>
+
+<span class="sd">    On the surface, this appears redundant to the :func:`eigenvalues_re`</span>
+<span class="sd">    function. However, if we know in advance that our input is</span>
+<span class="sd">    symmetric, a better algorithm can be used.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    symmat : matrix</span>
+<span class="sd">        The real symmetric matrix whose eigenvalues you want.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    list of float</span>
+<span class="sd">       A list of the eigenvalues (in no particular order) of ``symmat``.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+
+<span class="sd">    TypeError</span>
+<span class="sd">        If the input matrix is not symmetric.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; A = matrix([[2,1],[1,2]], tc=&#39;d&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; eigenvalues(A)</span>
+<span class="sd">        [1.0, 3.0]</span>
+
+<span class="sd">    If the input matrix is not symmetric, it may not have real</span>
+<span class="sd">    eigenvalues, and we don&#39;t know what to do::</span>
+
+<span class="sd">        &gt;&gt;&gt; A = matrix([[1,2],[3,4]])</span>
+<span class="sd">        &gt;&gt;&gt; eigenvalues(A)</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        TypeError: input must be a symmetric real matrix</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">norm</span><span class="p">(</span><span class="n">symmat</span><span class="o">.</span><span class="n">trans</span><span class="p">()</span> <span class="o">-</span> <span class="n">symmat</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">options</span><span class="o">.</span><span class="n">ABS_TOL</span><span class="p">:</span>
+        <span class="c1"># Ensure that ``symmat`` is symmetric (and thus square).</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;input must be a symmetric real matrix&#39;</span><span class="p">)</span>
+
+    <span class="n">domain_dim</span> <span class="o">=</span> <span class="n">symmat</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">eigs</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="n">domain_dim</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">tc</span><span class="o">=</span><span class="s1">&#39;d&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Create a copy of ``symmat`` here because ``syevr`` clobbers it.</span>
+    <span class="n">dummy</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="n">symmat</span><span class="p">)</span>
+    <span class="n">syevr</span><span class="p">(</span><span class="n">dummy</span><span class="p">,</span> <span class="n">eigs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">eigs</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="eigenvalues_re"><a class="viewcode-back" href="../../developer-api.xhtml#dunshire.matrices.eigenvalues_re">[docs]</a><span class="k">def</span> <span class="nf">eigenvalues_re</span><span class="p">(</span><span class="n">anymat</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the real parts of the eigenvalues of the given square matrix.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    anymat : matrix</span>
+<span class="sd">        The square matrix whose eigenvalues you want.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    list of float</span>
+<span class="sd">       A list of the real parts (in no particular order) of the</span>
+<span class="sd">       eigenvalues of ``anymat``.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+
+<span class="sd">    TypeError</span>
+<span class="sd">        If the input matrix is not square.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">    This is symmetric and has two real eigenvalues:</span>
+
+<span class="sd">        &gt;&gt;&gt; A = matrix([[2,1],[1,2]], tc=&#39;d&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; sorted(eigenvalues_re(A))</span>
+<span class="sd">        [1.0, 3.0]</span>
+
+<span class="sd">    But this rotation matrix has eigenvalues `i` and `-i`, both of whose</span>
+<span class="sd">    real parts are zero:</span>
+
+<span class="sd">        &gt;&gt;&gt; A = matrix([[0,-1],[1,0]])</span>
+<span class="sd">        &gt;&gt;&gt; eigenvalues_re(A)</span>
+<span class="sd">        [0.0, 0.0]</span>
+
+<span class="sd">    If the input matrix is not square, it doesn&#39;t have eigenvalues::</span>
+
+<span class="sd">        &gt;&gt;&gt; A = matrix([[1,2],[3,4],[5,6]])</span>
+<span class="sd">        &gt;&gt;&gt; eigenvalues_re(A)</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        TypeError: input matrix must be square</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">anymat</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">anymat</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;input matrix must be square&#39;</span><span class="p">)</span>
+
+    <span class="n">domain_dim</span> <span class="o">=</span> <span class="n">anymat</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">eigs</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="n">domain_dim</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">tc</span><span class="o">=</span><span class="s1">&#39;z&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Create a copy of ``anymat`` here for two reasons:</span>
+    <span class="c1">#</span>
+    <span class="c1">#   1. ``gees`` clobbers its input.</span>
+    <span class="c1">#   2. We need to ensure that the type code of ``dummy`` is &#39;d&#39; or &#39;z&#39;.</span>
+    <span class="c1">#</span>
+    <span class="n">dummy</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">(</span><span class="n">anymat</span><span class="p">,</span> <span class="n">anymat</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">tc</span><span class="o">=</span><span class="s1">&#39;d&#39;</span><span class="p">)</span>
+
+    <span class="n">gees</span><span class="p">(</span><span class="n">dummy</span><span class="p">,</span> <span class="n">eigs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">eig</span><span class="o">.</span><span class="n">real</span> <span class="k">for</span> <span class="n">eig</span> <span class="ow">in</span> <span class="n">eigs</span><span class="p">]</span>
+
+</div>
+<div class="viewcode-block" id="identity"><a class="viewcode-back" href="../../developer-api.xhtml#dunshire.matrices.identity">[docs]</a><span class="k">def</span> <span class="nf">identity</span><span class="p">(</span><span class="n">domain_dim</span><span class="p">,</span> <span class="n">typecode</span><span class="o">=</span><span class="s1">&#39;i&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create an identity matrix of the given dimensions.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    domain_dim : int</span>
+<span class="sd">        The dimension of the vector space on which the identity will act.</span>
+
+<span class="sd">    typecode : {&#39;i&#39;, &#39;d&#39;, &#39;z&#39;}, optional</span>
+<span class="sd">        The type code for the returned matrix, defaults to &#39;i&#39; for integers.</span>
+<span class="sd">        Can also be &#39;d&#39; for real double, or &#39;z&#39; for complex double.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    matrix</span>
+<span class="sd">        A ``domain_dim``-by-``domain_dim`` dense integer identity matrix.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+
+<span class="sd">    ValueError</span>
+<span class="sd">        If you ask for the identity on zero or fewer dimensions.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">       &gt;&gt;&gt; print(identity(3))</span>
+<span class="sd">       [ 1  0  0]</span>
+<span class="sd">       [ 0  1  0]</span>
+<span class="sd">       [ 0  0  1]</span>
+<span class="sd">       &lt;BLANKLINE&gt;</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">domain_dim</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;domain dimension must be positive&#39;</span><span class="p">)</span>
+
+    <span class="n">entries</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span> <span class="o">==</span> <span class="n">j</span><span class="p">)</span>
+               <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">domain_dim</span><span class="p">)</span>
+               <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">domain_dim</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="n">matrix</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="p">(</span><span class="n">domain_dim</span><span class="p">,</span> <span class="n">domain_dim</span><span class="p">),</span> <span class="n">tc</span><span class="o">=</span><span class="n">typecode</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="inner_product"><a class="viewcode-back" href="../../developer-api.xhtml#dunshire.matrices.inner_product">[docs]</a><span class="k">def</span> <span class="nf">inner_product</span><span class="p">(</span><span class="n">vec1</span><span class="p">,</span> <span class="n">vec2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the Euclidean inner product of two vectors.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    vec1 : matrix</span>
+<span class="sd">        The first vector, whose inner product with ``vec2`` you want.</span>
+
+<span class="sd">    vec2 : matrix</span>
+<span class="sd">        The second vector, whose inner product with ``vec1`` you want.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    float</span>
+<span class="sd">        The inner product of ``vec1`` and ``vec2``.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+
+<span class="sd">    TypeError</span>
+<span class="sd">        If the lengths of ``vec1`` and ``vec2`` differ.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; x = [1,2,3]</span>
+<span class="sd">        &gt;&gt;&gt; y = [3,4,1]</span>
+<span class="sd">        &gt;&gt;&gt; inner_product(x,y)</span>
+<span class="sd">        14</span>
+
+<span class="sd">        &gt;&gt;&gt; x = matrix([1,1,1])</span>
+<span class="sd">        &gt;&gt;&gt; y = matrix([2,3,4], (1,3))</span>
+<span class="sd">        &gt;&gt;&gt; inner_product(x,y)</span>
+<span class="sd">        9</span>
+
+<span class="sd">        &gt;&gt;&gt; x = [1,2,3]</span>
+<span class="sd">        &gt;&gt;&gt; y = [1,1]</span>
+<span class="sd">        &gt;&gt;&gt; inner_product(x,y)</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        TypeError: the lengths of vec1 and vec2 must match</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">vec1</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">vec2</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;the lengths of vec1 and vec2 must match&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="nb">sum</span><span class="p">([</span><span class="n">x</span><span class="o">*</span><span class="n">y</span> <span class="k">for</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">vec1</span><span class="p">,</span> <span class="n">vec2</span><span class="p">)])</span>
+
+</div>
+<div class="viewcode-block" id="norm"><a class="viewcode-back" href="../../developer-api.xhtml#dunshire.matrices.norm">[docs]</a><span class="k">def</span> <span class="nf">norm</span><span class="p">(</span><span class="n">matrix_or_vector</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the Frobenius norm of a matrix or vector.</span>
+
+<span class="sd">    When the input is a vector, its matrix-Frobenius norm is the same</span>
+<span class="sd">    thing as its vector-Euclidean norm.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    matrix_or_vector : matrix</span>
+<span class="sd">        The matrix or vector whose norm you want.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    float</span>
+<span class="sd">        The norm of ``matrix_or_vector``.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; v = matrix([1,1])</span>
+<span class="sd">        &gt;&gt;&gt; norm(v)</span>
+<span class="sd">        1.414...</span>
+
+<span class="sd">        &gt;&gt;&gt; A = matrix([1,1,1,1], (2,2))</span>
+<span class="sd">        &gt;&gt;&gt; norm(A)</span>
+<span class="sd">        2.0...</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">inner_product</span><span class="p">(</span><span class="n">matrix_or_vector</span><span class="p">,</span> <span class="n">matrix_or_vector</span><span class="p">))</span>
+
+</div>
+<div class="viewcode-block" id="specnorm"><a class="viewcode-back" href="../../developer-api.xhtml#dunshire.matrices.specnorm">[docs]</a><span class="k">def</span> <span class="nf">specnorm</span><span class="p">(</span><span class="n">mat</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the spectral norm of a matrix.</span>
+
+<span class="sd">    The spectral norm of a matrix is its largest singular value, and it</span>
+<span class="sd">    corresponds to the operator norm induced by the vector Euclidean norm.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    mat : matrix</span>
+<span class="sd">        The matrix whose spectral norm you want.</span>
+
+<span class="sd">    Examples:</span>
+
+<span class="sd">        &gt;&gt;&gt; specnorm(identity(3))</span>
+<span class="sd">        1.0</span>
+
+<span class="sd">        &gt;&gt;&gt; specnorm(5*identity(4))</span>
+<span class="sd">        5.0</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">num_eigs</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">mat</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+    <span class="n">eigs</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="n">num_eigs</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">tc</span><span class="o">=</span><span class="s1">&#39;d&#39;</span><span class="p">)</span>
+    <span class="n">typecode</span> <span class="o">=</span> <span class="s1">&#39;d&#39;</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">([</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="nb">complex</span><span class="p">)</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">mat</span><span class="p">]):</span>
+        <span class="n">typecode</span> <span class="o">=</span> <span class="s1">&#39;z&#39;</span>
+    <span class="n">dummy</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">(</span><span class="n">mat</span><span class="p">,</span> <span class="n">mat</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">tc</span><span class="o">=</span><span class="n">typecode</span><span class="p">)</span>
+    <span class="n">gesdd</span><span class="p">(</span><span class="n">dummy</span><span class="p">,</span> <span class="n">eigs</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">eigs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">eigs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+</div>
+<div class="viewcode-block" id="vec"><a class="viewcode-back" href="../../developer-api.xhtml#dunshire.matrices.vec">[docs]</a><span class="k">def</span> <span class="nf">vec</span><span class="p">(</span><span class="n">mat</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create a long vector in column-major order from ``mat``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    mat : matrix</span>
+<span class="sd">        Any sort of real matrix that you want written as a long vector.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    matrix</span>
+<span class="sd">        An ``len(mat)``-by-``1`` long column vector containign the</span>
+<span class="sd">        entries of ``mat`` in column major order.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">        &gt;&gt;&gt; A = matrix([[1,2],[3,4]])</span>
+<span class="sd">        &gt;&gt;&gt; print(A)</span>
+<span class="sd">        [ 1  3]</span>
+<span class="sd">        [ 2  4]</span>
+<span class="sd">        &lt;BLANKLINE&gt;</span>
+
+<span class="sd">        &gt;&gt;&gt; print(vec(A))</span>
+<span class="sd">        [ 1]</span>
+<span class="sd">        [ 2]</span>
+<span class="sd">        [ 3]</span>
+<span class="sd">        [ 4]</span>
+<span class="sd">        &lt;BLANKLINE&gt;</span>
+
+<span class="sd">    Note that if ``mat`` is a vector, this function is a no-op:</span>
+
+<span class="sd">        &gt;&gt;&gt; v = matrix([1,2,3,4], (4,1))</span>
+<span class="sd">        &gt;&gt;&gt; print(v)</span>
+<span class="sd">        [ 1]</span>
+<span class="sd">        [ 2]</span>
+<span class="sd">        [ 3]</span>
+<span class="sd">        [ 4]</span>
+<span class="sd">        &lt;BLANKLINE&gt;</span>
+<span class="sd">        &gt;&gt;&gt; print(vec(v))</span>
+<span class="sd">        [ 1]</span>
+<span class="sd">        [ 2]</span>
+<span class="sd">        [ 3]</span>
+<span class="sd">        [ 4]</span>
+<span class="sd">        &lt;BLANKLINE&gt;</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">matrix</span><span class="p">(</span><span class="n">mat</span><span class="p">,</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">mat</span><span class="p">),</span> <span class="mi">1</span><span class="p">))</span>
+
+</div>
+<div class="viewcode-block" id="condition_number"><a class="viewcode-back" href="../../developer-api.xhtml#dunshire.matrices.condition_number">[docs]</a><span class="k">def</span> <span class="nf">condition_number</span><span class="p">(</span><span class="n">mat</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the condition number of the given matrix.</span>
+
+<span class="sd">    The condition number of a matrix quantifies how hard it is to do</span>
+<span class="sd">    numerical computation with that matrix. It is usually defined as</span>
+<span class="sd">    the ratio of the norm of the matrix to the norm of its inverse, and</span>
+<span class="sd">    therefore depends on the norm used. One way to compute the condition</span>
+<span class="sd">    number with respect to the 2-norm is as the ratio of the matrix&#39;s</span>
+<span class="sd">    largest and smallest singular values. Since we have easy access to</span>
+<span class="sd">    those singular values, that is the algorithm we use.</span>
+
+<span class="sd">    The larger the condition number is, the worse the matrix is.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mat : matrix</span>
+<span class="sd">        The matrix whose condition number you want.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    float</span>
+<span class="sd">        The nonnegative condition number of ``mat``.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">    &gt;&gt;&gt; condition_number(identity(3))</span>
+<span class="sd">    1.0</span>
+
+<span class="sd">    &gt;&gt;&gt; A = matrix([[2,1],[1,2]])</span>
+<span class="sd">    &gt;&gt;&gt; abs(condition_number(A) - 3.0) &lt; options.ABS_TOL</span>
+<span class="sd">    True</span>
+
+<span class="sd">    &gt;&gt;&gt; A = matrix([[2,1j],[-1j,2]])</span>
+<span class="sd">    &gt;&gt;&gt; abs(condition_number(A) - 3.0) &lt; options.ABS_TOL</span>
+<span class="sd">    True</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">num_eigs</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">mat</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+    <span class="n">eigs</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="n">num_eigs</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">tc</span><span class="o">=</span><span class="s1">&#39;d&#39;</span><span class="p">)</span>
+    <span class="n">typecode</span> <span class="o">=</span> <span class="s1">&#39;d&#39;</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">([</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="nb">complex</span><span class="p">)</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">mat</span><span class="p">]):</span>
+        <span class="n">typecode</span> <span class="o">=</span> <span class="s1">&#39;z&#39;</span>
+    <span class="n">dummy</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">(</span><span class="n">mat</span><span class="p">,</span> <span class="n">mat</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">tc</span><span class="o">=</span><span class="n">typecode</span><span class="p">)</span>
+    <span class="n">gesdd</span><span class="p">(</span><span class="n">dummy</span><span class="p">,</span> <span class="n">eigs</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">eigs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">eigs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="n">eigs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.xhtml">Dunshire</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.xhtml">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../requirements.xhtml">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-api.xhtml">User API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../background.xhtml">Background</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../references.xhtml">References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer-api.xhtml">Developer API Documentation</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

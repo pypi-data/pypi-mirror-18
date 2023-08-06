@@ -1,0 +1,27 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import requests
+import json
+from optparse import OptionParser
+base_metadata_url = 'http://169.254.169.254/computeMetadata/v1/'
+metadata_header = {'Metadata-Flavor': 'Google'}
+def fill_metadata(url):
+    r = requests.get(url, headers=metadata_header)
+    if not url.endswith('/'):
+        return r.text
+    else:
+        meta = {}
+        for key in r.text.split():
+            meta[key.replace('/','')] = fill_metadata(url+key)
+        return meta
+parser = OptionParser()
+parser.add_option('-p','--project', dest='from_project',action='store_true',default=False,
+        help='get metadata from project')
+(options, args) = parser.parse_args()
+if options.from_project:
+    base_metadata_url = base_metadata_url + "project/"
+else:
+    base_metadata_url = base_metadata_url + "instance/"
+metadata = fill_metadata(base_metadata_url)
+print json.dumps(metadata,indent=4)

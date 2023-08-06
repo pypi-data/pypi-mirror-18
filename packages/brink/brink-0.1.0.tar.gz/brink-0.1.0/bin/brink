@@ -1,0 +1,101 @@
+#!/usr/bin/python
+
+from brink.server import run_server
+from brink.models import MetaModel, Model
+from string import Template
+import rethinkdb as r
+import argparse
+import os
+import sys
+import glob
+import importlib
+
+
+def run(args):
+    try:
+        config = __get_config()
+        setattr(config, "DEBUG", args.debug)
+    except ModuleNotFoundError:
+        __missing_config()
+        return
+
+    run_server(config)
+
+
+def start_project(args):
+    template_dir = os.path.abspath("%s/../../template" % __file__ )
+
+    # Create the basic project folder structure
+    os.makedirs("%s/%s" % (args.name, args.name))
+
+    # Render files and copy them over to the project
+    for filename in glob.iglob("%s/**/*" % template_dir, recursive=True):
+        if os.path.isfile(filename):
+            with open(filename) as file:
+                file_content = Template(file.read()).substitute(name=args.name)
+                new_path = filename.replace(template_dir, "").replace("name", args.name)
+
+                with open("%s%s" % (args.name, new_path), "w") as target:
+                    target.write(file_content)
+                    target.close()
+
+                    print("Wrote %s" % target.name)
+
+    print("Done creating project \"%s\"" % args.name)
+
+
+def sync_db(args):
+    try:
+        config = __get_config()
+    except ModuleNotFoundError:
+        __missing_config()
+        return
+
+    conn = r.connect(**config.DATABASE or {})
+
+    for app in config.INSTALLED_APPS:
+        module = importlib.import_module("%s.models" % app)
+
+        for v in vars(module):
+            var = getattr(module, v)
+
+            if isinstance(var, MetaModel) and var is not Model:
+                r.table_create(var.table_name).run(conn)
+                print("Created table %s" % var.table_name)
+
+    print("Done")
+
+
+def __get_config():
+    sys.path.append(os.getcwd())
+    import config
+    return config
+
+def __missing_config():
+    print("No config.py file found in the current directory.")
+    print("Make sure to be in the project root directory when starting the Brink server.")
+
+
+# Setup CLI arguments
+parser = argparse.ArgumentParser(description="Command line utility for the Brink Framework.")
+
+subparsers = parser.add_subparsers(help="Available commands")
+
+parser_run = subparsers.add_parser("run", help="Runs Brink project locally")
+parser_run.add_argument("--docker", action="store_true", help="Run inside Docker")
+parser_run.add_argument("--db", action="store_true", help="Run RethinkDB inside Docker and link it to the Brink container")
+parser_run.add_argument("--debug", action="store_true", help="Set DEBUG flag to True")
+parser_run.set_defaults(func=run)
+
+parser_syncdb = subparsers.add_parser("sync-db", help="Creates tables and indexes in the database")
+parser_syncdb.set_defaults(func=sync_db)
+
+parser_start_project = subparsers.add_parser("start-project", help="Start a new Brink project")
+parser_start_project.add_argument("name", help="The name of your project")
+parser_start_project.set_defaults(func=start_project)
+
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+    args.func(args)
+

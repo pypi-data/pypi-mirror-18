@@ -1,0 +1,384 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>eater.api.http &mdash; eater 0.2.0 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../search.html"/>
+    <link rel="top" title="eater 0.2.0 documentation" href="../../../index.html"/>
+        <link rel="up" title="eater" href="../../eater.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> eater
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../developer.html">Developer Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../internals/reference/index.html">Internal Module Reference</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">eater</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+          <li><a href="../../eater.html">eater</a> &raquo;</li>
+      
+    <li>eater.api.http</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for eater.api.http</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    eater.api</span>
+<span class="sd">    ~~~~~~~~~</span>
+
+<span class="sd">    Eater HTTP API classes.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">abc</span> <span class="k">import</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Union</span>
+
+<span class="kn">import</span> <span class="nn">requests</span>
+<span class="kn">from</span> <span class="nn">requests</span> <span class="k">import</span> <span class="n">Session</span>
+<span class="kn">from</span> <span class="nn">schematics</span> <span class="k">import</span> <span class="n">Model</span>
+
+<span class="kn">from</span> <span class="nn">eater.api.base</span> <span class="k">import</span> <span class="n">BaseEater</span>
+<span class="kn">from</span> <span class="nn">eater.errors</span> <span class="k">import</span> <span class="n">EaterTimeoutError</span><span class="p">,</span> <span class="n">EaterConnectError</span><span class="p">,</span> <span class="n">EaterUnexpectedError</span>
+
+
+<div class="viewcode-block" id="HTTPEater"><a class="viewcode-back" href="../../../internals/reference/eater.api.html#eater.api.http.HTTPEater">[docs]</a><span class="k">class</span> <span class="nc">HTTPEater</span><span class="p">(</span><span class="n">BaseEater</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Eat JSON HTTP APIs for breakfast.</span>
+
+<span class="sd">    Instances of this class can&#39;t be created directly, you must subclass this class and set ``url`` and</span>
+<span class="sd">    ``response_cls``.</span>
+
+<span class="sd">    See :doc:`/usage` for more details.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1">#: Default request_cls to None</span>
+    <span class="n">request_cls</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1">#: An instance of requests Session</span>
+    <span class="n">session</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1">#: The HTTP method to use to make the API call.</span>
+    <span class="n">method</span> <span class="o">=</span> <span class="s1">&#39;get&#39;</span>
+
+<div class="viewcode-block" id="HTTPEater.__init__"><a class="viewcode-back" href="../../../internals/reference/eater.api.html#eater.api.http.HTTPEater.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request_model</span><span class="p">:</span> <span class="n">Model</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">_requests</span><span class="p">:</span> <span class="nb">dict</span><span class="o">=</span><span class="p">{},</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialise instance of HTTPEater.</span>
+
+<span class="sd">        :param request_model: An instance of a schematics model</span>
+<span class="sd">        :type request_model: Model</span>
+<span class="sd">        :param _requests: A dict of kwargs to be supplied when creating a requests session.</span>
+<span class="sd">        :type _requests: dict</span>
+<span class="sd">        :param kwargs: If request_model is not defined a dict of kwargs to be supplied as the first argument</span>
+<span class="sd">                       ``raw_data`` when creating an instance of ``request_cls``.</span>
+<span class="sd">        :type kwargs: dict</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">request_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_request_model</span><span class="p">(</span><span class="n">request_model</span><span class="o">=</span><span class="n">request_model</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">url</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_url</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">create_session</span><span class="p">(</span><span class="o">**</span><span class="n">_requests</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">url</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the URL to the endpoint - property must be defined by a subclass.</span>
+
+<span class="sd">        Note that this property is replaced with the value of :py:meth:`.HTTPEater.get_url` within</span>
+<span class="sd">        :py:meth:`.HTTPEater.__init__`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="HTTPEater.get_url"><a class="viewcode-back" href="../../../internals/reference/eater.api.html#eater.api.http.HTTPEater.get_url">[docs]</a>    <span class="k">def</span> <span class="nf">get_url</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieve the URL to be used for the request.</span>
+
+<span class="sd">        Note that this method should always use ``type(self).url`` to access the ``url`` property defined on the class.</span>
+<span class="sd">        This is necessary because the ``url`` property is replaced in :py:meth:`.HTTPEater.__init__`.</span>
+
+<span class="sd">        :return: The URL to the API endpoint.</span>
+<span class="sd">        :rtype: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">request_model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">request_model</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="HTTPEater.request"><a class="viewcode-back" href="../../../internals/reference/eater.api.html#eater.api.http.HTTPEater.request">[docs]</a>    <span class="k">def</span> <span class="nf">request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request_model</span><span class="p">:</span> <span class="n">Model</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Model</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Make a HTTP request of of type method.</span>
+
+<span class="sd">        You should generally leave this method alone. If you need to customise the behaviour use the methods that</span>
+<span class="sd">        this method uses.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">request_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_request_model</span><span class="p">(</span><span class="n">request_model</span><span class="o">=</span><span class="n">request_model</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_url</span><span class="p">()</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_request_kwargs</span><span class="p">(</span><span class="n">request_model</span><span class="o">=</span><span class="n">request_model</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">method</span><span class="p">)(</span><span class="n">url</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_response_model</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">request_model</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="n">requests</span><span class="o">.</span><span class="n">Timeout</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">EaterTimeoutError</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">.</span><span class="si">%s</span><span class="s2"> for URL &#39;</span><span class="si">%s</span><span class="s2">&#39; timed out.&quot;</span> <span class="o">%</span> <span class="p">(</span>
+                <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">method</span><span class="p">,</span>
+                <span class="n">url</span>
+            <span class="p">))</span>
+
+        <span class="k">except</span> <span class="n">requests</span><span class="o">.</span><span class="n">RequestException</span> <span class="k">as</span> <span class="n">exc_info</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">EaterConnectError</span><span class="p">(</span><span class="s2">&quot;Exception raised for URL &#39;</span><span class="si">%s</span><span class="s2">&#39;.&quot;</span> <span class="o">%</span> <span class="n">url</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">exc_info</span></div>
+
+<div class="viewcode-block" id="HTTPEater.create_response_model"><a class="viewcode-back" href="../../../internals/reference/eater.api.html#eater.api.http.HTTPEater.create_response_model">[docs]</a>    <span class="k">def</span> <span class="nf">create_response_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">requests</span><span class="o">.</span><span class="n">Response</span><span class="p">,</span> <span class="n">request_model</span><span class="p">:</span> <span class="n">Model</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Model</span><span class="p">:</span>  <span class="c1"># pylint: disable=unused-argument</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Given a requests Response object, return the response model.</span>
+
+<span class="sd">        :param response: A requests.Response object representing the response from the API.</span>
+<span class="sd">        :type response: requests.Response</span>
+<span class="sd">        :param request_model: The model used to generate the request - an instance of ``request_cls``.</span>
+<span class="sd">        :type request_model: schematics.Model</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">&gt;=</span> <span class="mi">400</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">EaterUnexpectedError</span><span class="p">(</span><span class="s2">&quot;Received unexpected HTTP response &#39;</span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2">&#39; for URL &#39;</span><span class="si">%s</span><span class="s2">&#39;.&quot;</span> <span class="o">%</span> <span class="p">(</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">reason</span><span class="p">,</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">url</span><span class="p">,</span>
+            <span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s1">&#39;content-type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;application/json&#39;</span><span class="p">:</span>
+            <span class="n">raw_data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">response_cls</span><span class="p">(</span><span class="n">raw_data</span><span class="o">=</span><span class="n">raw_data</span><span class="p">,</span> <span class="n">validate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">partial</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+            <span class="s2">&quot;Content type &#39;</span><span class="si">%s</span><span class="s2">&#39; is not implemented. Class </span><span class="si">%s</span><span class="s2"> should implement a handle_response method.&quot;</span> <span class="o">%</span> <span class="p">(</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s1">&#39;content-type&#39;</span><span class="p">],</span>
+                <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span>
+            <span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="HTTPEater.create_request_model"><a class="viewcode-back" href="../../../internals/reference/eater.api.html#eater.api.http.HTTPEater.create_request_model">[docs]</a>    <span class="k">def</span> <span class="nf">create_request_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request_model</span><span class="p">:</span> <span class="n">Model</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Model</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create the request model either from kwargs or request_model.</span>
+
+<span class="sd">        :param request_model: An instance of ``request_cls`` or None.</span>
+<span class="sd">        :type request_model: Model|None</span>
+<span class="sd">        :param kwargs: kwargs to be supplied as the ``raw_data`` parameter when instantiating ``request_cls``.</span>
+<span class="sd">        :type kwargs: dict</span>
+<span class="sd">        :return: An instance of ``request_cls``.</span>
+<span class="sd">        :rtype: schematics.Model</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">request_model</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">request_cls</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">request_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">request_cls</span><span class="p">(</span><span class="n">raw_data</span><span class="o">=</span><span class="n">kwargs</span><span class="p">)</span>  <span class="c1"># pylint: disable=not-callable</span>
+        <span class="k">return</span> <span class="n">request_model</span></div>
+
+<div class="viewcode-block" id="HTTPEater.get_request_kwargs"><a class="viewcode-back" href="../../../internals/reference/eater.api.html#eater.api.http.HTTPEater.get_request_kwargs">[docs]</a>    <span class="k">def</span> <span class="nf">get_request_kwargs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request_model</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Model</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>  <span class="c1"># pylint: disable=no-self-use</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieve a dict of kwargs to supply to requests.</span>
+
+<span class="sd">        :param request_model: An instance of ``request_cls`` or None.</span>
+<span class="sd">        :type request_model: Model|None</span>
+<span class="sd">        :param kwargs: kwargs to be supplied as the ``raw_data`` parameter when instantiating ``request_cls``.</span>
+<span class="sd">        :type kwargs: dict</span>
+<span class="sd">        :return: A dict of kwargs to be supplied to requests when making a HTTP call.</span>
+<span class="sd">        :rtype: dict</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">request_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;json&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">request_model</span><span class="o">.</span><span class="n">to_primitive</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">kwargs</span></div>
+
+<div class="viewcode-block" id="HTTPEater.create_session"><a class="viewcode-back" href="../../../internals/reference/eater.api.html#eater.api.http.HTTPEater.create_session">[docs]</a>    <span class="k">def</span> <span class="nf">create_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n">Session</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">requests</span><span class="o">.</span><span class="n">Session</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create an instance of a requests Session.</span>
+
+<span class="sd">        :param auth: The ``auth`` kwarg when to supply when instantiating ``requests.Session``.</span>
+<span class="sd">        :type auth: tupel|None</span>
+<span class="sd">        :param headers: A dict of headers to be supplied as the ``headers`` kwarg when instantiating ``requests.Session``.</span>
+<span class="sd">        :type headers: requests.structures.CaseInsensitiveDict</span>
+<span class="sd">        :return: An instance of ``requests.Session``</span>
+<span class="sd">        :rtype: requests.Session</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">session</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="n">session</span>
+
+        <span class="n">auth</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;auth&#39;</span><span class="p">)</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;headers&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">auth</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">auth</span> <span class="o">=</span> <span class="n">auth</span>
+        <span class="k">if</span> <span class="n">headers</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">headers</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, Alex Hayes.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.2.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

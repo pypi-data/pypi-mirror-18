@@ -1,0 +1,16 @@
+ADVERTISER = 'advertiser'
+CAMPAIGN = 'campaign'
+BUDGET = 'budget'
+AD = 'ad'
+AD_HEADLINE = 'ad_headline'
+AD_PREVIEW_IMAGE = 'ad_preview_image'
+AD_CONTENT = 'ad_content'
+PUBLISHER = 'publisher'
+PUBLICATION = 'publication'
+PUBLICATION_URL = 'publication_url'  # REQUIRES PUBLICATION
+PLACEMENT = 'placement'
+CATEGORY = 'category'  # PLACEMENT VERTICAL
+DEVICE = 'device'
+COUNTRY = 'country'
+REGION = 'region'
+DMA = 'dma'

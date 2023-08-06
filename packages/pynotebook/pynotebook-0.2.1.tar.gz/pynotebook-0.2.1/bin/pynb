@@ -1,0 +1,278 @@
+#!/usr/bin/env python
+
+# simple notebook app
+
+
+import sys
+sys.path.insert(0, '..')
+
+import pynotebook
+from pynotebook.nbview import TextModel, NBView
+from pynotebook.nbtexels import strip_output, mk_textmodel, NotFound, \
+    TextCell, ScriptingCell, split_cell
+from pynotebook.textmodel.texeltree import NULL_TEXEL, length
+from pynotebook import graphics
+import os
+import wx
+
+
+wildcard = "Pynotebook files (*.pnb)|*.pnb|" \
+           "Python source (*.py)|*.py|" \
+           "All files (*.*)|*.*"
+
+class MainWindow(wx.Frame):
+    ctxt_entries = ['inspector', 'open', 'save', 'save_as', 'close']
+    file_entries = ['new', 'open', 'save', 'save_as', 'close']
+    edit_entries = ['copy', 'paste', 'cut', 'undo', 'redo']
+    cell_entries = ['inspector', 'insert_textcell', 'insert_pycell', 'remove_output', 
+                    'split_cell']
+    updaters = ()
+    def __init__(self, filename=None):
+        wx.Frame.__init__(self, None)
+        panel = wx.Panel(self, -1)
+        shell = NBView(panel, -1, filename=filename, maxw=1000)
+        box = wx.BoxSizer(wx.VERTICAL)
+        box.Add(shell, 1, wx.ALL|wx.GROW, 1)
+        panel.SetSizer(box)
+        panel.SetAutoLayout(True)
+        shell.Bind(wx.EVT_RIGHT_DOWN, self.right_click)
+        shell.SetFocus()
+        self.shell = shell
+        self.filename = filename
+        self.SetMenuBar(self.make_menubar())
+        sb = wx.StatusBar(self)
+        self.SetStatusBar(sb)
+        self.Bind(wx.EVT_IDLE, self.update)
+        shell.mainwindow = self # XXX remove this
+     
+    def make_menubar(self):
+        menubar = wx.MenuBar()
+        updaters = []
+        def mk_menu(entries, self=self, updaters=updaters):
+            menu = wx.Menu()
+            for entry in entries:
+                fun = getattr(self, entry)
+                title = fun.__doc__
+                item = menu.Append(-1, title)
+                self.Bind(wx.EVT_MENU, fun, item)
+                if hasattr(self, 'can_'+entry):
+                    fun = getattr(self, 'can_'+entry)
+                    def update(fun=fun, item=item, menu=menu):
+                        menu.Enable(item.Id, fun())
+                    updaters.append(update)
+            return menu
+        menubar.Append(mk_menu(self.file_entries), '&File')
+        menubar.Append(mk_menu(self.edit_entries), '&Edit')
+        menubar.Append(mk_menu(self.cell_entries), '&Cell')
+        self.updaters = updaters 
+        return menubar
+
+    def make_ctxtmenu(self):
+        menu = wx.Menu()
+        for entry in self.ctxt_entries:
+            fun = getattr(self, entry)
+            active = True
+            try:
+                statefun = getattr(self, 'can_'+entry)
+                active = statefun()
+            except AttributeError:
+                pass                        
+            title = fun.__doc__
+            item = menu.Append(-1, title)
+            menu.Enable(item.Id, active)
+            menu.Bind(wx.EVT_MENU, fun, item)
+        return menu
+
+    def right_click( self, event):
+        menu = self.make_ctxtmenu()
+        self.PopupMenu(menu, event.Position)
+        menu.Destroy() # destroy to avoid mem leak
+
+    def changed(self):
+        return self.shell.undocount()>0
+
+    def update(self, event):
+        # update filename in window title
+        if self.filename:
+            path, name = os.path.split(self.filename)
+            title = name
+        else:
+            title = '<unnamed>'
+        if self.changed():
+            title = title+' *'
+        self.SetTitle(title)
+
+        # update menus
+        for updater in self.updaters:
+            updater()
+
+        # update statusbar
+        i = self.shell.index
+        row, col = self.shell.model.index2position(i)
+        try:
+            i, cell = self.shell.find_cell()
+        except NotFound:
+            self.StatusBar.SetStatusText('')
+            return
+        row0, col0 = self.shell.model.index2position(i)
+        self.StatusBar.SetStatusText('Line: %i, Position: %i' % (row-row0, col))
+
+    def new(self, event):
+        "&New Notebook\tCtrl-N"
+        win = MainWindow()
+        win.Show()
+
+    def open(self, event):
+        "&Open File ...\tCtrl-O"
+        dlg = wx.FileDialog(
+            self, message="Choose a file",
+            #defaultDir=self.currentDirectory, 
+            #defaultFile="",
+            wildcard=wildcard,
+            style=wx.OPEN | wx.MULTIPLE | wx.CHANGE_DIR
+            )
+        if dlg.ShowModal() == wx.ID_OK:
+            paths = dlg.GetPaths()
+            for path in paths:
+                win = MainWindow(path)
+                win.Show()
+        dlg.Destroy()
+
+    def save(self, event):
+        "&Save\tCtrl-S"
+        if self.filename is None:
+            self.save_as(event)
+        else:
+            self.shell.save(self.filename)
+            self.shell.clear_undo()
+            
+    def save_as(self, event):
+        "Save &As ..."
+        dlg = wx.FileDialog(
+            self, message="Save file as ...", 
+            #defaultDir=self.currentDirectory, 
+            defaultFile="", wildcard=wildcard, style=wx.SAVE
+            )
+        if dlg.ShowModal() == wx.ID_OK:
+            path = dlg.GetPath()
+            self.shell.save(path)
+            self.filename = path
+            self.shell.clear_undo()
+
+        dlg.Destroy()
+
+    def close(self, event):
+        "&Close\tCtrl-W"
+        if self.changed():
+            dlg = wx.MessageDialog(
+                self, 'There are unsaved changes. Do you really want to close?',
+                'Close window',
+                #wx.OK | wx.ICON_INFORMATION
+                wx.YES_NO | wx.NO_DEFAULT | wx.CANCEL | wx.ICON_INFORMATION
+            )
+            result = dlg.ShowModal()
+            dlg.Destroy()
+            if result != wx.ID_YES:
+                return            
+        self.Close(True)
+
+    def copy(self, event):
+        "Copy\tCtrl-C"
+        self.shell.handle_action('copy')
+    
+    def paste(self, event):
+        "Paste\tCtrl-V"
+        self.shell.handle_action('paste')
+
+    def cut(self, event):
+        "Cut\tCtrl-X"
+        self.shell.handle_action('cut')
+
+    def can_undo(self):
+        return self.shell.undocount() > 0
+
+    def undo(self, event):
+        "Undo\tCtrl-Z"
+        self.shell.undo()
+
+    def can_redo(self):
+        return self.shell.redocount() > 0
+
+    def redo(self, event):
+        "Redo\tCtrl-R"
+        self.shell.redo()
+
+    def remove_output(self, event):
+        "Remove output"
+        self.shell.transform(strip_output)
+
+    def between_cells(self):
+        i = self.shell.index
+        insidecell = False
+        try:
+            i0, cell = self.shell.find_cell()
+            if i0 < i < i0+length(cell):
+               insidecell = True
+        except NotFound:
+            pass
+        return not insidecell
+
+    can_insert_textcell = can_insert_pycell = between_cells
+
+    def insert_textcell(self, event):
+        "Insert text cell"
+        cell = TextCell(NULL_TEXEL)
+        self.shell.insert(self.shell.index, mk_textmodel(cell))
+
+    def insert_pycell(self, event):
+        "Insert python cell"
+        cell = ScriptingCell(NULL_TEXEL, NULL_TEXEL)
+        self.shell.insert(self.shell.index, mk_textmodel(cell))
+
+    def split_cell(self, event):
+        "Break cell\tCtrl+B"
+        i = self.shell.index
+        self.shell.transform(lambda texel, i=i:split_cell(texel, i))
+
+    def inspector(self, event):
+        "Format ...\tCtrl+F"
+        from pynotebook.inspector import Inspector
+        inspector = Inspector(self.shell.Parent)
+        inspector.model = self.shell
+        inspector.Show()
+        inspector.update()
+ 
+
+def main(argv):
+    debug = 0
+    if debug:
+        redirect = True
+    else:
+        redirect = False
+    app = wx.App(redirect=redirect)
+    win = None
+    
+    for arg in argv[1:]:
+        # Arguments are notebook files. Each file is opened in a seperate
+        # window.
+        win = MainWindow(arg)
+        win.Show()
+    if win is None:
+        win = MainWindow()
+        win.Show()
+
+    if debug: 
+        from pynotebook.wxtextview import testing
+        testing.pyshell()    
+
+    app.MainLoop()
+
+# Register classes to the fileformat
+graphics.register_classes()
+
+
+if __name__ == '__main__':
+    main(sys.argv)
+else:
+    main([])
+

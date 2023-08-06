@@ -1,0 +1,51 @@
+# References:
+# - https://packaging.python.org/appveyor/
+# - https://github.com/cloudify-cosmo/appveyor-utils
+
+# https://www.appveyor.com/docs/how-to/rdp-to-build-worker/
+#init:
+#  - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+#
+#on_finish:
+#  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+
+
+environment:
+  matrix:
+    - TOXENV: py33,py34,py35
+#      DIST: sdist
+#      WITH_COVERAGE: 1
+#    - TOXENV: py33,py34,py35
+#      DIST: wheel
+#      WITH_COVERAGE: 0
+    - TOXENV: check
+    - TOXENV: regression
+#      WITH_COVERAGE: 1
+    - TOXENV: test-docs
+    - TOXENV: build-docs
+
+
+matrix:
+  fast_finish: true
+
+
+install:
+  - set PATH=C:\msys64\mingw64\bin;C:\msys64\usr\bin;%PATH%
+  - bash -lc "pacman --noconfirm --sync --refresh --refresh pacman"
+  - bash -lc "pacman --noconfirm --sync --refresh --refresh --sysupgrade --sysupgrade"
+  - bash -xlc "pacman --noconfirm -S --needed tar unzip make"
+  - if "%TOXENV%" == "regression" bash -xlc "pacman --noconfirm -S --needed mingw-w64-x86_64-poppler"
+  - if "%TOXENV%" == "regression" choco install imagemagick.tool
+  - if "%TOXENV%" == "regression" set PATH=C:\ProgramData\chocolatey\lib\imagemagick.tool\tools;%PATH%
+  - if "%TOXENV%" == "regression" git submodule update --init
+
+
+build: off
+
+
+before_test:
+  - py -3.5 -m pip install tox-travis
+
+test_script:
+  - echo %PATH%
+  - py -3.5 -m tox

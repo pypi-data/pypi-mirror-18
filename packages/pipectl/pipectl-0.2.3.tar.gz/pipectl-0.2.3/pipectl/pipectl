@@ -1,0 +1,168 @@
+#!/usr/bin/python
+
+import sys
+import os
+import yaml
+import time
+import shlex
+import subprocess
+from bamboo_api_v2 import BambooAPIClient
+from slacker import Slacker
+import safygiphy
+from git import Repo
+from os.path import expanduser
+import os
+ 
+
+
+
+class Business(object):
+    def __init__(self, build_file):
+        self.pip = ""
+        self.build_file = build_file
+        self.config = ""
+        self.config_file = ".pipectl.yml"
+
+    def _parse_config_yml(self):
+        """
+        Parse the main config file
+        """
+        home = expanduser("~")
+        config = home + "/" + self.config_file
+        if not os.path.isfile(config):
+            ## Generate config
+            pass
+        with open(config, 'r') as stream:
+            try:
+                self.config = yaml.load(stream)
+            except yaml.YAMLError as exc:
+                print(exc)
+                sys.exit(1)
+
+    def _parse_build_yml(self):
+        """
+        Attempt to parse STDIN then if that fails attempt to 
+        parse the first argument as a file name
+        """
+        with open(self.build_file, 'r') as stream:
+            try:
+                self.pipe = yaml.load(stream)
+            except yaml.YAMLError as exc:
+                print(exc)
+                sys.exit(1)
+
+    def _preflight(self):
+        self.bamboo = BambooAPIClient(user=self.config['bamboo']['username'], 
+                                      password=self.config['bamboo']['password'],
+                                      host=self.config['bamboo']['hostname']) 
+        self.slack = Slacker(self.config['slack']['api_key'])
+
+
+    def _buildFail(self, msg):
+        raise Exception(msg)
+
+    def bambooBuildAndWait(self, opts):
+        """
+        Queue up bamboo build jobs 
+        """
+        waiting_queue = opts['jobs']
+        build_queue = []
+
+        if type(waiting_queue) != list:
+            waiting_queue = [waiting_queue]
+
+        for item in waiting_queue:
+            print 'adding to queue', item
+            build_key = self.bamboo.queue_build(item)['buildResultKey']
+            build_queue.append(build_key)
+
+        while len(build_queue) > 0:
+            for item in list(build_queue):
+                ## Collect Build Status 
+                res = self.bamboo.get_results(item)
+                result = res['successful']
+                state = res['lifeCycleState']
+                ## Build has finished and completed successfully
+                if state == 'Finished' and result == True:
+                    build_queue.remove(item)
+                ## Build has finished and failed
+                elif state == 'Finished' and result == False:
+                    self._buildFail("Build Failed: " + item)
+                ## Build stopped manually
+                elif state == 'NotBuilt':
+                    self._buildFail("Build Stopped Manually: " + item)
+            time.sleep(1)
+
+
+    def bashRunCommand(self, opts):
+        """
+        Run a command using the bash shell
+        """
+        if 'cmd' in opts:
+            orig_env = os.environ.copy()
+            cmd = shlex.split(opts['cmd'])
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, env=orig_env)
+            output, error = process.communicate()
+            print output
+            print error
+
+    def bashRunFile(self, opts):
+        """
+        Run a bash file using the bash shell
+        """
+        pass
+
+    def gitClone(self, opts):
+        """
+        Clone a git repository
+        """
+        pass
+
+    def gitCreateTag(self, opts):
+        """
+        Create an annotated git tag
+        """
+        pass
+
+    def _get_gif(self, keyword):
+        g = safygiphy.Giphy()
+        r = g.random(tag=keyword)
+        return r['data']['image_url']
+
+    def notifyViaSlack(self, opts):
+        """
+        Send a notification via Slack
+        """
+        channel = opts['channel']
+        msg = opts['msg']
+
+        if '#' not in channel:
+            channel = '#' + channel
+
+        if 'tag' in opts:
+            msg = msg + ' ' + self._get_gif(opts['tag'])
+
+        self.slack.chat.post_message(channel, msg)
+
+
+
+    def run(self):
+        """
+        Main entry point
+        """
+        self._parse_config_yml()
+        self._parse_build_yml()
+        self._preflight()
+        for segment in self.pipe:
+            for key, value in segment.iteritems():
+                getattr(self, key)(value)
+
+
+
+if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        print "Please provide a pipectl yaml file"
+        sys.exit()
+    Business(sys.argv[1]).run()
+
+

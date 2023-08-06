@@ -1,0 +1,157 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<!-- Header container -->
+<div class="container-fluid container-pf-nav-pf-vertical container-pf-nav-pf-vertical-with-secondary">
+  <div class="row">
+    <div class="col-xs-12 col-sm-6 col-md-10 col-md-offset-1">
+      <h1><strong>Playbook</strong>: {{ playbook.path }}</h1>
+      <h2>{{ playbook.time_start |datefmt }} <span class="fa fa-angle-double-right"></span> {{ playbook.time_end |datefmt }}</h2>
+    </div>
+  </div>
+</div>
+<!-- Dashboard container -->
+<div class="container-fluid container-cards-pf container-pf-nav-pf-vertical container-pf-nav-pf-vertical-with-secondary">
+  <div class="row row-cards-pf">
+    <div class="col-xs-12 col-sm-6 col-md-2 col-md-offset-1">
+      <div class="card-pf card-pf-accented card-pf-aggregate-status card-pf-aggregate-status-mini" style="height: 59px;">
+        <h2 class="card-pf-title" style="height: 42px;">
+          <span class="pficon pficon-server"></span>
+          <span class="card-pf-aggregate-status-count">{{ playbook.hosts.count() }}</span> <strong>Hosts</strong>
+        </h2>
+      </div>
+    </div>
+
+    <div class="col-xs-12 col-sm-6 col-md-2">
+      <div class="card-pf card-pf-accented card-pf-aggregate-status card-pf-aggregate-status-mini" style="height: 59px;">
+        <h2 class="card-pf-title" style="height: 42px;">
+          <span class="pficon pficon-flag"></span>
+          <span class="card-pf-aggregate-status-count">{{ playbook.plays.count() }}</span> <strong>Plays</strong>
+        </h2>
+      </div>
+    </div>
+
+    <div class="col-xs-12 col-sm-6 col-md-2">
+      <div class="card-pf card-pf-accented card-pf-aggregate-status card-pf-aggregate-status-mini" style="height: 59px;">
+        <h2 class="card-pf-title" style="height: 42px;">
+          <span class="fa fa-check"></span>
+          <span class="card-pf-aggregate-status-count">{{ playbook.tasks.count() }}</span> <strong>Tasks</strong>
+        </h2>
+      </div>
+    </div>
+
+    <div class="col-xs-12 col-sm-6 col-md-2">
+      <div class="card-pf card-pf-accented card-pf-aggregate-status card-pf-aggregate-status-mini" style="height: 59px;">
+        <h2 class="card-pf-title" style="height: 42px;">
+          <span class="pficon pficon-folder-open"></span>
+          <span class="card-pf-aggregate-status-count">{{ playbook.files.count() }}</span> <strong>Files</strong>
+        </h2>
+      </div>
+    </div>
+
+    <div class="col-xs-12 col-sm-6 col-md-2">
+      <div class="card-pf card-pf-accented card-pf-aggregate-status card-pf-aggregate-status-mini" style="height: 59px;">
+        <h2 class="card-pf-title" style="height: 42px;">
+          <span class="fa fa-clock-o"></span>
+          <span class="card-pf-aggregate-status-count">{{ playbook.duration |timefmt }}</span> <strong>Duration</strong>
+        </h2>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Detail container -->
+<div class="container-fluid container-pf-nav-pf-vertical container-pf-nav-pf-vertical-with-secondary">
+  <div class="row">
+    <div class="col-xs-12 col-sm-6 col-md-10 col-md-offset-1">
+      <h2><strong>Statistics</strong></h2>
+      <table class="stats table table-striped table-bordered table-hover table-condensed">
+        <thead>
+          <tr>
+            <th>Host</th>
+            <th><span class="ok label status-label">OK</span></th>
+            <th><span class="changed label status-label">CHANGED</span></th>
+            <th><span class="failed label status-label">FAILED</span></th>
+            <th><span class="skipped label status-label">SKIPPED</span></th>
+            <th><span class="unreachable label status-label">UNREACHABLE</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for stat in playbook.stats %}
+          <tr>
+            <td>{{ macros.make_link('playbook.playbook_results', stat.host.name, playbook=playbook.id, host=stat.host.name) }}</td>
+              {{ macros.statslink(stat, 'ok', playbook, stat.host) }}
+              {{ macros.statslink(stat, 'changed', playbook, stat.host) }}
+              {{ macros.statslink(stat, 'failed', playbook, stat.host) }}
+              {{ macros.statslink(stat, 'skipped', playbook, stat.host) }}
+              {{ macros.statslink(stat, 'unreachable', playbook, stat.host) }}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <h2><strong>Plays</strong></h2>
+      <table class="plays table table-striped table-bordered table-hover table-condensed">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Duration</th>
+            <th></th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for play in plays %}
+          <tr>
+            <td>{{ play.name }}</td>
+            <td>{{ play.time_start |datefmt }}</td>
+            <td>{{ play.time_end |datefmt }}</td>
+            <td>{{ play.duration |timefmt }}</td>
+            <td>{{ macros.make_link('play.show_play', 'details', play=play.id) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <h2><strong>Tasks</strong></h2>
+      <table class="tasks table table-striped table-bordered table-hover table-condensed">
+        <thead>
+          <tr>
+            <th>Offset from Playbook</th>
+            <th>Duration</th>
+            <th>Name</th>
+            <th>Action</th>
+            <th>File</th>
+            <th>Line</th>
+            <th></th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for task in tasks %}
+          <tr>
+            <td>{{ task.offset_from_playbook |timefmt }}</td>
+            <td>{{ task.duration |timefmt }}</td>
+            <td>{{ task.name }}</td>
+            <td>{{ task.action }}</td>
+            <td>
+                {% if task.file %}
+                {{ macros.make_link('file.show_file', task.file.path |pathtruncate(30), file_=task.file.id) }}
+                <a href="{{ url_for('playbook.show_playbook', playbook=playbook.id, file_=task.file.id) }}"><span class="fa fa-filter pull-right"></span></a>
+                {% endif %}
+            </td>
+            <td>
+                {% if task.file %}
+                {{ macros.make_link('file.show_file', task.lineno, file_=task.file.id, _anchor="line-" ~ task.lineno) }}
+                {% endif %}
+            </td>
+            <td>{{ macros.make_link('task.show_task', 'details', task=task.id) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,148 @@
+Metadata-Version: 1.1
+Name: survivalstan
+Version: 0.1.2.3
+Summary: Library of Stan Models for Survival Analysis
+Home-page: https://github.com/hammerlab/survivalstan
+Author: Jacki Novik
+Author-email: jackinovik@gmail.com
+License: http://www.apache.org/licenses/LICENSE-2.0.html
+Download-URL: https://github.com/hammerlab/survivalstan/tarball/0.1.2.3
+Description: [![Build Status](https://travis-ci.org/hammerlab/survivalstan.svg?branch=setup-travis)](https://travis-ci.org/hammerlab/survivalstan) 
+        [![Coverage Status](https://coveralls.io/repos/github/hammerlab/survivalstan/badge.svg?branch=master)](https://coveralls.io/github/hammerlab/survivalstan?branch=master)
+        [![PyPI version](https://badge.fury.io/py/survivalstan.svg)](https://badge.fury.io/py/survivalstan)
+        
+        survivalstan: Survival Models in Stan
+        ===============================
+        
+        author: Jacki Novik
+        
+        Overview
+        --------
+        
+        Library of Stan Models for Survival Analysis
+        
+        Features:
+        
+        * Variety of standard survival models
+        	- Weibull, Exponential, and Gamma parameterization
+        	- PEM models with variety of baseline hazards
+        	- PEM model with varying-coefficients (by group)
+        	- PEM model with time-varying-effects
+        * Extensible framework - bring your own Stan code, or edit the models above
+        * Uses [pandas](http://pandas.pydata.org) data frames & [patsy](https://pypi.python.org/pypi/patsy) formulas
+        * Graphical posterior predictive checking (currently PEM models only)
+        * Plot posterior estimates of key parameters using [seaborn](https://pypi.python.org/pypi/seaborn)
+        * Annotate posterior draws of parameter estimates, format as [pandas](http://pandas.pydata.org) dataframes
+        * Works with extensions to [pystan](https://pystan.readthedocs.io/en/latest/), such as [stancache](http://github.com/jburos/stancache) or [pystan-cache](https://github.com/paulkernfeld/pystan-cache)
+        
+        Installation / Usage
+        --------------------
+        
+        Install using pip, as:
+        
+            $ pip install survivalstan
+        
+        
+        Or, you can clone the repo:
+        
+            $ git clone https://github.com/hammerlab/survivalstan.git
+            $ pip install .
+        
+        Contributing
+        ------------
+        
+        Details to come. For now, please do not hesitate to contribute if you would like. 
+        
+        Usage examples
+        -------
+        
+        There are several examples included in the [example-notebooks](http://nbviewer.jupyter.org/github/hammerlab/survivalstan/tree/master/example-notebooks/), roughly one corresponding to each model.
+        
+        If you are not sure where to start, [Test pem_survival_model with simulated data.ipynb](http://nbviewer.jupyter.org/github/hammerlab/survivalstan/blob/master/example-notebooks/Test%20pem_survival_model%20with%20simulated%20data.ipynb) contains the most explanatory text. Many of the other notebooks are sparse on explanation, but do illustrate variations on the different models.
+        
+        For basic usage:
+        
+        ```
+        import survivalstan
+        import stanity
+        import seaborn as sb
+        import matplotlib.pyplot as plt
+        import statsmodels
+        
+        ## load flchain test data from R's `survival` package
+        dataset = statsmodels.datasets.get_rdataset(package = 'survival', dataname = 'flchain' )
+        d  = dataset.data.query('futime > 7')
+        d.reset_index(level = 0, inplace = True)
+        
+        ## e.g. fit Weibull survival model
+        testfit_wei = survivalstan.fit_stan_survival_model(
+        	model_cohort = 'Weibull model',
+        	model_code = survivalstan.models.weibull_survival_model,
+        	df = d,
+        	time_col = 'futime',
+        	event_col = 'death',
+        	formula = 'age + sex',
+        	iter = 3000,
+        	chains = 4,
+        	make_inits = survivalstan.make_weibull_survival_model_inits
+        	)
+        
+        ## coefplot for Weibull coefficient estimates
+        sb.boxplot(x = 'value', y = 'variable', data = testfit_wei['coefs'])
+        
+        ## or, use plot_coefs
+        survivalstan.utils.plot_coefs([testfit_wei])
+        
+        ## print summary of MCMC draws from posterior for each parameter
+        print(testfit_wei['fit'])
+        
+        
+        ## e.g. fit Piecewise-exponential survival model 
+        dlong = survivalstan.prep_data_long_surv(d, time_col = 'futime', event_col = 'death')
+        testfit_pem = survivalstan.fit_stan_survival_model(
+        	model_cohort = 'PEM model',
+        	model_code = survivalstan.models.pem_survival_model,
+        	df = dlong,
+        	sample_col = 'index',
+        	timepoint_end_col = 'end_time',
+        	event_col = 'end_failure',
+        	formula = 'age + sex',
+        	iter = 3000,
+        	chains = 4,
+        	)
+        
+        ## print summary of MCMC draws from posterior for each parameter
+        print(testfit_pem['fit'])
+        
+        ## coefplot for PEM model results
+        sb.boxplot(x = 'value', y = 'variable', data = testfit_pem['coefs'])
+        
+        ## plot baseline hazard (only PEM models)
+        survivalstan.utils.plot_coefs([testfit_pem], element='baseline')
+        
+        ## posterior-predictive checking (only PEM models)
+        survivalstan.utils.plot_pp_survival([testfit_pem])
+        
+        ## e.g. compare models using PSIS-LOO
+        stanity.loo_compare(testfit_wei['loo'], testfit_pem['loo'])
+        
+        ## compare coefplots 
+        sb.boxplot(x = 'value', y = 'variable', hue = 'model_cohort',
+            data = testfit_pem['coefs'].append(testfit_wei['coefs']))
+        plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        
+        ## (or, use survivalstan.utils.plot_coefs)
+        survivalstan.utils.plot_coefs([testfit_wei, testfit_pem])
+        
+        ```
+        
+        
+        
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Environment :: Console
+Classifier: Operating System :: OS Independent
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python
+Classifier: Topic :: Scientific/Engineering :: Bio-Informatics

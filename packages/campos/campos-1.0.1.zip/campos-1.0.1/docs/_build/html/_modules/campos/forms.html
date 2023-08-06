@@ -1,0 +1,616 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>campos.forms &mdash; campos 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="campos 1.0.0 documentation" href="../../index.html" />
+    <link rel="up" title="campos" href="../campos.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">campos 1.0.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &raquo;</li>
+          <li class="nav-item nav-item-2"><a href="../campos.html" accesskey="U">campos</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for campos.forms</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">contextlib</span>
+
+<span class="kn">from</span> <span class="nn">qtpy.QtWidgets</span> <span class="kn">import</span> <span class="p">(</span><span class="n">QDialog</span><span class="p">,</span> <span class="n">QVBoxLayout</span><span class="p">,</span> <span class="n">QDialogButtonBox</span><span class="p">,</span> <span class="n">QMessageBox</span><span class="p">,</span>
+                            <span class="n">QGroupBox</span><span class="p">,</span> <span class="n">QGridLayout</span><span class="p">,</span> <span class="n">QHBoxLayout</span><span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">sources</span>
+<span class="kn">from</span> <span class="nn">.enums</span> <span class="kn">import</span> <span class="n">Validation</span><span class="p">,</span> <span class="n">ButtonType</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="nb">callable</span>
+
+<span class="n">__author__</span> <span class="o">=</span> <span class="s">&#39;Juan Manuel Bermúdez Cabrera&#39;</span>
+
+
+<div class="viewcode-block" id="Form"><a class="viewcode-back" href="../../api/campos.forms.html#campos.forms.Form">[docs]</a><span class="k">class</span> <span class="nc">Form</span><span class="p">(</span><span class="n">QDialog</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Forms are used to arrange fields in order to facilitate</span>
+<span class="sd">    data input and validation.</span>
+
+<span class="sd">    You can create a form by calling the ``Form`` constructor</span>
+<span class="sd">    and providing fields and options::</span>
+
+<span class="sd">        fields = [StringField(), SelectField(), FileField(), TextField()]</span>
+<span class="sd">        buttons = (&#39;reset&#39;, &#39;ok&#39;, &#39;cancel&#39;)</span>
+<span class="sd">        form = Form(fields=fields, options=buttons)</span>
+
+<span class="sd">    Or also by calling :func:`from_source` which generates form&#39;s fields</span>
+<span class="sd">    introspecting a source object::</span>
+
+<span class="sd">        class Person:</span>
+<span class="sd">            def __init__(self, name, last_name, age):</span>
+<span class="sd">                self.name = name</span>
+<span class="sd">                self.last_name = last_name</span>
+<span class="sd">                self.age = age</span>
+
+<span class="sd">        p = Person(&#39;Sheldon&#39;, &#39;Cooper&#39;, 25)</span>
+<span class="sd">        form = Form.from_source(p)</span>
+
+<span class="sd">    You can group related fields using :func:`group` method::</span>
+
+<span class="sd">        form.group(&#39;Identification&#39;, [&#39;name&#39;, &#39;last_name&#39;])</span>
+
+<span class="sd">    Also you can find a field contained in the form using its name::</span>
+
+<span class="sd">        field = form.field(&#39;last_name&#39;)</span>
+
+<span class="sd">    and obtain it&#39;s value using dot notation::</span>
+
+<span class="sd">        value = form.last_name</span>
+
+<span class="sd">    Forms provide validation through :func:`validate` method which is</span>
+<span class="sd">    called automatically when validation is set to &#39;instant&#39;.</span>
+
+<span class="sd">    More specialized forms can be created using :class:`CreationForm` and</span>
+<span class="sd">    :class:`EditionForm` subclasses which provide some useful default behaviour</span>
+<span class="sd">    for object creation and modification.</span>
+
+<span class="sd">    :param validation: validation mechanism used by the form, if it&#39;s &#39;instant&#39;</span>
+<span class="sd">                       all fields are checked anytime one of them changes and</span>
+<span class="sd">                       corresponding buttons are enabled/disabled accordingly.</span>
+<span class="sd">                       If it&#39;s &#39;manual&#39; you should invoke :func:`validate`</span>
+<span class="sd">                       method by yourself.</span>
+<span class="sd">    :type validation: :class:`str` or a :class:`~campos.enums.Validation` member</span>
+
+<span class="sd">    :param fields: fields to add to this form</span>
+<span class="sd">    :type fields: iterable of :class:`.Field`</span>
+
+<span class="sd">    :param options: options to show in the form, these can be ``QPushButton``</span>
+<span class="sd">                    instances or :class:`~campos.enums.ButtonType` enum members</span>
+<span class="sd">                    (note that you can use strings too).</span>
+
+<span class="sd">                    If you use ``ButtonType`` members(or string) then you can</span>
+<span class="sd">                    connect the button with a callback passed as a keyword</span>
+<span class="sd">                    argument.</span>
+
+<span class="sd">                    For instance, if your options are ``[&#39;save&#39;, &#39;cancel&#39;]``</span>
+<span class="sd">                    you can pass two keyword arguments named ``on_save`` and</span>
+<span class="sd">                    ``on_cancel`` which will be connected to save and cancel</span>
+<span class="sd">                    buttons. Note that the keyword(except the ``on_`` part)</span>
+<span class="sd">                    matches the option name(``ButtonType`` member&#39;s name).</span>
+
+<span class="sd">                    Buttons with a rejection role(accept, cancel, etc) will be</span>
+<span class="sd">                    connected to form&#39;s ``close()`` method if no callback is</span>
+<span class="sd">                    settled for them.</span>
+
+<span class="sd">    :type options: iterable of :class:`str`, :class:`~campos.enums.ButtonType`</span>
+<span class="sd">                   or ``QPushButton``</span>
+
+<span class="sd">    .. seealso:: :class:`CreationForm` and :class:`EditionForm`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ACCEPTANCE_ROLES</span> <span class="o">=</span> <span class="p">(</span><span class="n">QDialogButtonBox</span><span class="o">.</span><span class="n">AcceptRole</span><span class="p">,</span> <span class="n">QDialogButtonBox</span><span class="o">.</span><span class="n">YesRole</span><span class="p">,</span>
+                        <span class="n">QDialogButtonBox</span><span class="o">.</span><span class="n">ApplyRole</span><span class="p">)</span>
+    <span class="n">REJECTION_ROLES</span> <span class="o">=</span> <span class="p">(</span><span class="n">QDialogButtonBox</span><span class="o">.</span><span class="n">RejectRole</span><span class="p">,</span> <span class="n">QDialogButtonBox</span><span class="o">.</span><span class="n">NoRole</span><span class="p">,</span>
+                       <span class="n">QDialogButtonBox</span><span class="o">.</span><span class="n">DestructiveRole</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="p">(</span><span class="s">&#39;ok&#39;</span><span class="p">,</span> <span class="s">&#39;cancel&#39;</span><span class="p">),</span> <span class="n">fields</span><span class="o">=</span><span class="p">(),</span>
+                 <span class="n">validation</span><span class="o">=</span><span class="s">&#39;current&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Form</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">members_layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">members_layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">button_box</span> <span class="o">=</span> <span class="n">QDialogButtonBox</span><span class="p">()</span>
+
+        <span class="n">layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">members_layout</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">button_box</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">opt</span> <span class="ow">in</span> <span class="n">options</span><span class="p">:</span>
+            <span class="n">callback</span> <span class="o">=</span> <span class="bp">None</span>
+
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">opt</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">ButtonType</span><span class="p">)):</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">opt</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                    <span class="n">callback_kw</span> <span class="o">=</span> <span class="s">&#39;on_{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">opt</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">callback_kw</span> <span class="o">=</span> <span class="s">&#39;on_{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">opt</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+
+                <span class="n">callback</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">callback_kw</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_button</span><span class="p">(</span><span class="n">opt</span><span class="p">,</span> <span class="n">on_click</span><span class="o">=</span><span class="n">callback</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fields</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_validation</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">validation</span> <span class="o">=</span> <span class="n">validation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">valid</span> <span class="o">=</span> <span class="bp">True</span>
+
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_field</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_enable_acceptance_btns</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">enabled</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">btn</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">button_box</span><span class="o">.</span><span class="n">buttons</span><span class="p">():</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">button_box</span><span class="o">.</span><span class="n">buttonRole</span><span class="p">(</span><span class="n">btn</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ACCEPTANCE_ROLES</span><span class="p">:</span>
+                <span class="n">btn</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="n">enabled</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="Form.from_source"><a class="viewcode-back" href="../../api/campos.forms.html#campos.forms.Form.from_source">[docs]</a>    <span class="k">def</span> <span class="nf">from_source</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">source_kw</span><span class="o">=</span><span class="p">{},</span> <span class="n">form_kw</span><span class="o">=</span><span class="p">{}):</span>
+        <span class="sd">&quot;&quot;&quot;Creates a form introspecting fields from an object.</span>
+
+<span class="sd">        Fields are generated using a suited :class:`~campos.sources.FieldSource`</span>
+<span class="sd">        instance.</span>
+
+<span class="sd">        :param obj: object to extract fields from.</span>
+<span class="sd">        :type obj: any</span>
+
+<span class="sd">        :param source_kw: keyword arguments to pass to</span>
+<span class="sd">                          :class:`~campos.sources.FieldSource` constructor</span>
+<span class="sd">        :type source_kw: :class:`dict`</span>
+
+<span class="sd">        :param form_kw: keyword arguments to pass to :class:`Form` constructor</span>
+<span class="sd">        :type form_kw: :class:`dict`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="n">sources</span><span class="o">.</span><span class="n">get_fields_source</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="o">**</span><span class="n">source_kw</span><span class="p">)</span>
+
+        <span class="n">fields</span> <span class="o">=</span> <span class="n">form_kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;fields&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">fields</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">fields</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+        <span class="n">form</span> <span class="o">=</span> <span class="n">Form</span><span class="p">(</span><span class="n">fields</span><span class="o">=</span><span class="n">fields</span><span class="p">,</span> <span class="o">**</span><span class="n">form_kw</span><span class="p">)</span>
+
+        <span class="n">title</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">__name__</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span>
+        <span class="n">form</span><span class="o">.</span><span class="n">setWindowTitle</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">form</span>
+</div>
+<div class="viewcode-block" id="Form.add_field"><a class="viewcode-back" href="../../api/campos.forms.html#campos.forms.Form.add_field">[docs]</a>    <span class="k">def</span> <span class="nf">add_field</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">field</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Adds a field to this form.</span>
+
+<span class="sd">        :param field: new field</span>
+<span class="sd">        :type field: :class:`~campos.core.Field`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">members_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fields</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+
+        <span class="n">field</span><span class="o">.</span><span class="n">validation</span> <span class="o">=</span> <span class="s">&#39;manual&#39;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">validation</span> <span class="o">==</span> <span class="n">Validation</span><span class="o">.</span><span class="n">INSTANT</span><span class="p">:</span>
+            <span class="n">field</span><span class="o">.</span><span class="n">change_signal</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">validate</span><span class="p">)</span>
+            <span class="c"># force validation when new fields are added</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">validate</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="Form.remove_field"><a class="viewcode-back" href="../../api/campos.forms.html#campos.forms.Form.remove_field">[docs]</a>    <span class="k">def</span> <span class="nf">remove_field</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Removes and returns a field from this form using its name.</span>
+
+<span class="sd">        :param name: name of the field to remove</span>
+<span class="sd">        :type name: :class:`~core.Field`</span>
+
+<span class="sd">        :returns: the removed field</span>
+<span class="sd">        :rtype: :class:`~campos.core.Field`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">field</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">validation</span> <span class="o">==</span> <span class="n">Validation</span><span class="o">.</span><span class="n">INSTANT</span><span class="p">:</span>
+            <span class="n">field</span><span class="o">.</span><span class="n">change_signal</span><span class="o">.</span><span class="n">disconnect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">validate</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">members_layout</span><span class="o">.</span><span class="n">removeWidget</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fields</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">field</span>
+</div>
+<div class="viewcode-block" id="Form.add_button"><a class="viewcode-back" href="../../api/campos.forms.html#campos.forms.Form.add_button">[docs]</a>    <span class="k">def</span> <span class="nf">add_button</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">btn</span><span class="p">,</span> <span class="n">on_click</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Adds a new button or option to form&#39;s button box and connects it</span>
+<span class="sd">        with a callback. The new button is always returned.</span>
+
+<span class="sd">        Buttons with a rejection role(accept, cancel, etc) will be connected to</span>
+<span class="sd">        form&#39;s ``close()`` method if no callback is settled for them.</span>
+
+<span class="sd">        :param btn: new option to add, can be a ``QPushButton`` instance or</span>
+<span class="sd">                    :class:`~campos.enums.ButtonType` enum members(note that</span>
+<span class="sd">                    you can use strings too)</span>
+<span class="sd">        :type btn: :class:`str`, :class:`~campos.enums.ButtonType`</span>
+<span class="sd">                   or ``QPushButton``</span>
+
+<span class="sd">        :param on_click: callback to invoke whenever the button is clicked.</span>
+<span class="sd">        :type on_click: callable</span>
+
+<span class="sd">        :returns: the new button</span>
+<span class="sd">        :rtype: ``QPushButton``</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">btn</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">ButtonType</span><span class="p">)):</span>
+            <span class="n">standard_btn</span> <span class="o">=</span> <span class="n">ButtonType</span><span class="o">.</span><span class="n">get_member</span><span class="p">(</span><span class="n">btn</span><span class="p">)</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">button</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">button_box</span><span class="o">.</span><span class="n">addButton</span><span class="p">(</span><span class="n">standard_btn</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">button_box</span><span class="o">.</span><span class="n">addButton</span><span class="p">(</span><span class="n">btn</span><span class="p">,</span> <span class="n">QDialogButtonBox</span><span class="o">.</span><span class="n">ActionRole</span><span class="p">)</span>
+            <span class="n">button</span> <span class="o">=</span> <span class="n">btn</span>
+
+        <span class="n">role</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">button_box</span><span class="o">.</span><span class="n">buttonRole</span><span class="p">(</span><span class="n">button</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">role</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">REJECTION_ROLES</span> <span class="ow">and</span> <span class="n">on_click</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">on_click</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">close</span>
+
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">on_click</span><span class="p">):</span>
+            <span class="n">button</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">on_click</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">on_click</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Expecting callable got {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">on_click</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="n">button</span>
+</div>
+<div class="viewcode-block" id="Form.button"><a class="viewcode-back" href="../../api/campos.forms.html#campos.forms.Form.button">[docs]</a>    <span class="k">def</span> <span class="nf">button</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">which</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Finds a button given its type.</span>
+
+<span class="sd">        :param which: button type to find, must be a valid member of</span>
+<span class="sd">                      :class:`~campos.enums.ButtonType` enum(note that you can</span>
+<span class="sd">                      use strings)</span>
+<span class="sd">        :type which: :class:`str` or :class:`~campos.enums.ButtonType`</span>
+
+<span class="sd">        :returns: the button which type matches the argument</span>
+<span class="sd">        :rtype: ``QPushButton``</span>
+
+<span class="sd">        :raises ValueError: if no button of the given type was found</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">which</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">ButtonType</span><span class="p">)):</span>
+            <span class="n">btype</span> <span class="o">=</span> <span class="n">ButtonType</span><span class="o">.</span><span class="n">get_member</span><span class="p">(</span><span class="n">which</span><span class="p">)</span>
+            <span class="n">standard_btn</span> <span class="o">=</span> <span class="n">btype</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">button</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">button_box</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="n">standard_btn</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">button</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s">&quot;{} is not present in form&#39;s options&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">btype</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">button</span>
+
+        <span class="n">msg</span> <span class="o">=</span> <span class="s">&#39;Expecting {} member, got {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ButtonType</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="n">which</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Form.field"><a class="viewcode-back" href="../../api/campos.forms.html#campos.forms.Form.field">[docs]</a>    <span class="k">def</span> <span class="nf">field</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Find a field by its name.</span>
+
+<span class="sd">        :param name: name of the field</span>
+<span class="sd">        :type name: :class:`str`</span>
+
+<span class="sd">        :return: a field</span>
+<span class="sd">        :rtype: :class:`~campos.core.Field`</span>
+
+<span class="sd">        :raise ValueError: if there is no field in the form with the given name</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fields</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">field</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">name</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">field</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;No field named {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+</div>
+    <span class="k">def</span> <span class="nf">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s">&#39;No attribute named {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">validation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Validation mechanism used by the form.</span>
+
+<span class="sd">         If it&#39;s &#39;instant&#39; all fields are checked whenever one of them changes.</span>
+<span class="sd">         If it&#39;s &#39;manual&#39; you should invoke :func:`validate` method by yourself.</span>
+
+<span class="sd">        :type: :class:`~campos.enums.Validation`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validation</span>
+
+    <span class="nd">@validation.setter</span>
+    <span class="k">def</span> <span class="nf">validation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">previous</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_validation</span> <span class="o">=</span> <span class="n">Validation</span><span class="o">.</span><span class="n">get_member</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validation</span> <span class="o">!=</span> <span class="n">previous</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validation</span> <span class="o">==</span> <span class="n">Validation</span><span class="o">.</span><span class="n">INSTANT</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fields</span><span class="p">:</span>
+                    <span class="n">f</span><span class="o">.</span><span class="n">change_signal</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">validate</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">previous</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fields</span><span class="p">:</span>
+                    <span class="n">f</span><span class="o">.</span><span class="n">change_signal</span><span class="o">.</span><span class="n">disconnect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">validate</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Form.validate"><a class="viewcode-back" href="../../api/campos.forms.html#campos.forms.Form.validate">[docs]</a>    <span class="k">def</span> <span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s">&#39;Invalid fields&#39;</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Runs validation on every field of this form.</span>
+
+<span class="sd">        This method is automatically called if form validation</span>
+<span class="sd">        is set to &#39;instant&#39;, all buttons with an acceptance role</span>
+<span class="sd">        are disabled when invalid fields are found.</span>
+
+<span class="sd">        If form validation is set to &#39;manual&#39; then a message is</span>
+<span class="sd">        shown when invalid fields are found.</span>
+
+<span class="sd">        :param title: title of the message shown when invalid fields are found.</span>
+<span class="sd">                      Used only when form validation is set to &#39;manual&#39;</span>
+<span class="sd">        :type title: :class:`str`</span>
+
+<span class="sd">        :param msg: text to show when invalid fields are found.</span>
+<span class="sd">                    Used only when form validation is set to &#39;manual&#39;</span>
+<span class="sd">        :type msg: :class:`str`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">valid</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fields</span><span class="p">:</span>
+            <span class="n">field</span><span class="o">.</span><span class="n">validate</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">valid</span> <span class="o">&amp;=</span> <span class="n">field</span><span class="o">.</span><span class="n">valid</span>
+
+        <span class="c"># enable all acceptance buttons</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_enable_acceptance_btns</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">valid</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">validation</span> <span class="o">==</span> <span class="n">Validation</span><span class="o">.</span><span class="n">MANUAL</span><span class="p">:</span>
+                <span class="n">text</span> <span class="o">=</span> <span class="s">&#39;Missing or invalid fields were found, please fix them&#39;</span>
+                <span class="n">text</span> <span class="o">=</span> <span class="n">text</span> <span class="k">if</span> <span class="n">msg</span> <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">msg</span>
+                <span class="n">QMessageBox</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_enable_acceptance_btns</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Form.group"><a class="viewcode-back" href="../../api/campos.forms.html#campos.forms.Form.group">[docs]</a>    <span class="k">def</span> <span class="nf">group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">fieldnames</span><span class="p">,</span> <span class="n">layout</span><span class="o">=</span><span class="s">&#39;vertical&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Groups fields in a common area under a title using chosen layout.</span>
+
+<span class="sd">        :param title: title of the group</span>
+<span class="sd">        :type title: :class:`str`</span>
+
+<span class="sd">        :param fieldnames: names of the fields to group</span>
+<span class="sd">        :type fieldnames: iterable of :class:`str`</span>
+
+<span class="sd">        :param layout: layout manager used to arrange fields inside the group.</span>
+<span class="sd">                       Defaults to &#39;vertical&#39;.</span>
+<span class="sd">        :type layout: one of (&#39;vertical&#39;, &#39;horizontal&#39;, &#39;grid&#39;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">group</span> <span class="o">=</span> <span class="n">QGroupBox</span><span class="p">()</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">setTitle</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+
+        <span class="n">lay</span> <span class="o">=</span> <span class="n">layout</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="n">fields</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">fieldnames</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">lay</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;vertical&#39;</span><span class="p">,</span> <span class="s">&#39;horizontal&#39;</span><span class="p">):</span>
+            <span class="n">lay</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">()</span> <span class="k">if</span> <span class="n">lay</span> <span class="o">==</span> <span class="s">&#39;vertical&#39;</span> <span class="k">else</span> <span class="n">QHBoxLayout</span><span class="p">()</span>
+
+            <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">members_layout</span><span class="o">.</span><span class="n">removeWidget</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+                <span class="n">lay</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">lay</span> <span class="o">==</span> <span class="s">&#39;grid&#39;</span><span class="p">:</span>
+            <span class="n">lay</span> <span class="o">=</span> <span class="n">QGridLayout</span><span class="p">()</span>
+            <span class="n">row</span><span class="p">,</span> <span class="n">column</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+
+            <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">members_layout</span><span class="o">.</span><span class="n">removeWidget</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+                <span class="n">lay</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">row</span><span class="p">,</span> <span class="n">column</span><span class="p">)</span>
+
+                <span class="n">column</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">column</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="n">row</span><span class="p">,</span> <span class="n">column</span> <span class="o">=</span> <span class="n">row</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s">&quot;Expecting one of (&#39;vertical&#39;, &#39;horizontal&#39;, &#39;grid&#39;) got {}&quot;</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">layout</span><span class="p">))</span>
+
+        <span class="n">group</span><span class="o">.</span><span class="n">setLayout</span><span class="p">(</span><span class="n">lay</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">members_layout</span><span class="o">.</span><span class="n">insertWidget</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">group</span><span class="p">)</span>
+
+</div></div>
+<div class="viewcode-block" id="CreationForm"><a class="viewcode-back" href="../../api/campos.forms.html#campos.forms.CreationForm">[docs]</a><span class="k">class</span> <span class="nc">CreationForm</span><span class="p">(</span><span class="n">Form</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Form subclass with useful defaults to create new objects.</span>
+
+<span class="sd">    This form&#39;s options defaults to ``(&#39;reset&#39;, &#39;save&#39;, &#39;cancel&#39;)``.</span>
+<span class="sd">    Also, a :func:`reset` method is included and connected by default</span>
+<span class="sd">    to the reset button to restore all fields in the form to their default</span>
+<span class="sd">    values.</span>
+
+<span class="sd">    .. seealso:: :class:`EditionForm`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s">&#39;options&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s">&#39;reset&#39;</span><span class="p">,</span> <span class="s">&#39;save&#39;</span><span class="p">,</span> <span class="s">&#39;cancel&#39;</span><span class="p">))</span>
+        <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s">&#39;on_reset&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">CreationForm</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c"># reset fields&#39; data every time form closes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">finished</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CreationForm.reset"><a class="viewcode-back" href="../../api/campos.forms.html#campos.forms.CreationForm.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Restores all fields in the form to their default values&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fields</span><span class="p">:</span>
+            <span class="n">field</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">field</span><span class="o">.</span><span class="n">default</span>
+</div>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_source</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">source_kw</span><span class="o">=</span><span class="p">{},</span> <span class="n">form_kw</span><span class="o">=</span><span class="p">{}):</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="n">sources</span><span class="o">.</span><span class="n">get_fields_source</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="o">**</span><span class="n">source_kw</span><span class="p">)</span>
+
+        <span class="n">fields</span> <span class="o">=</span> <span class="n">form_kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;fields&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">fields</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">fields</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+        <span class="n">form_kw</span> <span class="o">=</span> <span class="n">form_kw</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">form_kw</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s">&#39;options&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s">&#39;reset&#39;</span><span class="p">,</span> <span class="s">&#39;save&#39;</span><span class="p">,</span> <span class="s">&#39;cancel&#39;</span><span class="p">))</span>
+
+        <span class="n">form</span> <span class="o">=</span> <span class="n">CreationForm</span><span class="p">(</span><span class="n">fields</span><span class="o">=</span><span class="n">fields</span><span class="p">,</span> <span class="o">**</span><span class="n">form_kw</span><span class="p">)</span>
+
+        <span class="n">title</span> <span class="o">=</span> <span class="s">&#39;Create {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">__name__</span><span class="o">.</span><span class="n">capitalize</span><span class="p">())</span>
+        <span class="n">form</span><span class="o">.</span><span class="n">setWindowTitle</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">form</span>
+
+</div>
+<div class="viewcode-block" id="EditionForm"><a class="viewcode-back" href="../../api/campos.forms.html#campos.forms.EditionForm">[docs]</a><span class="k">class</span> <span class="nc">EditionForm</span><span class="p">(</span><span class="n">Form</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Form subclass with useful defaults to edit existing objects.</span>
+
+<span class="sd">    This form&#39;s options defaults to ``(&#39;reset&#39;, &#39;save&#39;, &#39;cancel&#39;)``.</span>
+<span class="sd">    Also, a :func:`reset` method is included and connected by default</span>
+<span class="sd">    to a reset button to restore all fields in the form to their saved values.</span>
+
+<span class="sd">    You can edit an existing object using :func:`edit` method which</span>
+<span class="sd">    obtains a value for every field from the object, field names must</span>
+<span class="sd">    be equal to attributes names in the object in order to obtain their</span>
+<span class="sd">    current value::</span>
+
+<span class="sd">        class Person:</span>
+<span class="sd">            def __init__(self, name, last_name, age):</span>
+<span class="sd">                self.name = name</span>
+<span class="sd">                self.last_name = last_name</span>
+<span class="sd">                self.age = age</span>
+
+<span class="sd">        billy = Person(&#39;Billy&#39;, &#39;Smith&#39;, 20)</span>
+<span class="sd">        john = Person(&#39;John&#39;, &#39;Bit&#39;, 26)</span>
+
+<span class="sd">        # create form&#39;s fields using Person attributes</span>
+<span class="sd">        form = EditionForm.from_source(billy)</span>
+
+<span class="sd">        # prepares the form for edition and fills fields with current values</span>
+<span class="sd">        form.edit(john)</span>
+
+<span class="sd">    .. seealso:: :class:`CreationForm`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s">&#39;options&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s">&#39;reset&#39;</span><span class="p">,</span> <span class="s">&#39;save&#39;</span><span class="p">,</span> <span class="s">&#39;cancel&#39;</span><span class="p">))</span>
+        <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s">&#39;on_reset&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">EditionForm</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_real_defaults</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c"># reset fields to their real defaults every time form closes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">finished</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_restore_real_defaults</span><span class="p">)</span>
+
+<div class="viewcode-block" id="EditionForm.reset"><a class="viewcode-back" href="../../api/campos.forms.html#campos.forms.EditionForm.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Restores all fields in the form to their saved values if :func:`edit`</span>
+<span class="sd">        method has been called, otherwise restores to default values</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fields</span><span class="p">:</span>
+            <span class="n">field</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">field</span><span class="o">.</span><span class="n">default</span>
+</div>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_source</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">source_kw</span><span class="o">=</span><span class="p">{},</span> <span class="n">form_kw</span><span class="o">=</span><span class="p">{}):</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="n">sources</span><span class="o">.</span><span class="n">get_fields_source</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="o">**</span><span class="n">source_kw</span><span class="p">)</span>
+
+        <span class="n">fields</span> <span class="o">=</span> <span class="n">form_kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;fields&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">fields</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">fields</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+        <span class="n">form_kw</span> <span class="o">=</span> <span class="n">form_kw</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">form_kw</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s">&#39;options&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s">&#39;reset&#39;</span><span class="p">,</span> <span class="s">&#39;save&#39;</span><span class="p">,</span> <span class="s">&#39;cancel&#39;</span><span class="p">))</span>
+
+        <span class="n">form</span> <span class="o">=</span> <span class="n">EditionForm</span><span class="p">(</span><span class="n">fields</span><span class="o">=</span><span class="n">fields</span><span class="p">,</span> <span class="o">**</span><span class="n">form_kw</span><span class="p">)</span>
+
+        <span class="n">title</span> <span class="o">=</span> <span class="s">&#39;Edit {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">__name__</span><span class="o">.</span><span class="n">capitalize</span><span class="p">())</span>
+        <span class="n">form</span><span class="o">.</span><span class="n">setWindowTitle</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">form</span>
+
+<div class="viewcode-block" id="EditionForm.edit"><a class="viewcode-back" href="../../api/campos.forms.html#campos.forms.EditionForm.edit">[docs]</a>    <span class="k">def</span> <span class="nf">edit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">disabled</span><span class="o">=</span><span class="p">()):</span>
+        <span class="sd">&quot;&quot;&quot;Puts the form in edition mode, filling fields with object values.</span>
+
+<span class="sd">        To prevent some of the fields from been modified when editing use</span>
+<span class="sd">        disable keyword and provide the names of the fields. Field names must</span>
+<span class="sd">        match object attributes in order to load values correctly.</span>
+
+<span class="sd">        :param obj: object used to fill form fields, only those attributes which</span>
+<span class="sd">                    match field names will be used.</span>
+<span class="sd">        :type obj: any</span>
+
+<span class="sd">        :param disabled: names of the fields to be disabled in edition mode.</span>
+<span class="sd">        :type disabled: iterable of :class:`str`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_real_defaults</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fields</span><span class="p">:</span>
+            <span class="c"># enable to remove settings from previous editions</span>
+            <span class="n">field</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+
+            <span class="c"># save field&#39;s real default value</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_real_defaults</span><span class="p">[</span><span class="n">field</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="o">.</span><span class="n">default</span>
+
+            <span class="c"># fill default and value properties with object&#39;s current values</span>
+            <span class="k">with</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">suppress</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">field</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                <span class="n">field</span><span class="o">.</span><span class="n">default</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="n">field</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
+
+                <span class="c"># disable if necessary</span>
+                <span class="k">if</span> <span class="n">field</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">disabled</span><span class="p">:</span>
+                    <span class="n">field</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+</div>
+    <span class="k">def</span> <span class="nf">_restore_real_defaults</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fields</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">field</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_real_defaults</span><span class="p">:</span>
+                <span class="n">field</span><span class="o">.</span><span class="n">default</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_real_defaults</span><span class="p">[</span><span class="n">field</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Juan Manuel Bermúdez Cabrera.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.3</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

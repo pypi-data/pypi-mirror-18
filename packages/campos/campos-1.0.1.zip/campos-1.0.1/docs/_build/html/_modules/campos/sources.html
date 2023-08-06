@@ -1,0 +1,527 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>campos.sources &mdash; campos 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="campos 1.0.0 documentation" href="../../index.html" />
+    <link rel="up" title="campos" href="../campos.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">campos 1.0.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &raquo;</li>
+          <li class="nav-item nav-item-2"><a href="../campos.html" accesskey="U">campos</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for campos.sources</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">abc</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">datetime</span> <span class="kn">as</span> <span class="nn">dt</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+
+<span class="kn">from</span> <span class="nn">..</span> <span class="kn">import</span> <span class="n">fields</span>
+<span class="kn">from</span> <span class="nn">..utils</span> <span class="kn">import</span> <span class="nb">callable</span>
+<span class="kn">from</span> <span class="nn">..validators</span> <span class="kn">import</span> <span class="p">(</span><span class="n">NumberRange</span><span class="p">,</span> <span class="n">StringLength</span><span class="p">,</span> <span class="n">DateRange</span><span class="p">,</span> <span class="n">TimeRange</span><span class="p">,</span>
+                          <span class="n">DatetimeRange</span><span class="p">)</span>
+
+<span class="n">__author__</span> <span class="o">=</span> <span class="s">&#39;Juan Manuel Bermúdez Cabrera&#39;</span>
+
+<span class="n">OLDEST_PERSON</span> <span class="o">=</span> <span class="mi">122</span>  <span class="c"># years</span>
+<span class="n">TALLEST_PERSON</span> <span class="o">=</span> <span class="mf">2.72</span>  <span class="c"># m</span>
+<span class="n">HEAVIEST_PERSON</span> <span class="o">=</span> <span class="mi">635</span>  <span class="c"># kg</span>
+
+
+<div class="viewcode-block" id="FieldSource"><a class="viewcode-back" href="../../api/campos.sources.html#campos.sources.FieldSource">[docs]</a><span class="k">class</span> <span class="nc">FieldSource</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">abc</span><span class="o">.</span><span class="n">ABCMeta</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Base class for field extractors.</span>
+
+<span class="sd">    Inspects an object looking for valid attributes to create fields,</span>
+<span class="sd">    callables are always ignored and extra filters can be provided using</span>
+<span class="sd">    keyword arguments(``exclude``, ``under``, ``dunder``). Field&#39;s text can</span>
+<span class="sd">    be modified by setting ``prettify=True`` (default) or providing a custom</span>
+<span class="sd">    transformation function using ``apply`` keyword.</span>
+
+<span class="sd">    The following steps are performed when extracting valid object attributes</span>
+<span class="sd">    to create fields:</span>
+
+<span class="sd">    * Non-callable attributes and their values are extracted from the provided</span>
+<span class="sd">      object.</span>
+
+<span class="sd">    * Attribute names are filtered using expressions in ``exclude`` and values</span>
+<span class="sd">      of ``under`` (beginning with exactly one _) and ``dunder`` (beginning with</span>
+<span class="sd">      two or more _).</span>
+
+<span class="sd">    * A transformation function(if provided through ``apply`` keyword) is used</span>
+<span class="sd">      to obtain a nice text for the future field using attribute&#39;s name.</span>
+
+<span class="sd">    * Some simple and common transformations such as _ removal and text</span>
+<span class="sd">      capitalization are done upon attributes names in order to obtain a nice</span>
+<span class="sd">      text for the future field. Note this step is performed even if a</span>
+<span class="sd">      transformation function is provided, to disable this behavior set</span>
+<span class="sd">      ``pretiffy=False``.</span>
+
+<span class="sd">    * Finally only attributes with supported python types can pass, see</span>
+<span class="sd">      :attr:`SUPPORTED_TYPES`. Subclasses must implement this check accordingly</span>
+<span class="sd">      since some objects may contain wrapped python types.</span>
+
+<span class="sd">    Fields are created after this filtering process, this is done by calling an</span>
+<span class="sd">    utility function designed for each supported python type.</span>
+<span class="sd">    See :func:`from_bool`, :func:`from_int`, :func:`from_str`, etc.</span>
+<span class="sd">    Subclasses must implement :func:`create_fields` for this.</span>
+
+<span class="sd">    :param obj: object to extract fields from</span>
+<span class="sd">    :type obj: any</span>
+
+<span class="sd">    :param exclude: regular expressions to exclude, attribute names matching</span>
+<span class="sd">                    any of these will be ignored.</span>
+<span class="sd">    :type exclude: iterable of :class:`str` or compiled :mod:`re`</span>
+
+<span class="sd">    :param under: whether to allow or not attribute names beginning with</span>
+<span class="sd">                  exactly one _. Defaults to False.</span>
+
+<span class="sd">    :param dunder: whether to allow or not attribute names beginning with two</span>
+<span class="sd">                   or more _. Defaults to False.</span>
+
+<span class="sd">    :param prettify: perform some simple and common transformations such as _</span>
+<span class="sd">                     removal and text capitalization upon attributes names in</span>
+<span class="sd">                     order to obtain a nice text for the future field.</span>
+<span class="sd">                     Defaults to True.</span>
+
+<span class="sd">    :param apply: transformation function to apply to each attribute name to</span>
+<span class="sd">                  obtain a nice text for the future field. Note that if</span>
+<span class="sd">                  ``prettify=True`` this is done after that step.</span>
+<span class="sd">    :type apply: callable</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c">#: Supported python types.</span>
+    <span class="n">SUPPORTED_TYPES</span> <span class="o">=</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">dt</span><span class="o">.</span><span class="n">date</span><span class="p">,</span> <span class="n">dt</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="p">(),</span> <span class="n">under</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">dunder</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                 <span class="n">prettify</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="nb">apply</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">object</span> <span class="o">=</span> <span class="n">obj</span>
+        <span class="n">attributes</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>  <span class="c"># attr_name --&gt; (text, value)</span>
+
+        <span class="c"># 1: exclude functions</span>
+        <span class="k">for</span> <span class="n">attr</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_members</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">callable</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+                <span class="n">attributes</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span> <span class="o">=</span> <span class="n">attr</span><span class="p">,</span> <span class="n">value</span>
+
+        <span class="c"># 2: exclude attributes with unwanted names</span>
+        <span class="n">excluded_patterns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_excluded_patterns</span><span class="p">(</span><span class="n">exclude</span><span class="p">,</span> <span class="n">under</span><span class="p">,</span> <span class="n">dunder</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">attributes</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="k">for</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="n">excluded_patterns</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">pattern</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="n">attr</span><span class="p">):</span>
+                    <span class="n">attributes</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span>
+                    <span class="k">break</span>
+
+        <span class="c"># 3: apply given transformation function(if there is one)</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="nb">apply</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">attr</span><span class="p">,</span> <span class="n">text_value</span> <span class="ow">in</span> <span class="n">attributes</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">text</span> <span class="o">=</span> <span class="n">text_value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">text_value</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">attributes</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span> <span class="o">=</span> <span class="nb">apply</span><span class="p">(</span><span class="n">text</span><span class="p">),</span> <span class="n">value</span>
+
+        <span class="c"># 4: prettify attribute&#39;s text</span>
+        <span class="k">if</span> <span class="n">prettify</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">attr</span><span class="p">,</span> <span class="n">text_value</span> <span class="ow">in</span> <span class="n">attributes</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">text</span> <span class="o">=</span> <span class="n">text_value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">text_value</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">attributes</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prettify</span><span class="p">(</span><span class="n">text</span><span class="p">),</span> <span class="n">value</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fields</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_fields</span><span class="p">(</span><span class="n">attributes</span><span class="p">)</span>
+
+<div class="viewcode-block" id="FieldSource.get_members"><a class="viewcode-back" href="../../api/campos.sources.html#campos.sources.FieldSource.get_members">[docs]</a>    <span class="k">def</span> <span class="nf">get_members</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns all members of the source object, along with their value.</span>
+
+<span class="sd">        :return: a list of tuples (member_name, member_value)</span>
+<span class="sd">        :rtype: :class:`list`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getmembers</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">object</span><span class="p">)</span>
+</div>
+    <span class="nd">@abc.abstractmethod</span>
+<div class="viewcode-block" id="FieldSource.create_fields"><a class="viewcode-back" href="../../api/campos.sources.html#campos.sources.FieldSource.create_fields">[docs]</a>    <span class="k">def</span> <span class="nf">create_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attributes</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Creates new fields from ``attributes``.</span>
+
+<span class="sd">        Subclasses must implement this and check if type of each attribute</span>
+<span class="sd">        is a supported python type, see :attr:`SUPPORTED_TYPES`.</span>
+
+<span class="sd">        In order to create new fields the from_* methods in this module can</span>
+<span class="sd">        can be useful.</span>
+
+<span class="sd">        :param attributes: a dict like d[attr_name] = (attr_text, attr_value)</span>
+<span class="sd">                           where attr_name will be the new field&#39;s name and</span>
+<span class="sd">                           attr_text its nice text.</span>
+<span class="sd">        :type attributes: :class:`dict`</span>
+
+<span class="sd">        :return: a dict like d[field_name] = field</span>
+<span class="sd">        :rtype: :class:`dict`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+</div>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_excluded_patterns</span><span class="p">(</span><span class="n">exclude</span><span class="p">,</span> <span class="n">under</span><span class="p">,</span> <span class="n">dunder</span><span class="p">):</span>
+        <span class="n">patterns</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">under</span><span class="p">:</span>
+            <span class="n">patterns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&#39;_&#39;</span><span class="p">))</span>
+            <span class="n">patterns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&#39;_[^_]+.*&#39;</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">dunder</span><span class="p">:</span>
+            <span class="n">patterns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&#39;__&#39;</span><span class="p">))</span>
+            <span class="n">patterns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&#39;_{2,}[^_]+.*&#39;</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">exp</span> <span class="ow">in</span> <span class="n">exclude</span><span class="p">:</span>
+            <span class="n">pattern</span> <span class="o">=</span> <span class="n">exp</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exp</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="n">pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">exp</span><span class="p">)</span>
+            <span class="n">patterns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">patterns</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_prettify</span><span class="p">(</span><span class="n">text</span><span class="p">):</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s">&#39;_&#39;</span><span class="p">)</span>  <span class="c"># remove leading _</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s">&#39;_&#39;</span><span class="p">)</span>  <span class="c"># remove trailing _</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;_&#39;</span><span class="p">,</span> <span class="s">&#39; &#39;</span><span class="p">)</span>  <span class="c"># replace internal _ with space</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">text</span>
+
+</div>
+<div class="viewcode-block" id="get_fields_source"><a class="viewcode-back" href="../../api/campos.sources.html#campos.sources.get_fields_source">[docs]</a><span class="k">def</span> <span class="nf">get_fields_source</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="o">**</span><span class="n">source_kw</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Tries to find the best :class:`FieldSource` for the given argument.</span>
+
+<span class="sd">    An :class:`~object.ObjectSource` is always returned when a more adequate</span>
+<span class="sd">    field source isn&#39;t found.</span>
+
+<span class="sd">    :param arg: object to find the right field source for.</span>
+<span class="sd">    :param arg: any</span>
+
+<span class="sd">    :param source_kw: keyword arguments to pass to the ``FieldSource``</span>
+<span class="sd">                      constructor.</span>
+
+<span class="sd">    :return: a new field source object</span>
+<span class="sd">    :rtype: :class:`FieldSource`</span>
+
+<span class="sd">    :raises ValueError: if argument is ``None``</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">msg</span> <span class="o">=</span> <span class="s">&quot;Can&#39;t obtain a field source from {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">arg</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="n">source</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c"># if SQLAlchemy can&#39;t be imported it&#39;s pretty sure arg is not a</span>
+        <span class="c"># SQLAlchemy object</span>
+        <span class="kn">from</span> <span class="nn">sqlalchemy</span> <span class="kn">import</span> <span class="n">Table</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c"># check if arg is a SQLAlchemy object</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">Table</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="s">&#39;__table__&#39;</span><span class="p">):</span>
+            <span class="kn">from</span> <span class="nn">.sqlalchemy</span> <span class="kn">import</span> <span class="n">SQLAlchemySource</span>
+            <span class="n">source</span> <span class="o">=</span> <span class="n">SQLAlchemySource</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="o">**</span><span class="n">source_kw</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">source</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">.object</span> <span class="kn">import</span> <span class="n">ObjectSource</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="n">ObjectSource</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="o">**</span><span class="n">source_kw</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">source</span>
+
+</div>
+<div class="viewcode-block" id="from_bool"><a class="viewcode-back" href="../../api/campos.sources.html#campos.sources.from_bool">[docs]</a><span class="k">def</span> <span class="nf">from_bool</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Creates a ``BoolField`` from a boolean value.</span>
+
+<span class="sd">    :param name: name for the field</span>
+<span class="sd">    :type name: :class:`str`</span>
+
+<span class="sd">    :param text: text for the field</span>
+<span class="sd">    :type text: :class:`str`</span>
+
+<span class="sd">    :param value: a boolean value</span>
+<span class="sd">    :type value: :class:`bool`</span>
+
+<span class="sd">    :param kwargs: keyword arguments to pass to field constructor</span>
+
+<span class="sd">    :return: a new ``BoolField`` with the given name and text</span>
+<span class="sd">    :rtype: :class:`~campos.fields.BoolField`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fkwargs</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+    <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;text&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">text</span>
+    <span class="k">return</span> <span class="n">fields</span><span class="o">.</span><span class="n">BoolField</span><span class="p">(</span><span class="o">**</span><span class="n">fkwargs</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="from_int"><a class="viewcode-back" href="../../api/campos.sources.html#campos.sources.from_int">[docs]</a><span class="k">def</span> <span class="nf">from_int</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Creates a ``IntField`` from an integer value. A bit of logic</span>
+<span class="sd">    is applied using provided arguments to determine some field&#39;s settings.</span>
+
+<span class="sd">    :param name: name for the field</span>
+<span class="sd">    :type name: :class:`str`</span>
+
+<span class="sd">    :param text: text for the field</span>
+<span class="sd">    :type text: :class:`str`</span>
+
+<span class="sd">    :param value: integer value to help adjust field&#39;s settings</span>
+<span class="sd">    :type value: :class:`int`</span>
+
+<span class="sd">    :param kwargs: keyword arguments to pass to field constructor</span>
+
+<span class="sd">    :return: a new ``IntField`` with the given name and text</span>
+<span class="sd">    :rtype: :class:`~campos.fields.IntField`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fkwargs</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+    <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;text&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">text</span>
+
+    <span class="k">if</span> <span class="n">text</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;age&#39;</span> <span class="ow">and</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="n">OLDEST_PERSON</span><span class="p">:</span>
+        <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;min&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;min&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;max&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;max&#39;</span><span class="p">,</span> <span class="n">OLDEST_PERSON</span><span class="p">)</span>
+        <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;step&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;step&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="n">NumberRange</span><span class="p">()</span>
+        <span class="c"># if default range isn&#39;t enough use given value with a span of 100 units</span>
+        <span class="k">if</span> <span class="n">val</span><span class="o">.</span><span class="n">min</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="n">val</span><span class="o">.</span><span class="n">min</span><span class="p">:</span>
+            <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;min&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;min&#39;</span><span class="p">,</span> <span class="n">value</span> <span class="o">-</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">val</span><span class="o">.</span><span class="n">max</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">value</span> <span class="o">&gt;=</span> <span class="n">val</span><span class="o">.</span><span class="n">max</span><span class="p">:</span>
+            <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;max&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;max&#39;</span><span class="p">,</span> <span class="n">value</span> <span class="o">+</span> <span class="mi">100</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fields</span><span class="o">.</span><span class="n">IntField</span><span class="p">(</span><span class="o">**</span><span class="n">fkwargs</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="from_float"><a class="viewcode-back" href="../../api/campos.sources.html#campos.sources.from_float">[docs]</a><span class="k">def</span> <span class="nf">from_float</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Creates a ``FloatField`` from a float value. A bit of logic</span>
+<span class="sd">    is applied using provided arguments to determine some field&#39;s settings.</span>
+
+<span class="sd">    :param name: name for the field</span>
+<span class="sd">    :type name: :class:`str`</span>
+
+<span class="sd">    :param text: text for the field</span>
+<span class="sd">    :type text: :class:`str`</span>
+
+<span class="sd">    :param value: float value to help adjust field&#39;s settings</span>
+<span class="sd">    :type value: :class:`float`</span>
+
+<span class="sd">    :param kwargs: keyword arguments to pass to field constructor</span>
+
+<span class="sd">    :return: a new ``FloatField`` with the given name and text</span>
+<span class="sd">    :rtype: :class:`~campos.fields.FloatField`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fkwargs</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+    <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;text&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">text</span>
+
+    <span class="k">if</span> <span class="n">text</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;height&#39;</span> <span class="ow">and</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="n">TALLEST_PERSON</span><span class="p">:</span>
+        <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;min&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;min&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;max&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;max&#39;</span><span class="p">,</span> <span class="n">TALLEST_PERSON</span><span class="p">)</span>
+        <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;step&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;step&#39;</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">text</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;weight&#39;</span> <span class="ow">and</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="n">HEAVIEST_PERSON</span><span class="p">:</span>
+        <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;min&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;min&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;max&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;max&#39;</span><span class="p">,</span> <span class="n">HEAVIEST_PERSON</span><span class="p">)</span>
+        <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;step&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;step&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="n">NumberRange</span><span class="p">()</span>
+        <span class="c"># if default range isn&#39;t enough use given value with a span of 100 units</span>
+        <span class="k">if</span> <span class="n">val</span><span class="o">.</span><span class="n">min</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="n">val</span><span class="o">.</span><span class="n">min</span><span class="p">:</span>
+            <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;min&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;min&#39;</span><span class="p">,</span> <span class="n">value</span> <span class="o">-</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">val</span><span class="o">.</span><span class="n">max</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">value</span> <span class="o">&gt;=</span> <span class="n">val</span><span class="o">.</span><span class="n">max</span><span class="p">:</span>
+            <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;max&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;max&#39;</span><span class="p">,</span> <span class="n">value</span> <span class="o">+</span> <span class="mi">100</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fields</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span><span class="o">**</span><span class="n">fkwargs</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="from_str"><a class="viewcode-back" href="../../api/campos.sources.html#campos.sources.from_str">[docs]</a><span class="k">def</span> <span class="nf">from_str</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">istext</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Creates a ``StringField`` or a ``TextField`` from a string value.</span>
+<span class="sd">    A bit of logic is applied using provided arguments to determine</span>
+<span class="sd">    some field&#39;s settings and if output will be a string field or a text field.</span>
+<span class="sd">    If you want the output to be a ``TextField`` set ``istext=True``.</span>
+
+<span class="sd">    :param name: name for the field</span>
+<span class="sd">    :type name: :class:`str`</span>
+
+<span class="sd">    :param text: text for the field</span>
+<span class="sd">    :type text: :class:`str`</span>
+
+<span class="sd">    :param value: string value to help adjust field&#39;s settings</span>
+<span class="sd">    :type value: :class:`str`</span>
+
+<span class="sd">    :param istext: if True forces output to be a ``TextField``</span>
+<span class="sd">    :type istext: :class:`bool`</span>
+
+<span class="sd">    :param kwargs: keyword arguments to pass to field constructor</span>
+
+<span class="sd">    :return: a new ``StringField`` or ``TextField`` with the given name and text</span>
+<span class="sd">    :rtype: :class:`~campos.fields.StringField` or</span>
+<span class="sd">            :class:`~campos.fields.TextField`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fkwargs</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+    <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;text&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">text</span>
+
+    <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;min_length&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;min_length&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">val</span> <span class="o">=</span> <span class="n">StringLength</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">istext</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">val</span><span class="o">.</span><span class="n">max</span> <span class="ow">or</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">fields</span><span class="o">.</span><span class="n">TextField</span><span class="p">(</span><span class="o">**</span><span class="n">fkwargs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fields</span><span class="o">.</span><span class="n">StringField</span><span class="p">(</span><span class="o">**</span><span class="n">fkwargs</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="from_date"><a class="viewcode-back" href="../../api/campos.sources.html#campos.sources.from_date">[docs]</a><span class="k">def</span> <span class="nf">from_date</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Creates a ``DateField`` from a date object. A bit of logic</span>
+<span class="sd">    is applied using provided arguments to determine some field&#39;s settings.</span>
+
+<span class="sd">    :param name: name for the field</span>
+<span class="sd">    :type name: :class:`str`</span>
+
+<span class="sd">    :param text: text for the field</span>
+<span class="sd">    :type text: :class:`str`</span>
+
+<span class="sd">    :param value: date object to help adjust field&#39;s settings</span>
+<span class="sd">    :type value: :class:`datetime.date`</span>
+
+<span class="sd">    :param kwargs: keyword arguments to pass to field constructor</span>
+
+<span class="sd">    :return: a new ``DateField`` with the given name and text</span>
+<span class="sd">    :rtype: :class:`~campos.fields.DateField`</span>
+
+<span class="sd">    .. seealso:: :func:`from_time` and :func:`from_datetime`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fkwargs</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+    <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;text&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">text</span>
+
+    <span class="n">val</span> <span class="o">=</span> <span class="n">DateRange</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="n">val</span><span class="o">.</span><span class="n">min</span> <span class="ow">and</span> <span class="s">&#39;min&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fkwargs</span><span class="p">:</span>
+        <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;min&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="k">return</span> <span class="n">fields</span><span class="o">.</span><span class="n">DateField</span><span class="p">(</span><span class="o">**</span><span class="n">fkwargs</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="from_time"><a class="viewcode-back" href="../../api/campos.sources.html#campos.sources.from_time">[docs]</a><span class="k">def</span> <span class="nf">from_time</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Creates a ``TimeField`` from a time object. A bit of logic</span>
+<span class="sd">    is applied using provided arguments to determine some field&#39;s settings.</span>
+
+<span class="sd">    :param name: name for the field</span>
+<span class="sd">    :type name: :class:`str`</span>
+
+<span class="sd">    :param text: text for the field</span>
+<span class="sd">    :type text: :class:`str`</span>
+
+<span class="sd">    :param value: time object to help adjust field&#39;s settings</span>
+<span class="sd">    :type value: :class:`datetime.time`</span>
+
+<span class="sd">    :param kwargs: keyword arguments to pass to field constructor</span>
+
+<span class="sd">    :return: a new ``TimeField`` with the given name and text</span>
+<span class="sd">    :rtype: :class:`~campos.fields.TimeField`</span>
+
+<span class="sd">    .. seealso:: :func:`from_date` and :func:`from_datetime`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fkwargs</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+    <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;text&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">text</span>
+
+    <span class="n">val</span> <span class="o">=</span> <span class="n">TimeRange</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="n">val</span><span class="o">.</span><span class="n">min</span> <span class="ow">and</span> <span class="s">&#39;min&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fkwargs</span><span class="p">:</span>
+        <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;min&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="k">return</span> <span class="n">fields</span><span class="o">.</span><span class="n">TimeField</span><span class="p">(</span><span class="o">**</span><span class="n">fkwargs</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="from_datetime"><a class="viewcode-back" href="../../api/campos.sources.html#campos.sources.from_datetime">[docs]</a><span class="k">def</span> <span class="nf">from_datetime</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Creates a ``DatetimeField`` from a datetime object. A bit of logic</span>
+<span class="sd">    is applied using provided arguments to determine some field&#39;s settings.</span>
+
+<span class="sd">    :param name: name for the field</span>
+<span class="sd">    :type name: :class:`str`</span>
+
+<span class="sd">    :param text: text for the field</span>
+<span class="sd">    :type text: :class:`str`</span>
+
+<span class="sd">    :param value: datetime object to help adjust field&#39;s settings</span>
+<span class="sd">    :type value: :class:`datetime.datetime`</span>
+
+<span class="sd">    :param kwargs: keyword arguments to pass to field constructor</span>
+
+<span class="sd">    :return: a new ``DatetimeField`` with the given name and text</span>
+<span class="sd">    :rtype: :class:`~campos.fields.DatetimeField`</span>
+
+<span class="sd">    .. seealso:: :func:`from_date` and :func:`from_time`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fkwargs</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+    <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;text&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">text</span>
+
+    <span class="n">val</span> <span class="o">=</span> <span class="n">DatetimeRange</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="n">val</span><span class="o">.</span><span class="n">min</span> <span class="ow">and</span> <span class="s">&#39;min&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fkwargs</span><span class="p">:</span>
+        <span class="n">fkwargs</span><span class="p">[</span><span class="s">&#39;min&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="k">return</span> <span class="n">fields</span><span class="o">.</span><span class="n">DatetimeField</span><span class="p">(</span><span class="o">**</span><span class="n">fkwargs</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Juan Manuel Bermúdez Cabrera.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.3</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

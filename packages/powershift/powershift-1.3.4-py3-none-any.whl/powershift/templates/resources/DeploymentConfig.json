@@ -1,0 +1,150 @@
+{
+    "kind": "DeploymentConfig",
+    "apiVersion": "v1",
+    "metadata": {
+        "name": "{{cookiecutter.application_name}}",
+        "labels": {
+            "app": "{{cookiecutter.application_name}}"
+        }
+    },
+    "spec": {
+        "triggers": [
+            {
+                "type": "ImageChange",
+                "imageChangeParams": {
+                    "automatic": true,
+                    "containerNames": [
+                        "{{cookiecutter.application_name}}"
+                    ],
+                    "from": {
+                        "kind": "ImageStreamTag",
+                        "name": "{{cookiecutter.application_name}}:latest"
+                    }
+                }
+            },
+            {
+                "type": "ConfigChange"
+            }
+        ],
+        "replicas": {{cookiecutter.application_replicas}},
+        "selector": {
+            "app": "{{cookiecutter.application_name}}"
+        },
+        "template": {
+            "metadata": {
+                "labels": {
+                    "app": "{{cookiecutter.application_name}}"
+                }
+            },
+            "spec": {
+                "containers": [
+                    {
+                        "name": "{{cookiecutter.application_name}}",
+                        "image": "{{cookiecutter.application_name}}:latest",
+                        "ports": [
+                            {
+                                "containerPort": 8080,
+                                "protocol": "TCP"
+                            }
+                        ],
+                        "env": [
+                            {
+                                "name": "OPENSHIFT_LANGUAGE_RUNTIME",
+                                "value": "{{cookiecutter.language_runtime}}"
+                            }
+{% if cookiecutter.requires_database == 'y' %}
+                            , {
+                                "name": "OPENSHIFT_DATABASE_TYPE",
+                                "value": "{{cookiecutter.database_type}}"
+                            }
+                            , {
+                                "name": "OPENSHIFT_{{cookiecutter.database_type|upper}}_DB_HOST",
+                                "value": "{{cookiecutter.application_name}}-db"
+                            }
+                            , {
+                                "name": "OPENSHIFT_{{cookiecutter.database_type|upper}}_DB_PORT",
+{% if cookiecutter.database_type == 'MySQL' %}
+                                "value": "3306"
+{% endif %}
+{% if cookiecutter.database_type == 'PostgreSQL' %}
+                                "value": "5432"
+{% endif %}
+                            }
+                            , {
+                                "name": "OPENSHIFT_{{cookiecutter.database_type|upper}}_DB_USERNAME",
+                                "value": "{{cookiecutter.database_user}}"
+                            }
+                            , {
+                                "name": "OPENSHIFT_{{cookiecutter.database_type|upper}}_DB_PASSWORD",
+                                "value": "{{cookiecutter.database_password}}"
+                            }
+                            , {
+                                "name": "OPENSHIFT_{{cookiecutter.database_type|upper}}_DB_NAME",
+                                "value": "{{cookiecutter.database_name}}"
+                            }
+                            , {
+                                "name": "OPENSHIFT_{{cookiecutter.database_type|upper}}_DB_URL",
+{% if cookiecutter.database_type == 'MySQL' %}
+                                "value": "mysql://{{cookiecutter.database_user}}:{{cookiecutter.database_password}}@{{cookiecutter.application_name}}-db:3306/{{cookiecutter.database_name}}"
+{% endif %}
+{% if cookiecutter.database_type == 'PostgreSQL' %}
+                                "value": "postgresql://{{cookiecutter.database_user}}:{{cookiecutter.database_password}}@{{cookiecutter.application_name}}-db:5432/{{cookiecutter.database_name}}"
+{% endif %}
+                            }
+{% endif %}
+{% if cookiecutter.requires_redis == 'y' %}
+                            , {
+                                "name": "OPENSHIFT_REDIS_HOST",
+                                "value": "{{cookiecutter.application_name}}-redis"
+                            }
+                            , {
+                                "name": "OPENSHIFT_REDIS_PORT",
+                                "value": "6379"
+                            }
+{% endif %}
+{% if cookiecutter.language_runtime == 'Python' %}
+{% if cookiecutter.python_web_framework == 'Django' %}
+                            , {
+                                "name": "DJANGO_SECRET_KEY",
+                                "value": "{% for _ in range(50) %}{{'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'|random}}{% endfor %}"
+                            }
+{% if cookiecutter.django_settings_module != '' %}
+                            , {
+                                "name": "DJANGO_SETTINGS_MODULE",
+                                "value": "{{cookiecutter.django_settings_module}}"
+                            }
+{% endif %}
+{% endif %}
+{% endif %}
+                        ]
+{% if cookiecutter.application_memory_limit != '' %}
+                        , "resources": {
+                          "limits": {
+                            "memory": "{{cookiecutter.application_memory_limit}}"
+                          }
+                        }
+{% endif %}
+{% if cookiecutter.requires_persistent_storage == 'y' %}
+                        , "volumeMounts": [
+                            {
+                                "name": "{{cookiecutter.application_name}}-pv",
+                                "mountPath": "{{cookiecutter.application_volume_mount_point}}"
+                            }
+                        ]
+{% endif %}
+                    }
+                ]
+{% if cookiecutter.requires_persistent_storage == 'y' %}
+                , "volumes": [
+                    {
+                        "name": "{{cookiecutter.application_name}}-pv",
+                        "persistentVolumeClaim": {
+                            "claimName": "{{cookiecutter.application_name}}-pvc"
+                        }
+                    }
+                ]
+{% endif %}
+            }
+        }
+    }
+}

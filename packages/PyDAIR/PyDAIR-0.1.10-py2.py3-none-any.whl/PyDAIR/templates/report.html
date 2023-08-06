@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>PyDAIR Report</title>
+
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+<script type="text/javascript" src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<style>
+h1, h2, h3, h4, h5, h6 {
+    font-family: -apple-system, Helvetica, Arial, sans-serif;
+    font-weight: 100;
+}
+article {
+    margin-top: 80px;
+    font-family: -apple-system, Helvetica, Arial, sans-serif;
+    font-weight: 100;
+}
+
+/* bootstrap style sheet */
+.panel {
+    margin-bottom: 20px;
+    background-color: #fff;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    -webkit-box-shadow: 0 1px 1px rgba(0,0,0,.05);
+    box-shadow: 0 1px 1px rgba(0,0,0,.05);
+}
+.panel-heading {
+    padding: 10px 15px;
+    border-bottom: 1px solid transparent;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+}
+.panel-default {
+    border-color: #ddd;
+}
+.panel-danger {
+    border-color: #ebccd1;
+}
+.panel-default > .panel-heading {
+    color: #333;
+    background-color: #f5f5f5;
+    border-color: #ddd;
+}
+.panel-danger > .panel-heading {
+    color: #a94442;
+    background-color: #f2dede;
+    border-color: #ebccd1;
+}
+.panel-body {
+    padding: 15px;
+}
+</style>
+
+
+</head>
+<body>
+
+<div class="container">
+<article id="h_top">
+    
+    <section id="load_status" class="panel panel-danger" style="display:none;">
+        <div class="panel-heading">Warnings</div>
+        <div class="panel-body">
+        <p>This page loads Google Charts API for drawing graphs and Bootstrap for rendering page desing via internet. Make sure you have internet connections.</p>
+        </div>
+    </section>
+
+
+    
+    <div class="page-header">
+        <h1>PyDAIR Analysis Report</h1>
+    </div>
+    
+    
+    
+        <table class="table table-bordered">
+        <thead style="text-align:center">
+        <tr>
+            <td>Sample</td>
+            <td># sequences</td>
+            <td colspan="4">gene usage frequencies</td>
+            <td>rarefaction analysis</td>
+            <td colspan="2">CDR3</td>
+            <td colspan="3">indels</td>
+        </tr>
+        </thead>
+        <tbody>
+        {% for item in sample_stats %}
+            <tr>
+            <td>{{ item.name }}</td>
+            <td>{{ item.libsize }}</td>
+            <td><a href="{{ item.v }}">V</a></td>
+            <td><a href="{{ item.d }}">D</a></td>
+            <td><a href="{{ item.j }}">J</a></td>
+            <td><a href="{{ item.vdj }}">VDJ</a></td>
+            <td><a href="{{ item.vdj_rarefaction }}">VDJ</a></td>
+            <td><a href="{{ item.cdr3_prot_len }}">aa</a></td>
+            <td><a href="{{ item.cdr3_nucl_len }}">nt</a></td>
+            <td><a href="{{ item.v_del_len }}">5'V-del</a></td>
+            <td><a href="{{ item.j_del_len }}">3'J-del</a></td>
+            <td><a href="{{ item.vj_ins_len }}">VJ-ins</a></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+        </table>
+
+
+
+
+    {% for item in freq_stats %}
+    <section id="h_{{ item.freq_name }}" class="panel panel-default">
+        <div class="panel-heading"><h2>{{ item.freq_title }} gene usage</h2></div>
+        <div class="row panel-body">
+            <div id="{{ item.freq_name }}_freq_plot"></div>
+        </div>
+    </section>
+    {% endfor %}
+ 
+
+    {% for item in dist_stats %}
+    <section id="h_{{ item.dist_name }}" class="panel panel-default">
+        <div class="panel-heading"><h2>{{ item.dist_title }}</h2></div>
+        <div class="row panel-body">
+            <div id="{{ item.dist_name }}_dist_plot"></div>
+        </div>
+    </section>
+    {% endfor %}
+    
+    
+    {% if rarefaction_stats is not none %}
+    <section id="h_rarefaction" class="panel panel-default">
+        <div class="panel-heading"><h2>Rarefaction study for VDJ combinations</h2></div>
+        <div class="row panel-body">
+            <div id="rarefaction_VDJ_plot"></div>
+        </div>
+    </section>
+    {% endif %}
+    
+    
+    
+    
+
+</article>       
+</div>
+
+
+
+
+
+
+
+
+</article>
+
+</div>
+
+
+
+
+<script type="text/javascript">
+<!--
+if (! navigator.onLine) {
+    document.getElementById("load_status").style.display = "block";
+    document.getElementById("load_status").style.visibility = "visible";
+}
+
+
+
+
+
+
+{% for item in freq_stats %}
+    var data_{{ item.freq_name }} = [];
+    {% for freq in item.freq %}
+        var data_i = {
+            x: {{ freq.gene }},
+            y: {{ freq.freq }},
+            name: {{ freq.sample_name }},
+            type: 'bar'
+        };
+        data_{{ item.freq_name }}.push(data_i)
+    {% endfor %}
+    var layout = {
+        title: '',
+        barmode: 'group',
+        xaxis: {
+            tickangle: -45
+        }
+    };
+    Plotly.newPlot('{{ item.freq_name }}_freq_plot', data_{{ item.freq_name }}, layout);
+{% endfor %}
+
+
+
+
+
+{% for item in dist_stats %}
+    var data_{{ item.dist_name }} = [];
+    {% for freq in item.freq %}
+        var data_i = {
+            x: {{ freq.len }},
+            y: {{ freq.freq }},
+            name: {{ freq.sample_name }},
+            type: 'bar'
+        };
+        data_{{ item.dist_name }}.push(data_i)
+    {% endfor %}
+    var layout = {
+        title: '',
+        barmode: 'group',
+        xaxis: {
+            range: [-1, 40]
+        }
+    };
+    Plotly.newPlot('{{ item.dist_name }}_dist_plot', data_{{ item.dist_name }}, layout);
+{% endfor %}
+
+
+
+
+
+
+
+
+
+
+
+
+
+var data_rarevdj = [];
+    
+{% for item in rare_stats %}
+var data_i = {
+    x: {{ item.sample_size }},
+    y: {{ item.vdj_combn }},
+    name: {{ item.sample_name }},
+    type: 'lines+markers'
+};
+data_rarevdj.push(data_i)
+{% endfor %}
+ 
+var layout = {
+    title: ''
+};
+
+Plotly.newPlot('rarefaction_VDJ_plot', data_rarevdj, layout);
+
+
+
+
+
+
+
+
+
+
+
+
+
+-->
+</script>
+
+
+
+
+
+
+
+</body>
+</html>

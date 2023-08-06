@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{% include "head.html" %}
+
+<body>
+
+  <div class="skip-to">
+  <a href="#content">Skip to main content</a>
+  <a href="#nav">Skip to section navigation</a>
+  </div>
+
+  {% include "header.html" %}
+
+  <main role="main">
+
+    <div id="nav" class="sidebar">
+      <nav class="local-nav" aria-label="main navigation">
+        <h2 class="visuallyhidden">Main navigation</h2>
+        <ul>
+        {% for nav_item in nav %}
+          {% include "nav.html" %}
+        {% endfor %}
+        </ul>
+      </nav>
+    </div>
+
+    <article id="content" class="content-main">
+
+      <header>
+        {% if current_page and current_page.is_homepage %}
+          <h1>{{ site_name }}</h1>
+        {% else %}
+          {% if current_page and current_page.title.startswith("_") %}
+            <h1>{{ page_title | replace("_", "") }}</h1>
+          {% else %}
+            <h1>{{ page_title }}</h1>
+          {% endif %}
+        {% endif %}
+      </header>
+
+
+
+        {% if current_page and meta.abstract %}
+        <p class="abstract">{{ meta.abstract[0] }}</p>
+      {% endif %}
+
+      {% if toc and toc|list|length > 0 and not meta.hide_toc %}
+        <nav class="index-links">
+          <h2>In this section</h2>
+          <ul>
+          {% for toc_item in toc %}
+              <li><a href="{{ toc_item.url }}">{{ toc_item.title }}</a></li>
+              {% for toc_item in toc_item.children %}
+                <li><a href="{{ toc_item.url }}">{{ toc_item.title }}</a></li>
+              {% endfor %}
+          {% endfor %}
+          </ul>
+        </nav>
+      {% endif %}
+
+      {% block content %}
+        {{ content }}
+      {% endblock %}
+
+      <footer>
+      {% block article_footer_content %}
+      {% endblock %}
+      {% if repo_url and current_page %}
+        {% if not current_page.is_homepage %}
+          <a rel="external" href="{{ repo_url }}/edit/master/docs{{ current_page.abs_url.rstrip('index.html').rstrip('/') }}.md">Edit this page on GitHub</a>
+        {% else %}
+          <a rel="external" href="{{ repo_url }}/edit/master/docs/index.md">Edit this page on GitHub</a>
+        {% endif %}
+      {% endif %}
+      <footer>
+
+    </article>
+
+  </main>
+
+  {% block page_footer %}
+  <footer role="contentinfo">
+    <div class="wrapper">
+      <div class="footer-logo">
+        <img src="https://raw.githubusercontent.com/AusDTO/mkdocs-gov-au-theme/master/gov_au_theme/assets/images/coat-of-arms.png" alt="Australian Government Coat of Arms">
+      </div>
+      <div class="footer-links">
+        <nav>
+          <h2 class="visuallyhidden">Main footer navigation</h2>
+          {% if config.extra.footer_links %}
+            <ul>
+            {% for footer_link in config.extra.footer_links %}
+              <li><a {% if footer_link.external == 'true' %}rel="external"{% endif %} href="{{ footer_link.url }}">{{ footer_link.title }}</a></li>
+            {% endfor %}
+            </ul>
+          {% endif %}
+        </nav>
+        <p>&copy; Commonwealth of Australia
+      </div>
+    </div>
+  </footer>
+  {% endblock %}
+
+</body>
+</html>

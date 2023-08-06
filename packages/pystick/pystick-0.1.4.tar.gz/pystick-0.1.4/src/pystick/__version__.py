@@ -1,0 +1,10 @@
+__version__ = "0.1.4"
+__git_commiter_name__ = "Guy Rozendorn"
+__git_commiter_email__ = "guy@rzn.co.il"
+__git_branch__ = 'develop'
+__git_remote_tracking_branch__ = 'origin/develop'
+__git_remote_url__ = 'git@git.infinidat.com:host-opensource/pystick.git'
+__git_head_hash__ = 'fb2311001cb4cd958bc9226d629d6ae7a57096ba'
+__git_head_subject__ = 'Finished Release v0.1.4'
+__git_head_message__ = '* develop:\n  TRIVIAL .gitignore\n  COMVE-116 handling files that have a docstring with the word encoding\n  TRIVIAL print_exception\n  TRIVIAL fixing recursion in Base.__repr__\n  TRIVIAL Base.__repr__\n  TRIVIAL fixing NameError\n  TRIVIAL using print_exception\n  TRIVIAL _scons_syntax_error: using print_tb\n  COMVE-116 handling the case the file does not have a newline\n  COMVE-116 handling the case the file does not have a newline\n  COMVE-116 fixing coding stripping'
+__git_dirty_diff__ = ''

@@ -1,0 +1,94 @@
+Version: 1.1.55
+Utils for ryoka.
+
+**Usage:**
+
+If you want to output debug log, you can do it by export RK_DEBUG.
+
+export RK_DEBUG=0 : Output no log.
+
+export RK_DEBUG=1 : Output error log.
+
+export RK_DEBUG=2 : Output error and warning log.
+
+export RK_DEBUG=3 : Output error and warning and debug log.
+
+*Utils*
+
+    from ryoka_utils.utils import Utils
+
+    utils = Utils()
+
+    + utils.abspath(path)
+    + utils.basename(path)
+    + utils.chmod(path, mode)
+    + utils.chown(path, user, group)
+    + utils.command(cmd)
+    + utils.copy(src, dst)
+    + utils.decode(text)
+    + utils.dirname(path)
+    + utils.exists(path)
+    + utils.exit()
+    + utils.get_current(file_path)
+    + utils.get_dir_path_in_dir(dir_path)
+    + utils.get_env(key)
+    + utils.get_file_path_in_dir(dir_path)
+    + utils.get_path_in_dir(dir_path)
+    + utils.get_pid()
+    + utils.get_platform()
+    + utils.is_root()
+    + utils.isdir(path)
+    + utils.isfile(path)
+    + utils.join_dirs(path_list)
+    + utils.match_keys(word)
+    + utils.mkdir(path)
+    + utils.popd()
+    + utils.pushd(path)
+    + utils.remove(path)
+    + utils.rename(src, dst)
+    + utils.splitext(path)
+    + utils.unzip(src, dst)
+    + utils.unzip_tar_bz2(src, dst)
+    + utils.unzip_tar_gz(src, dst)
+    + utils.zip(src, dst, forWin, forOSX)
+    + utils.zip_tar_bz2(src, dst)
+    + utils.zip_tar_gz(src, dst)
+
+*SendMail*
+
+    from ryoka_utils.mail import SendMail
+
+    mail = SendMail()
+
+    + mail.send()
+    + mail.set_body(body)
+    + mail.set_charcode(code)
+    + mail.set_from_address(address)
+    + mail.set_password(password)
+    + mail.set_title(title)
+    + mail.set_to_address(address)
+
+*Debugger*
+
+    from ryoka_utils.debugger import Debugger
+
+    debugger = Debugger(debug_level)
+
+    + debugger.error()
+    + debugger.log()
+    + debugger.warn()
+
+*Slack*
+
+    from ryoka_utils.slack import Slack
+
+    slack = Slack()
+
+    + slack.get_channel_list()
+    + slack.get_history(count, latest, oldest, unread)
+    + slack.listen(interval, callback)
+    + slack.post_message(message)
+    + slack.set_channel(channel_name)
+    + slack.set_icon(url)
+    + slack.set_username(username)
+

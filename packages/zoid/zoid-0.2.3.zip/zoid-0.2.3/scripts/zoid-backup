@@ -1,0 +1,37 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+from __future__ import unicode_literals, print_function
+
+if __name__ == '__main__':
+    import sys, os
+    import zoid
+    from zoid import Util
+
+    LOG = zoid.LOG
+
+    zoid.ARGPARSER.add_argument("server_name", help="name of the server to backup")
+
+    zoid.init()
+
+    server_name = zoid.ARGS.server_name
+
+    if not zoid.server_exists(server_name):
+        LOG.error("server configuration for '%s' not exists" % server_name)
+        sys.exit(-1)
+
+    srv = zoid.get_server(server_name)
+
+    if srv.is_running():
+        LOG.error("the server '%s' is running, to create a backup you must stop it first", server_name)
+        sys.exit(-1)
+
+    backup_path = os.path.join(zoid.HOME_PATH, "backups")
+    if not os.path.exists(backup_path):
+        os.makedirs(backup_path)
+
+    import datetime
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    import zipfile
+    with zipfile.ZipFile(os.path.join(backup_path, "%s-%s.zip"%(srv.name, timestamp)), "w", zipfile.ZIP_DEFLATED) as fp:
+        Util.zipdir(fp, srv.get_data_path(), "srv\\"+srv.name)

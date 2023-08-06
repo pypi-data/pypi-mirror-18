@@ -1,0 +1,190 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Presentation of PyNuSMV &#8212; PyNuSMV 1.0rc2 documentation</title>
+    
+    <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0rc2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="top" title="PyNuSMV 1.0rc2 documentation" href="index.html" />
+    <link rel="next" title="PyNuSMV Reference" href="pynusmv.html" />
+    <link rel="prev" title="Getting started" href="tutorial.html" /> 
+  </head>
+  <body role="document">
+      <div class="header" role="banner"><h1 class="heading"><a href="index.html">
+          <span>PyNuSMV 1.0rc2 documentation</span></a></h1>
+        <h2 class="heading"><span>Presentation of PyNuSMV</span></h2>
+      </div>
+      <div class="topnav" role="navigation" aria-label="top navigation">
+      
+        <p>
+        «&#160;&#160;<a href="tutorial.html">Getting started</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="pynusmv.html">PyNuSMV Reference</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="presentation-of-pynusmv">
+<span id="pynusmv-overview"></span><h1>Presentation of PyNuSMV<a class="headerlink" href="#presentation-of-pynusmv" title="Permalink to this headline">¶</a></h1>
+<p>PyNuSMV is a Python interface to NuSMV, allowing to use NuSMV as a Python library. It is composed of several classes representing NuSMV data structures and providing functionalities on these data.
+This page describes the goals behind PyNuSMV and the architecture of the library and, covers its limitations.</p>
+<div class="section" id="goals">
+<h2>Goals<a class="headerlink" href="#goals" title="Permalink to this headline">¶</a></h2>
+<p>The main goal of PyNuSMV is to provide a Python interface for NuSMV functionalities. This interface can be used as a library of functions on models, BDDs, and other data structures of NuSMV.</p>
+<p>One subgoal is to provide all the functionalities of NuSMV at the Python level, e.g. calling the <code class="docutils literal"><span class="pre">bdd_and</span></code> function on two <code class="docutils literal"><span class="pre">bdd_ptrs</span></code>. This is achieved by using <a class="reference external" href="http://www.swig.org">SWIG</a>, a wrapper generator, to generate a wrapper for every function of NuSMV. Thanks to this wrapper, there are no restrictions to calling NuSMV functions and using its data structures. On the other hand, no barriers are set to forbid erroneous behaviors or to help the user.</p>
+<p>Another subgoal is to provide a Python-like library to access the main data structures and functions of NuSMV: FSM, BDD, parser, model checking algorithms, simulation, etc. For example, providing a class <code class="docutils literal"><span class="pre">BDD</span></code> with a built-in operator <code class="docutils literal"><span class="pre">&amp;</span></code>, such that <code class="docutils literal"><span class="pre">bdd1</span> <span class="pre">&amp;</span> <span class="pre">bdd2</span></code> computes <code class="docutils literal"><span class="pre">bdd_and(bdd1,</span> <span class="pre">bdd2)</span></code>. This library would contain the error mechanisms required to ensure the correct usage of NuSMV.</p>
+<p>In summary, PyNuSMV has two main goals:</p>
+<ul class="simple">
+<li>providing a complete Python interface for NuSMV functions and data structures;</li>
+<li>providing a Python-like interface to some major data structures and functionalities.</li>
+</ul>
+</div>
+<div class="section" id="architecture">
+<h2>Architecture<a class="headerlink" href="#architecture" title="Permalink to this headline">¶</a></h2>
+<p>PyNuSMV is composed of three main layers. The first layer is NuSMV. The second layer is called the lower interface; it contains all the functions of NuSMV, at Python level, wrapped by SWIG. The third layer is called the upper interface; it contains the Python-like functionalities built upon the lower interface.</p>
+<div class="figure align-center" id="id2">
+<a class="reference internal image-reference" href="_images/architecture.png"><img alt="_images/architecture.png" src="_images/architecture.png" style="width: 12cm;" /></a>
+<p class="caption"><span class="caption-text">PyNuSMV three-layer architecture</span></p>
+</div>
+<div class="section" id="nusmv">
+<h3>NuSMV<a class="headerlink" href="#nusmv" title="Permalink to this headline">¶</a></h3>
+<p>The version of NuSMV used in PyNuSMV is the version 2.5.4. NuSMV code has been kept unchanged, except for very small details:</p>
+<ul class="simple">
+<li>some functions and macro declarations have been commented because they are defined twice;</li>
+<li>some static keywords have been removed to allow exporting the functions;</li>
+<li>in the <cite>src/cmd/cmdMisc.c</cite> file, at line 170, the <code class="docutils literal"><span class="pre">nusmv_assert</span></code> checking that <code class="docutils literal"><span class="pre">start_time</span></code> is <code class="docutils literal"><span class="pre">-1</span></code> has been commented. With this check, it is impossible to initialize, deinitialize and reinitialize NuSMV.</li>
+</ul>
+<p>All these changes can be found by searching the commented string &#8220;sbusard&#8221; in NuSMV sources.</p>
+</div>
+<div class="section" id="lower-interface">
+<h3>Lower Interface<a class="headerlink" href="#lower-interface" title="Permalink to this headline">¶</a></h3>
+<p>The lower interface is composed of a set Python modules generated by SWIG. For every NuSMV package, i.e. for every sub-directory in the <cite>src/</cite> directory of NuSMV, there is a SWIG interface and a Python module that provide wrappers for functions and data structures of the package. This section briefly discusses the structure and content of the lower interface and presents its limitations.</p>
+<div class="section" id="structure">
+<h4>Structure<a class="headerlink" href="#structure" title="Permalink to this headline">¶</a></h4>
+<p>The structure of the lower interface is a copy of the one of NuSMV. Let&#8217;s consider as a NuSMV package any sub-directory of the <cite>src/</cite> directory of NuSMV sources. For example, NuSMV contains the <cite>mc/</cite> and <cite>fsm/bdd/</cite> packages. The structure of the lower interface is the same. The lower interface is located in the <code class="xref py py-mod docutils literal"><span class="pre">pynusmv.nusmv</span></code> Python package. Every NuSMV package gets its PyNuSMV package. For example, the <cite>prop/</cite> NuSMV package is wrapped into the <code class="xref py py-mod docutils literal"><span class="pre">pynusmv.nusmv.prop</span></code> Python package; the <cite>compile/symb_table/</cite> NuSMV package is wrapped into the <code class="xref py py-mod docutils literal"><span class="pre">pynusmv.nusmv.compile.symb_table</span></code> package.
+Furthermore, every wrapped function is automatically documented by SWIG with the corresponding C function signature. It allows the developer to know what types of arguments the wrapped function takes.</p>
+</div>
+<div class="section" id="content">
+<h4>Content<a class="headerlink" href="#content" title="Permalink to this headline">¶</a></h4>
+<p>The goal of the lower interface is to provide a wrapper for every function of NuSMV. In practice, for every package, only the set of functions that are considered as public are provided. This means that, for every package, all the headers are exported, except the ones with a name ending with <cite>Int.h</cite>, <cite>_int.h</cite> or <cite>_private.h</cite>.</p>
+</div>
+<div class="section" id="limitations">
+<h4>Limitations<a class="headerlink" href="#limitations" title="Permalink to this headline">¶</a></h4>
+<p>The lower interface has some limitations. First, it does not wrap all the functions, but only the ones present in the public headers, as described in the previous section.</p>
+<p>Furthermore, there are some exceptions:</p>
+<ul class="simple">
+<li>SAT-based functionalities are not exported; the <cite>sat/solvers/</cite> NuSMV package is not wrapped.</li>
+<li>the <cite>utils/lsort.h</cite> header is not wrapped because SWIG cannot process it.</li>
+<li>A set of functions, from different packages, are not wrapped because they have no implementation.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="upper-interface">
+<h3>Upper Interface<a class="headerlink" href="#upper-interface" title="Permalink to this headline">¶</a></h3>
+<p>The upper interface is composed of Python classes representing data structures of NuSMV as well as additional modules giving access to main functionalities that do not belong to a data structure, like CTL model checking. Each instance of these classes contains a pointer to the corresponding NuSMV data structure and provides a set of methods on this pointer.
+This section explains the way all pointers to data structures are wrapped, how the memory is managed and presents an overview of the classes and modules currently defined.</p>
+<div class="section" id="wrapping-pointers">
+<h4>Wrapping pointers<a class="headerlink" href="#wrapping-pointers" title="Permalink to this headline">¶</a></h4>
+<p>Every pointer to a NuSMV data structure is wrapped into a Python class that is a subclass of the <a class="reference internal" href="pynusmv.html#pynusmv.utils.PointerWrapper" title="pynusmv.utils.PointerWrapper"><code class="xref py py-class docutils literal"><span class="pre">PointerWrapper</span></code></a> class. This class contains a <code class="docutils literal"><span class="pre">_ptr</span></code> attribute (the wrapped pointer) and implements the <code class="docutils literal"><span class="pre">__del__</span></code> destructor. All the other functionalities are left to subclasses. This provides a uniform way of wrapping all NuSMV pointers.</p>
+</div>
+<div class="section" id="garbage-collection">
+<h4>Garbage Collection<a class="headerlink" href="#garbage-collection" title="Permalink to this headline">¶</a></h4>
+<p>In PyNuSMV, we distinguish two types of pointers to NuSMV data structures: the pointers that have to be freed and the ones that do not. For example, a pointer to a BDD has to be freed after usage (with <code class="docutils literal"><span class="pre">bdd_free</span></code>) while a pointer to the main FSM do not, because NuSMV frees it when deinitializing.</p>
+<p>In addition to the wrapped pointer, the PointerWrapper class contains a flag called <code class="docutils literal"><span class="pre">_freeit</span></code> that tells whether the pointer has to be freed when destroying the wrapper. If needed, the destructor calls the <code class="docutils literal"><span class="pre">_free</span></code> method, that does the work. The <code class="docutils literal"><span class="pre">_free</span></code> method of <a class="reference internal" href="pynusmv.html#pynusmv.utils.PointerWrapper" title="pynusmv.utils.PointerWrapper"><code class="xref py py-class docutils literal"><span class="pre">PointerWrapper</span></code></a> class does nothing. It is the responsibility of subclasses to reimplement this <code class="docutils literal"><span class="pre">_free</span></code> method if the pointer has to be freed. In fact, <a class="reference internal" href="pynusmv.html#pynusmv.utils.PointerWrapper" title="pynusmv.utils.PointerWrapper"><code class="xref py py-class docutils literal"><span class="pre">PointerWrapper</span></code></a> cannot say how to free the pointer since the NuSMV function to call depends on the wrapped pointer (BDDs have to be freed with <code class="docutils literal"><span class="pre">bdd_free</span></code>, other pointers need other functions).</p>
+<p>Furthermore, we define the following conventions:</p>
+<ul class="simple">
+<li>wrappers containing pointers that do not have to be freed do not have to reimplement the <code class="docutils literal"><span class="pre">_free</span></code> method.</li>
+<li>pointers that do not have to be freed can be shared between any number of wrappers. Since these pointers are not freed, there is no problem.</li>
+<li>wrappers containing pointers that have to be freed must reimplement the <code class="docutils literal"><span class="pre">_free</span></code> method to free the pointer when needed.</li>
+<li>there must exist at most one wrapper for any pointer that has to be freed. This ensures that the pointer will be freed only once.</li>
+<li>if no wrapper is created to wrap a pointer, it is the responsibility of the one who got the pointer to free it.</li>
+</ul>
+<p>By following these conventions, PyNuSMV can manage the memory and free it when needed.</p>
+<p>Thanks to the specific <code class="docutils literal"><span class="pre">_free</span></code> method implementations, pointers can be correctly freed when the wrapper is destroyed by Python. But pointers must not be freed after deinitializing NuSMV. So we need a way to free every pointer before deinitializing NuSMV.
+To achieve this garbage collection, PyNuSMV comes with a specific module <a class="reference internal" href="pynusmv.html#module-pynusmv.init" title="pynusmv.init"><code class="xref py py-mod docutils literal"><span class="pre">pynusmv.init</span></code></a> that allows to initialize and deinitialize NuSMV, with the <a class="reference internal" href="pynusmv.html#pynusmv.init.init_nusmv" title="pynusmv.init.init_nusmv"><code class="xref py py-func docutils literal"><span class="pre">init_nusmv</span></code></a> and <a class="reference internal" href="pynusmv.html#pynusmv.init.deinit_nusmv" title="pynusmv.init.deinit_nusmv"><code class="xref py py-func docutils literal"><span class="pre">deinit_nusmv</span></code></a> functions. Before using PyNuSMV, <code class="docutils literal"><span class="pre">init_nusmv</span></code> must be called; after using PyNuSMV, it is necessary to deinitializing NuSMV by calling <code class="docutils literal"><span class="pre">deinit_nusmv</span></code>. Furthermore, <code class="docutils literal"><span class="pre">init_nusmv</span></code> creates a new list in which every newly created <a class="reference internal" href="pynusmv.html#pynusmv.utils.PointerWrapper" title="pynusmv.utils.PointerWrapper"><code class="xref py py-class docutils literal"><span class="pre">PointerWrapper</span></code></a> (or subclass of it) is registered. When <code class="docutils literal"><span class="pre">deinit_nusmv</span></code> is called, all the wrappers of the list are freed before deinitializing NuSMV. This ensures that all NuSMV data pointers wrapped by PyNuSMV classes are freed before deinitializing NuSMV.</p>
+</div>
+<div class="section" id="classes-and-modules">
+<h4>Classes and Modules<a class="headerlink" href="#classes-and-modules" title="Permalink to this headline">¶</a></h4>
+<p>PyNuSMV is composed of several modules, each one proposing some NuSMV
+functionalities:</p>
+<ul class="simple">
+<li><a class="reference internal" href="pynusmv.html#module-pynusmv.init" title="pynusmv.init"><code class="xref py py-mod docutils literal"><span class="pre">init</span></code></a> contains all the functions needed to initialize and
+close NuSMV. These functions need to be used before any other access to PyNuSMV.</li>
+<li><a class="reference internal" href="pynusmv.html#module-pynusmv.glob" title="pynusmv.glob"><code class="xref py py-mod docutils literal"><span class="pre">glob</span></code></a> provides functionalities to read and build a model
+from an SMV source file.</li>
+<li><a class="reference internal" href="pynusmv.html#module-pynusmv.dd" title="pynusmv.dd"><code class="xref py py-mod docutils literal"><span class="pre">dd</span></code></a> provides BDD-related structures like generic BDD, lists
+of BDDs and BDD-represented states and input values.</li>
+<li><a class="reference internal" href="pynusmv.html#module-pynusmv.exception" title="pynusmv.exception"><code class="xref py py-mod docutils literal"><span class="pre">exception</span></code></a> groups all the PyNuSMV-related
+exceptions.</li>
+<li><a class="reference internal" href="pynusmv.html#module-pynusmv.fsm" title="pynusmv.fsm"><code class="xref py py-mod docutils literal"><span class="pre">fsm</span></code></a> contains all the FSM-related structures like
+BDD-represented FSM, BDD-represented transition relation, BDD encoding and
+symbols table.</li>
+<li><a class="reference internal" href="pynusmv.html#module-pynusmv.prop" title="pynusmv.prop"><code class="xref py py-mod docutils literal"><span class="pre">prop</span></code></a> defines structures related to propositions of a
+model; this includes simple CTL specifications.</li>
+<li><a class="reference internal" href="pynusmv.html#module-pynusmv.parser" title="pynusmv.parser"><code class="xref py py-mod docutils literal"><span class="pre">parser</span></code></a> gives access to NuSMV parser to parse simple
+expressions of the SMV language.</li>
+<li><a class="reference internal" href="pynusmv.html#module-pynusmv.mc" title="pynusmv.mc"><code class="xref py py-mod docutils literal"><span class="pre">mc</span></code></a> contains model checking features.</li>
+<li><a class="reference internal" href="pynusmv.html#module-pynusmv.utils" title="pynusmv.utils"><code class="xref py py-mod docutils literal"><span class="pre">utils</span></code></a> contains some side functionalities.</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="section" id="id1">
+<h2>Limitations<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>PyNuSMV has some limitations. Two major ones are the exposed functionalities and error management.</p>
+<div class="section" id="exposed-functionalities">
+<h3>Exposed functionalities<a class="headerlink" href="#exposed-functionalities" title="Permalink to this headline">¶</a></h3>
+<p>Since the upper interface of PyNuSMV is written by hand, it needs some work to implement its functionalities (compared to the lower interface generated with SWIG). The number of exposed functionalities is relatively small for now. For example, PyNuSMV does not expose SAT-based functionalities like BMC, or LTL model checking and trace generation, simulation and management.</p>
+</div>
+<div class="section" id="error-management">
+<h3>Error Management<a class="headerlink" href="#error-management" title="Permalink to this headline">¶</a></h3>
+<p>NuSMV can react in various ways when an error occurs. It can output a message at <code class="docutils literal"><span class="pre">stderr</span></code> and returns an error flag, e.g. when executing a command. It also integrates a try/fail mechanism using <code class="docutils literal"><span class="pre">lonjmp</span></code> functionalities. And it can also abruptly exit using the <code class="docutils literal"><span class="pre">exit()</span></code> function.</p>
+<p>For now, there is little error management in PyNuSMV. When possible, the try/fail mechanism has been used to avoid NuSMV to completely <code class="docutils literal"><span class="pre">exit()</span></code> when there is an error. Instead, exceptions are raised, with sometimes error messages from NuSMV. In some cases, errors are correctly raised but a message is printed at <code class="docutils literal"><span class="pre">stderr</span></code> by NuSMV itself. Some future work on PyNuSMV includes a better error management.</p>
+</div>
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav" role="navigation" aria-label="bottom navigation">
+      
+        <p>
+        «&#160;&#160;<a href="tutorial.html">Getting started</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="pynusmv.html">PyNuSMV Reference</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2013-2016, Simon Busard, Xavier Gillard.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

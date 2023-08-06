@@ -1,0 +1,169 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>pynusmv.utils &#8212; PyNuSMV 1.0rc2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0rc2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PyNuSMV 1.0rc2 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body role="document">
+      <div class="header" role="banner"><h1 class="heading"><a href="../../index.html">
+          <span>PyNuSMV 1.0rc2 documentation</span></a></h1>
+        <h2 class="heading"><span>pynusmv.utils</span></h2>
+      </div>
+      <div class="topnav" role="navigation" aria-label="top navigation">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for pynusmv.utils</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">The :mod:`pynusmv.utils` module contains some secondary functions and classes</span>
+<span class="sd">used by PyNuSMV internals.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;PointerWrapper&#39;</span><span class="p">,</span> <span class="s1">&#39;fixpoint&#39;</span><span class="p">,</span> <span class="s1">&#39;update&#39;</span><span class="p">]</span>
+
+
+<span class="kn">from</span> <span class="nn">pynusmv.init</span> <span class="k">import</span> <span class="n">_register_wrapper</span>
+
+
+<div class="viewcode-block" id="PointerWrapper"><a class="viewcode-back" href="../../pynusmv.html#pynusmv.fsm.PointerWrapper">[docs]</a><span class="k">class</span> <span class="nc">PointerWrapper</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Superclass wrapper for NuSMV pointers.</span>
+
+<span class="sd">    Every pointer to a NuSMV structure is wrapped in a PointerWrapper</span>
+<span class="sd">    or in a subclass of PointerWrapper.</span>
+<span class="sd">    Every subclass instance takes a pointer to a NuSMV structure as constructor</span>
+<span class="sd">    parameter.</span>
+
+<span class="sd">    It is the responsibility of PointerWrapper and its subclasses to free</span>
+<span class="sd">    the wrapped pointer. Some pointers have to be freed like `bdd_ptr`,</span>
+<span class="sd">    but other do not have to be freed since NuSMV takes care of this;</span>
+<span class="sd">    for example, `BddFrm_ptr` does not have to be freed.</span>
+<span class="sd">    To ensure that a pointer is freed only once, PyNuSMV ensures that</span>
+<span class="sd">    any pointer is wrapped by only one PointerWrapper (or subclass of it)</span>
+<span class="sd">    if the pointer have to be freed.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pointer</span><span class="p">,</span> <span class="n">freeit</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a new PointerWrapper.</span>
+
+<span class="sd">        :param pointer: the pointer to wrap</span>
+<span class="sd">        :param freeit: whether the pointer has to be freed when this wrapper</span>
+<span class="sd">                       is destroyed</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ptr</span> <span class="o">=</span> <span class="n">pointer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_freeit</span> <span class="o">=</span> <span class="n">freeit</span>
+        <span class="n">_register_wrapper</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_free</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Every subclass must implement `_free` if there is something to free.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_freeit</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ptr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_free</span><span class="p">()</span></div>
+
+
+<span class="k">class</span> <span class="nc">AttributeDict</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An `AttributeDict` is a dictionary for which elements can be accessed by</span>
+<span class="sd">    using their keys as attribute names.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">AttributeDict</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span> <span class="o">=</span> <span class="bp">self</span>
+
+
+<div class="viewcode-block" id="fixpoint"><a class="viewcode-back" href="../../pynusmv.html#pynusmv.fsm.fixpoint">[docs]</a><span class="k">def</span> <span class="nf">fixpoint</span><span class="p">(</span><span class="n">funct</span><span class="p">,</span> <span class="n">start</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the fixpoint of `funct`, as a BDD, starting with `start` BDD.</span>
+
+<span class="sd">    :rtype: :class:`BDD &lt;pynusmv.dd.BDD&gt;`</span>
+
+<span class="sd">    .. note:: mu Z.f(Z) least fixpoint is implemented with</span>
+<span class="sd">              `fixpoint(funct, false)`.</span>
+<span class="sd">              nu Z.f(Z) greatest fixpoint is implemented with</span>
+<span class="sd">              `fixpoint(funct, true)`.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">old</span> <span class="o">=</span> <span class="n">start</span>
+    <span class="n">new</span> <span class="o">=</span> <span class="n">funct</span><span class="p">(</span><span class="n">start</span><span class="p">)</span>
+    <span class="k">while</span> <span class="n">old</span> <span class="o">!=</span> <span class="n">new</span><span class="p">:</span>
+        <span class="n">old</span> <span class="o">=</span> <span class="n">new</span>
+        <span class="n">new</span> <span class="o">=</span> <span class="n">funct</span><span class="p">(</span><span class="n">old</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">old</span></div>
+
+
+<div class="viewcode-block" id="update"><a class="viewcode-back" href="../../pynusmv.html#pynusmv.fsm.update">[docs]</a><span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="n">old</span><span class="p">,</span> <span class="n">new</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Update `old` with `new`. `old` is assumed to have the `extend` or `update`</span>
+<span class="sd">    method, and `new` is assumed to be a good argument for the corresponding</span>
+<span class="sd">    method.</span>
+
+<span class="sd">    :param old: the data to update.</span>
+<span class="sd">    :param new: the date to update with.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">old</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">new</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+        <span class="n">old</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">new</span><span class="p">)</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav" role="navigation" aria-label="bottom navigation">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2013-2016, Simon Busard, Xavier Gillard.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

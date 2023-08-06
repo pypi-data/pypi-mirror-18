@@ -1,0 +1,272 @@
+import os
+import datetime
+
+from django.utils.translation import ugettext_lazy as _
+
+from .secrets import SECRETS
+
+
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(PROJECT_DIR)
+
+ROOT_URLCONF = 'core.urls'
+WSGI_APPLICATION = 'core.wsgi.application'
+SECRET_KEY = '{{ secret_key }}'
+
+
+INSTALLED_APPS = [
+    'django.contrib.contenttypes',
+    'cms.admin_addons',
+    'grappelli.dashboard',
+    'grappelli',
+
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+
+    'rest_framework',
+    'rest_framework_docs',
+    'corsheaders',
+    'polymorphic',
+    'django_cron',
+    'filebrowser',
+
+    # 'cms',
+    'cms',
+    'cms.settings',
+    'cms.router',
+    'cms.pages',
+    'cms.nav',
+    'cms.content',
+    'cms.accounts',
+    'cms.emails'
+]
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': ['templates'],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.template.context_processors.i18n',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages'
+            ],
+        },
+    },
+]
+
+
+# Pages
+
+PAGE_TYPES = (
+    (
+        'cms.pages.models.PageCategory',
+        'cms.pages.admin.PageCategoryAdmin'
+    ),
+    (
+        'cms.pages.models.PageArticle',
+        'cms.pages.admin.PageArticleAdmin'
+    ),
+    (
+        'cms.pages.models.PageCustomComponent',
+        'cms.pages.admin.PageCustomComponentAdmin'
+    )
+)
+
+
+# Auth
+
+ACCOUNTS_ACTIVATION = True
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation'
+             '.UserAttributeSimilarityValidator'},
+    {
+        'NAME': 'django.contrib.auth.password_validation'
+                '.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 8}
+    },
+    {'NAME': 'django.contrib.auth.password_validation'
+             '.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation'
+             '.NumericPasswordValidator'}
+]
+
+
+# Mailing
+
+DEFAULT_FROM_EMAIL = ''
+CONTACT_FORM_RECIPIENTS = ''
+
+
+# Languages
+
+USE_I18N = True
+LANGUAGE_CODE = 'en'
+LANGUAGES = (
+    ('en', _('English')),
+)
+
+USE_TZ = True
+TIME_ZONE = 'Europe/Warsaw'
+
+USE_L10N = True
+
+
+# Static files
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATIC_URL = '/static/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = '/media/'
+
+# RestFramework
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
+    ),
+    'DEFAULT_RENDERER_CLASSES': (
+        'djangorestframework_camel_case.render.CamelCaseJSONRenderer',
+    ),
+    'DEFAULT_PARSER_CLASSES': (
+        'djangorestframework_camel_case.parser.CamelCaseJSONParser',
+        'rest_framework.parsers.MultiPartParser'
+    ),
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.UserRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'user': '15/second',
+    },
+    'NON_FIELD_ERRORS_KEY': '_error'
+}
+
+
+def jwt_response_payload_handler(token, user=None, request=None):
+    payload = {
+        'token': token,
+        'user': {
+            'pk': user.pk,
+            'username': user.username
+        }
+    }
+    if user.is_superuser:
+        payload['user']['is_admin'] = True
+    return payload
+
+
+JWT_AUTH = {
+    'JWT_RESPONSE_PAYLOAD_HANDLER':
+        'core.settings.base.jwt_response_payload_handler',
+    'JWT_EXPIRATION_DELTA': datetime.timedelta(days=7),
+    'JWT_ALLOW_REFRESH': True,
+    'JWT_REFRESH_EXPIRATION_DELTA': datetime.timedelta(days=365),
+}
+
+
+# Cron jobs
+
+CRON_CLASSES = (
+    'cms.emails.cron.SendAwaitingCronJob',
+)
+
+
+# Admin
+
+GRAPPELLI_ADMIN_TITLE = 'PixelCMS'
+GRAPPELLI_INDEX_DASHBOARD = 'cms.admin_addons.dashboard.IndexDashboard'
+GRAPPELLI_AUTOCOMPLETE_SEARCH_FIELDS = {
+    'content': {
+        'category': ('id__iexact', 'name__icontains'),
+        'article': ('id__iexact', 'title__icontains')
+    },
+    'pages': {
+        'page': ('id__iexact', 'title__icontains')
+    }
+}
+
+
+# Filebrowser
+
+FILEBROWSER_NORMALIZE_FILENAME = True
+FILEBROWSER_MAX_UPLOAD_SIZE = 1073741824  # 1 GB
+FILEBROWSER_VERSIONS = {
+    'admin_thumbnail': {
+        'verbose_name': 'None',
+        'width': 60, 'height': 60, 'opts': 'crop'
+    },
+    '1col': {
+        'verbose_name': _('1 column (65x37)'),
+        'width': 65, 'height': 37, 'opts': 'crop'
+    },
+    '2cols': {
+        'verbose_name': _('2 columns (160x90)'),
+        'width': 160, 'height': 90, 'opts': 'crop'
+    },
+    '3cols': {
+        'verbose_name': _('3 columns (255x143)'),
+        'width': 255, 'height': 143, 'opts': 'crop'
+    },
+    '4cols': {
+        'verbose_name': _('4 columns (350x197)'),
+        'width': 350, 'height': 197, 'opts': 'crop'
+    },
+    '5cols': {
+        'verbose_name': _('5 columns (445x250)'),
+        'width': 445, 'height': 250, 'opts': 'crop'
+    },
+    '6cols': {
+        'verbose_name': _('6 columns (540x304)'),
+        'width': 540, 'height': 304, 'opts': 'crop'
+    },
+    '7cols': {
+        'verbose_name': _('7 columns (635x357)'),
+        'width': 635, 'height': 357, 'opts': 'crop'
+    },
+    '8cols': {
+        'verbose_name': _('8 columns (730x411)'),
+        'width': 730, 'height': 411, 'opts': 'crop'
+    },
+    '9cols': {
+        'verbose_name': _('9 columns (825x464)'),
+        'width': 825, 'height': 464, 'opts': 'crop'
+    },
+    '10cols': {
+        'verbose_name': _('10 columns (920x518)'),
+        'width': 920, 'height': 518, 'opts': 'crop'
+    },
+    '11cols': {
+        'verbose_name': _('11 columns (1015x571)'),
+        'width': 1015, 'height': 571, 'opts': 'crop'
+    },
+    '12cols': {
+        'verbose_name': _('12 columns (1110x624)'),
+        'width': 1110, 'height': 624, 'opts': 'crop'
+    },
+    'fullhd': {
+        'verbose_name': ('Full HD (1920x1080)'),
+        'width': 1920, 'height': 1080, 'opts': 'crop'
+    }
+}
+FILEBROWSER_ADMIN_VERSIONS = [
+    '1col', '2cols', '3cols', '4cols', '5cols', '6cols', '7cols', '8cols',
+    '9cols', '10cols', '11cols', '12cols', 'fullhd'
+]

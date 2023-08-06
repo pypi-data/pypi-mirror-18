@@ -1,0 +1,56 @@
+#!/usr/bin/env python
+import os
+import sys
+from VMAgent.VMAgent import vm_agent_run
+
+def daemon(func):
+    """
+    :param func:
+    :return:
+    """
+    def _daemon():
+        try:
+            pid = os.fork()
+            if pid > 0:
+                sys.exit(0)
+        except OSError as error:
+            sys.exit(1)
+
+        os.chdir('/')
+        os.umask(0)
+        os.setsid()
+
+        try:
+            pid = os.fork()
+            if pid > 0:
+                sys.exit(0)
+        except OSError as error:
+            sys.exit(1)
+
+        pid = str(os.getpid())
+        file("/var/run/VMAgent.pid", 'w+').write("%s\n" % pid)
+
+        func()
+
+    return _daemon
+
+
+@daemon
+def vm_agent_run_daemon():
+    vm_agent_run()
+
+
+def main():
+    with open('/var/run/VMAgent.pid', "r") as f:
+        pid = int(f.read().strip())
+        f.close()
+    try:
+        os.kill(pid, 0)
+        print('VMAgent already running on pid %d\n' % pid)
+        print('If you want to restart, Try VMAgent-stop, and then run VMAgent agent\!')
+    except OSError:
+        vm_agent_run_daemon()
+
+if __name__ == '__main__':
+    main()
+

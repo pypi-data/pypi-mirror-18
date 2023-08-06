@@ -1,0 +1,103 @@
+<div metal:use-macro="layout.base" i18n:domain="onegov.feriennet">
+    <tal:block metal:fill-slot="title">
+        ${title}
+    </tal:block>
+    <tal:block metal:fill-slot="content">
+        <p tal:condition="not:has_bookings" i18n:translate>
+            No bookings in <span tal:replace="period.title" i18n:name="period" />.
+        </p>
+
+        <div class="my-bookings" tal:condition="has_bookings">
+            <h2>${period.title}</h2>
+
+            <div class="callout panel">
+                <tal:block metal:use-macro="layout.macros.period_hints" />
+
+                <div class="hint">
+                    <i class="fa fa-star fa-fw" aria-hidden="true"></i>
+                    <tal:block i18n:translate>
+                        Mark up to three occasions per child as favorites
+                    </tal:block>
+                </div>
+
+                <div class="hint">
+                    <i class="fa fa-puzzle-piece fa-fw" aria-hidden="true"></i>
+                    <tal:block i18n:translate>
+                        Once the pre-booking is over, we will divide all children
+                        into activities
+                    </tal:block>
+                </div>
+
+                <div class="hint">
+                    <i class="fa fa-balance-scale fa-fw" aria-hidden="true"></i>
+                    <tal:block i18n:translate>
+                        We cannot guarantee that everyone gets into their favorite activity
+                    </tal:block>
+                </div>
+            </div>
+
+            <div class="row attendee-bookings" tal:repeat="attendee attendees">
+                <div class="columns small-12 medium-6 end">
+                    <h3>${attendee.name}</h3>
+
+                    <div id="alert-boxes-for-${attendee.id}"></div>
+
+                    <ul>
+                        <li tal:repeat="booking bookings_by_attendee(attendee)" id="booking-${booking.id}">
+                            <div class="row">
+                                <div class="columns small-1">
+                                    <a ic-post-to="${request.link(booking, 'toggle-star')}">
+                                        <tal:block metal:use-macro="layout.macros['star']" />
+                                    </a>
+                                </div>
+                                <div class="columns small-11">
+                                    <a href="${request.link(booking.occasion.activity)}">
+                                        <h4>${booking.occasion.activity.title}</h4>
+                                    </a>
+                                    <div class="occasion">
+                                        ${layout.format_datetime_range(booking.occasion.start, booking.occasion.end)}
+                                    </div>
+                                    <div>
+                                        <!--! During pre-booking we don't show the actual state of the booking, unless the
+                                        occasion was cancelled, otherwise the user might see accepted bookings at a point where those states are not confirmed yet. -->
+                                        <tal:block condition="not:period.confirmed" metal:use-macro="layout.macros.wishlist_booking_state" define="state booking.state" />
+                                        <tal:block condition="period.confirmed" metal:use-macro="layout.macros.confirmed_booking_state" define="state booking.state" />
+                                    </div>
+                                    <div class="actions" tal:define="actions actions_by_booking(booking)">
+                                        <ul tal:condition="actions">
+                                            <li tal:repeat="action actions" tal:content="structure action(request)" />
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="row other-periods" tal:condition="len(periods) > 1">
+            <div class="columns small-12">
+                <h2 i18n:translate>Periods</h2>
+                <ul>
+                    <li tal:repeat="p periods">
+                        <a tal:condition="p.id != period.id" href="${request.link(model.for_period(p))}">${p.title}</a>
+                        <strong tal:condition="p.id == period.id" href="${request.link(model.for_period(p))}">${p.title}</strong>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="row other-users" tal:condition="request.is_admin and users">
+            <div class="columns small-12">
+                <h2 i18n:translate>Users</h2>
+                <ul>
+                    <li tal:repeat="u users">
+                        <a tal:condition="u.id != user.id" href="${request.link(model.for_username(u.username))}">${u.title}</a>
+                        <strong i18n:translate tal:condition="u.id == user.id" href="${request.link(model.for_username(u.username))}">${u.title}</strong>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </tal:block>
+</div>

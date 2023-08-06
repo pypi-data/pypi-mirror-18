@@ -1,0 +1,66 @@
+#!/usr/bin/env python
+"""
+Script to load and view ssh keys found from user directories
+"""
+
+
+import os
+import pwd
+
+from systematic.shell import Script, ScriptCommand, ScriptError
+from systematic.sshconfig import AuthorizedKeys, SSHKeyError
+
+
+class KeyCollectorCommand(ScriptCommand):
+    def configure(self, args):
+        if os.geteuid() != 0:
+            self.exit(1, 'This script must be executed as root')
+
+        args.keyfiles = {}
+        for pw_ent in pwd.getpwall():
+            if args.usernames and pw_ent.pw_name not in args.usernames:
+                continue
+
+            keys = os.path.join(os.path.realpath(pw_ent.pw_dir), '.ssh', 'authorized_keys')
+            if not os.path.isfile(keys):
+                continue
+
+            args.keyfiles[pw_ent.pw_name] = keys
+
+        return args
+
+
+class ListFilesCommand(KeyCollectorCommand):
+    def run(self, args):
+        args = self.configure(args)
+
+        for username in sorted(args.keyfiles):
+            print username, args.keyfiles[username]
+
+
+class ListKeysCommand(KeyCollectorCommand):
+    def run(self, args):
+        args = self.configure(args)
+
+        for username in sorted(args.keyfiles):
+            filename = args.keyfiles[username]
+
+            try:
+                keys = AuthorizedKeys(filename)
+            except SSHKeyError, emsg:
+                self.error('Error loading {0}: {1}'.format(args.keyfiles[username], emsg))
+                continue
+
+            for key in keys:
+                print key.items()
+
+
+script = Script()
+
+c = script.add_subcommand(ListFilesCommand('list', 'List SSH authorized  key files'))
+c.add_argument('-u', '--usernames', action='append', help='Usernames to match')
+
+c = script.add_subcommand(ListKeysCommand('keys', 'List SSH authorized  keys'))
+c.add_argument('-u', '--usernames', action='append', help='Usernames to match')
+
+args = script.parse_args()

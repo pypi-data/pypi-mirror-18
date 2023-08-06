@@ -1,0 +1,65 @@
+#!/usr/bin/env python
+
+import logging
+import sys
+import shutil
+from pkg_resources import get_distribution, ResourceManager
+from optparse import OptionParser
+
+import modularjs
+
+def help():
+    global parser
+    print parser.format_help()
+    exit(1)
+
+
+def main():
+    global parser
+    name = sys.argv[0]
+    usage = """\t%s init
+\t%s build MODULE_NAME_1 [MODULE_NAME_1 ...] [-o OUTPUT_BASE_NAME]""" % (name, name)
+    parser = OptionParser(usage=usage, version="%prog 0.1")
+    parser.add_option("-i", "--selfinclude", dest="selfinclude", action="store_true",
+                      help="Include 'include.js' in the build")
+    parser.add_option("-s", "--separator", dest="separator", default=".",
+                      help="Use alternative name separator", metavar="SEPARATOR")
+    parser.add_option("-o", "--output", dest="output",
+                      help="Save output to OUTPUT_BASE_NAME", metavar="OUTPUT_BASE_NAME")
+    options, input_modules = parser.parse_args()
+
+    argc = len(sys.argv)
+
+    if argc < 2:
+        help()
+
+    command = input_modules[0]
+    input_modules = input_modules[1:]
+
+    distribution = get_distribution("modularjs")
+
+    if command == 'init':
+        print 'Initializing...'
+        filename = distribution.get_resource_filename(ResourceManager(), 'include.js');
+        shutil.copy(filename, '.')
+        print 'Done, file %s copied to current directory' % filename
+
+    elif command == 'build':
+        output_basename = options.output or '%s%sbuild' % (input_modules[0], options.separator)
+        modularjs.build(output_basename, input_modules, options.selfinclude, options.separator)
+
+    else:
+        help()
+
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO,
+                        format='%(levelname)s %(message)s')
+
+    try:
+        import psyco
+        psyco.full()
+    except ImportError:
+        pass
+
+    main()

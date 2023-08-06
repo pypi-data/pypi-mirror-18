@@ -1,0 +1,702 @@
+﻿{% extends 'base.html' %}
+
+{% block css %}
+<!-- PAGE SPECIFIC CSS REFERENCES -->
+{% load staticfiles %}
+<link href="{% static 'css/codemirror.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<!--
+    Brief: The project_detail is used to display contents of a project. 
+    It uses a javascript plugin knockout.js to collect changes to from the user which it 
+    then posts back to the django_rest_framework api endpoints to update the project in a single page application. 
+
+    additionally it proivdes a way to run projects if have the can_run_project property. ({{ can_run_project }})
+     {% if projects %}
+        Projects:
+        {% for project in projects %}
+        * {{ project.project_name}}
+        {% endfor %}
+    {% endif %}
+-->
+
+
+{% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+
+<!-- HTML TEMPLATE -->
+<div id="save-options">
+    <div class="container">
+
+        <div class="page-header">
+            <h1>
+                Project: <span title="Click to edit" contenteditable="true" data-bind="editableText: name"></span>
+                <br />
+                <small>
+                    Description:
+                    <span title="Click to edit" contenteditable="true" data-bind="editableText: description"></span>
+                </small>
+            </h1>
+            <h4>
+                Public:
+                <input type="checkbox" data-bind="bootstrapSwitchOn: public" />
+                <br />
+                <small>
+                    Owner: {{project.user.username}}
+                </small>
+            </h4>
+            <h5>Created: {{project.created_date}}</h5>
+            <a class="btn btn-mini" data-bind="click: () => {downloadProject();}">Download Project</a>
+            <span style="display:none"> <a id="download" download="" href="">download</a> </span>
+        </div>
+
+        <!-- ALERTS -->
+        <div class="alert alert-success" id="success-alert" hidden>
+            <button type="button" class="close" onclick="$('#success-alert').hide()">x</button>
+            <strong>Saved</strong>
+        </div>
+
+        <div class="alert alert-warning" id="warn-alert" hidden>
+            <button type="button" class="close" onclick="$('#warn-alert').hide()">x</button>
+            <strong><span data-bind="text: WarnTitle"></span></strong>
+            <p class="well well-sm" data-bind="text: WarnMessage"></p>
+        </div>
+
+        <div class="alert alert-danger" id="error-alert" hidden>
+            <button type="button" class="close" onclick="$('#error-alert').hide()">x</button>
+            <strong>Failed</strong>
+            <p class="well well-sm" data-bind="text: FailMessage"></p>
+        </div>
+        <!-- FILE TABS -->
+        <ul class="nav nav-tabs">
+            <!-- ko foreach: projectFilesSorted -->
+            <li>
+                <a data-bind="click: () => {$parent.onclickfile(id);}" data-toggle="tab">
+                    <i title="Startup File" data-bind="visible: startup" class="glyphicon glyphicon-star"></i>
+                    <span contenteditable="true" data-bind="editableText: name, attr: { title: name() == 'new name' ? 'Click to rename' : description }"></span>
+                </a>
+            </li>
+            <!-- /ko -->
+            <li>
+                <a title="Add new file" data-bind="click: () => {addFile()}">+</a>
+            </li>
+        </ul>
+
+        <!-- TAB CONTENT -->
+        <div>
+            <div data-bind="with: selectedFile">
+                <div id="selectedfiledisplay">
+                    <table class="table table-bordered">
+                        <tr>
+                            {% if request.user.is_superuser %}
+                            <th>Id</th>
+                            {% endif %}
+                            <th>Short Description</th>
+                            <th>Public</th>
+                            <th>Startup</th>
+                        </tr>
+                        <tr>
+                            {% if request.user.is_superuser %}
+                            <td><span data-bind="text: id"></span></td>
+                            {% endif %}
+                            <td><span contentEditable="true" data-bind="editableText: description"></span></td>
+                            <td>
+
+                                <span data-bind="if: $parent.public">
+                                    <input type="checkbox" data-bind="bootstrapSwitchOn: public" />
+                                </span>
+                                <span data-bind="if: !$parent.public()">
+                                    <input disabled="disabled" type="checkbox" data-bind="bootstrapSwitchOn: public" />
+                                </span>
+                            </td>
+                            <td><input type="checkbox" data-bind="bootstrapSwitchOn: startup" /></td>
+                        </tr>
+                    </table>
+                    <select class="form-control" data-bind="options: versionsSorted, optionsText: 'date', value: selectedVersion"></select>
+                </div>
+            </div>
+        </div>
+
+        <!-- CODEMIRROR EDITOR -->
+        <div class="panel-body">
+            <div class="code"></div>
+        </div>
+
+        <!-- BUTTONS -->
+        <div class="save-options">
+            <button class="btn btn-mini btn-danger" data-bind="click: () => {reset();}">Cancel</button>
+            <span data-bind="if: showSave"><a class="btn btn-mini" data-bind="click: () => {saveFileVersion();}">Save</a></span>
+            <span data-bind="if: !showSave() && selectedFile() != null && isLatest()">
+                <button class="btn btn-mini btn-warning" data-bind="click: () => {compileProjectFile();}">Compile</button>
+            </span>
+
+            {% if can_run_project %}
+            <span data-bind="if: !showSave() && selectedFile() != null && selectedFile().startup()  && isLatest()">
+                <button class="btn btn-mini btn-success" data-bind="click: () => {runProject();}">Run</button>
+            </span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+
+<!-- CODE MIRROR SCRIPTS -->
+<script src="{% static 'js/codemirror.js' %}"></script>
+<script src="{% static 'js/mode/python.js' %}"></script>
+<script src="{% static 'js/mode/django.js' %}"></script>
+
+<!-- JAVASCRIPT TO POPULATE TEMPLATE -->
+<script type="text/javascript">
+    $(document).ready(function () {
+        // Page viewmodel (knockoutjs)
+        var SaveFileViewModel = function () {
+            // setup self reference
+            var self = this;
+
+            self.owner = '{{project.user.username}}';
+            self.name = ko.observable('{{project.project_name}}');
+            self.description = ko.observable('{{project.project_description}}');
+            self.commandline = ko.observable('{{project.commandline}}');
+            self.public = ko.observable('{{project.public}}' == 'True');
+
+            self.nameBefore = "";
+            self.nameDisabled = false;
+
+            self.name.subscribe(function (oldValue) {
+                //store copy, in case it needs to be restored
+                self.nameBefore = oldValue;
+            }, null, "beforeChange");
+
+            self.name.subscribe(function (newValue) {
+                if (!self.nameDisabled) {
+                    self.nameDisabled = true;
+
+                    $.post('/djangosourcecontrol/api/project/' + '{{project.id}}' + "/",
+                        {
+                            'project_name': newValue,
+                            'csrfmiddlewaretoken': '{{ csrf_token }}'
+                        }).done(function (data) {
+                            self.showSaveAlert();
+                        }).fail(function (data) {
+                            self.name(self.nameBefore);
+                            self.showFailAlert(JSON.stringify(data));
+                        }).always(function () {
+                            self.nameDisabled = false;
+                        });
+                }
+            });
+
+            self.descriptionBefore = "";
+            self.descriptionDisabled = false;
+
+            self.description.subscribe(function (oldValue) {
+                //store copy, in case it needs to be restored
+                self.descriptionBefore = oldValue;
+            }, null, "beforeChange");
+
+            self.description.subscribe(function (newValue) {
+                if (!self.descriptionDisabled) {
+                    self.descriptionDisabled = true;
+
+                    $.post('/djangosourcecontrol/api/project/' + '{{project.id}}' + "/",
+                        {
+                            'project_description': newValue,
+                            'csrfmiddlewaretoken': '{{ csrf_token }}'
+                        }).done(function (data) {
+                            self.showSaveAlert();
+                        }).fail(function (data) {
+                            self.description(self.descriptionBefore);
+                            self.showFailAlert(JSON.stringify(data));
+                        }).always(function () {
+                            self.descriptionDisabled = false;
+                        });
+                }
+            });
+
+            self.publicBefore = false;
+            self.publicDisabled = false;
+
+            self.public.subscribe(function (oldValue) {
+                //store copy, in case it needs to be restored
+                self.publicBefore = oldValue;
+            }, null, "beforeChange");
+
+            self.public.subscribe(function (newValue) {
+                if (!self.publicDisabled) {
+                    self.publicDisabled = true;
+
+                    $.post('/djangosourcecontrol/api/project/' + '{{project.id}}' + "/",
+                        {
+                            'public': newValue,
+                            'csrfmiddlewaretoken': '{{ csrf_token }}'
+                        }).done(function (data) {
+                            self.showSaveAlert();
+                        }).fail(function (data) {
+                            // reset to the previous version
+                            self.public(self.publicBefore);
+                            self.showFailAlert(JSON.stringify(data));
+                        }).always(function () {
+                            self.publicDisabled = false;
+                        });
+                }
+            });
+
+            self.commandlineBefore = "";
+            self.commandlineDisabled = false;
+
+            self.commandline.subscribe(function (oldValue) {
+                //store copy, in case it needs to be restored
+                self.commandlineBefore = oldValue;
+            }, null, "beforeChange");
+
+            self.commandline.subscribe(function (newValue) {
+                if (!self.commandlineDisabled) {
+                    self.commandlineDisabled = true;
+
+                    $.post('/djangosourcecontrol/api/project/' + '{{project.id}}' + "/",
+                        {
+                            'commandline': newValue,
+                            'csrfmiddlewaretoken': '{{ csrf_token }}'
+                        }).done(function (data) {
+                            self.showSaveAlert();
+                        }).fail(function (data) {
+                            self.commandline(self.commandlineBefore);
+                            self.showFailAlert(JSON.stringify(data));
+                        }).always(function () {
+                            self.commandlineDisabled = false;
+                        });
+                }
+            });
+
+            self.supressPost = false;
+
+            // view models  (pojos)
+            var file = function (id, name, description, isPublic, startup, versions) {
+                var fileself = this;
+                fileself.id = id;
+                fileself.name = ko.observable(name);
+                fileself.description = ko.observable(description);
+                fileself.public = ko.observable(isPublic);
+                fileself.startup = ko.observable(startup);
+                fileself.versions = versions;
+
+                // sorted list of the project files.
+                fileself.versionsSorted = ko.computed(function () {
+                    var sorted = fileself.versions().sort(function (left, right) {
+                        var leftDate = left.date;
+                        var rightDate = right.date;
+                        var leftId = left.id;
+                        var rightId = right.id;
+
+                        if (leftDate == rightDate) {
+                            return (leftId < rightId) ? -1 : (leftId > rightId) ? 1 : 0;
+                        }
+                        else {
+                            return (leftDate < rightDate) ? -1 : 1;
+                        }
+                    });
+    
+                    return sorted;
+                });
+
+
+                fileself.selectedVersion = ko.observable();
+
+                fileself.nameBefore = "";
+                fileself.nameDisabled = false;
+
+                fileself.name.subscribe(function (oldValue) {
+                    //store copy, in case it needs to be restored
+                    fileself.nameBefore = oldValue;
+                }, null, "beforeChange");
+
+                fileself.name.subscribe(function (newValue) {
+                    if (!fileself.nameDisabled) {
+                        fileself.nameDisabled = true;
+                        $.post('/djangosourcecontrol/api/projectfile/' + fileself.id + "/",
+                            {
+                                'projectfile_name': newValue,
+                                'csrfmiddlewaretoken': '{{ csrf_token }}'
+                            }).done(function (data) {
+                                self.showSaveAlert();
+                            }).fail(function (data) {
+                                fileself.name(fileself.nameBefore);
+                                self.showFailAlert(JSON.stringify(data));
+                            }).always(function () {
+                                fileself.nameDisabled = false;
+                            });
+                    }
+                });
+
+                fileself.publicBefore = false;
+                fileself.publicDisabled = false;
+
+                fileself.public.subscribe(function (oldValue) {
+                    //store copy, in case it needs to be restored
+                    fileself.publicBefore = oldValue;
+                }, null, "beforeChange");
+
+                fileself.public.subscribe(function (newValue) {
+                    if (!fileself.publicDisabled) {
+                        fileself.publicDisabled = true;
+
+                        $.post('/djangosourcecontrol/api/projectfile/' + fileself.id + "/",
+                            {
+                                'public': newValue,
+                                'csrfmiddlewaretoken': '{{ csrf_token }}'
+                            }).done(function (data) {
+                                self.showSaveAlert();
+                            }).fail(function (data) {
+                                fileself.public(fileself.publicBefore);
+                                self.showFailAlert(JSON.stringify(data));
+                            }).always(function () {
+                                fileself.publicDisabled = false;
+                            });
+
+                    }
+                });
+
+                fileself.descriptionBefore = "";
+                fileself.descriptionDisabled = false;
+
+                fileself.description.subscribe(function (oldValue) {
+                    //store copy, in case it needs to be restored
+                    fileself.descriptionBefore = oldValue;
+                }, null, "beforeChange");
+
+                fileself.description.subscribe(function (newValue) {
+                    if (!fileself.descriptionDisabled) {
+                        fileself.descriptionDisabled = true;
+
+                        $.post('/djangosourcecontrol/api/projectfile/' + fileself.id + "/",
+                            {
+                                'projectfile_description': newValue,
+                                'csrfmiddlewaretoken': '{{ csrf_token }}'
+                            }).done(function (data) {
+                                self.showSaveAlert();
+                            }).fail(function (data) {
+                                fileself.description(fileself.descriptionBefore);
+                                self.showFailAlert(JSON.stringify(data));
+                            }).always(function () {
+                                fileself.descriptionDisabled = false;
+                            });
+                    }
+                });
+
+                fileself.startupBefore = ko.observable(false);
+                fileself.startupDisabled = false;
+
+                fileself.startup.subscribe(function (oldValue) {
+                    //store copy, in case it needs to be restored
+                    fileself.startupBefore(oldValue);
+                }, null, "beforeChange");
+
+                fileself.startup.subscribe(function (newValue) {
+                    if (!self.supressPost && !fileself.startupDisabled) {
+                        fileself.startupDisabled = true;
+                        self.supressPost = true
+
+                        $.post('/djangosourcecontrol/api/projectfile/' + fileself.id + "/",
+                            {
+                                'startup': newValue,
+                                'csrfmiddlewaretoken': '{{ csrf_token }}'
+                            }).done(function (data) {
+                                ko.utils.arrayForEach(self.projectFiles(), function (item) {
+                                    if (item != fileself) {
+                                        item.startup(false);
+                                    }
+                                });
+                                fileself.startup(newValue);
+                                self.showSaveAlert();
+                            }).fail(function (data) {
+                                fileself.startup(fileself.startupBefore());
+                                self.showFailAlert(JSON.stringify(data));
+                            }).always(function () {
+                                fileself.startupDisabled = false;
+                                self.supressPost = false;
+                            });
+                    }
+                });
+            };
+
+            var version = function (id, date, text) {
+                versionself = this
+                versionself.id = id;
+                versionself.date = date;
+                versionself.text = text;
+            };
+
+            self.FailMessage = ko.observable("");
+            self.WarnMessage = ko.observable("");
+            self.WarnTitle = ko.observable("");
+            self.text = ko.observable("");
+            self.textorig = ko.observable("");
+            self.selectedFile = ko.observable();
+            // subscription is called whenever teh selected file changes.
+            // Whenever the selected file changes we want to set the text area to
+            // the text stored in the newest version.
+            self.selectedFile.subscribe(function (newValue) {
+                var act = function (text) {
+                    // setup code mirror when the selected file changes.
+                    $('.code').each(function () {
+                        var $this = $(this);
+                        $this.empty();
+
+                        // setup the code miror instance
+                        window.editor = CodeMirror(this, {
+                            value: text,
+                            mode: { name: "python" },
+                            lineNumbers: !$this.is('.inline'),
+                            readOnly: false,
+                        });
+                        // when the text is change set self.text so i have access to the current
+                        // contents of the editor
+                        window.editor.on("change", function (cm) {
+                            self.text(cm.getValue());
+                        });
+                    });
+
+                    // Set the text and textorig so we can know if we should display the save button
+                    self.text(text);
+                    self.textorig(text);
+                }
+
+                // Every time a new file is selected we setup a new subscription on the
+                // selected version changing to set the editor to be that versions text
+                newValue.selectedVersion.subscribe(function (newValue2) {
+                    act("");
+                    act(newValue2.text)
+                });
+                // but always default it to blank incase there are no versions to be selected.
+                act("");
+                if (newValue.selectedVersion() != null) {
+                    act(newValue.selectedVersion().text)
+                }
+            });
+
+            // django python templates are of the format {{ code }},
+            // they are typically sorrounded with '' to make a javscript string
+
+            // list of all the project files that we can get from the server
+            self.projectFiles = ko.observableArray([]);
+
+            // request the project itself from the api
+            // fairly inefficent, it could request groups at a time instead of individuals
+            $.get("/djangosourcecontrol/api/project/" + '{{project.id}}')
+               .done(function (data) {
+                   // foreach
+                   ko.utils.arrayForEach(data.projectfiles, function (item) {
+                       $.get("/djangosourcecontrol/api/projectfile/" + item)
+                           .done(function (data) {
+                               var f = new file(data.id, data.projectfile_name, data.projectfile_description, data.public, data.startup, ko.observableArray([]));
+                               ko.utils.arrayForEach(data.projectfileversions, function (item) {
+                                   $.get("/djangosourcecontrol/api/projectfileversion/" + item)
+                                       .done(function (data) {
+                                           var v = new version(data.id, moment(data.created_date), data.text);
+                                           f.versions.push(v)
+                                       })
+                                       .fail(function (data) {
+                                           // get project file version fail
+                                           self.showFailAlert(JSON.stringify(data));
+                                       });
+                               });
+                               self.projectFiles.push(f)
+                           })
+                           .fail(function (data) {
+                               // get project file fail
+                               self.showFailAlert(JSON.stringify(data));
+                           });
+                   });
+               })
+               .fail(function (data) {
+                   // get project fail
+                   self.showFailAlert(JSON.stringify(data));
+               });
+
+            // sorted list of the project files.
+            self.projectFilesSorted = ko.computed(function () {
+                var sorted = self.projectFiles().sort(function (left, right) {
+                    var leftName = left.name();
+                    var rightName = right.name();
+                    var leftId = left.id;
+                    var rightId = right.id;
+
+                    if (leftName == rightName) {
+                        return (leftId < rightId) ? -1 : (leftId > rightId) ? 1 : 0;
+                    }
+                    else {
+                        return (leftName < rightName) ? -1 : 1;
+                    }
+                });
+                //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/splice
+                var count = 0;
+                for (var i = 0; i < sorted.length; i++) {
+                    if (sorted[i].startup()) {
+                        var startup = sorted.splice(i, 1);
+                        sorted.splice(0, 0, startup[0]);
+                    }
+                }
+                return sorted;
+            });
+
+            // Sets the selected file to the id passed in, which inturn sets the codemirror box to the selected version text
+            self.onclickfile = function (id) {
+                this.selectedFile(ko.utils.arrayFirst(this.projectFiles(), function (file) {
+                    return file.id == id;
+                }));
+                if (this.selectedFile().versions() != null) {
+                    var f = this.selectedFile().versions()[this.selectedFile().versions().length - 1];
+                    this.selectedFile().selectedVersion(f);
+                }
+            }
+
+            // resets the selected file, thus resetting the codemirror box to the text of the selected version
+            self.reset = function () {
+                self.onclickfile(self.selectedFile().id);
+            }
+
+            // hides the warn alert box
+            self.hideWarnAlert = function () {
+                $("#warn-alert").hide();
+            }
+
+            // hides the fail alert box
+            self.hideFailAlert = function () {
+                $("#error-alert").hide();
+            }
+
+            // Displays the show saved alert area at the top of the page
+            // Also hides the fail and warn alert areas
+            self.showSaveAlert = function () {
+                self.hideFailAlert();
+                self.hideWarnAlert();
+                $("#success-alert").alert();
+                $("#success-alert").fadeTo(2000, 500).slideUp(500, function () {
+                    $("#success-alert").slideUp(500);
+                });
+            };
+
+            // Displays the show fail alert area at the top of the page
+            self.showFailAlert = function (message) {
+                self.FailMessage(message);
+
+                $("#error-alert").alert();
+                $("#error-alert").show();
+                $("#error-alert").fadeTo(2000, 500);
+            };
+
+            // Displays the show warn alert area at the top of the page
+            self.showWarnAlert = function (title, message) {
+                self.WarnTitle(title);
+                self.WarnMessage(message);
+                $("#warn-alert").alert();
+                $("#warn-alert").fadeTo(2000, 500);
+            };
+
+            //Used to determine if we should show the save button or not
+            self.showSave = ko.computed(function () {
+                // only show save button if we have modified any of the text
+                return self.text() != self.textorig();
+            });
+
+            // Determins if the selected version is the latest version. this assumes versions are sorted. 
+            self.isLatest = ko.computed(function () {
+                var latestSelected = true;
+                if (self.selectedFile() != null) {
+                    if (self.selectedFile().selectedVersion() != null) {
+                        latestSelected = self.selectedFile().selectedVersion().id == self.selectedFile().versions()[self.selectedFile().versions().length - 1].id;
+                    }
+                }
+                return latestSelected;
+            });
+
+            // Save a files version
+            self.saveFileVersion = function () {
+                $.post("/djangosourcecontrol/api/projectfileversion/", {
+                    "created_date": moment().format('YYYY-MM-DDThh:mm'),
+                    "text": self.text(),
+                    "projectfile": self.selectedFile().id,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                })
+               .done(function (data) {
+                   // A successful save will return the new data as a dto.
+                   self.showSaveAlert();
+                   var newVersion = new version(data.id, moment(data.created_date), data.text);
+                   self.selectedFile().versions.push(newVersion);
+                   self.selectedFile().selectedVersion(newVersion);
+               })
+               .fail(function (data) {
+                   self.showFailAlert(JSON.stringify(data));
+               });
+            }
+
+            //add a new file
+            self.addFile = function () {
+                $.post("/djangosourcecontrol/api/projectfile/", {
+                    'project': '{{project.id}}',
+                    'projectfile_name': 'new name',
+                    'projectfile_description': 'new desc',
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                })
+               .done(function (data) {
+                   // A successful save will return the new data as a dto.
+                   self.showSaveAlert();
+                   var newFile = new file(data.id, data.projectfile_name, data.projectfile_description, data.public, data.startup, ko.observableArray([]));
+                   self.projectFiles.push(newFile);
+                   self.selectedFile(newFile);
+               })
+               .fail(function (data) {
+                   self.showFailAlert(JSON.stringify(data));
+               });
+            }
+
+            //add a new file
+            self.runProject = function () {
+                $.post("/djangosourcecontrol/api/runproject/" + '{{project.id}}' + '/', {
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                })
+               .done(function (data) {
+                   // A successful save will return the new data as a dto.
+                   self.showWarnAlert("Run Results", JSON.stringify(data));
+               })
+               .fail(function (data) {
+                   self.hideWarnAlert();
+                   self.showFailAlert(JSON.stringify(data));
+               });
+            }
+
+            //add a new file
+            self.compileProjectFile = function () {
+                $.post("/djangosourcecontrol/api/compileprojectfile/" + self.selectedFile().id + '/', {
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                })
+               .done(function (data) {
+                   // A successful save will return the new data as a dto.
+                   self.showWarnAlert("Compile Results", JSON.stringify(data));
+               })
+               .fail(function (data) {
+                   self.hideWarnAlert();
+                   self.showFailAlert(JSON.stringify(data));
+               });
+            }
+
+            //download the project as a zip file
+            //http://stackoverflow.com/questions/24826495/download-file-served-as-response
+            self.downloadProject = function () {
+                $("a#download").attr({
+                    "download": "file.zip",
+                    "href": "/djangosourcecontrol/api/downloadproject/" + '{{project.id}}'
+                }).get(0).click();
+            }
+        }; // end of SaveFileViewModel
+
+        // I put the viewmodel on the window so we can look it up later, usually for debugging
+        window.SaveFileViewModel = new SaveFileViewModel()
+
+        // apply the bindings to the save-options div block
+        ko.applyBindings(window.SaveFileViewModel, document.getElementById("save-options"));
+    });
+</script>
+{% endblock %}

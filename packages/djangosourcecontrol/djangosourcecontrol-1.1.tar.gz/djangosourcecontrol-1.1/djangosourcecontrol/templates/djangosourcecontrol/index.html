@@ -1,0 +1,205 @@
+﻿{% extends 'base.html' %}
+{% block content %}
+<!--
+    Brief: The index page is used to display the lisf of project files the logged in user has
+    access to.  And to proivde a way to add projects if the can_add_project property is true. ({{ can_add_project }})
+     {% if projects %}
+        Projects: 
+        {% for project in projects %}
+        * {{ project.project_name}}
+        {% endfor %}
+    {% endif %}
+-->
+
+<div class="page-header">
+    <h1>Django Source Control <small> sponsored by Daniel J Pepka Studios</small></h1>
+</div>
+
+<div id="IndexViewModel" class="container">
+    <!-- ALERTS, data-bound messages but shown and hidden by id -->
+    <div class="alert alert-success" id="success-alert" hidden>
+        <button type="button" class="close" data-dismiss="alert">x</button>
+        <strong>Saved</strong>
+    </div>
+
+    <div class="alert alert-warning" id="warn-alert" hidden>
+        <button type="button" class="close" data-dismiss="alert">x</button>
+        <strong><span data-bind="text: WarnTitle"></span></strong>
+        <span data-bind="text: WarnMessage"></span>
+    </div>
+
+    <div class="alert alert-danger" id="error-alert" hidden>
+        <button type="button" class="close" data-dismiss="alert">x</button>
+        <strong>Failed</strong>
+        <span data-bind="text: FailMessage"></span>
+    </div>
+
+    <!-- Add new project Modal, hidden until button press via data-binding -->
+    <div class="row">
+        <div class="modal fade" tabindex="-1" role="dialog" data-bind="modal:showAddDialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                        <h4 class="modal-title">Add New Django Source Control Project</h4>
+                    </div>
+                    <div class="modal-body">
+                        <form>
+                            <div class="form-group">
+                                <label for="name">Name</label>
+                                <input type="text" class="form-control" id="name" placeholder="Project Name" data-bind="value: name">
+                            </div>
+                            <div class="form-group">
+                                <label for="description">Description</label>
+                                <input type="text" class="form-control" id="description" placeholder="Project Description" data-bind="value: description">
+                            </div>
+                            <!--<div class="form-group">
+                                <label for="exampleInputFile">commandline</label>
+                                <input type="text" class="form-control" id="commandline" placeholder="Project CommandLine" data-bind="value: commandline">
+                                <p class="help-block">The command line is whatever arugment you want to pass to the startup file.</p>
+                            </div>-->
+                            <div class="form-group">
+                                <label for="publiccheckbox">Public</label>
+                                <div class="checkbox">
+                                    <input id="publiccheckbox" type="checkbox" data-bind="bootstrapSwitchOn: public" />
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary btn-xs" data-bind="click : cancel">Cancel</button>
+                        <button type="button" class="btn btn-primary btn-xs" data-bind="click : submit">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Project Title Bar -->
+        <div class="panel panel-title">
+            Projects
+            {% if can_add_project %}
+            <button class="btn btn-primary" style="float:right;" data-bind="click: function(){showAddDialog(true)}">
+                    <span class="badge"></span>Add New <span class="glyphicon glyphicon-plus"></span>
+            </button>
+            {% endif %}
+        </div>
+
+        <!-- Main Foreach Projects loop -->
+        <div class="panel panel-default">
+            <div class="panel-body">
+                {% if projects %}
+                {% for project in projects %}
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">
+                            <a href="{% url 'djangosourcecontrol:detail' project.id %}">{{ project.project_name}}</a>
+                        </h3>
+                    </div>
+                    <div class="container">
+                        <div class="col-md-3 col-sm-6">
+                            <div><strong>Info</strong></div>
+                            <div>
+                                {% if project.public %}Public{% else %}Private{% endif %}
+                                <br />
+                                Created by {{project.user}}
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <div><strong>Description</strong></div>
+                            <div>{{project.project_description}}</div>
+                        </div>
+                    </div>
+
+                </div>
+                {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<!-- Here we define the view model for the page -->
+<script>
+    var IndexViewModel = function () {
+        // silly javascript hack to ensure correct scope
+        var self = this;
+
+        // alerts
+        // hides the warn alert box
+        self.hideWarnAlert = function () {
+            $("#warn-alert").hide();
+        }
+
+        // hides the fail alert box
+        self.hideFailAlert = function () {
+            $("#error-alert").hide();
+        }
+
+        // Displays the show saved alert area at the top of the page
+        // Also hides the fail and warn alert areas
+        self.showSaveAlert = function () {
+            self.hideFailAlert();
+            self.hideWarnAlert();
+            $("#success-alert").alert();
+            $("#success-alert").fadeTo(2000, 500).slideUp(500, function () {
+                $("#success-alert").slideUp(500);
+                // reload page so we can see the new project on the list
+                location.reload();
+            });
+        };
+
+        // Displays the show fail alert area at the top of the page
+        self.showFailAlert = function (message) {
+            self.FailMessage(message);
+            $("#error-alert").alert();
+            $("#error-alert").fadeTo(2000, 500);
+        };
+
+        // objects
+        self.FailMessage = ko.observable("");
+        self.WarnMessage = ko.observable("");
+        self.WarnTitle = ko.observable("");
+
+        self.name = ko.observable("");
+        self.description = ko.observable("");
+        self.commandline = ko.observable("");
+        self.public = ko.observable(false);
+
+        // Controls the Add Project Dialog
+        self.showAddDialog = ko.observable(false);
+
+        self.cancel = function () {
+            self.name = ko.observable("");
+            self.description = ko.observable("");
+            self.commandline = ko.observable("");
+            self.public = ko.observable(false);
+
+            self.showAddDialog(false);
+        }
+
+        self.submit = function () {
+            $.post('/djangosourcecontrol/api/project/',
+                    {
+                        'project_name': self.name(),
+                        'project_description': self.description(),
+                        "created_date": moment().format('YYYY-MM-DDThh:mm'),
+                        'commandline': self.commandline() != "" ? self.commandline() : 'none',
+                        'public': self.public(),
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    }).done(function (data) {
+                        self.showSaveAlert();
+                        location.reload();
+                    }).fail(function (data) {
+                        self.showFailAlert(JSON.stringify(data));
+                    })
+            self.showAddDialog(false);
+        }
+    };
+    // You put the viewmodel on the window so we can look it up later.
+    window.IndexViewModel = new IndexViewModel()
+    ko.applyBindings(window.IndexViewModel, document.getElementById("IndexViewModel"))
+</script>
+
+{% endblock %}

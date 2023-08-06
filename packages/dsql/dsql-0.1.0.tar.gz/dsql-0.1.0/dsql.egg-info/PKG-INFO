@@ -1,0 +1,96 @@
+Metadata-Version: 1.1
+Name: dsql
+Version: 0.1.0
+Summary: Dead simple RDBMS handling lib
+Home-page: https://github.com/gwn/dsql
+Author: Ege Avunc
+Author-email: egeavunc@gmail.com
+License: MIT
+Description: ## Dead simple RDBMS handling library
+        
+        Dead simple wrapper for Python DB API 2 compatible database modules that
+        supports very basic SQL generation and result handling.
+        
+        Because I hate ORMs.
+        
+        This library creates a simple manager object from a database connection, that
+        exposes the following API:
+        
+            - select
+            - insert
+            - update
+            - delete
+            - commit
+            - rollback
+            - connection
+            - cursor
+        
+        ### Philosophy
+        
+        ### Usage
+        
+        Any database connection object that implements the Python DB API 2.0 (PEP 0249)
+        is supported. Also, the database connection must be configured to return a
+        DictCursor when requested for a cursor.
+        
+        Example Usage (mysql):
+        
+            import MySQLdb
+            import MySQLdb.cursors
+            import dsql
+        
+            conn = MySQLdb.connect(host='localhost', user='root', db='lorem',
+                                   cursorclass=MySQLdb.cursors.DictCursor)
+        
+            db = dsql.make(conn)
+        
+            itemiter = db.select('products', 'id,name,description')
+            item = itemiter.next()
+            print item.name
+        
+            last_insert_id = db.insert('products', {
+                'name': 'falan',
+                'description': 'harika bir urun!!',
+            })
+        
+            last_insert_id = db.insert('products', {
+                'name': 'falan',
+                'description': 'harika bir urun!!',
+            }, commit=False)
+            db.commit()
+        
+            affected_rowcount = db.update('products', {
+                'name': 'lorem ipsum',
+            },
+            {
+                'id =': 888,
+            })
+        
+            affected_rowcount = db.delete('products', {
+                'id =': 777,
+            })
+        
+        Example Usage (postgres):
+        
+            import psycopg2
+            import psycopg2.extras
+            import dsql
+        
+            conn = psycopg2.connect(host='localhost', user='root', database='lorem',
+                                    cursor_factory=psycopg2.extras.DictCursor)
+        
+            db = dsql.make(conn)
+        
+            itemiter = db.select('products', 'id,name,description')
+            item = itemiter.next()
+            print item.name
+        
+            ...
+        
+Keywords: sql db query builder simple
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Database
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 2.7

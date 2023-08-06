@@ -1,0 +1,3514 @@
+[
+  {
+    "__docId__": 0,
+    "kind": "file",
+    "static": true,
+    "variation": null,
+    "name": "es6/data/frame_timeline.es6",
+    "memberof": null,
+    "longname": "es6/data/frame_timeline.es6",
+    "access": null,
+    "description": null,
+    "lineNumber": 2,
+    "content": "\nfunction toShortString(type, value){\n    /**\n     * Get a short string representation for an object type and value\n     */\n    // TODO Move this data to backend\n    value = ('' + value) || 'unknown';\n    let short_str = {\n        'int': (value.length > 3) ? 'INT' : value,\n        'float': (value.length > 3) ? 'FLT' : value,\n        'str': (value.length > 3) ? 'STR' : value,\n        'bool': value[0].toUpperCase(),\n        'none': 'NON',\n        'complex': 'CPX',\n        'module': 'MOD',\n        'function': 'FNC',\n        'lambda': 'FNC',\n        'class': 'CLS',\n        'list': 'LST',\n        'tuple': 'TPL',\n    };\n    return short_str[type] || 'OBJ';\n}\n\n\nexport class FrameTimeline{\n    constructor(tracestep, frame, heap){\n        this.startstep = tracestep;\n        this.tracestep = tracestep;\n        this.name = frame.name;\n        this.uuid = frame.uuid;\n        this.vars = [];\n        this.push(frame, heap);\n    }\n\n    _fill(){\n        /**\n        * Fill timeline variable values up to the current trace step in the\n        * history with an empty string. For example, if a variable is created\n        * in trace step 4 all previous trace step values are filled with an\n        * empty string.\n        */\n        let that = this;\n        this.vars.map((object) => {\n            for (let t=object.values.length; t<that.tracestep; t++) {\n                object.values.push(\"\");\n            }\n        });\n    }\n\n    removeEmptyVars(){\n        /**\n         * Remove any timeline variables whos values are all empty strings.\n         */\n        let empty = [];\n        this.vars.map((object, i) => {\n            if (object.values.every((val) => val === \"\")){\n                empty.push(i);\n            }\n        });\n\n        let that = this;\n        empty.sort((a, b) => b - a);\n        empty.map((i) => {\n            that.vars.splice(i, 1);\n        });\n    }\n\n    getVarByName(name){\n        /**\n         * Get a single timeline variable that matched the specified name\n         */\n        let ind = this.vars.map((object) => object.name).indexOf(name);\n        return this.vars[ind];\n    }\n\n    push(frame, heap){\n        /**\n         * Push a stack frame into the timeline. Values obtained from the heap\n         */\n        if (frame.uuid != this.uuid){\n            throw new Error(\"frame uuid mismatch!\");\n        }\n\n        let that = this;\n        frame.vars.map((ref) => {\n            let frame_var = that.getVarByName(ref.name);\n            if (!frame_var){\n                frame_var = {name: ref.name, values: []};\n                that.vars.push(frame_var);\n                that._fill();\n            }\n            let ind = heap.map((object) => object.id).indexOf(ref.id);\n            let object = heap[ind];\n            let strval = toShortString(object.type, object.value);\n            frame_var.values.push(strval);\n        });\n        this.tracestep += 1;\n        this._fill();\n    }\n\n    pop(){\n        /**\n         * Pop the last values for each of the timeline variables and remove\n         * any empty variables\n         */\n        let popped = this.vars.map((object) => {\n            return {name: object.name};\n        });\n\n        let that = this;\n        popped.map((object) => {\n            let frame_var = that.getVarByName(object.name);\n            object.value = frame_var.values.pop();\n        });\n\n        this.removeEmptyVars();\n        if (this.tracestep > 0) {\n            this.tracestep -= 1;\n        }\n        return popped;\n    }\n\n    isEmpty(){\n        /**\n         * True if the frame timeline has any variables, else false\n         */\n        return this.vars.length === 0;\n    }\n}\n"
+  },
+  {
+    "__docId__": 1,
+    "kind": "function",
+    "static": true,
+    "variation": null,
+    "name": "toShortString",
+    "memberof": "es6/data/frame_timeline.es6",
+    "longname": "es6/data/frame_timeline.es6~toShortString",
+    "access": null,
+    "export": false,
+    "importPath": "nbtutor/es6/data/frame_timeline.es6",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 2,
+    "undocument": true,
+    "params": [
+      {
+        "name": "type",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "value",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "__docId__": 2,
+    "kind": "class",
+    "static": true,
+    "variation": null,
+    "name": "FrameTimeline",
+    "memberof": "es6/data/frame_timeline.es6",
+    "longname": "es6/data/frame_timeline.es6~FrameTimeline",
+    "access": null,
+    "export": true,
+    "importPath": "nbtutor/es6/data/frame_timeline.es6",
+    "importStyle": "{FrameTimeline}",
+    "description": null,
+    "lineNumber": 26,
+    "undocument": true,
+    "interface": false
+  },
+  {
+    "__docId__": 3,
+    "kind": "constructor",
+    "static": false,
+    "variation": null,
+    "name": "constructor",
+    "memberof": "es6/data/frame_timeline.es6~FrameTimeline",
+    "longname": "es6/data/frame_timeline.es6~FrameTimeline#constructor",
+    "access": null,
+    "description": null,
+    "lineNumber": 27,
+    "undocument": true,
+    "params": [
+      {
+        "name": "tracestep",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "frame",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "heap",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 4,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "startstep",
+    "memberof": "es6/data/frame_timeline.es6~FrameTimeline",
+    "longname": "es6/data/frame_timeline.es6~FrameTimeline#startstep",
+    "access": null,
+    "description": null,
+    "lineNumber": 28,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 5,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "tracestep",
+    "memberof": "es6/data/frame_timeline.es6~FrameTimeline",
+    "longname": "es6/data/frame_timeline.es6~FrameTimeline#tracestep",
+    "access": null,
+    "description": null,
+    "lineNumber": 29,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 6,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "name",
+    "memberof": "es6/data/frame_timeline.es6~FrameTimeline",
+    "longname": "es6/data/frame_timeline.es6~FrameTimeline#name",
+    "access": null,
+    "description": null,
+    "lineNumber": 30,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 7,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "uuid",
+    "memberof": "es6/data/frame_timeline.es6~FrameTimeline",
+    "longname": "es6/data/frame_timeline.es6~FrameTimeline#uuid",
+    "access": null,
+    "description": null,
+    "lineNumber": 31,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 8,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "vars",
+    "memberof": "es6/data/frame_timeline.es6~FrameTimeline",
+    "longname": "es6/data/frame_timeline.es6~FrameTimeline#vars",
+    "access": null,
+    "description": null,
+    "lineNumber": 32,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 9,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_fill",
+    "memberof": "es6/data/frame_timeline.es6~FrameTimeline",
+    "longname": "es6/data/frame_timeline.es6~FrameTimeline#_fill",
+    "access": null,
+    "description": null,
+    "lineNumber": 36,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 10,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "removeEmptyVars",
+    "memberof": "es6/data/frame_timeline.es6~FrameTimeline",
+    "longname": "es6/data/frame_timeline.es6~FrameTimeline#removeEmptyVars",
+    "access": null,
+    "description": null,
+    "lineNumber": 51,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 11,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "getVarByName",
+    "memberof": "es6/data/frame_timeline.es6~FrameTimeline",
+    "longname": "es6/data/frame_timeline.es6~FrameTimeline#getVarByName",
+    "access": null,
+    "description": null,
+    "lineNumber": 69,
+    "undocument": true,
+    "params": [
+      {
+        "name": "name",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "__docId__": 12,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "push",
+    "memberof": "es6/data/frame_timeline.es6~FrameTimeline",
+    "longname": "es6/data/frame_timeline.es6~FrameTimeline#push",
+    "access": null,
+    "description": null,
+    "lineNumber": 77,
+    "undocument": true,
+    "params": [
+      {
+        "name": "frame",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "heap",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 13,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "tracestep",
+    "memberof": "es6/data/frame_timeline.es6~FrameTimeline",
+    "longname": "es6/data/frame_timeline.es6~FrameTimeline#tracestep",
+    "access": null,
+    "description": null,
+    "lineNumber": 98,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number"
+      ]
+    }
+  },
+  {
+    "__docId__": 14,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "pop",
+    "memberof": "es6/data/frame_timeline.es6~FrameTimeline",
+    "longname": "es6/data/frame_timeline.es6~FrameTimeline#pop",
+    "access": null,
+    "description": null,
+    "lineNumber": 102,
+    "undocument": true,
+    "params": [],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "__docId__": 15,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "tracestep",
+    "memberof": "es6/data/frame_timeline.es6~FrameTimeline",
+    "longname": "es6/data/frame_timeline.es6~FrameTimeline#tracestep",
+    "access": null,
+    "description": null,
+    "lineNumber": 119,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number"
+      ]
+    }
+  },
+  {
+    "__docId__": 16,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "isEmpty",
+    "memberof": "es6/data/frame_timeline.es6~FrameTimeline",
+    "longname": "es6/data/frame_timeline.es6~FrameTimeline#isEmpty",
+    "access": null,
+    "description": null,
+    "lineNumber": 124,
+    "undocument": true,
+    "params": [],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "__docId__": 17,
+    "kind": "file",
+    "static": true,
+    "variation": null,
+    "name": "es6/data/heap_history.es6",
+    "memberof": null,
+    "longname": "es6/data/heap_history.es6",
+    "access": null,
+    "description": null,
+    "lineNumber": 2,
+    "content": "\nimport {uuid} from \"nbtutor-deps\";\n\n\nexport class HeapHistory{\n    constructor(data){\n        this.data = data || [];\n        this._setUUids();\n    }\n\n    _setUUids(){\n        /**\n         * Heap object ids may be unique for a given code cell, but may not be\n         * unique for the entire notebook so we need to create unique ids.\n         * Unique ids are needed for jsPlumb connectors.\n         */\n        let that = this;\n        let object_ids = [];\n\n        // Collect all unique heap object ids\n        this.data.map((heap_objects) => {\n            heap_objects.map((object) => {\n                if (object_ids.indexOf(object.id) < 0){\n                    object_ids.push(object.id);\n                }\n            });\n        });\n\n        // Set heap object uuids\n        object_ids.map((id) => {\n            // Make id identifier start with a letter, else d3 falls over\n            let new_uuid = \"h-\" + uuid.v4();\n            that.data.map((heap_objects) => {\n                heap_objects.map((object) => {\n                    if (object.id === id) {\n                        object.uuid = new_uuid;\n                    }\n                });\n            });\n        });\n    }\n\n    getHeapObjects(tracestep){\n        /*\n         * Get the heap objects at a specified trace step in the history\n         */\n        return this.data[tracestep];\n    }\n\n    getObjectById(tracestep, id){\n        /*\n         * Get a single heap object at a specified trace step in the history\n         * that matches a specified object id.\n         */\n        let objects = this.getHeapObjects(tracestep) || [];\n        let ind = objects.map((d) => d.id).indexOf(id);\n        return objects[ind];\n    }\n}\n"
+  },
+  {
+    "__docId__": 18,
+    "kind": "class",
+    "static": true,
+    "variation": null,
+    "name": "HeapHistory",
+    "memberof": "es6/data/heap_history.es6",
+    "longname": "es6/data/heap_history.es6~HeapHistory",
+    "access": null,
+    "export": true,
+    "importPath": "nbtutor/es6/data/heap_history.es6",
+    "importStyle": "{HeapHistory}",
+    "description": null,
+    "lineNumber": 5,
+    "undocument": true,
+    "interface": false
+  },
+  {
+    "__docId__": 19,
+    "kind": "constructor",
+    "static": false,
+    "variation": null,
+    "name": "constructor",
+    "memberof": "es6/data/heap_history.es6~HeapHistory",
+    "longname": "es6/data/heap_history.es6~HeapHistory#constructor",
+    "access": null,
+    "description": null,
+    "lineNumber": 6,
+    "undocument": true,
+    "params": [
+      {
+        "name": "data",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 20,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "data",
+    "memberof": "es6/data/heap_history.es6~HeapHistory",
+    "longname": "es6/data/heap_history.es6~HeapHistory#data",
+    "access": null,
+    "description": null,
+    "lineNumber": 7,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 21,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_setUUids",
+    "memberof": "es6/data/heap_history.es6~HeapHistory",
+    "longname": "es6/data/heap_history.es6~HeapHistory#_setUUids",
+    "access": null,
+    "description": null,
+    "lineNumber": 11,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 22,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "getHeapObjects",
+    "memberof": "es6/data/heap_history.es6~HeapHistory",
+    "longname": "es6/data/heap_history.es6~HeapHistory#getHeapObjects",
+    "access": null,
+    "description": null,
+    "lineNumber": 43,
+    "undocument": true,
+    "params": [
+      {
+        "name": "tracestep",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "__docId__": 23,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "getObjectById",
+    "memberof": "es6/data/heap_history.es6~HeapHistory",
+    "longname": "es6/data/heap_history.es6~HeapHistory#getObjectById",
+    "access": null,
+    "description": null,
+    "lineNumber": 50,
+    "undocument": true,
+    "params": [
+      {
+        "name": "tracestep",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "id",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "__docId__": 24,
+    "kind": "file",
+    "static": true,
+    "variation": null,
+    "name": "es6/data/output_history.es6",
+    "memberof": null,
+    "longname": "es6/data/output_history.es6",
+    "access": null,
+    "description": null,
+    "lineNumber": 3,
+    "content": "\n\nexport class OutputHistory{\n    constructor(data){\n        this.data = data;\n    }\n\n    getOutput(tracestep){\n        /*\n         * Get the output at a specified trace step in the history\n         */\n        return this.data[tracestep];\n    }\n}\n"
+  },
+  {
+    "__docId__": 25,
+    "kind": "class",
+    "static": true,
+    "variation": null,
+    "name": "OutputHistory",
+    "memberof": "es6/data/output_history.es6",
+    "longname": "es6/data/output_history.es6~OutputHistory",
+    "access": null,
+    "export": true,
+    "importPath": "nbtutor/es6/data/output_history.es6",
+    "importStyle": "{OutputHistory}",
+    "description": null,
+    "lineNumber": 3,
+    "undocument": true,
+    "interface": false
+  },
+  {
+    "__docId__": 26,
+    "kind": "constructor",
+    "static": false,
+    "variation": null,
+    "name": "constructor",
+    "memberof": "es6/data/output_history.es6~OutputHistory",
+    "longname": "es6/data/output_history.es6~OutputHistory#constructor",
+    "access": null,
+    "description": null,
+    "lineNumber": 4,
+    "undocument": true,
+    "params": [
+      {
+        "name": "data",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 27,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "data",
+    "memberof": "es6/data/output_history.es6~OutputHistory",
+    "longname": "es6/data/output_history.es6~OutputHistory#data",
+    "access": null,
+    "description": null,
+    "lineNumber": 5,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 28,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "getOutput",
+    "memberof": "es6/data/output_history.es6~OutputHistory",
+    "longname": "es6/data/output_history.es6~OutputHistory#getOutput",
+    "access": null,
+    "description": null,
+    "lineNumber": 8,
+    "undocument": true,
+    "params": [
+      {
+        "name": "tracestep",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "__docId__": 29,
+    "kind": "file",
+    "static": true,
+    "variation": null,
+    "name": "es6/data/stack_history.es6",
+    "memberof": null,
+    "longname": "es6/data/stack_history.es6",
+    "access": null,
+    "description": null,
+    "lineNumber": 2,
+    "content": "\nimport {uuid} from \"nbtutor-deps\";\n\n\nexport class StackHistory{\n    constructor(data){\n        this.data = data || [];\n        this._setUUids();\n    }\n\n    _setUUids(){\n        /**\n         * Frame and variable ids may be unique for a given code cell, but may\n         * not be unique for the entire notebook so we need to create unique\n         * ids. Unique ids are needed for the jsPlumb connectors and timeline\n         * data.\n         */\n        let that = this;\n        let frame_ids = [];\n\n        // Collect all unique frame ids\n        this.data.map((stack_frames) => {\n            stack_frames.map((frame) => {\n                if (frame_ids.indexOf(frame.id) < 0){\n                    frame_ids.push(frame.id);\n                }\n            });\n        });\n\n        // Set frame uuids\n        frame_ids.map((id) => {\n            // Make id identifier start with a letter, else d3 falls over\n            let new_uuid = \"f-\" + uuid.v4();\n            that.data.map((stack_frames) => {\n                stack_frames.map((frame) => {\n                    if (frame.id === id) {\n                        frame.uuid = new_uuid;\n                    }\n                });\n            });\n        });\n\n        // Variable uuids can be completely unique. No need\n        // to collect and carry uuids accross tracesteps\n        this.data.map((stack_frames) => {\n            stack_frames.map((frame) => {\n                frame.vars.map((ref) => {\n                    // Make id identifier start with a letter, else d3 falls over\n                    ref.uuid = \"v-\" + uuid.v4();\n                });\n            });\n        });\n    }\n\n    getStackFrames(tracestep){\n        /*\n         * Get the stack frames at a specified trace step in the history\n         */\n        return this.data[tracestep];\n    }\n\n    getFrameById(tracestep, id){\n        /*\n         * Get a single frame at a specified trace step in the history\n         * that matches a specified frame id.\n         */\n        let frames = this.getStackFrames(tracestep) || [];\n        let ind = frames.map((d) => d.id).indexOf(id);\n        return frames[ind];\n    }\n\n    getFrameVarByName(tracestep, frame_id, name){\n        /*\n         * Get a single frame variable at a specified trace step in the history\n         * that matches a specified frame id and variable name.\n         */\n        let frame = this.getFrameById(tracestep, frame_id) || [];\n        let variables = frame.vars || []\n        let ind = frame.vars.map((d) => d.name).indexOf(name);\n        return variables[ind];\n    }\n\n    getFrameVarById(tracestep, frame_id, id){\n        /*\n         * Get a single frame variable at a specified trace step in the history\n         * that matches a specified frame id and reference id.\n         */\n        let frame = this.getFrameById(tracestep, frame_id) || [];\n        let variables = frame.vars || []\n        let ind = frame.vars.map((d) => d.id).indexOf(id);\n        return variables[ind];\n    }\n}\n"
+  },
+  {
+    "__docId__": 30,
+    "kind": "class",
+    "static": true,
+    "variation": null,
+    "name": "StackHistory",
+    "memberof": "es6/data/stack_history.es6",
+    "longname": "es6/data/stack_history.es6~StackHistory",
+    "access": null,
+    "export": true,
+    "importPath": "nbtutor/es6/data/stack_history.es6",
+    "importStyle": "{StackHistory}",
+    "description": null,
+    "lineNumber": 5,
+    "undocument": true,
+    "interface": false
+  },
+  {
+    "__docId__": 31,
+    "kind": "constructor",
+    "static": false,
+    "variation": null,
+    "name": "constructor",
+    "memberof": "es6/data/stack_history.es6~StackHistory",
+    "longname": "es6/data/stack_history.es6~StackHistory#constructor",
+    "access": null,
+    "description": null,
+    "lineNumber": 6,
+    "undocument": true,
+    "params": [
+      {
+        "name": "data",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 32,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "data",
+    "memberof": "es6/data/stack_history.es6~StackHistory",
+    "longname": "es6/data/stack_history.es6~StackHistory#data",
+    "access": null,
+    "description": null,
+    "lineNumber": 7,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 33,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_setUUids",
+    "memberof": "es6/data/stack_history.es6~StackHistory",
+    "longname": "es6/data/stack_history.es6~StackHistory#_setUUids",
+    "access": null,
+    "description": null,
+    "lineNumber": 11,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 34,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "getStackFrames",
+    "memberof": "es6/data/stack_history.es6~StackHistory",
+    "longname": "es6/data/stack_history.es6~StackHistory#getStackFrames",
+    "access": null,
+    "description": null,
+    "lineNumber": 55,
+    "undocument": true,
+    "params": [
+      {
+        "name": "tracestep",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "__docId__": 35,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "getFrameById",
+    "memberof": "es6/data/stack_history.es6~StackHistory",
+    "longname": "es6/data/stack_history.es6~StackHistory#getFrameById",
+    "access": null,
+    "description": null,
+    "lineNumber": 62,
+    "undocument": true,
+    "params": [
+      {
+        "name": "tracestep",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "id",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "__docId__": 36,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "getFrameVarByName",
+    "memberof": "es6/data/stack_history.es6~StackHistory",
+    "longname": "es6/data/stack_history.es6~StackHistory#getFrameVarByName",
+    "access": null,
+    "description": null,
+    "lineNumber": 72,
+    "undocument": true,
+    "params": [
+      {
+        "name": "tracestep",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "frame_id",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "name",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "__docId__": 37,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "getFrameVarById",
+    "memberof": "es6/data/stack_history.es6~StackHistory",
+    "longname": "es6/data/stack_history.es6~StackHistory#getFrameVarById",
+    "access": null,
+    "description": null,
+    "lineNumber": 83,
+    "undocument": true,
+    "params": [
+      {
+        "name": "tracestep",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "frame_id",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "id",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "__docId__": 38,
+    "kind": "file",
+    "static": true,
+    "variation": null,
+    "name": "es6/data/stack_timeline.es6",
+    "memberof": null,
+    "longname": "es6/data/stack_timeline.es6",
+    "access": null,
+    "description": null,
+    "lineNumber": 2,
+    "content": "\nimport {FrameTimeline} from \"./frame_timeline\";\n\n\nexport class StackTimeline{\n    constructor(){\n        this.tracestep = 0;\n        this.stack_frames = [];\n    }\n\n    _fill(){\n        let that = this;\n        this.stack_frames.map((frame) => {\n            frame.tracestep = that.tracestep;\n            frame._fill();\n        });\n    }\n\n    clear(){\n        /*\n         * Clear the stack timeline\n         */\n        this.tracestep = 0;\n        this.stack_frames = [];\n    }\n\n    removeEmptyFrames(){\n        /*\n         * Remove any frame that does not contain any variables\n         */\n        let empty = [];\n        this.stack_frames.map((frame, i) => {\n            if (frame.isEmpty()){\n                empty.push(i);\n            }\n        });\n\n        let that = this;\n        empty.sort((a, b) => b - a);\n        empty.map((i) => {\n            that.stack_frames.splice(i, 1);\n        });\n    }\n\n    push(stack_frames, heap){\n        /*\n         * Push all stack frames into the timeline. Values obtained from the\n         * heap\n         */\n        let that = this;\n        stack_frames.map((frame) => {\n            let found = false;\n            for (let i=0; i<that.stack_frames.length; i++){\n                if (that.stack_frames[i].uuid === frame.uuid){\n                    that.stack_frames[i].push(frame, heap);\n                    found = true;\n                }\n            }\n            if (!found){\n                that.stack_frames.push(\n                    new FrameTimeline(that.tracestep, frame, heap)\n                );\n            }\n        });\n        this.tracestep += 1;\n        this._fill();\n    }\n\n    pop(){\n        /*\n         * Pop the last values for each of the timeline variables from every\n         * stack frame and remove any empty variables and frame\n         */\n        let popped = [];\n        if (this.tracestep > 0){\n            this.stack_frames.map((frame) => {\n                popped.push({\n                    frame: frame.name,\n                    uuid: frame.uuid,\n                    vars: frame.pop()\n                });\n            });\n            this.tracestep -= 1;\n            this.removeEmptyFrames();\n        }\n        return popped;\n    }\n}\n"
+  },
+  {
+    "__docId__": 39,
+    "kind": "class",
+    "static": true,
+    "variation": null,
+    "name": "StackTimeline",
+    "memberof": "es6/data/stack_timeline.es6",
+    "longname": "es6/data/stack_timeline.es6~StackTimeline",
+    "access": null,
+    "export": true,
+    "importPath": "nbtutor/es6/data/stack_timeline.es6",
+    "importStyle": "{StackTimeline}",
+    "description": null,
+    "lineNumber": 5,
+    "undocument": true,
+    "interface": false
+  },
+  {
+    "__docId__": 40,
+    "kind": "constructor",
+    "static": false,
+    "variation": null,
+    "name": "constructor",
+    "memberof": "es6/data/stack_timeline.es6~StackTimeline",
+    "longname": "es6/data/stack_timeline.es6~StackTimeline#constructor",
+    "access": null,
+    "description": null,
+    "lineNumber": 6,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 41,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "tracestep",
+    "memberof": "es6/data/stack_timeline.es6~StackTimeline",
+    "longname": "es6/data/stack_timeline.es6~StackTimeline#tracestep",
+    "access": null,
+    "description": null,
+    "lineNumber": 7,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number"
+      ]
+    }
+  },
+  {
+    "__docId__": 42,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "stack_frames",
+    "memberof": "es6/data/stack_timeline.es6~StackTimeline",
+    "longname": "es6/data/stack_timeline.es6~StackTimeline#stack_frames",
+    "access": null,
+    "description": null,
+    "lineNumber": 8,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 43,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_fill",
+    "memberof": "es6/data/stack_timeline.es6~StackTimeline",
+    "longname": "es6/data/stack_timeline.es6~StackTimeline#_fill",
+    "access": null,
+    "description": null,
+    "lineNumber": 11,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 44,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "clear",
+    "memberof": "es6/data/stack_timeline.es6~StackTimeline",
+    "longname": "es6/data/stack_timeline.es6~StackTimeline#clear",
+    "access": null,
+    "description": null,
+    "lineNumber": 19,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 45,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "tracestep",
+    "memberof": "es6/data/stack_timeline.es6~StackTimeline",
+    "longname": "es6/data/stack_timeline.es6~StackTimeline#tracestep",
+    "access": null,
+    "description": null,
+    "lineNumber": 23,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number"
+      ]
+    }
+  },
+  {
+    "__docId__": 46,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "stack_frames",
+    "memberof": "es6/data/stack_timeline.es6~StackTimeline",
+    "longname": "es6/data/stack_timeline.es6~StackTimeline#stack_frames",
+    "access": null,
+    "description": null,
+    "lineNumber": 24,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 47,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "removeEmptyFrames",
+    "memberof": "es6/data/stack_timeline.es6~StackTimeline",
+    "longname": "es6/data/stack_timeline.es6~StackTimeline#removeEmptyFrames",
+    "access": null,
+    "description": null,
+    "lineNumber": 27,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 48,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "push",
+    "memberof": "es6/data/stack_timeline.es6~StackTimeline",
+    "longname": "es6/data/stack_timeline.es6~StackTimeline#push",
+    "access": null,
+    "description": null,
+    "lineNumber": 45,
+    "undocument": true,
+    "params": [
+      {
+        "name": "stack_frames",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "heap",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 49,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "tracestep",
+    "memberof": "es6/data/stack_timeline.es6~StackTimeline",
+    "longname": "es6/data/stack_timeline.es6~StackTimeline#tracestep",
+    "access": null,
+    "description": null,
+    "lineNumber": 65,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number"
+      ]
+    }
+  },
+  {
+    "__docId__": 50,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "pop",
+    "memberof": "es6/data/stack_timeline.es6~StackTimeline",
+    "longname": "es6/data/stack_timeline.es6~StackTimeline#pop",
+    "access": null,
+    "description": null,
+    "lineNumber": 69,
+    "undocument": true,
+    "params": [],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "__docId__": 51,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "tracestep",
+    "memberof": "es6/data/stack_timeline.es6~StackTimeline",
+    "longname": "es6/data/stack_timeline.es6~StackTimeline#tracestep",
+    "access": null,
+    "description": null,
+    "lineNumber": 83,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number"
+      ]
+    }
+  },
+  {
+    "__docId__": 52,
+    "kind": "file",
+    "static": true,
+    "variation": null,
+    "name": "es6/data/trace_history.es6",
+    "memberof": null,
+    "longname": "es6/data/trace_history.es6",
+    "access": null,
+    "description": null,
+    "lineNumber": 2,
+    "content": "/* eslint no-unused-vars: 0 */\nimport {$} from \"nbtutor-deps\";\nimport {uuid} from \"nbtutor-deps\";\n\nimport {StackHistory} from \"./stack_history\";\nimport {HeapHistory} from \"./heap_history\";\nimport {OutputHistory} from \"./output_history\";\n\n\nexport class TraceHistory{\n    constructor(cell){\n        this.cell = cell;\n        this.tracesteps = 0;\n        this.stack_history = null;\n        this.heap_history = null;\n        this.output_history = null;\n    }\n\n    clear(){\n        this.tracesteps = 0;\n        this.stack_history = null;\n        this.heap_history = null;\n        this.output_history = null;\n    }\n\n    getLineNumbers(tracestep){\n        let curstack = this.stack_history.getStackFrames(tracestep) || [];\n        let prevstack = this.stack_history.getStackFrames(tracestep-1) || [];\n        let prevframe = prevstack[prevstack.length-1] || {};\n\n        let prevLines = [+(prevframe.lineno || 0)];\n        let curLines = curstack.map((frame) => +frame.lineno);\n        let nextLine = curLines.pop();\n\n        if (prevframe.event === \"return\"){\n            let frame = prevstack[prevstack.length-2] || {};\n            prevLines.push(+(frame.lineno || 0));\n        }\n\n        if (tracestep == this.stack_history.data.length-1){\n            nextLine = 0;\n        }\n\n        return {\n            prevLines: prevLines,\n            curLines: curLines,\n            nextLine: nextLine,\n        };\n    }\n\n    updateData(history){\n        /**\n         * Update data from history\n         */\n        this.stack_history = new StackHistory(history.stack_history);\n        this.heap_history = new HeapHistory(history.heap_history);\n        this.output_history = new OutputHistory(history.output_history);\n        this.tracesteps = history.stack_history.length;\n    }\n}\n"
+  },
+  {
+    "__docId__": 53,
+    "kind": "class",
+    "static": true,
+    "variation": null,
+    "name": "TraceHistory",
+    "memberof": "es6/data/trace_history.es6",
+    "longname": "es6/data/trace_history.es6~TraceHistory",
+    "access": null,
+    "export": true,
+    "importPath": "nbtutor/es6/data/trace_history.es6",
+    "importStyle": "{TraceHistory}",
+    "description": null,
+    "lineNumber": 10,
+    "undocument": true,
+    "interface": false
+  },
+  {
+    "__docId__": 54,
+    "kind": "constructor",
+    "static": false,
+    "variation": null,
+    "name": "constructor",
+    "memberof": "es6/data/trace_history.es6~TraceHistory",
+    "longname": "es6/data/trace_history.es6~TraceHistory#constructor",
+    "access": null,
+    "description": null,
+    "lineNumber": 11,
+    "undocument": true,
+    "params": [
+      {
+        "name": "cell",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 55,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "cell",
+    "memberof": "es6/data/trace_history.es6~TraceHistory",
+    "longname": "es6/data/trace_history.es6~TraceHistory#cell",
+    "access": null,
+    "description": null,
+    "lineNumber": 12,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 56,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "tracesteps",
+    "memberof": "es6/data/trace_history.es6~TraceHistory",
+    "longname": "es6/data/trace_history.es6~TraceHistory#tracesteps",
+    "access": null,
+    "description": null,
+    "lineNumber": 13,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number"
+      ]
+    }
+  },
+  {
+    "__docId__": 57,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "stack_history",
+    "memberof": "es6/data/trace_history.es6~TraceHistory",
+    "longname": "es6/data/trace_history.es6~TraceHistory#stack_history",
+    "access": null,
+    "description": null,
+    "lineNumber": 14,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 58,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "heap_history",
+    "memberof": "es6/data/trace_history.es6~TraceHistory",
+    "longname": "es6/data/trace_history.es6~TraceHistory#heap_history",
+    "access": null,
+    "description": null,
+    "lineNumber": 15,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 59,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "output_history",
+    "memberof": "es6/data/trace_history.es6~TraceHistory",
+    "longname": "es6/data/trace_history.es6~TraceHistory#output_history",
+    "access": null,
+    "description": null,
+    "lineNumber": 16,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 60,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "clear",
+    "memberof": "es6/data/trace_history.es6~TraceHistory",
+    "longname": "es6/data/trace_history.es6~TraceHistory#clear",
+    "access": null,
+    "description": null,
+    "lineNumber": 19,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 61,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "tracesteps",
+    "memberof": "es6/data/trace_history.es6~TraceHistory",
+    "longname": "es6/data/trace_history.es6~TraceHistory#tracesteps",
+    "access": null,
+    "description": null,
+    "lineNumber": 20,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number"
+      ]
+    }
+  },
+  {
+    "__docId__": 62,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "stack_history",
+    "memberof": "es6/data/trace_history.es6~TraceHistory",
+    "longname": "es6/data/trace_history.es6~TraceHistory#stack_history",
+    "access": null,
+    "description": null,
+    "lineNumber": 21,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 63,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "heap_history",
+    "memberof": "es6/data/trace_history.es6~TraceHistory",
+    "longname": "es6/data/trace_history.es6~TraceHistory#heap_history",
+    "access": null,
+    "description": null,
+    "lineNumber": 22,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 64,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "output_history",
+    "memberof": "es6/data/trace_history.es6~TraceHistory",
+    "longname": "es6/data/trace_history.es6~TraceHistory#output_history",
+    "access": null,
+    "description": null,
+    "lineNumber": 23,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 65,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "getLineNumbers",
+    "memberof": "es6/data/trace_history.es6~TraceHistory",
+    "longname": "es6/data/trace_history.es6~TraceHistory#getLineNumbers",
+    "access": null,
+    "description": null,
+    "lineNumber": 26,
+    "undocument": true,
+    "params": [
+      {
+        "name": "tracestep",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "__docId__": 66,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "updateData",
+    "memberof": "es6/data/trace_history.es6~TraceHistory",
+    "longname": "es6/data/trace_history.es6~TraceHistory#updateData",
+    "access": null,
+    "description": null,
+    "lineNumber": 51,
+    "undocument": true,
+    "params": [
+      {
+        "name": "history",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 67,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "stack_history",
+    "memberof": "es6/data/trace_history.es6~TraceHistory",
+    "longname": "es6/data/trace_history.es6~TraceHistory#stack_history",
+    "access": null,
+    "description": "Update data from history",
+    "lineNumber": 55,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 68,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "heap_history",
+    "memberof": "es6/data/trace_history.es6~TraceHistory",
+    "longname": "es6/data/trace_history.es6~TraceHistory#heap_history",
+    "access": null,
+    "description": null,
+    "lineNumber": 56,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 69,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "output_history",
+    "memberof": "es6/data/trace_history.es6~TraceHistory",
+    "longname": "es6/data/trace_history.es6~TraceHistory#output_history",
+    "access": null,
+    "description": null,
+    "lineNumber": 57,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 70,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "tracesteps",
+    "memberof": "es6/data/trace_history.es6~TraceHistory",
+    "longname": "es6/data/trace_history.es6~TraceHistory#tracesteps",
+    "access": null,
+    "description": null,
+    "lineNumber": 58,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 71,
+    "kind": "file",
+    "static": true,
+    "variation": null,
+    "name": "es6/notebook/gutters.es6",
+    "memberof": null,
+    "longname": "es6/notebook/gutters.es6",
+    "access": null,
+    "description": null,
+    "lineNumber": 2,
+    "content": "/* eslint no-unused-vars: 0 */\nimport {$} from \"nbtutor-deps\";\n\n\nexport class GutterMarkers {\n    constructor(cell){\n        this.codemirror = cell.code_mirror;\n        this.codemirror.setOption('lineNumbers', true);\n        this.$root = cell.element.find(\".inner_cell\");\n        this.$legend = $(\"<div/>\")\n            .addClass(\"nbtutor-hidden\")\n            .addClass(\"nbtutor-legend\");\n\n        // Create codemirror gutter id for nbtutor\n        let gutters = this.codemirror.options.gutters;\n        if (gutters.indexOf(\"nbtutor-linemarkers\") < 0){\n            gutters.push(\"nbtutor-linemarkers\");\n        }\n\n        // Build the legend elements\n        this._build_legend();\n    }\n\n    _build_legend(){\n        let $prevLineMarker = $(\"<i/>\")\n            .attr(\"class\", \"fa fa-long-arrow-right fa-lg\")\n            .addClass(\"nbtutor-prev-line\");\n        let $curLineMarker = $(\"<i/>\")\n            .attr(\"class\", \"fa fa-long-arrow-right fa-lg\")\n            .addClass(\"nbtutor-current-line\");\n        let $nextLineMarker = $(\"<i/>\")\n            .attr(\"class\", \"fa fa-long-arrow-right fa-lg\")\n            .addClass(\"nbtutor-next-line\");\n\n        this.$legend.append($(\"<p/>\")\n            .append($prevLineMarker)\n            .append($(\"<span/>\").text(\"Previous line\")));\n        this.$legend.append($(\"<p/>\")\n            .append($nextLineMarker)\n            .append($(\"<span/>\").text(\"Next line\")));\n        this.$legend.append($(\"<p/>\")\n            .append($curLineMarker)\n            .append($(\"<span/>\").text(\"Waiting for next frame\")));\n\n        this.$root.append(this.$legend);\n    }\n\n    setMarkers(lineNumbers){\n        // First clear current gutter markers\n        this.codemirror.clearGutter(\"nbtutor-linemarkers\");\n\n        let prevLines = lineNumbers.prevLines;\n        let curLines = lineNumbers.curLines;\n        let nextLine = lineNumbers.nextLine;\n\n        // Update CodeMirror line markers\n        let that = this;\n        curLines.map((line) => {\n            let $curLineMarker = $(\"<i/>\")\n                .attr(\"class\", \"fa fa-long-arrow-right fa-lg\")\n                .addClass(\"nbtutor-current-line\");\n            if (line-1 >= 0) {\n                that.codemirror.setGutterMarker(\n                    line-1,\n                    \"nbtutor-linemarkers\",\n                    $curLineMarker.toArray()[0]\n                );\n            }\n        });\n\n        prevLines.map((line) => {\n            let $prevLineMarker = $(\"<i/>\")\n                .attr(\"class\", \"fa fa-long-arrow-right fa-lg\")\n                .addClass(\"nbtutor-prev-line\");\n            if (line-1 >= 0) {\n                that.codemirror.setGutterMarker(\n                    line-1,\n                    \"nbtutor-linemarkers\",\n                    $prevLineMarker.toArray()[0]\n                );\n            }\n        });\n\n        let $nextLineMarker = $(\"<i/>\")\n            .attr(\"class\", \"fa fa-long-arrow-right fa-lg\")\n            .addClass(\"nbtutor-next-line\");\n        if (nextLine-1 >= 0) {\n            this.codemirror.setGutterMarker(\n                nextLine-1,\n                \"nbtutor-linemarkers\",\n                $nextLineMarker.toArray()[0]\n            );\n        }\n    }\n\n    showLegend(){\n        this.$legend.removeClass(\"nbtutor-hidden\");\n    }\n\n    hideLegend(){\n        this.$legend.addClass(\"nbtutor-hidden\");\n    }\n\n    clearMarkers(){\n        this.codemirror.clearGutter(\"nbtutor-linemarkers\");\n    }\n\n    destroy(){\n        this.clearMarkers();\n        this.$legend.remove();\n    }\n}\n"
+  },
+  {
+    "__docId__": 72,
+    "kind": "class",
+    "static": true,
+    "variation": null,
+    "name": "GutterMarkers",
+    "memberof": "es6/notebook/gutters.es6",
+    "longname": "es6/notebook/gutters.es6~GutterMarkers",
+    "access": null,
+    "export": true,
+    "importPath": "nbtutor/es6/notebook/gutters.es6",
+    "importStyle": "{GutterMarkers}",
+    "description": null,
+    "lineNumber": 5,
+    "undocument": true,
+    "interface": false
+  },
+  {
+    "__docId__": 73,
+    "kind": "constructor",
+    "static": false,
+    "variation": null,
+    "name": "constructor",
+    "memberof": "es6/notebook/gutters.es6~GutterMarkers",
+    "longname": "es6/notebook/gutters.es6~GutterMarkers#constructor",
+    "access": null,
+    "description": null,
+    "lineNumber": 6,
+    "undocument": true,
+    "params": [
+      {
+        "name": "cell",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 74,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "codemirror",
+    "memberof": "es6/notebook/gutters.es6~GutterMarkers",
+    "longname": "es6/notebook/gutters.es6~GutterMarkers#codemirror",
+    "access": null,
+    "description": null,
+    "lineNumber": 7,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 75,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "$root",
+    "memberof": "es6/notebook/gutters.es6~GutterMarkers",
+    "longname": "es6/notebook/gutters.es6~GutterMarkers#$root",
+    "access": null,
+    "description": null,
+    "lineNumber": 9,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 76,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "$legend",
+    "memberof": "es6/notebook/gutters.es6~GutterMarkers",
+    "longname": "es6/notebook/gutters.es6~GutterMarkers#$legend",
+    "access": null,
+    "description": null,
+    "lineNumber": 10,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 77,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_build_legend",
+    "memberof": "es6/notebook/gutters.es6~GutterMarkers",
+    "longname": "es6/notebook/gutters.es6~GutterMarkers#_build_legend",
+    "access": null,
+    "description": null,
+    "lineNumber": 24,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 78,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "setMarkers",
+    "memberof": "es6/notebook/gutters.es6~GutterMarkers",
+    "longname": "es6/notebook/gutters.es6~GutterMarkers#setMarkers",
+    "access": null,
+    "description": null,
+    "lineNumber": 48,
+    "undocument": true,
+    "params": [
+      {
+        "name": "lineNumbers",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 79,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "showLegend",
+    "memberof": "es6/notebook/gutters.es6~GutterMarkers",
+    "longname": "es6/notebook/gutters.es6~GutterMarkers#showLegend",
+    "access": null,
+    "description": null,
+    "lineNumber": 96,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 80,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "hideLegend",
+    "memberof": "es6/notebook/gutters.es6~GutterMarkers",
+    "longname": "es6/notebook/gutters.es6~GutterMarkers#hideLegend",
+    "access": null,
+    "description": null,
+    "lineNumber": 100,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 81,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "clearMarkers",
+    "memberof": "es6/notebook/gutters.es6~GutterMarkers",
+    "longname": "es6/notebook/gutters.es6~GutterMarkers#clearMarkers",
+    "access": null,
+    "description": null,
+    "lineNumber": 104,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 82,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "destroy",
+    "memberof": "es6/notebook/gutters.es6~GutterMarkers",
+    "longname": "es6/notebook/gutters.es6~GutterMarkers#destroy",
+    "access": null,
+    "description": null,
+    "lineNumber": 108,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 83,
+    "kind": "file",
+    "static": true,
+    "variation": null,
+    "name": "es6/notebook/notebook.es6",
+    "memberof": null,
+    "longname": "es6/notebook/notebook.es6",
+    "access": null,
+    "description": null,
+    "lineNumber": 2,
+    "content": "\nimport {$, d3, uuid} from \"nbtutor-deps\";\n\nimport {Toolbar} from \"./toolbar\";\nimport {GutterMarkers} from \"./gutters\";\nimport {TraceHistory} from \"../data/trace_history\";\nimport {StackTimeline} from \"../data/stack_timeline\";\nimport {MemoryModelUI} from \"../render/html_memory\";\nimport {TimelineUI} from \"../render/html_timeline\";\n\nimport dialog from \"base/js/dialog\";\nimport events from \"base/js/events\";\nimport Jupyter from \"base/js/namespace\";\n\n\nfunction alertUserMissingData(){\n    let msg = $(\"<p/>\").text(\n        \"No visualization data was found for this cell. \" +\n        \"Please include the following magic at the start \" +\n        \"of the cell and run the code again:\"\n    ).append($(\"<pre/>\").text(\n        \"%%nbtutor\"\n    ));\n\n    dialog.modal({\n        notebook: Jupyter.notebook,\n        keyboard_manager: Jupyter.notebook.keyboard_manager,\n        title: \"Missing Visualization Data\",\n        body: msg,\n        buttons: {\n            OK: {}\n        }\n    });\n}\n\n\nexport class VisualizedCell {\n    constructor(cell){\n        this.tracestep = 0;\n        this.trace_history = new TraceHistory(cell);\n        this.stack_timeline = new StackTimeline();\n\n        this.cell = cell;\n        this.codemirror = cell.code_mirror;\n        this.output_area = this.cell.output_area;\n\n        this.$input_area = cell.element.find(\".input_area\")\n            .addClass(\"nbtutor-input-area\");\n        this.$nbtutor_canvas = $(\"<div/>\")\n            .attr(\"class\", \"nbtutor-canvas\")\n            .attr(\"id\", \"c-\" + uuid.v4())\n            .addClass(\"nbtutor-hidden\");\n        this.d3Root = d3.select(this.$nbtutor_canvas.toArray()[0]);\n\n        this.toolbar = new Toolbar(cell);\n        this.markers = new GutterMarkers(cell);\n        this.memoryUI = new MemoryModelUI(this.trace_history, this.d3Root);\n        this.timelineUI = new TimelineUI(this.stack_timeline, this.d3Root);\n\n        // Build the UI elements\n        this._build();\n    }\n\n    _checkData(){\n        // Alert if no data\n        if (!this.trace_history || !this.trace_history.stack_history){\n            this.toolbar.$select_view.val(\"none\").trigger(\"change\");\n            alertUserMissingData();\n        }\n    }\n\n    _bindButtons(){\n        let that = this;\n\n        this.toolbar.$btn_first.on(\"click\", () => {\n            let stack_history = this.trace_history.stack_history;\n            let heap_history = this.trace_history.heap_history;\n\n            that._checkData();\n            that.tracestep = 0;\n            that.stack_timeline.clear();\n            that.stack_timeline.push(\n                stack_history.getStackFrames(that.tracestep),\n                heap_history.getHeapObjects(that.tracestep)\n            );\n            that.visualize();\n        });\n\n        this.toolbar.$btn_prev.on(\"click\", () => {\n            if (that.tracestep > 0){\n                that._checkData();\n                that.tracestep -= 1;\n                that.stack_timeline.pop();\n                that.visualize();\n            }\n        });\n\n        this.toolbar.$btn_next.on(\"click\", () => {\n            if (that.tracestep < that.trace_history.tracesteps-1){\n                let stack_history = this.trace_history.stack_history;\n                let heap_history = this.trace_history.heap_history;\n\n                that._checkData();\n                that.tracestep += 1;\n                that.stack_timeline.push(\n                    stack_history.getStackFrames(that.tracestep),\n                    heap_history.getHeapObjects(that.tracestep)\n                );\n                that.visualize();\n            }\n        });\n\n        this.toolbar.$btn_last.on(\"click\", () => {\n            let stack_history = this.trace_history.stack_history;\n            let heap_history = this.trace_history.heap_history;\n\n            that._checkData();\n            that.stack_timeline.clear();\n            that.tracestep = that.trace_history.tracesteps-1;\n            for (let tracestep=0; tracestep<that.tracestep+1; tracestep++){\n                that.stack_timeline.push(\n                    stack_history.getStackFrames(tracestep),\n                    heap_history.getHeapObjects(tracestep)\n                );\n            }\n            that.visualize();\n        });\n    }\n\n    _build(){\n        this._bindButtons();\n        this.$input_area.append(this.$nbtutor_canvas);\n\n        let that = this;\n        events.on(\"global_hide.CellToolBar\", () => {\n            that.destroy();\n        });\n\n        this.toolbar.$select_view.on(\"change\", function(){\n            that.memoryUI.destroy();\n            let render_view = $(this).val();\n            if (render_view == \"none\"){\n                that.markers.clearMarkers();\n                that.markers.hideLegend();\n                that.$nbtutor_canvas.addClass(\"nbtutor-hidden\");\n            } else {\n                that.markers.showLegend();\n                that.$nbtutor_canvas.removeClass(\"nbtutor-hidden\");\n                that.toolbar.$btn_first.trigger(\"click\");\n            }\n        });\n\n        this.codemirror.on(\"change\", () => {\n            that.markers.clearMarkers();\n            that.toolbar.$select_view.val(\"none\").trigger(\"change\");\n            that.trace_history.clear();\n        });\n    }\n\n    visualize(){\n        // visualize code execution\n        let render_view = this.toolbar.$select_view.val();\n        if (render_view == \"memory\"){\n            this.memoryUI.create(this.tracestep);\n        }\n        if (render_view == \"timeline\"){\n            this.timelineUI.create();\n        }\n\n        // Add CodeMirror line markers\n        let lineNumbers = this.trace_history.getLineNumbers(this.tracestep);\n        this.markers.setMarkers(lineNumbers);\n\n        // Manage cell output\n        let output_history = this.trace_history.output_history;\n        this.output_area.clear_output();\n        this.output_area.handle_output({\n            header: {msg_type: \"stream\"},\n            content: {\n                name: \"nbtutor\",\n                text: output_history.getOutput(this.tracestep),\n            },\n        });\n    }\n\n    updateData(data){\n        this.output_area.clear_output();\n        this.trace_history.updateData(data)\n        this.toolbar.$select_view.val(\"memory\").trigger(\"change\");\n    }\n\n    destroy(){\n        this.$nbtutor_canvas.remove();\n        this.markers.destroy();\n        this.toolbar.destroy();\n        this.cell.nbtutor = null;\n    }\n}\n"
+  },
+  {
+    "__docId__": 84,
+    "kind": "function",
+    "static": true,
+    "variation": null,
+    "name": "alertUserMissingData",
+    "memberof": "es6/notebook/notebook.es6",
+    "longname": "es6/notebook/notebook.es6~alertUserMissingData",
+    "access": null,
+    "export": false,
+    "importPath": "nbtutor/es6/notebook/notebook.es6",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 16,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 85,
+    "kind": "class",
+    "static": true,
+    "variation": null,
+    "name": "VisualizedCell",
+    "memberof": "es6/notebook/notebook.es6",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell",
+    "access": null,
+    "export": true,
+    "importPath": "nbtutor/es6/notebook/notebook.es6",
+    "importStyle": "{VisualizedCell}",
+    "description": null,
+    "lineNumber": 37,
+    "undocument": true,
+    "interface": false
+  },
+  {
+    "__docId__": 86,
+    "kind": "constructor",
+    "static": false,
+    "variation": null,
+    "name": "constructor",
+    "memberof": "es6/notebook/notebook.es6~VisualizedCell",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell#constructor",
+    "access": null,
+    "description": null,
+    "lineNumber": 38,
+    "undocument": true,
+    "params": [
+      {
+        "name": "cell",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 87,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "tracestep",
+    "memberof": "es6/notebook/notebook.es6~VisualizedCell",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell#tracestep",
+    "access": null,
+    "description": null,
+    "lineNumber": 39,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number"
+      ]
+    }
+  },
+  {
+    "__docId__": 88,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "trace_history",
+    "memberof": "es6/notebook/notebook.es6~VisualizedCell",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell#trace_history",
+    "access": null,
+    "description": null,
+    "lineNumber": 40,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 89,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "stack_timeline",
+    "memberof": "es6/notebook/notebook.es6~VisualizedCell",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell#stack_timeline",
+    "access": null,
+    "description": null,
+    "lineNumber": 41,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 90,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "cell",
+    "memberof": "es6/notebook/notebook.es6~VisualizedCell",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell#cell",
+    "access": null,
+    "description": null,
+    "lineNumber": 43,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 91,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "codemirror",
+    "memberof": "es6/notebook/notebook.es6~VisualizedCell",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell#codemirror",
+    "access": null,
+    "description": null,
+    "lineNumber": 44,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 92,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "output_area",
+    "memberof": "es6/notebook/notebook.es6~VisualizedCell",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell#output_area",
+    "access": null,
+    "description": null,
+    "lineNumber": 45,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 93,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "$input_area",
+    "memberof": "es6/notebook/notebook.es6~VisualizedCell",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell#$input_area",
+    "access": null,
+    "description": null,
+    "lineNumber": 47,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 94,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "$nbtutor_canvas",
+    "memberof": "es6/notebook/notebook.es6~VisualizedCell",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell#$nbtutor_canvas",
+    "access": null,
+    "description": null,
+    "lineNumber": 49,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 95,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "d3Root",
+    "memberof": "es6/notebook/notebook.es6~VisualizedCell",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell#d3Root",
+    "access": null,
+    "description": null,
+    "lineNumber": 53,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 96,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "toolbar",
+    "memberof": "es6/notebook/notebook.es6~VisualizedCell",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell#toolbar",
+    "access": null,
+    "description": null,
+    "lineNumber": 55,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 97,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "markers",
+    "memberof": "es6/notebook/notebook.es6~VisualizedCell",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell#markers",
+    "access": null,
+    "description": null,
+    "lineNumber": 56,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 98,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "memoryUI",
+    "memberof": "es6/notebook/notebook.es6~VisualizedCell",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell#memoryUI",
+    "access": null,
+    "description": null,
+    "lineNumber": 57,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 99,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "timelineUI",
+    "memberof": "es6/notebook/notebook.es6~VisualizedCell",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell#timelineUI",
+    "access": null,
+    "description": null,
+    "lineNumber": 58,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 100,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_checkData",
+    "memberof": "es6/notebook/notebook.es6~VisualizedCell",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell#_checkData",
+    "access": null,
+    "description": null,
+    "lineNumber": 64,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 101,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_bindButtons",
+    "memberof": "es6/notebook/notebook.es6~VisualizedCell",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell#_bindButtons",
+    "access": null,
+    "description": null,
+    "lineNumber": 72,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 102,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_build",
+    "memberof": "es6/notebook/notebook.es6~VisualizedCell",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell#_build",
+    "access": null,
+    "description": null,
+    "lineNumber": 130,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 103,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "visualize",
+    "memberof": "es6/notebook/notebook.es6~VisualizedCell",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell#visualize",
+    "access": null,
+    "description": null,
+    "lineNumber": 160,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 104,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "updateData",
+    "memberof": "es6/notebook/notebook.es6~VisualizedCell",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell#updateData",
+    "access": null,
+    "description": null,
+    "lineNumber": 186,
+    "undocument": true,
+    "params": [
+      {
+        "name": "data",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 105,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "destroy",
+    "memberof": "es6/notebook/notebook.es6~VisualizedCell",
+    "longname": "es6/notebook/notebook.es6~VisualizedCell#destroy",
+    "access": null,
+    "description": null,
+    "lineNumber": 192,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 106,
+    "kind": "file",
+    "static": true,
+    "variation": null,
+    "name": "es6/notebook/toolbar.es6",
+    "memberof": null,
+    "longname": "es6/notebook/toolbar.es6",
+    "access": null,
+    "description": null,
+    "lineNumber": 2,
+    "content": "/* eslint no-unused-vars: 0 */\nimport {$} from \"nbtutor-deps\";\n\n\nexport class Toolbar {\n    constructor(cell){\n        this.$root = cell.celltoolbar.element.find(\".button_container\");\n        this.$btn_first = $(\"<button/>\")\n            .text(\"<< First Line\");\n        this.$btn_prev = $(\"<button/>\")\n            .text(\"< Prev\");\n        this.$btn_next = $(\"<button/>\")\n            .text(\"Next >\");\n        this.$btn_last = $(\"<button/>\")\n            .text(\"Last Line >>\");\n        this.$select_view = $(\"<select/>\");\n\n        // Build the UI elements\n        this._build();\n    }\n\n    _build(){\n        if (this.$root.hasClass(\"nbtutor-buttons\")){\n            this.destroy();\n        }\n        this.$root.addClass(\"nbtutor-buttons\");\n        this.$root.append(this.$btn_first);\n        this.$root.append(this.$btn_prev);\n        this.$root.append(this.$btn_next);\n        this.$root.append(this.$btn_last);\n        this.$root.children(\"button\")\n            .attr(\"type\", \"button\")\n            .addClass(\"nbtutor-hidden\");\n        this.$root.append(this.$select_view);\n\n        this.$select_view.append(\n            $('<option/>')\n            .attr(\"value\", \"none\")\n            .text(\"-\")\n        );\n        this.$select_view.append(\n            $('<option/>')\n            .attr(\"value\", \"memory\")\n            .text(\"Memory\")\n        );\n        this.$select_view.append(\n            $('<option/>')\n            .attr(\"value\", \"timeline\")\n            .text(\"Timeline\")\n        );\n\n        let that = this;\n        this.$select_view.change(() => {\n            let render_view = this.$select_view.val();\n            if (render_view === \"none\"){\n                this.hideButtons();\n            } else {\n                this.showButtons();\n            }\n        });\n    }\n\n    showButtons(){\n        this.$root.children(\"button\").removeClass(\"nbtutor-hidden\");\n    }\n\n    hideButtons(){\n        this.$root.children(\"button\").addClass(\"nbtutor-hidden\");\n    }\n\n    destroy(){\n        this.$root.empty();\n    }\n}\n"
+  },
+  {
+    "__docId__": 107,
+    "kind": "class",
+    "static": true,
+    "variation": null,
+    "name": "Toolbar",
+    "memberof": "es6/notebook/toolbar.es6",
+    "longname": "es6/notebook/toolbar.es6~Toolbar",
+    "access": null,
+    "export": true,
+    "importPath": "nbtutor/es6/notebook/toolbar.es6",
+    "importStyle": "{Toolbar}",
+    "description": null,
+    "lineNumber": 5,
+    "undocument": true,
+    "interface": false
+  },
+  {
+    "__docId__": 108,
+    "kind": "constructor",
+    "static": false,
+    "variation": null,
+    "name": "constructor",
+    "memberof": "es6/notebook/toolbar.es6~Toolbar",
+    "longname": "es6/notebook/toolbar.es6~Toolbar#constructor",
+    "access": null,
+    "description": null,
+    "lineNumber": 6,
+    "undocument": true,
+    "params": [
+      {
+        "name": "cell",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 109,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "$root",
+    "memberof": "es6/notebook/toolbar.es6~Toolbar",
+    "longname": "es6/notebook/toolbar.es6~Toolbar#$root",
+    "access": null,
+    "description": null,
+    "lineNumber": 7,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 110,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "$btn_first",
+    "memberof": "es6/notebook/toolbar.es6~Toolbar",
+    "longname": "es6/notebook/toolbar.es6~Toolbar#$btn_first",
+    "access": null,
+    "description": null,
+    "lineNumber": 8,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 111,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "$btn_prev",
+    "memberof": "es6/notebook/toolbar.es6~Toolbar",
+    "longname": "es6/notebook/toolbar.es6~Toolbar#$btn_prev",
+    "access": null,
+    "description": null,
+    "lineNumber": 10,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 112,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "$btn_next",
+    "memberof": "es6/notebook/toolbar.es6~Toolbar",
+    "longname": "es6/notebook/toolbar.es6~Toolbar#$btn_next",
+    "access": null,
+    "description": null,
+    "lineNumber": 12,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 113,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "$btn_last",
+    "memberof": "es6/notebook/toolbar.es6~Toolbar",
+    "longname": "es6/notebook/toolbar.es6~Toolbar#$btn_last",
+    "access": null,
+    "description": null,
+    "lineNumber": 14,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 114,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "$select_view",
+    "memberof": "es6/notebook/toolbar.es6~Toolbar",
+    "longname": "es6/notebook/toolbar.es6~Toolbar#$select_view",
+    "access": null,
+    "description": null,
+    "lineNumber": 16,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 115,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_build",
+    "memberof": "es6/notebook/toolbar.es6~Toolbar",
+    "longname": "es6/notebook/toolbar.es6~Toolbar#_build",
+    "access": null,
+    "description": null,
+    "lineNumber": 22,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 116,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "showButtons",
+    "memberof": "es6/notebook/toolbar.es6~Toolbar",
+    "longname": "es6/notebook/toolbar.es6~Toolbar#showButtons",
+    "access": null,
+    "description": null,
+    "lineNumber": 63,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 117,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "hideButtons",
+    "memberof": "es6/notebook/toolbar.es6~Toolbar",
+    "longname": "es6/notebook/toolbar.es6~Toolbar#hideButtons",
+    "access": null,
+    "description": null,
+    "lineNumber": 67,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 118,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "destroy",
+    "memberof": "es6/notebook/toolbar.es6~Toolbar",
+    "longname": "es6/notebook/toolbar.es6~Toolbar#destroy",
+    "access": null,
+    "description": null,
+    "lineNumber": 71,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 119,
+    "kind": "file",
+    "static": true,
+    "variation": null,
+    "name": "es6/render/html_memory.es6",
+    "memberof": null,
+    "longname": "es6/render/html_memory.es6",
+    "access": null,
+    "description": null,
+    "lineNumber": 2,
+    "content": "/* eslint no-unused-vars: 0 */\nimport {$, d3, uuid, jsplumb} from \"nbtutor-deps\";\n\n\nexport class MemoryModelUI{\n    constructor(trace_history, d3Root){\n        this.trace_history = trace_history;\n        this.d3Root = d3Root;\n        this.connectors = [];\n        this.objects_rendered = [];\n        this.jsplumb = jsplumb.getInstance({\n            Container: this.d3Root[0],\n        });\n    }\n\n    _setHover(cls, state){\n        d3.select(\".nbtutor-var-object.\" + cls).select(\".nbtutor-var-value\")\n            .classed(\"nbtutor-hover\", state);\n        d3.select(\".nbtutor-var-object.\" + cls).select(\"table\")\n            .classed(\"nbtutor-hover\", state);\n        d3.selectAll(\"svg.\" + cls).classed(\"jtk-hover\", state);\n        d3.selectAll(\"path.\" + cls).classed(\"jtk-hover\", state);\n    }\n\n    _connectObjects(){\n        let that = this;\n        this.connectors.map((con) => {\n            let stateMachineConnector = {\n                paintStyle: {lineWidth: 2, stroke: \"#056\"},\n                endpoint: \"Blank\",\n                anchors: [\"Right\", \"Left\"],\n                connector: [\"Bezier\", {\"curviness\": 80}],\n                detachable: false,\n                overlays: [\n                    [\"Arrow\", {length: 10, width: 10, location: 1}]\n                ],\n            };\n            stateMachineConnector.cssClass = con.from;\n            stateMachineConnector.overlays[0][1].cssClass = con.from;\n            if (con.from[0] == 'r'){\n                stateMachineConnector.anchors = [\n                    \"Top\", [\"Left\", \"Right\"]\n                ];\n            }\n\n            d3.select(\"#\" + con.to).classed(con.from, true);\n            this.jsplumb.connect({\n                source: con.from,\n                target: con.to\n            }, stateMachineConnector);\n        });\n    }\n\n    _createHeapDiv(object){\n        let position = object.options.position || 'right';\n        let d3Obj = this.d3Root.select(\".nbtutor-heap\")\n            .append(\"div\")\n                .attr(\"class\", \"nbtutor-heap-row-\" + position)\n            .append(\"div\")\n                .attr(\"class\", \"nbtutor-var-object\")\n                .attr(\"id\", object.uuid);\n        return d3Obj;\n    }\n\n    _createPrimitive(object){\n        let d3Obj = this._createHeapDiv(object);\n        d3Obj.append(\"div\")\n            .attr(\"class\", \"nbtutor-var-type\")\n            .text(object.type);\n        d3Obj.append(\"div\")\n            .attr(\"class\", \"nbtutor-var-value\")\n            .text(object.value);\n    }\n\n    _createSequence(object, tracestep){\n        let that = this;\n        let heap_history = this.trace_history.heap_history;\n        object.values.map((obj) => {\n            let child = heap_history.getObjectById(tracestep, obj.id);\n            if (!object.options.inline || child.catagory != 'primitive'){\n                obj.uuid = 'r-' + uuid.v4();\n                that._createObject(child, tracestep);\n                that.connectors.push({\n                    from: obj.uuid,\n                    to: child.uuid\n                });\n            }\n        });\n\n        let d3Obj = this._createHeapDiv(object);\n        d3Obj.append(\"div\")\n            .attr(\"class\", \"nbtutor-var-type\")\n            .text(object.type);\n\n        let d3Table = d3Obj.append(\"table\")\n            .attr(\"class\", \"nbtutor-seq-\" + object.type);\n        let d3IndRow = d3Table.append(\"tr\");\n        let d3ValRow = d3Table.append(\"tr\");\n\n        // Create sequence index numbers\n        let indexes = [];\n        for (let i=0; i<object.values.length; i++){\n            indexes.push(i);\n        }\n\n        // Add an ellipsis to the end of a long sequence\n        let ind = object.values.length-1;\n        if (object.options.ellipsis){\n            if (object.values[ind] === '...'){\n                indexes[ind] = \"...\";\n            } else {\n                indexes.push(\"...\");\n                object.values.push(\"...\");\n            }\n        }\n\n        // Add index numbers\n        d3IndRow.selectAll(\"td\")\n            .data(indexes)\n            .enter()\n                .append(\"td\")\n                .attr(\"class\", \"nbtutor-var-index\")\n                .text((d) => d);\n\n        // Add sequence anchors\n        let d3Refs = d3ValRow.selectAll(\"td\")\n            .data(object.values)\n            .enter()\n                .append(\"td\")\n                .attr(\"class\", \"nbtutor-anchor-from\");\n\n        d3Refs.append(\"div\")\n            .each(function(d){\n                if (object.options.ellipsis && d === \"...\"){\n                    d3.select(this).text(\"...\");\n                } else {\n                    let child = heap_history.getObjectById(tracestep, d.id);\n                    if (object.options.inline && child.catagory === 'primitive'){\n                        d3.select(this).text(child.value);\n                    } else {\n                        d3.select(this).attr(\"id\", (d) => d.uuid);\n                    }\n                }\n            });\n\n        // Toggle mouse hover over ref\n        d3Refs.on('mouseover', function(d){\n            d3.select(this).classed(\"nbtutor-hover\", true);\n            that._setHover(d.uuid, true);\n        });\n        d3Refs.on('mouseout', function(d){\n            d3.select(this).classed(\"nbtutor-hover\", false);\n            that._setHover(d.uuid, false);\n        });\n    }\n\n    _createArray(object, tracestep){\n        let d3Obj = this._createHeapDiv(object);\n        d3Obj.append(\"div\")\n            .attr(\"class\", \"nbtutor-var-type\")\n            .text(object.type);\n\n        let d3Table = d3Obj.append(\"table\")\n            .attr(\"class\", \"nbtutor-seq-array\");\n        let d3IndRow = d3Table.append(\"tr\");\n        let d3ValRow = d3Table.append(\"tr\");\n\n        // Create sequence index numbers\n        let indexes = [];\n        for (let i=0; i<object.values.length; i++){\n            indexes.push(i);\n        }\n\n        // Add an ellipsis to the end of a long sequence\n        let ind = object.values.length-1;\n        if (object.options.ellipsis){\n            if (object.values[ind] === '...'){\n                indexes[ind] = \"...\";\n            } else {\n                indexes.push(\"...\");\n                object.values.push(\"...\");\n            }\n        }\n\n        // Add index numbers\n        d3IndRow.selectAll(\"td\")\n            .data(indexes)\n            .enter()\n                .append(\"td\")\n                .attr(\"class\", \"nbtutor-var-index\")\n                .text((d) => d);\n\n        // Add sequence anchors\n        d3ValRow.selectAll(\"td\")\n            .data(object.values)\n            .enter()\n                .append(\"td\")\n                    .attr(\"class\", \"nbtutor-anchor-from\")\n                .append(\"div\")\n                    .text((d) => d);\n    }\n\n    _createKeyValue(object, tracestep){\n        let that = this;\n        let heap_history = this.trace_history.heap_history;\n        object.values.map((obj) => {\n            let key = heap_history.getObjectById(tracestep, obj.key_id);\n            if (!object.options.inline_keys || key.catagory != 'primitive'){\n                obj.key_uuid = 'r-' + uuid.v4();\n                that._createObject(key, tracestep);\n                that.connectors.push({\n                    from: obj.key_uuid,\n                    to: key.uuid\n                });\n            }\n            let value = heap_history.getObjectById(tracestep, obj.val_id);\n            if (!object.options.inline_vals || value.catagory != 'primitive'){\n                obj.val_uuid = 'r-' + uuid.v4();\n                that._createObject(value, tracestep);\n                that.connectors.push({\n                    from: obj.val_uuid,\n                    to: value.uuid\n                });\n            }\n        });\n\n\n        let d3Obj = this._createHeapDiv(object);\n        d3Obj.append(\"div\")\n            .attr(\"class\", \"nbtutor-var-type\")\n            .text(object.type);\n\n        let d3Table = d3Obj.append(\"table\")\n            .attr(\"class\", \"nbtutor-seq-key-value\");\n\n        // Add an ellipsis to the end of a long sequence\n        let ind = object.values.length-1;\n        if (object.options.ellipsis){\n            if (object.values[ind] != '...'){\n                object.values.push(\"...\");\n            }\n        }\n\n        let d3Rows = d3Table.selectAll(\"tr\")\n            .data(object.values)\n            .enter()\n                .append(\"tr\");\n\n        let d3Keys = d3Rows.append(\"td\")\n            .attr(\"class\", \"nbtutor-anchor-from\");\n        let d3Vals = d3Rows.append(\"td\")\n            .attr(\"class\", \"nbtutor-anchor-from\");\n\n        d3Keys.append(\"div\")\n            .each(function(d){\n                if (object.options.ellipsis && d === \"...\"){\n                    d3.select(this).text(\"...\");\n                } else {\n                    let key = heap_history.getObjectById(tracestep, d.key_id);\n                    if (object.options.inline_keys && key.catagory === 'primitive'){\n                        d3.select(this).text(key.value);\n                    } else {\n                        d3.select(this).attr(\"id\", (d) => d.key_uuid);\n                    }\n                }\n            });\n\n        d3Vals.append(\"div\")\n            .each(function(d){\n                if (object.options.ellipsis && d === \"...\"){\n                    d3.select(this).text(\"...\");\n                } else {\n                    let value = heap_history.getObjectById(tracestep, d.val_id);\n                    if (object.options.inline_vals && value.catagory === 'primitive'){\n                        d3.select(this).text(value.value);\n                    } else {\n                        d3.select(this).attr(\"id\", (d) => d.val_uuid);\n                    }\n                }\n            });\n\n        // Toggle mouse hover over ref\n        d3Keys.on('mouseover', function(d){\n            d3.select(this).classed(\"nbtutor-hover\", true);\n            that._setHover(d.key_uuid, true);\n        });\n        d3Keys.on('mouseout', function(d){\n            d3.select(this).classed(\"nbtutor-hover\", false);\n            that._setHover(d.key_uuid, false);\n        });\n        d3Vals.on('mouseover', function(d){\n            d3.select(this).classed(\"nbtutor-hover\", true);\n            that._setHover(d.val_uuid, true);\n        });\n        d3Vals.on('mouseout', function(d){\n            d3.select(this).classed(\"nbtutor-hover\", false);\n            that._setHover(d.val_uuid, false);\n        });\n    }\n\n    _createObject(object, tracestep){\n        if (this.objects_rendered.indexOf(object.uuid) >= 0){\n            return;\n        }\n\n        this.objects_rendered.push(object.uuid);\n        switch (object.catagory){\n            case \"primitive\":\n                this._createPrimitive(object);\n                break;\n            case \"sequence\":\n                this._createSequence(object, tracestep);\n                break;\n            case \"array\":\n                this._createArray(object, tracestep);\n                break;\n            case \"key-value\":\n                this._createKeyValue(object, tracestep);\n                break;\n            default:\n                this._createPrimitive({\n                    uuid: object.uuid,\n                    type: object.type,\n                    options: object.options,\n                    value: 'OBJECT',\n                });\n        }\n    }\n\n    create(tracestep){\n        // First destroy any previous visualization\n        this.destroy();\n\n        // Init parent div\n        this.d3Root.append(\"div\")\n            .attr(\"class\", \"nbtutor-stack\");\n        this.d3Root.append(\"div\")\n            .attr(\"class\", \"nbtutor-heap\");\n\n        let stack_history = this.trace_history.stack_history;\n        let heap_history = this.trace_history.heap_history;\n        let stack_frames = stack_history.getStackFrames(tracestep);\n\n        // Create tables for each frame\n        let d3Frames = this.d3Root.select(\".nbtutor-stack\").selectAll(\"div\")\n            .data(stack_frames, (d) => d.uuid)\n            .enter()\n                .append(\"div\")\n                .attr(\"class\", \"nbtutor-frame\");\n\n        d3Frames.append(\"table\")\n            .attr(\"id\", (d) => d.uuid)\n            .append(\"thead\")\n            .append(\"tr\")\n            .append(\"th\")\n                .attr(\"colspan\", 2)\n                .text((d) => d.name);\n        d3Frames.select(\"table\").append(\"tbody\");\n        d3Frames.select(\"table\").append(\"tfoot\");\n\n        // Add names to each frame\n        let d3Names = d3Frames.select(\"tbody\").selectAll(\"tr\")\n            .data((d) => {\n                return d.vars.map((v) => {\n                    return {object: v, options: d.options};\n                });\n            }, (d) => d.object.name)\n            .enter()\n                .append(\"tr\");\n\n        let that = this;\n        d3Names.append(\"td\")\n            .attr(\"class\", \"nbtutor-var-name\")\n            .text((d) => d.object.name);\n\n        d3Names.append(\"td\")\n            .attr(\"class\", \"nbtutor-anchor-from\")\n            .append(\"div\")\n                .attr(\"id\", (d) => d.object.uuid)\n            .each(function(d){\n                let object = heap_history.getObjectById(tracestep, d.object.id);\n                if (d.options.inline && object.catagory === 'primitive'){\n                    d3.select(this).text(object.value);\n                } else {\n                    that._createObject(object, tracestep);\n                    that.connectors.push({\n                        from: d.object.uuid,\n                        to: object.uuid\n                    });\n                }\n            });\n\n        // Create connector lines\n        this._connectObjects();\n\n        // Toggle active frame\n        let d3Tables = this.d3Root.select(\".nbtutor-stack\").selectAll(\"table\");\n        d3Tables.classed(\"nbtutor-active\", false);\n        d3.select(d3Tables[0].pop()).classed(\"nbtutor-active\", true);\n\n        // Toggle mouse hover over name\n        d3Names.on('mouseover', function(d){\n            d3.select(this).classed(\"nbtutor-hover\", true);\n            that._setHover(d.object.uuid, true);\n        });\n        d3Names.on('mouseout', function(d){\n            d3.select(this).classed(\"nbtutor-hover\", false);\n            that._setHover(d.object.uuid, false);\n        });\n\n        $(window).resize(function(){\n            that.jsplumb.repaintEverything();\n        });\n    }\n\n    destroy(){\n        this.jsplumb.empty(this.d3Root[0]);\n        this.d3Root.selectAll(\"div\").remove();\n        this.connectors = [];\n        this.objects_rendered = [];\n    }\n}\n"
+  },
+  {
+    "__docId__": 120,
+    "kind": "class",
+    "static": true,
+    "variation": null,
+    "name": "MemoryModelUI",
+    "memberof": "es6/render/html_memory.es6",
+    "longname": "es6/render/html_memory.es6~MemoryModelUI",
+    "access": null,
+    "export": true,
+    "importPath": "nbtutor/es6/render/html_memory.es6",
+    "importStyle": "{MemoryModelUI}",
+    "description": null,
+    "lineNumber": 5,
+    "undocument": true,
+    "interface": false
+  },
+  {
+    "__docId__": 121,
+    "kind": "constructor",
+    "static": false,
+    "variation": null,
+    "name": "constructor",
+    "memberof": "es6/render/html_memory.es6~MemoryModelUI",
+    "longname": "es6/render/html_memory.es6~MemoryModelUI#constructor",
+    "access": null,
+    "description": null,
+    "lineNumber": 6,
+    "undocument": true,
+    "params": [
+      {
+        "name": "trace_history",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "d3Root",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 122,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "trace_history",
+    "memberof": "es6/render/html_memory.es6~MemoryModelUI",
+    "longname": "es6/render/html_memory.es6~MemoryModelUI#trace_history",
+    "access": null,
+    "description": null,
+    "lineNumber": 7,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 123,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "d3Root",
+    "memberof": "es6/render/html_memory.es6~MemoryModelUI",
+    "longname": "es6/render/html_memory.es6~MemoryModelUI#d3Root",
+    "access": null,
+    "description": null,
+    "lineNumber": 8,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 124,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "connectors",
+    "memberof": "es6/render/html_memory.es6~MemoryModelUI",
+    "longname": "es6/render/html_memory.es6~MemoryModelUI#connectors",
+    "access": null,
+    "description": null,
+    "lineNumber": 9,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 125,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "objects_rendered",
+    "memberof": "es6/render/html_memory.es6~MemoryModelUI",
+    "longname": "es6/render/html_memory.es6~MemoryModelUI#objects_rendered",
+    "access": null,
+    "description": null,
+    "lineNumber": 10,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 126,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "jsplumb",
+    "memberof": "es6/render/html_memory.es6~MemoryModelUI",
+    "longname": "es6/render/html_memory.es6~MemoryModelUI#jsplumb",
+    "access": null,
+    "description": null,
+    "lineNumber": 11,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 127,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_setHover",
+    "memberof": "es6/render/html_memory.es6~MemoryModelUI",
+    "longname": "es6/render/html_memory.es6~MemoryModelUI#_setHover",
+    "access": null,
+    "description": null,
+    "lineNumber": 16,
+    "undocument": true,
+    "params": [
+      {
+        "name": "cls",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "state",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 128,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_connectObjects",
+    "memberof": "es6/render/html_memory.es6~MemoryModelUI",
+    "longname": "es6/render/html_memory.es6~MemoryModelUI#_connectObjects",
+    "access": null,
+    "description": null,
+    "lineNumber": 25,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 129,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_createHeapDiv",
+    "memberof": "es6/render/html_memory.es6~MemoryModelUI",
+    "longname": "es6/render/html_memory.es6~MemoryModelUI#_createHeapDiv",
+    "access": null,
+    "description": null,
+    "lineNumber": 54,
+    "undocument": true,
+    "params": [
+      {
+        "name": "object",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "__docId__": 130,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_createPrimitive",
+    "memberof": "es6/render/html_memory.es6~MemoryModelUI",
+    "longname": "es6/render/html_memory.es6~MemoryModelUI#_createPrimitive",
+    "access": null,
+    "description": null,
+    "lineNumber": 65,
+    "undocument": true,
+    "params": [
+      {
+        "name": "object",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 131,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_createSequence",
+    "memberof": "es6/render/html_memory.es6~MemoryModelUI",
+    "longname": "es6/render/html_memory.es6~MemoryModelUI#_createSequence",
+    "access": null,
+    "description": null,
+    "lineNumber": 75,
+    "undocument": true,
+    "params": [
+      {
+        "name": "object",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "tracestep",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 132,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_createArray",
+    "memberof": "es6/render/html_memory.es6~MemoryModelUI",
+    "longname": "es6/render/html_memory.es6~MemoryModelUI#_createArray",
+    "access": null,
+    "description": null,
+    "lineNumber": 157,
+    "undocument": true,
+    "params": [
+      {
+        "name": "object",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "tracestep",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 133,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_createKeyValue",
+    "memberof": "es6/render/html_memory.es6~MemoryModelUI",
+    "longname": "es6/render/html_memory.es6~MemoryModelUI#_createKeyValue",
+    "access": null,
+    "description": null,
+    "lineNumber": 203,
+    "undocument": true,
+    "params": [
+      {
+        "name": "object",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "tracestep",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 134,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "_createObject",
+    "memberof": "es6/render/html_memory.es6~MemoryModelUI",
+    "longname": "es6/render/html_memory.es6~MemoryModelUI#_createObject",
+    "access": null,
+    "description": null,
+    "lineNumber": 301,
+    "undocument": true,
+    "params": [
+      {
+        "name": "object",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "tracestep",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 135,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "create",
+    "memberof": "es6/render/html_memory.es6~MemoryModelUI",
+    "longname": "es6/render/html_memory.es6~MemoryModelUI#create",
+    "access": null,
+    "description": null,
+    "lineNumber": 330,
+    "undocument": true,
+    "params": [
+      {
+        "name": "tracestep",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 136,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "destroy",
+    "memberof": "es6/render/html_memory.es6~MemoryModelUI",
+    "longname": "es6/render/html_memory.es6~MemoryModelUI#destroy",
+    "access": null,
+    "description": null,
+    "lineNumber": 416,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 137,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "connectors",
+    "memberof": "es6/render/html_memory.es6~MemoryModelUI",
+    "longname": "es6/render/html_memory.es6~MemoryModelUI#connectors",
+    "access": null,
+    "description": null,
+    "lineNumber": 419,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 138,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "objects_rendered",
+    "memberof": "es6/render/html_memory.es6~MemoryModelUI",
+    "longname": "es6/render/html_memory.es6~MemoryModelUI#objects_rendered",
+    "access": null,
+    "description": null,
+    "lineNumber": 420,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 139,
+    "kind": "file",
+    "static": true,
+    "variation": null,
+    "name": "es6/render/html_timeline.es6",
+    "memberof": null,
+    "longname": "es6/render/html_timeline.es6",
+    "access": null,
+    "description": null,
+    "lineNumber": 2,
+    "content": "/* eslint no-unused-vars: 0 */\nimport {d3} from \"nbtutor-deps\";\n\n\nexport class TimelineUI{\n    constructor(stack_timeline, d3Root){\n        this.stack_timeline = stack_timeline;\n        this.d3Root = d3Root;\n    }\n\n    create(){\n        // First destroy any previous visualization\n        this.destroy();\n\n        // Create trace step headings data\n        let headings = [\"Names\"];\n        for (let t=0; t<this.stack_timeline.tracestep; t++){\n            headings.push(t);\n        }\n\n        // Create stack timeline tables for each frame\n        let that = this;\n        let d3Canvas = this.d3Root.append(\"div\")\n            .attr(\"class\", \"nbtutor-timeline-canvas\");\n\n        let d3Tables = d3Canvas.selectAll(\"div\")\n            .data(this.stack_timeline.stack_frames, (d) => d.uuid)\n            .enter()\n                .append(\"div\")\n                    .attr(\"class\", \"nbtutor-timeline\")\n                .append(\"table\")\n                    .attr(\"id\", (d) => d.uuid);\n\n        let d3Theads = d3Tables.append(\"thead\");\n        let d3Tbodys = d3Tables.append(\"tbody\");\n        let d3Tfoots = d3Tables.append(\"tfoot\");\n\n        // Create stace step headings\n        d3Theads.append(\"tr\").append(\"th\")\n            .attr(\"colspan\", this.stack_timeline.tracestep+1)\n            .text((d) => d.name);\n\n        d3Theads.append(\"tr\").selectAll(\"th\")\n            .data(headings)\n            .enter()\n                .append(\"th\")\n                .text((d) => d);\n\n        // Add names and values to each frame stack timeline\n        let d3Rows = d3Tbodys.selectAll(\"tr\")\n            .data((d) => d.vars, (d) => d.name)\n            .enter()\n                .append(\"tr\");\n\n        d3Rows.selectAll(\"td\")\n            .data((d) => [d.name].concat(d.values))\n            .enter()\n                .append(\"td\")\n                .attr(\"class\", (d, i) => {\n                    return (i > 0) ? \"nbtutor-var-value\" : \"nbtutor-var-name\";\n                })\n                .text((d) => d);\n\n        // Toggle mouce hover over name\n        d3Rows.on('mouseover', function(d) {\n            d3.select(this).classed(\"nbtutor-hover\", true);\n        });\n        d3Rows.on('mouseout', function(d) {\n            d3.select(this).classed(\"nbtutor-hover\", false);\n        });\n    }\n\n    destroy(){\n        this.d3Root.selectAll(\"div\").remove();\n    }\n}\n"
+  },
+  {
+    "__docId__": 140,
+    "kind": "class",
+    "static": true,
+    "variation": null,
+    "name": "TimelineUI",
+    "memberof": "es6/render/html_timeline.es6",
+    "longname": "es6/render/html_timeline.es6~TimelineUI",
+    "access": null,
+    "export": true,
+    "importPath": "nbtutor/es6/render/html_timeline.es6",
+    "importStyle": "{TimelineUI}",
+    "description": null,
+    "lineNumber": 5,
+    "undocument": true,
+    "interface": false
+  },
+  {
+    "__docId__": 141,
+    "kind": "constructor",
+    "static": false,
+    "variation": null,
+    "name": "constructor",
+    "memberof": "es6/render/html_timeline.es6~TimelineUI",
+    "longname": "es6/render/html_timeline.es6~TimelineUI#constructor",
+    "access": null,
+    "description": null,
+    "lineNumber": 6,
+    "undocument": true,
+    "params": [
+      {
+        "name": "stack_timeline",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "d3Root",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 142,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "stack_timeline",
+    "memberof": "es6/render/html_timeline.es6~TimelineUI",
+    "longname": "es6/render/html_timeline.es6~TimelineUI#stack_timeline",
+    "access": null,
+    "description": null,
+    "lineNumber": 7,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 143,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "d3Root",
+    "memberof": "es6/render/html_timeline.es6~TimelineUI",
+    "longname": "es6/render/html_timeline.es6~TimelineUI#d3Root",
+    "access": null,
+    "description": null,
+    "lineNumber": 8,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 144,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "create",
+    "memberof": "es6/render/html_timeline.es6~TimelineUI",
+    "longname": "es6/render/html_timeline.es6~TimelineUI#create",
+    "access": null,
+    "description": null,
+    "lineNumber": 11,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 145,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "destroy",
+    "memberof": "es6/render/html_timeline.es6~TimelineUI",
+    "longname": "es6/render/html_timeline.es6~TimelineUI#destroy",
+    "access": null,
+    "description": null,
+    "lineNumber": 73,
+    "undocument": true,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 146,
+    "kind": "file",
+    "static": true,
+    "variation": null,
+    "name": "es6/vendor.es6",
+    "memberof": null,
+    "longname": "es6/vendor.es6",
+    "access": null,
+    "description": null,
+    "lineNumber": 2,
+    "content": "/* eslint no-unused-vars: 0 */\nimport _bind_polyfill from \"phantomjs-polyfill\";\nimport $ from \"jquery\";\nimport d3 from \"d3\";\nimport uuid from \"uuid\";\nimport jsplumb from \"jsplumb\";\n\nexport {\n    $,\n    d3,\n    uuid,\n    jsplumb\n};\n"
+  },
+  {
+    "__docId__": 148,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Infinity",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Infinity",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Infinity",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 149,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "NaN",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/NaN",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~NaN",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 150,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "undefined",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~undefined",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 151,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "null",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~null",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 152,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Object",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Object",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 153,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "object",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~object",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 154,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Function",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Function",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 155,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "function",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~function",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 156,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Boolean",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Boolean",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 157,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "boolean",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~boolean",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 158,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Symbol",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Symbol",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 159,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Error",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Error",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 160,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "EvalError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/EvalError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~EvalError",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 161,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "InternalError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/InternalError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~InternalError",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 162,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "RangeError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RangeError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~RangeError",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 163,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "ReferenceError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ReferenceError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~ReferenceError",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 164,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "SyntaxError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SyntaxError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~SyntaxError",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 165,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "TypeError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypeError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~TypeError",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 166,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "URIError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/URIError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~URIError",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 167,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Number",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Number",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 168,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "number",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~number",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 169,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Date",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Date",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 170,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "String",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~String",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 171,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "string",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~string",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 172,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "RegExp",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~RegExp",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 173,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Array",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 174,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Int8Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int8Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Int8Array",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 175,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Uint8Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint8Array",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 176,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Uint8ClampedArray",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8ClampedArray",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint8ClampedArray",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 177,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Int16Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int16Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Int16Array",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 178,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Uint16Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint16Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint16Array",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 179,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Int32Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int32Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Int32Array",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 180,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Uint32Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint32Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint32Array",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 181,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Float32Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Float32Array",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 182,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Float64Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float64Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Float64Array",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 183,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Map",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Map",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 184,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Set",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Set",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 185,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "WeakMap",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~WeakMap",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 186,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "WeakSet",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakSet",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~WeakSet",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 187,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "ArrayBuffer",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~ArrayBuffer",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 188,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "DataView",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~DataView",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 189,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "JSON",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~JSON",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 190,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Promise",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Promise",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 191,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Generator",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Generator",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 192,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "GeneratorFunction",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/GeneratorFunction",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~GeneratorFunction",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 193,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Reflect",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Reflect",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Reflect",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 194,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Proxy",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Proxy",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 196,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "CanvasRenderingContext2D",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~CanvasRenderingContext2D",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 197,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "DocumentFragment",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/DocumentFragment",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~DocumentFragment",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 198,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Element",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Element",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~Element",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 199,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Event",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Event",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~Event",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 200,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Node",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Node",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~Node",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 201,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "NodeList",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/NodeList",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~NodeList",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 202,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "XMLHttpRequest",
+    "externalLink": "https://developer.mozilla.org/en/docs/Web/API/XMLHttpRequest",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~XMLHttpRequest",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 203,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "AudioContext",
+    "externalLink": "https://developer.mozilla.org/en/docs/Web/API/AudioContext",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~AudioContext",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  }
+]

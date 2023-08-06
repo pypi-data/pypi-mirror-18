@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../../../">
+  <title data-ice="title">es6/notebook/toolbar.es6 | API Document</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  
+  
+  <script src="script/manual.js"></script>
+</head>
+<body class="layout-container" data-ice="rootContainer">
+
+<header>
+  <a href="./">Home</a>
+  
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  
+  
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+</header>
+
+<nav class="navigation" data-ice="nav"><div>
+  <ul>
+    
+  <li data-ice="doc"><div data-ice="dirPath" class="nav-dir-path">data</div><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/data/frame_timeline.es6~FrameTimeline.html">FrameTimeline</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/data/heap_history.es6~HeapHistory.html">HeapHistory</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/data/output_history.es6~OutputHistory.html">OutputHistory</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/data/stack_history.es6~StackHistory.html">StackHistory</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/data/stack_timeline.es6~StackTimeline.html">StackTimeline</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/data/trace_history.es6~TraceHistory.html">TraceHistory</a></span></span></li>
+<li data-ice="doc"><div data-ice="dirPath" class="nav-dir-path">notebook</div><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/notebook/gutters.es6~GutterMarkers.html">GutterMarkers</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/notebook/notebook.es6~VisualizedCell.html">VisualizedCell</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/notebook/toolbar.es6~Toolbar.html">Toolbar</a></span></span></li>
+<li data-ice="doc"><div data-ice="dirPath" class="nav-dir-path">render</div><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/render/html_memory.es6~MemoryModelUI.html">MemoryModelUI</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/render/html_timeline.es6~TimelineUI.html">TimelineUI</a></span></span></li>
+</ul>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><h1 data-ice="title">es6/notebook/toolbar.es6</h1>
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">/* eslint no-unused-vars: 0 */
+import {$} from &quot;nbtutor-deps&quot;;
+
+
+export class Toolbar {
+    constructor(cell){
+        this.$root = cell.celltoolbar.element.find(&quot;.button_container&quot;);
+        this.$btn_first = $(&quot;&lt;button/&gt;&quot;)
+            .text(&quot;&lt;&lt; First Line&quot;);
+        this.$btn_prev = $(&quot;&lt;button/&gt;&quot;)
+            .text(&quot;&lt; Prev&quot;);
+        this.$btn_next = $(&quot;&lt;button/&gt;&quot;)
+            .text(&quot;Next &gt;&quot;);
+        this.$btn_last = $(&quot;&lt;button/&gt;&quot;)
+            .text(&quot;Last Line &gt;&gt;&quot;);
+        this.$select_view = $(&quot;&lt;select/&gt;&quot;);
+
+        // Build the UI elements
+        this._build();
+    }
+
+    _build(){
+        if (this.$root.hasClass(&quot;nbtutor-buttons&quot;)){
+            this.destroy();
+        }
+        this.$root.addClass(&quot;nbtutor-buttons&quot;);
+        this.$root.append(this.$btn_first);
+        this.$root.append(this.$btn_prev);
+        this.$root.append(this.$btn_next);
+        this.$root.append(this.$btn_last);
+        this.$root.children(&quot;button&quot;)
+            .attr(&quot;type&quot;, &quot;button&quot;)
+            .addClass(&quot;nbtutor-hidden&quot;);
+        this.$root.append(this.$select_view);
+
+        this.$select_view.append(
+            $(&apos;&lt;option/&gt;&apos;)
+            .attr(&quot;value&quot;, &quot;none&quot;)
+            .text(&quot;-&quot;)
+        );
+        this.$select_view.append(
+            $(&apos;&lt;option/&gt;&apos;)
+            .attr(&quot;value&quot;, &quot;memory&quot;)
+            .text(&quot;Memory&quot;)
+        );
+        this.$select_view.append(
+            $(&apos;&lt;option/&gt;&apos;)
+            .attr(&quot;value&quot;, &quot;timeline&quot;)
+            .text(&quot;Timeline&quot;)
+        );
+
+        let that = this;
+        this.$select_view.change(() =&gt; {
+            let render_view = this.$select_view.val();
+            if (render_view === &quot;none&quot;){
+                this.hideButtons();
+            } else {
+                this.showButtons();
+            }
+        });
+    }
+
+    showButtons(){
+        this.$root.children(&quot;button&quot;).removeClass(&quot;nbtutor-hidden&quot;);
+    }
+
+    hideButtons(){
+        this.$root.children(&quot;button&quot;).addClass(&quot;nbtutor-hidden&quot;);
+    }
+
+    destroy(){
+        this.$root.empty();
+    }
+}
+</code></pre>
+
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(0.4.8)</span></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>

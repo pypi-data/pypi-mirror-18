@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../../../">
+  <title data-ice="title">es6/render/html_timeline.es6 | API Document</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  
+  
+  <script src="script/manual.js"></script>
+</head>
+<body class="layout-container" data-ice="rootContainer">
+
+<header>
+  <a href="./">Home</a>
+  
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  
+  
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+</header>
+
+<nav class="navigation" data-ice="nav"><div>
+  <ul>
+    
+  <li data-ice="doc"><div data-ice="dirPath" class="nav-dir-path">data</div><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/data/frame_timeline.es6~FrameTimeline.html">FrameTimeline</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/data/heap_history.es6~HeapHistory.html">HeapHistory</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/data/output_history.es6~OutputHistory.html">OutputHistory</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/data/stack_history.es6~StackHistory.html">StackHistory</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/data/stack_timeline.es6~StackTimeline.html">StackTimeline</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/data/trace_history.es6~TraceHistory.html">TraceHistory</a></span></span></li>
+<li data-ice="doc"><div data-ice="dirPath" class="nav-dir-path">notebook</div><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/notebook/gutters.es6~GutterMarkers.html">GutterMarkers</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/notebook/notebook.es6~VisualizedCell.html">VisualizedCell</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/notebook/toolbar.es6~Toolbar.html">Toolbar</a></span></span></li>
+<li data-ice="doc"><div data-ice="dirPath" class="nav-dir-path">render</div><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/render/html_memory.es6~MemoryModelUI.html">MemoryModelUI</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/es6/render/html_timeline.es6~TimelineUI.html">TimelineUI</a></span></span></li>
+</ul>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><h1 data-ice="title">es6/render/html_timeline.es6</h1>
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">/* eslint no-unused-vars: 0 */
+import {d3} from &quot;nbtutor-deps&quot;;
+
+
+export class TimelineUI{
+    constructor(stack_timeline, d3Root){
+        this.stack_timeline = stack_timeline;
+        this.d3Root = d3Root;
+    }
+
+    create(){
+        // First destroy any previous visualization
+        this.destroy();
+
+        // Create trace step headings data
+        let headings = [&quot;Names&quot;];
+        for (let t=0; t&lt;this.stack_timeline.tracestep; t++){
+            headings.push(t);
+        }
+
+        // Create stack timeline tables for each frame
+        let that = this;
+        let d3Canvas = this.d3Root.append(&quot;div&quot;)
+            .attr(&quot;class&quot;, &quot;nbtutor-timeline-canvas&quot;);
+
+        let d3Tables = d3Canvas.selectAll(&quot;div&quot;)
+            .data(this.stack_timeline.stack_frames, (d) =&gt; d.uuid)
+            .enter()
+                .append(&quot;div&quot;)
+                    .attr(&quot;class&quot;, &quot;nbtutor-timeline&quot;)
+                .append(&quot;table&quot;)
+                    .attr(&quot;id&quot;, (d) =&gt; d.uuid);
+
+        let d3Theads = d3Tables.append(&quot;thead&quot;);
+        let d3Tbodys = d3Tables.append(&quot;tbody&quot;);
+        let d3Tfoots = d3Tables.append(&quot;tfoot&quot;);
+
+        // Create stace step headings
+        d3Theads.append(&quot;tr&quot;).append(&quot;th&quot;)
+            .attr(&quot;colspan&quot;, this.stack_timeline.tracestep+1)
+            .text((d) =&gt; d.name);
+
+        d3Theads.append(&quot;tr&quot;).selectAll(&quot;th&quot;)
+            .data(headings)
+            .enter()
+                .append(&quot;th&quot;)
+                .text((d) =&gt; d);
+
+        // Add names and values to each frame stack timeline
+        let d3Rows = d3Tbodys.selectAll(&quot;tr&quot;)
+            .data((d) =&gt; d.vars, (d) =&gt; d.name)
+            .enter()
+                .append(&quot;tr&quot;);
+
+        d3Rows.selectAll(&quot;td&quot;)
+            .data((d) =&gt; [d.name].concat(d.values))
+            .enter()
+                .append(&quot;td&quot;)
+                .attr(&quot;class&quot;, (d, i) =&gt; {
+                    return (i &gt; 0) ? &quot;nbtutor-var-value&quot; : &quot;nbtutor-var-name&quot;;
+                })
+                .text((d) =&gt; d);
+
+        // Toggle mouce hover over name
+        d3Rows.on(&apos;mouseover&apos;, function(d) {
+            d3.select(this).classed(&quot;nbtutor-hover&quot;, true);
+        });
+        d3Rows.on(&apos;mouseout&apos;, function(d) {
+            d3.select(this).classed(&quot;nbtutor-hover&quot;, false);
+        });
+    }
+
+    destroy(){
+        this.d3Root.selectAll(&quot;div&quot;).remove();
+    }
+}
+</code></pre>
+
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(0.4.8)</span></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>

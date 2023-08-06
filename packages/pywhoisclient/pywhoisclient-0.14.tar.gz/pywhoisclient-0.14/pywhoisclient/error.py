@@ -1,0 +1,4 @@
+#
+
+class WhoisException(Exception):
+	pass

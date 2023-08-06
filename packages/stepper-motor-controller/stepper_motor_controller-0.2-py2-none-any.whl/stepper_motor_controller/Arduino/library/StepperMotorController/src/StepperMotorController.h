@@ -1,0 +1,4 @@
+#ifndef ___STEPPER_MOTOR_CONTROLLER__H___
+#define ___STEPPER_MOTOR_CONTROLLER__H___
+
+#endif  // #ifndef ___STEPPER_MOTOR_CONTROLLER__H___

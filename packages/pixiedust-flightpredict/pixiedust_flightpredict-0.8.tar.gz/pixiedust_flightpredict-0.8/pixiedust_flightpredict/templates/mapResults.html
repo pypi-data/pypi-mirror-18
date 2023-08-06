@@ -1,0 +1,165 @@
+{%extends "basedialog.html"%}
+{%block title %}Predict Flight Delays with Apache Spark MLlib, FlightStats, and IBM Insights for Weather: Results{%endblock%}
+
+{%block body%}
+<style type="text/css">
+    #states path {
+        fill: #ccc;
+        stroke: #fff;
+    }
+
+    path.arc {
+        fill: red;
+        stroke: aquamarine;
+        stroke-width: 5px;
+        display: none;
+        cursor: pointer;
+        stroke-dasharray: 1000;
+        stroke-dashoffset: 1000;
+        animation: dash 5s linear forwards;
+    }
+
+    @keyframes dash {
+        to {
+            stroke-dashoffset: 0;
+        }
+    }
+
+    path.arc:hover {
+        fill: red;
+        stroke: cadetblue;
+    }
+
+    path.cell {
+        fill: none;
+        pointer-events: all;
+    }
+
+    circle {
+        fill: steelblue;
+        fill-opacity: .8;
+        stroke: #fff;
+    }
+    
+    .origin {
+        fill: green;
+        fill-opacity: .8;
+        stroke: #fff;
+    }
+
+    #cells g.showFlights path.arc {
+        display: inherit;
+    }
+
+    .modal-dialog-flightmapresults {
+      width: 95% !important;
+    }
+
+    .messagepop {
+        background-color:#FFFFFF;
+        border:1px solid #999999;
+        cursor:default;
+        display:none;
+        margin-top: 15px;
+        position:absolute;
+        text-align:left;
+        min-width:300px;
+        min-height:300px;
+        z-index:50;
+        padding: 15px 15px 10px;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 3px;
+        padding-left: 15px;
+        text-indent: -15px;
+    }
+
+    .messagepop p, .messagepop.div {
+        border-bottom: 1px solid #EFEFEF;
+        margin: 8px 0;
+        padding-bottom: 8px;
+    }
+    .map-container {
+        display: inline-block;
+        text-align: center;
+        width: 75%;
+        height: 65vh;
+    }
+    .instructions-container {
+        display: inline-block;
+        vertical-align: top;
+        width: 22%;
+    }
+    .instructions-container p {
+        font-size: 18px;
+        margin: 20px 0;
+    }
+    .instructions-container li {
+        font-size: 16px;
+        padding-bottom: 16px;
+    }
+    .map-legend {
+        margin-left: 30px;
+        margin-top: 60px;
+    }
+    .map-legend .circle {
+        border-radius: 15px;
+        color: #fff;
+        display: inline-block;
+        height: 25px;
+        width: 25px;
+    }
+    .map-legend .departure {
+        background: #288E28;
+    }
+    .map-legend .arrival {
+        background: #6090B8;
+    }
+    .map-legend span {
+        font-weight: 700;
+        line-height: 40px;
+        margin-right: 5px;
+        vertical-align: middle;
+    }
+</style>
+
+<div id="airport{{prefix}}" style="min-height:15px;text-align:center"/>&nbsp;<div>
+    <div id="map{{prefix}}" class="map-container"/>
+    <div id="instructions{{prefix}}" class="instructions-container">
+        <h1>What do we have here?</h1>
+        <p>An aggregation of all the flights people have looked up during this conference.</p>
+        <ul>
+            <li>Click on a departure airport (green circle) to see all the bound flights.</li>
+            <li>Click on a flight path (green line) to see additional info about the departing flights.</li>
+        </ul>
+        <div class="map-legend">
+            <div><span class="departure circle"></span> <span>Departure Airports</span></div>
+            <div><span class="arrival circle"></span> <span>Arrival Airports</span></div>
+        </div>
+    </div>
+</div>
+
+<div id="flightBadge" class="messagepop pop">
+    <button type="button" class="close" id="flightBadgeClose">&times;</button>
+    <div id="flightBadgeBody" style="display:table;">
+    </div>
+</div>
+
+{%endblock%}
+
+{%block onDialogShown%}
+var tdiag = $(this).find('.modal-dialog').addClass('modal-dialog-flightmapresults');
+
+var updateMap = function(){
+    if (typeof d3 == "undefined"){
+        return setTimeout(updateMap, 1000);
+    }
+
+    {%include module + ":mapResults.js" with context%}
+}
+
+updateMap();
+
+{%endblock%}

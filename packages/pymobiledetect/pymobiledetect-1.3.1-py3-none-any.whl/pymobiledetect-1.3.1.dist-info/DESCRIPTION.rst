@@ -1,0 +1,13 @@
+====================
+Python Mobile Detect
+====================
+
+.. image:: https://drone.io/bitbucket.org/trbs/pymobiledetect/status.png
+    :alt: Build Status
+    :target: https://drone.io/bitbucket.org/trbs/pymobiledetect/
+
+Detects mobile phones and tables from useragent string and http headers.
+
+Big thanks to Mobile-Detect from serbanghita.
+
+

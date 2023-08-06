@@ -1,0 +1,65 @@
+{% set _user_messages = user.get_messages() %}
+{% if _user_messages %}
+    <div id="user-messages">
+        {% for msg in _user_messages %}
+            {% if loop.first %}
+                <ul>
+            {% endif %}
+                    <li class="sev-{{ msg.severity }}">
+                        <strong class="severity">{{msg.severity|capitalize}}</strong>: {{msg.text}}
+                    </li>
+            {% if loop.last %}
+                </ul>
+            {% endif %}
+        {% endfor %}
+    </div>
+{% endif %}
+
+{# This is included directly b/c by the time this file is included in the
+layout, page_js() has already been called, so include_js() isn't an option #}
+<script type="text/javascript">
+/*<![CDATA[*/
+    $(document).ready(function() {
+
+        // add the links/icons to close individual messages
+        $('#user-messages li').each(function() {
+            $(this).prepend('<span class="close-icon" title="close this message">&nbsp;<\/span>');
+        });
+
+        // add the link to close all messages
+        $('#user-messages ul').after('<div id="close-all-messages"><a href="#">close all messages<\/a><\/div>');
+
+        // add the event to close all messages
+        $('#close-all-messages a').click(function() {
+            user_messages_close();
+            return false;
+        });
+
+        // add the events to close individual messages
+        $('#user-messages .close-icon').click(function() {
+            user_messages_close_msg($(this).parent());
+        });
+    });
+
+    function user_messages_close() {
+        $('#user-messages').slideUp(500, function() {
+            $(this).remove();
+        });
+    }
+
+    function user_messages_close_msg(jq_msg_li) {
+        if( user_messages_count() == 1) {
+            user_messages_close();
+        } else {
+            jq_msg_li.slideUp(300, function() {
+                $(this).remove();
+            });
+        }
+    }
+
+    function user_messages_count() {
+        return $('#user-messages li').length
+    }
+
+/*]]>*/
+</script>

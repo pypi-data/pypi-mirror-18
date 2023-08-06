@@ -1,0 +1,46 @@
+language: cpp
+
+matrix:
+  include:
+     - { os: linux, env: PYTHON_VERSION=2.7 }
+     - { os: linux, env: PYTHON_VERSION=3.4 }
+     - { os: linux, env: PYTHON_VERSION=3.5 }
+     # - { os: linux, env: PYTHON_VERSION=3.5 CONDA=yes} # do not change 3.5
+     # - { os: linux, env: PYTHON_VERSION=3.5 TEST_NOTEBOOK=yes}
+
+sudo: true
+dist: trusty
+
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - gcc-5
+    - g++-5
+    - clang-3.6
+    - unzip
+
+before_install:
+    - source devtools/travis-ci/install_chrome.sh
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+        brew tap homebrew/science;
+        brew update;
+        brew install netcdf fftw;
+      fi
+
+install:
+    - source devtools/travis-ci/setup_env.sh
+    - source devtools/travis-ci/clone_nbtest.sh
+    - source devtools/travis-ci/install_nglview.sh
+    - python devtools/make_test_js.py --travis
+
+script:
+    - source devtools/travis-ci/run_tests.sh
+
+after_success:
+    - echo "Congrats"
+    - (cd nglview/tests && ../../devtools/travis-ci/coveralls)
+
+notifications:
+  email: false

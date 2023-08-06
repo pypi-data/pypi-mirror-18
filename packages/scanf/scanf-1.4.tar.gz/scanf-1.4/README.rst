@@ -1,0 +1,91 @@
+scanf: A small scanf implementation for python
+==============================================
+
+Python has powerful regular expressions but sometimes they are totally
+overkill when you just want to parse a simple-formatted string. C
+programmers use the scanf function for these tasks (see link below).
+
+This implementation of scanf translates the simple scanf-format into
+regular expressions. Unlike C you can be sure that there are no buffer
+overflows possible.
+
+Usage
+-------------
+scanf supports the following formats:
+  %c        One character
+  %5c       5 characters
+  %d, %i    int value
+  %7d, %7i  int value with length 7
+  %f        float value
+  %o        octal value
+  %X, %x    hex value
+  %s        string terminated by whitespace
+
+Examples:
+>>> scanf("%s - %d errors, %d warnings", "/usr/sbin/sendmail - 0 errors, 4 warnings")
+('/usr/sbin/sendmail', 0, 4)
+>>> scanf("%o %x %d", "0123 0x123 123")
+(66, 291, 123)
+
+
+scanf returns a tuple of found values, or None if the format does not match.
+
+
+Other resources
+---------------------
+
+For more information see:
+
+- http://www.python.org/doc/current/lib/node49.html
+- http://en.wikipedia.org/wiki/Scanf
+- https://github.com/joshburnett/scanf
+
+Original code from:
+http://code.activestate.com/recipes/502213-simple-scanf-implementation/
+
+Modified original to make the %f more robust, as well as added %*
+modifier to skip fields.
+
+Releases
+--------
+
+1.0: 2010-10-11
+~~~~~~~~~~~~~~~
+
+- Initial release (internal)
+
+1.1: 2010-10-13
+~~~~~~~~~~~~~~~
+
+- Changed regex from 'match' (only matches at beginning of line) to
+  'search' (matches anywhere in line)
+- Bugfix - ignore cast for skipped fields
+
+1.2: 2013-05-30
+~~~~~~~~~~~~~~~
+
+- Added 'collapseWhitespace' flag (defaults to True) to take the search
+  string and replace all whitespace with regex string to match repeated
+  whitespace. This enables better matching in log files where the data
+  has been formatted for easier reading. These cases have variable
+  amounts of whitespace between the columns, depending on the number of
+  characters in the data itself.
+
+1.3: 2016-01-18
+~~~~~~~~~~~~~~~
+
+- Added 'extractdata' function.
+
+1.3.1 - 1.3.3: 2016-06-23
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Initial release to PyPI
+- Fixed various issues with metadata for PyPI
+
+1.4: 2016-12-03
+~~~~~~~~~~~~~~~~~
+
+- Small modification to scanf.py for Python3 compatibility. Thanks @Gattocrucco!
+- Changed README.md to README.rst, removing pypandoc dependency in setup.py
+- Removed most of the comments at the beginning of scanf.py, as they were
+  redundant with those in the README.

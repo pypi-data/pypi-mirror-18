@@ -1,0 +1,235 @@
+
+<%inherit file="base-level-2.html"/>
+
+<%block name="title_more">- ${doc['title']}</%block>
+
+
+<%block name="breadcrumbs">
+    <ul class="breadcrumb list-inline">
+        <li><a href="./index.html">${version}</a></li>
+        <li>${doc['title']}</li>
+    </ul>
+</%block>
+
+
+
+<div class="col-lg-1">&nbsp;</div>
+<div class="col-lg-7">
+    <h1>${doc['title']}</h1>
+
+    <p><span class="label label-primary">${doc['method'].upper()}</span> <span class="label label-default">${doc['resource']}</span></p>
+
+    ${doc['description']}
+
+    % if len(doc['params']) > 0:
+        <h4>Parameters</h4>
+        <table class="table">
+            <tr>
+                <th>Parameter</th>
+                <th>Description</th>
+                <th>Optional</th>
+                <th>Default</th>
+                <th>Values</th>
+            </tr>
+            <tbody>
+                % for param in doc['params']:
+                <tr>
+                    <td><code>${param['name']}</code></td>
+                    <td>
+                        % if 'description' in param:
+                            ${param['description']}
+                        % endif
+                    </td>
+                    <td>
+                        % if 'optional' in param and param['optional']!=False:
+                            <span class="label label-success">True</span>
+                        % else:
+                            <span class="label label-danger">False</span>
+                        % endif
+                    </td>
+                    <td>
+                        % if 'default' in param:
+                            ${param['default']}
+                        % endif
+                    </td>
+                    <td>
+                        % if 'items' in param:
+                            % for item_key, item_value in sorted(param['items'].items()):
+                                <span class="label label-primary ">${item_key}: ${item_value}</span>
+                            % endfor
+                        % endif
+                    </td>
+                </tr>
+                % endfor
+            </tbody>
+        </table>
+    % endif
+
+
+
+
+
+    % if doc['res_ok'] != '' or  doc['res_fail'] != '' :
+    <h3>Sample </h3>
+    % endif
+
+    % if doc['res_ok'] != '':
+    <div>
+        <h4> Result success </h4>
+        <pre ><code>${doc['res_ok']}</code></pre>
+    </div>
+    % endif
+
+    % if doc['res_fail'] != '':
+    <div>
+        <h4> Result fail </h4>
+        <pre ><code>${doc['res_fail']}</code></pre>
+    </div>
+    % endif
+
+
+
+    <h2>Test unit</h2>
+
+    <div class="panel-group" id="accordion">
+        <%
+        x = 0
+        %>
+        % for unit_name, unit_url in sorted(config['test_units'].items()):
+            <%
+                from hashlib import md5
+                unit_hash = md5(str(unit_name + unit_url).encode()).hexdigest()
+                active = " in " if x==0 else ""
+                x+=1
+                unit_url_view = unit_url.replace(':version', version) + doc['resource']
+            %>
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        <a data-toggle="collapse" href="#${unit_hash}">
+                        ${unit_name} <small><i class="unit-url-replace" data-url="${unit_url_view}" >${unit_url_view}</i></small></a>
+                    </h4>
+                </div>
+                <div id="${unit_hash}" class="panel-collapse collapse ${active}">
+                    <form class="testunit"
+                              action="${unit_url_view}"
+                              src-action="${unit_url_view}"
+                              method="${doc['method']}" enctype="multipart/form-data">
+                        <div class="panel-body">
+                            <!--BEGIN::panel-body-->
+                                % if len(doc['params']) > 0:
+                                    <div class="row">
+                                        % for param in doc['params']:
+                                            <%
+                                                if 'default' not in param:
+                                                    param['default']=''
+                                            %>
+
+                                            % if "type_view" in param:
+                                                % if param['type_view'] == "dropdown":
+                                                    <div class="col-lg-4 form-group">
+                                                        <label>${param['title']}</label>
+                                                        <select name="${param['name']}" class="form-control">
+                                                            % for item_key, item_value in param['items'].items():
+                                                                <option value="${item_key}">${item_value}</option>
+                                                            % endfor
+                                                        </select>
+                                                    </div>
+                                                % endif
+
+                                            % else:
+
+                                                % if param['type'] == "string":
+                                                    <div class="col-lg-4 form-group">
+                                                        <label>${param['title']}</label>
+                                                        <input type="text"
+                                                               name="${param['name']}"
+                                                               value="${param['default']}"
+                                                               placeholder="${param['name']}"
+                                                               class="form-control" />
+                                                    </div>
+                                                % endif
+
+                                                % if param['type'] == "integer":
+                                                    <div class="col-lg-4 form-group">
+                                                        <label>${param['title']}</label>
+                                                        <input type="number"
+                                                               name="${param['name']}"
+                                                               value="${param['default']}"
+                                                               placeholder="${param['name']}"
+                                                               class="form-control" />
+                                                    </div>
+                                                % endif
+
+
+
+                                                % if param['type'] == "binary":
+                                                    <div class="col-lg-4 form-group">
+                                                        <label>${param['title']}</label>
+                                                        <input type="file"
+                                                               name="${param['name']}"
+                                                               placeholder="${param['name']}"
+                                                               class="form-control" />
+                                                    </div>
+                                                % endif
+
+                                            % endif
+                                        % endfor
+                                    </div>
+                                % else:
+                                    <div class="well text-center"><i>Without parameter</i></div>
+                                % endif
+                            <!--END::panel-body-->
+                        </div>
+
+                        <div class="panel-footer">
+                            <input type="submit" value="Submit" class="btn btn-primary"/>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        % endfor
+    </div>
+
+
+
+</div>
+<!-- col-7 -->
+
+
+<div class="col-lg-3">
+    <!-- RESERVED SIDEBAR -->
+    <div class="panel-group panel-sidebar" id="accordion">
+        % for tmp_version, tmp_docs in sorted(docs.items()):
+            % if len(tmp_docs) > 0:
+                <%
+                    from hashlib import md5
+                    unit_hash = md5(str(tmp_version).encode()).hexdigest()
+                    active = " in " if tmp_version == version else ""
+                %>
+
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h4 class="panel-title">
+                            <a data-toggle="collapse" href="#${unit_hash}">
+                            ${tmp_version}</a>
+                            <a href="../${tmp_version}/index.html"><small>INDEX</small></a>
+                        </h4>
+                    </div>
+                    <div id="${unit_hash}" class="panel-collapse collapse ${active}">
+                        <ul class="list-group">
+                        % for tmp_doc in docs[tmp_version]:
+                            <li class="list-group-item">
+                                <small class="method">${tmp_doc['method'].upper()}</small>
+                                <a href="./${tmp_doc['name']}.html">${tmp_doc['resource']}</a></li>
+                        % endfor
+                        </ul>
+                    </div>
+                </div>
+            % endif
+        % endfor
+    </div>
+</div>
+
+

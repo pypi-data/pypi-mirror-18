@@ -1,0 +1,51 @@
+#!/usr/bin/python
+from bs4 import BeautifulSoup
+import requests
+import subprocess
+
+base_url = "http://www.espncricinfo.com"
+filename = "./cricket_summary.txt"
+info_dict = {'old_info': ""}
+
+
+def send_notification(cric_summary):
+    try:
+        subprocess.Popen(["notify-send", cric_summary], stdout=subprocess.PIPE)
+        return "Notification sent successfully!"
+    except Exception as e:
+        print e
+        return "Unable to send notification"
+
+
+def parse_score(urls):
+    for i_url in urls:
+        info_dict['url'] = str(i_url['href'])
+    url_to_crawl = base_url + info_dict['url']
+    target_r = requests.get(url_to_crawl)
+    target_data = target_r.text
+    target_soup = BeautifulSoup(target_data, "html.parser")
+    return target_soup
+
+
+while True:
+    base_r = requests.get(base_url)
+    base_data = base_r.text
+    base_soup = BeautifulSoup(base_data, "html.parser")
+    score_cards = base_soup.find_all("li", class_='espni-livescores-scoreline')
+    urls = score_cards[0].find_all('a')
+    crawled_soup = parse_score(urls)
+
+    for i in crawled_soup.find_all('title'):
+        info = i.get_text()
+        new_info = info
+        info_dict['new_info'] = new_info
+        if info_dict['new_info'] != info_dict['old_info']:
+            with open(filename, 'wb') as score_file_w:
+                score_file_w.write(new_info)
+            info_dict['old_info'] = info_dict['new_info']
+            with open(filename, 'r') as score_file_r:
+                cric_sum = str(score_file_r.readline())
+            print "cricket score summary: " + cric_sum
+            notification_status = send_notification(cric_sum)
+            print notification_status
+

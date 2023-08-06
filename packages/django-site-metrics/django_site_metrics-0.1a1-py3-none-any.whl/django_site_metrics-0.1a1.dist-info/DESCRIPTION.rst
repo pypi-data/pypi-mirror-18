@@ -1,0 +1,26 @@
+Home-page: https://bitbucket.org/rsalmaso/django-site-metrics/
+Author: Raffaele Salmaso
+Author-email: raffaele@salmaso.org
+License: BSD
+Download-URL: https://bitbucket.org/rsalmaso/django-site-metrics/get/0.1a1.tar.gz
+Description: .. include:: description.rst
+        
+        .. image:: https://bitbucket.org/rsalmaso/django-site-metrics/raw/default/docs/graph.png
+        
+        As well as a site statistics module, with the active_users template tag and manager method you can also use django-site-metrics to show who is online in a certain time.
+        
+        django-site-metrics is a "fork" of `django-request`_, which focus only on postgresql support and is able to use a separate database.
+        
+        .. _django-request: https://github.com/django-request/django-request/
+        
+Platform: UNKNOWN
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Environment :: Web Environment
+Classifier: Framework :: Django
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.4
+Classifier: Programming Language :: Python :: 3.5

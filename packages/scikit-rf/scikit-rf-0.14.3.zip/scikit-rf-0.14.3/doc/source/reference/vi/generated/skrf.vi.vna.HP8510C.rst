@@ -1,0 +1,48 @@
+skrf.vi.vna.HP8510C
+===================
+
+.. currentmodule:: skrf.vi.vna
+
+.. autoclass:: HP8510C
+  :no-members:
+
+
+
+.. rubric:: Attributes
+
+.. autosummary::
+  :toctree:
+  :nosignatures:
+
+  ~HP8510C.averaging
+  ~HP8510C.continuous
+  ~HP8510C.error
+  ~HP8510C.frequency
+  ~HP8510C.one_port
+  ~HP8510C.s11
+  ~HP8510C.s12
+  ~HP8510C.s21
+  ~HP8510C.s22
+  ~HP8510C.switch_terms
+  ~HP8510C.two_port
+
+
+
+
+
+.. rubric:: Methods
+
+.. autosummary::
+  :toctree:
+  :nosignatures:
+
+  ~HP8510C.__init__
+  ~HP8510C.ask
+  ~HP8510C.ask_for_values
+  ~HP8510C.doc
+  ~HP8510C.help
+  ~HP8510C.write
+
+
+
+

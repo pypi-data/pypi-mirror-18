@@ -1,0 +1,6 @@
+skrf.calibration.calibration.SOLT.coefs_8term_ntwks
+===================================================
+
+.. currentmodule:: skrf.calibration.calibration
+
+.. autoattribute:: SOLT.coefs_8term_ntwks

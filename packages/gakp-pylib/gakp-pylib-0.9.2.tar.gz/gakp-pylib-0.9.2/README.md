@@ -1,0 +1,123 @@
+# Pylib
+
+## What is pylib?
+It's a microframework for creating simple REST APIs(yes CRUD) applications
+based on falcon, marshmallow and pyjwt. It is intended to simplify the entire
+process of creating REST APIs to just schemas and handling.
+
+## Is it production ready?
+Not really....but you could still try it.
+
+## Are there tests?
+Not entirely, and that's why it's not 1.0 yet
+
+## There are questions/problems?
+I love issue trackers, they are so simple to use.
+
+## I would like to add some feature's of my own?
++ Identify a problem
++ create an issue
++ create a fork
++ write code
++ create a pull request
+Life could never be so simple.
+
+## Hello User????
+`app.py`
+```python
+import falcon as real_falcon
+import mydatastore
+from pylib import falcon
+from pylib import lib
+from pylib import marshmallow
+from pylib import tokens
+from marshmallow import fields
+from marshmallow import schema
+from marshmallow import validate
+
+# create a schema for request validation
+class User(marshmallow.BasicSchema):
+    email = fields.Email(required=True)
+    username = fields.Str(required=True)
+    password = fields.Str(required=True, validate=validate.Length(min=6), load_only=True)
+    usertype = fields.Str(missing='Regular', validate=validate.OneOf(['Admin', 'Regular']))
+
+
+class Token(schema.Schema):
+    username = fields.Str(required=True, load_only=True)
+    password = fields.Str(required=True, load_only=True)
+
+
+# create default json api
+api = falcon.create_falcon_api()
+
+# authentication hooks for adding jwt token to a cookie
+auth = hooks.token_decoder('auth', 'mysecret3de2e3pon3r23ij')
+session = hooks.cookie_fixer('auth', True) # remove true in dev mode
+
+userschema = User()
+tokenschema = Token()
+
+usersapi = falcon.create_api('/users', userschema)
+userapi = falcon.create_api('/users/{uid}', userschema, [
+    auth,
+    hooks.int_id_converter('uid')
+])
+tokenapi = falcon.create_api('/tokens', tokenschema, post=[app.session])
+
+# for generating authentication tokens
+def generate_token(user):
+    claims = dict(id=str(user['_id']), email=user['email'], usertype=user['usertype'])
+    return tokens.encode(claims, tokens.stamp(7), app.secret)
+
+# search methods
+userengine = search.create_engine(mydatastore.find_all())
+
+@search.search_with(userengine, search.regex_criteria(r'^\w+$'))
+def by_username(query):
+    return list(mydatastore.find({'username': query}))
+
+@search.search_with(userengine, search.regex_criteria(lib.middle_regex('@')))
+def by_email(query):
+    return list(mydatastore.find({'email': query}))
+
+
+# POST requests to /users
+@falcon.create(usersapi)
+def create(user, **kwargs):
+    return mydatastore.add_user(user) # return integer id
+
+# GET requests to /users
+@falcon.find(usersapi, [app.auth, applib.is_admin])
+def find(query, **kwargs):
+    # uses the search methods defined above
+    return search.search(userengine, query)
+
+# GET requests to /users/3
+@falcon.read(userapi)
+def get(uid, auth, **kwargs):
+    return mydatastore.find({'_id': uid})
+
+# PUT requests to /users/3
+@falcon.update(userapi)
+def update(uid, user, auth, **kwargs):
+    return mydatastore.update({'_id': uid}, user) # return user(old or new)
+
+# DELETE requests to /users/3
+@falcon.delete(userapi, [applib.is_admin])
+def delete(uid, auth, **kwargs):
+    return mydatastore.delete_one({'_id': uid}) # return deleted user
+
+# POST requests to /tokens
+@falcon.pure(tokenapi)
+def login(token, **kwargs):
+    user = mydatastore.find({'username': token['username']})
+    if not user or user['password'] != 'mypassword':
+        raise falcon.HTTPUnAuthorized('Not Logged In', 'Wrong username/password') 
+    return {} # return transformed user or nothing
+
+
+falcon.register(tokenapi, api)
+falcon.register(usersapi, api)
+falcon.register(userapi, api)
+```

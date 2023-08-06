@@ -1,0 +1,36 @@
+# IPython only works with 2.7/3.3, so, test only on those.
+language: python
+python:
+  - 2.7
+  - 3.5
+#   - "pypy"
+
+env:
+  - PYDEVD_USE_CYTHON=YES
+  - PYDEVD_USE_CYTHON=NO
+
+# Setup anaconda
+before_install:
+  - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
+  - chmod +x miniconda.sh
+  - ./miniconda.sh -b
+  - export PATH=/home/travis/miniconda2/bin:$PATH
+  - conda update --yes conda
+  # The next couple lines fix a crash with multiprocessing on Travis and are not specific to using Miniconda
+  - sudo rm -rf /dev/shm
+  - sudo ln -s /run/shm /dev/shm
+  # Fix issue with testGui
+  - "export DISPLAY=:99.0"
+  - "sh -e /etc/init.d/xvfb start"
+# Install packages
+install:
+  - conda create --yes -n build_env python=$TRAVIS_PYTHON_VERSION
+  - source activate build_env
+  - conda install --yes numpy ipython cython pytest psutil
+  - pip install "django>=1.7,<1.8"
+  - pip install Pympler
+  - python build_tools/build.py
+
+# Run test
+script:
+  - py.test

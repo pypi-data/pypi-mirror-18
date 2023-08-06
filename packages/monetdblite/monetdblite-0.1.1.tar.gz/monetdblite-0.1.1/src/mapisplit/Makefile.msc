@@ -1,0 +1,38 @@
+
+## Use: nmake -f makefile.msc install
+
+# Nothing much configurable below
+
+TOPDIR = .\..
+srcdir = $(TOPDIR)\..\mapisplit
+!INCLUDE $(TOPDIR)\..\NT\rules.msc
+all: all-msc
+check: check-msc
+install: install-msc
+CFLAGS=$(CFLAGS) $(thread_safe_flag_spec)
+INCLUDES = -I$(srcdir)
+libmapisplit_OBJS = mapisplit.obj mapisplit-r.obj
+libmapisplit_DEPS = $(libmapisplit_OBJS)
+libmapisplit.lib: libmapisplit.dll
+libmapisplit.dll: $(libmapisplit_DEPS) 
+	python "$(TOPDIR)\..\NT\wincompile.py" $(CC) $(CFLAGS) -LD -Felibmapisplit.dll @<< /link @<<
+$(libmapisplit_OBJS)
+<<
+$(libmapisplit_LIBS)
+<<
+	if exist $@.manifest $(MT) -manifest $@.manifest -outputresource:$@;2
+
+mapisplit-r.obj: "$(srcdir)\mapisplit-r.c" "$(srcdir)\mapisplit.h"
+	$(CC) $(CFLAGS) $(mapisplit-r_CFLAGS) $(GENDLL) -D_CRT_SECURE_NO_WARNINGS -DLIBMAPISPLIT -Fo"mapisplit-r.obj" -c "$(srcdir)\mapisplit-r.c"
+mapisplit.obj: "$(srcdir)\mapisplit.c" "$(srcdir)\mapisplit.h"
+	$(CC) $(CFLAGS) $(mapisplit_CFLAGS) $(GENDLL) -D_CRT_SECURE_NO_WARNINGS -DLIBMAPISPLIT -Fo"mapisplit.obj" -c "$(srcdir)\mapisplit.c"
+all-msc: "libmapisplit.dll"
+check-msc: all-msc "libmapisplit.dll"
+install-msc: install-exec install-data
+install-exec:  "install_libmapisplit" 
+install_libmapisplit: "libmapisplit.dll" "$(libdir)"
+	$(INSTALL) "libmapisplit.dll" "$(libdir)\libmapisplit.dll"
+	$(INSTALL) "libmapisplit.lib" "$(libdir)\libmapisplit.lib"
+"$(libdir)":
+	if not exist "$(libdir)" $(MKDIR) "$(libdir)"
+install-data:

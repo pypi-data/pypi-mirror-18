@@ -1,0 +1,400 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>atomate (Materials Science Workflows) &#8212; atomate 0.3 documentation</title>
+    
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.3',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="atomate Changelog" href="changelog.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="changelog.html" title="atomate Changelog"
+             accesskey="N">next</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">atomate 0.3 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <img alt="atomate logo" src="_static/atomate_logo_small.jpg" />
+<blockquote class="pull-quote">
+<div><div class="line-block">
+<div class="line">&#8220;Civilization advances by extending the number of important operations which we can perform without thinking about them.&#8221;</div>
+<div class="line-block">
+<div class="line">- Alfred North Whitehead</div>
+</div>
+</div>
+</div></blockquote>
+<p>Theory and computations are powerful tools for understanding and designing materials, but conventional
+software for performing these computations are still difficult to use, understand, and automate.
+atomate makes it possible to perform complex materials science computations using
+very straightforward statements. Features of atomate include:</p>
+<ul class="simple">
+<li>It is built on top of state-of-the-art open-source libraries: <strong>pymatgen</strong>, <strong>custodian</strong>, and <strong>FireWorks</strong>. Building off these libraries means that atomate can not only serve as a simple and friendly introduction to computational materials science, but that it is powerful enough for even the most demanding of theory users that require precise control and massive execution.</li>
+<li>It is easy to get &#8220;standard&#8221; workflows for a wide variety of desired materials properties - optimized structures, band structures, electronic transport properties, dielectric constants, and much more. Just provide a crystal structure (that&#8217;s it!) and let atomate set up a complete workflow that provides the property you are interested in. You can do this for a single material, 100 materials, or 100,000 materials.</li>
+<li>One can easily change &#8220;standard workflows&#8221; - whether that is changing some of the default calculation parameters or recomposing the workflow (adding new calculations, removing steps, etc.) - using a very expressive syntax. One can compose very complex new workflows simply by chaining together pre-built calculation steps.</li>
+<li>A system of &#8220;powerups&#8221; that let you quickly decorate a bare workflow with useful special properties. Just feed the workflow through the powerup and your workflow will have the feature enabled. A config file allows you to automatically set the powerups you want to apply most often.</li>
+<li>It can build large databases of output properties that you can query, analyze, and share in a systematic way.</li>
+<li>It automatically keeps meticulous records of jobs, their directories, runtime parameters, etc.</li>
+<li>Jobs can be run on a variety of computing systems, queue systems, and architectures.</li>
+<li>atomate uses a standard interface for adding new types of calculations and workflows such that it is possible for users to contribute new features and grow the capabilities of the software over time.</li>
+</ul>
+<p>Note: that atomate is currently built to work with the <strong>VASP</strong> electronic structure software, but it is the intention of atomate to support a variety of software.</p>
+<div class="section" id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
+<p>Although atomate itself should be pip-installable, the actual process to get an infrastructure to run VASP at supercomputers might be a bit more involved (not difficult, just more steps). See &#8220;Detailed Installation Notes&#8221; at the end of this document for some notes on how to do this.</p>
+</div>
+<div class="section" id="testing-the-vasp-functionality">
+<h1>Testing the VASP functionality<a class="headerlink" href="#testing-the-vasp-functionality" title="Permalink to this headline">¶</a></h1>
+<p>In order to use the VASP functionality, make sure you set up VASP_PSP_DIR variable (see pymatgen docs). Also, make sure you have MongoDB running in order to execute all the tests.</p>
+<p>To test the VASP functionality, first run the unit tests in <code class="docutils literal"><span class="pre">atomate.vasp.tests</span></code>. These unit tests are designed to run without installing VASP. Some of them start with a VASP workflow but apply the <code class="docutils literal"><span class="pre">use_fake_vasp</span></code> method to replace calling the VASP executable with a &#8220;Faker&#8221; that verifies basic properties of the inputs and copies pre-stored output files to the current directory, thus simulating the execution of VASP. Anyway this will help make sure your installation is in good shape.</p>
+<p>Note that the unit tests in atomate/vasp/tests/test_vasp_workflows.py can be modified to actually run VASP by setting VASP_CMD to a String representing your VASP command. If you need to debug at a later point, this might be something to refer back to. Furthermore, many tests have a DEBUG option that can sometimes help in finding problems. Sometimes you need to toggle DEBUG on/off a couple of times if you are doing this to make sure all the old data is actually cleared between debug runs; the tearDown() and setUp() methods are still a bit finicky.</p>
+</div>
+<div class="section" id="learning-to-use-atomate">
+<h1>Learning to use atomate<a class="headerlink" href="#learning-to-use-atomate" title="Permalink to this headline">¶</a></h1>
+<p>If you are familiar with (i) VASP, (ii) pymatgen, (iii) custodian, and (iv) FireWorks, then most of atomate such be fairly straightforward. For example, the FireTasks implemented in <code class="docutils literal"><span class="pre">atomate/vasp/firetasks</span></code> should look make at least <em>some</em> sense, and the Fireworks implemented in <code class="docutils literal"><span class="pre">atomate/vasp/fireworks</span></code> should also seem logical and mostly clear. Workflows are simply chains of Fireworks (technically, DAGs). Normally, they would be implemented in simple Python, i.e. see the FireWorks codebase about how to compose Workflows with Python, but it turns out they are simple enough that one can write them in a simple YAML text file instead of Python code. There is a custom YAML format that is described in the README for the <code class="docutils literal"><span class="pre">atomate/vasp/workflows/base/library</span></code> folder.</p>
+<p>In practice, getting prebuilt workflows is easier than this. For this, just look in <code class="docutils literal"><span class="pre">atomate/vasp/workflows/presets</span></code>. This folder contains functions where one can simply give a crystal structure and get back an appropriate workflow. Nothing to it!</p>
+<p>There are only a couple of new concepts in atomate that you might need to familiarize yourself with, and they are described below.</p>
+<div class="section" id="the-env-chk-e-g-db-file-syntax">
+<h2>The &#8220;env_chk&#8221;, e.g. &gt;&gt;db_file&lt;&lt; syntax<a class="headerlink" href="#the-env-chk-e-g-db-file-syntax" title="Permalink to this headline">¶</a></h2>
+<p>One issue in coding workflows is what to do when different machines require different settings. For example, the path to the VASP executable or the path to a file containing database credentials might be located in different places on different machines. For users wanting to run on multiple machines, such parameters cannot be hard-coded. However, users that are running on a single machine, or those that are testing things out, might prefer to hard-code those parameters.</p>
+<p>The <code class="docutils literal"><span class="pre">env_chk</span></code> functionality is a way to support both hard-coding of parameters as well as letting the machine (or more specifically, the FireWorker) set the parameter. Many of the FireTasks in atomate, e.g., <code class="docutils literal"><span class="pre">RunVaspDirect</span></code>, state in the docs that they &#8220;support <code class="docutils literal"><span class="pre">env_chk</span></code>&#8221; for a parameter such as <code class="docutils literal"><span class="pre">vasp_cmd</span></code>. What this means is that you have two options for creating the FireTask:</p>
+<p>Option 1 is to use something like <code class="docutils literal"><span class="pre">my_task</span> <span class="pre">=</span> <span class="pre">RunVaspDirect(vasp_cmd=&quot;vasp&quot;)</span></code>. This behaves exactly as you would expect in regular Python, i.e., the string literal &#8220;vasp&#8221; set as the <code class="docutils literal"><span class="pre">vasp_cmd</span></code> parameter.</p>
+<p>Option 2 is to use the <code class="docutils literal"><span class="pre">env_chk</span></code> notation which looks like this: <code class="docutils literal"><span class="pre">my_task</span> <span class="pre">=</span> <span class="pre">RunVaspDirect(vasp_cmd=&quot;&gt;&gt;my_vasp_cmd&lt;&lt;&quot;)</span></code>. If <code class="docutils literal"><span class="pre">env_chk</span></code> parameters like <cite>vasp_cmd`</cite> are enclosed in the <code class="docutils literal"><span class="pre">&gt;&gt;&lt;&lt;</span></code> symbols, it is interpreted that the user wants to get the values from the FireWorker&#8217;s <code class="docutils literal"><span class="pre">env</span></code> value. That is, when executing the workflow, one must use a FireWorker that contains an env that looks like <code class="docutils literal"><span class="pre">{&quot;my_vasp_cmd&quot;:</span> <span class="pre">&quot;mpirun</span> <span class="pre">-n</span> <span class="pre">24</span> <span class="pre">vasp&quot;}</span></code>. Here, the <code class="docutils literal"><span class="pre">my_vasp_cmd</span></code> in the dictionary matches the <code class="docutils literal"><span class="pre">&gt;&gt;my_vasp_cmd&lt;&lt;</span></code> string in the env_chk. Thus, when VASP is executed via this FireWorker, it will execute the command <code class="docutils literal"><span class="pre">mpirun</span> <span class="pre">-n</span> <span class="pre">24</span> <span class="pre">vasp</span></code>. Other FireWorkers, for example located on different computing centers, might execute different VASP commands and can support this by setting a different value of the FireWorker <code class="docutils literal"><span class="pre">env</span></code>. The workflow can be kept intact since the workflow is merely pointing to the <code class="docutils literal"><span class="pre">my_vasp_cmd</span></code> env variable and not setting the VASP command explicitly. There are more details about setting the FireWorker env variables in the FireWorks tutorials (in particular the Worker tutorial). The unit tests also use the env_chk feature to find the db configuration file. e.g., see the unit test: <code class="docutils literal"><span class="pre">atomate.vasp.tests.test_vasp_workflows.TestVaspWorkflows#test_single_Vasp_dbinsertion</span></code> and you will have a flavor for how this works. Just remember that if you see something like this <code class="docutils literal"><span class="pre">&gt;&gt;db_file&lt;&lt;</span></code>, when running your Workflow your FireWorker will need to set the env like this: <code class="docutils literal"><span class="pre">FWorker(env={&quot;db_file&quot;:</span> <span class="pre">&quot;path/to/db.json&quot;})</span></code> and you will need to use that FireWorker when launching the jobs.</p>
+</div>
+<div class="section" id="calclocs">
+<h2>CalcLocs<a class="headerlink" href="#calclocs" title="Permalink to this headline">¶</a></h2>
+<p>If you are running multiple VASP jobs that depend on copying the outputs of previous jobs, one issue is how to pass the directory information of previous VASP jobs from Firework to Firework. It is possible to do this manually (as was done in the MPWorks codebase), or using the <code class="docutils literal"><span class="pre">pass_job_info</span></code> keyword built into Fireworks, but the standard way to do this in atomate is <em>CalcLocs</em>. Procedurally, all you need to do is add the <code class="docutils literal"><span class="pre">`PassCalcLocs</span></code> FireTask to every Firework that contains a VASP job (see <code class="docutils literal"><span class="pre">atomate.vasp.fireworks.core</span></code> for examples). Downstream jobs like <code class="docutils literal"><span class="pre">CopyVaspOutput</span></code> will have a <code class="docutils literal"><span class="pre">calc_loc</span></code> variable that can be set to True, and will automatically get the previous VASP dir parsed from before. Similar with <code class="docutils literal"><span class="pre">VaspToDbTask</span></code>. Note that a couple of advantages of this system are:</p>
+<ul class="simple">
+<li>It is a general way of passing VASP directories that works with any Firework, and doesn&#8217;t require you to code the logic of passing VASP directories inside of other functions (e.g., database insertion tasks as was done previously in MPWorks). Thus, the task of reporting and passing the VASP job location is well-separated from the other functions and can just be added in very easily. The only downside is that you have to remember to add in this FireTask.</li>
+<li>The CalcLocs maintains a running dictionary of job type to job location. If you need to grab outputs from multiple jobs (or say, from two jobs back), it is all supported within the framework. Just read the docs, e.g., of <code class="docutils literal"><span class="pre">CopyVaspOutput</span></code>.</li>
+<li>Job directories are located across different machines and require <code class="docutils literal"><span class="pre">scp</span></code> or some other complex transfer mechanism are automatically handled by this infrastructure. You don&#8217;t have to lift a finger! Just tell the parent Firework to pass the calcloc and the child firework to copy the vasp output (which supports the calcloc framework).</li>
+</ul>
+</div>
+<div class="section" id="workflow-powerups">
+<h2>Workflow &#8220;Powerups&#8221;<a class="headerlink" href="#workflow-powerups" title="Permalink to this headline">¶</a></h2>
+<p>Workflow powerups are intended to be like function decorators, but for Workflows. For example, let&#8217;s say you&#8217;ve built a multi-step workflow that computes a band structure. Now, you want to make sure that once a workflow starts running, it is prioritized to finish that particular workflow versus starting other workflows. By passing your workflow through a &#8220;powerup&#8221;, you can get back a decorated workflow that sets the priorities of the Fireworks inside your workflow to endow this behavior (e.g., give all children Fireworks 2X the priority of the root parent). This particular powerup is located in <code class="docutils literal"><span class="pre">atomate.vasp.vasp_powerups.add_priority</span></code>. Another powerups allows you to track the status of your jobs (last few lines in output files) in the FireWorks database, for example.</p>
+<p>Note that another planned &#8220;powerup&#8221; is to endow Workflows with duplicate checking, i.e., to make sure the same structure is not run twice. In the past, such duplicate checking logic would be mixed in with the rest of the Workflow (about setting up VASP parameters, running VASP, etc.), and the end result was a very messy workflow code. It was also difficult to turn duplicate checking off and on as desired since all the logic was intermixed. By moving the duplicate checking to a &#8220;powerup&#8221;, one can simply enable duplicate checking by passing the Workflow through the appropriate powerup.</p>
+<p>See the <code class="docutils literal"><span class="pre">vasp_powerups.py</span></code> file for examples.</p>
+</div>
+</div>
+<div class="section" id="detailed-installation-notes">
+<h1>Detailed Installation Notes<a class="headerlink" href="#detailed-installation-notes" title="Permalink to this headline">¶</a></h1>
+<p>Here are some notes on how to get atomate up and running in a production system at your supercomputing center. These notes are geared towards the NERSC supercomputing center. You&#8217;ll need to fill in details and adapt accordingly for other centers.</p>
+<div class="section" id="a-things-you-need-to-do-once">
+<h2>A. Things you need to do once<a class="headerlink" href="#a-things-you-need-to-do-once" title="Permalink to this headline">¶</a></h2>
+<p>Here are some things you will likely only need to do once (per machine) as an &#8220;initial install&#8221;.</p>
+<div class="section" id="preliminaries">
+<h3>Preliminaries<a class="headerlink" href="#preliminaries" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic simple">
+<li>Make sure you can access to a MongoDB installation from the compute nodes. i.e. you can either start and stop a Mongo server yourself or have credentials to a Mongo server that&#8217;s always available. Also confirm there are no firewalls from your compute node to your Mongo server. If you are able to get through the FireWorks tutorials on running jobs through a queue, then this step is probably OK. If you are unsure, I recommend actually trying that first before going through all the atomate stuff.</li>
+<li>Make sure you have access to the VASP executable and pseudopotential files. If you cannot run VASP manually, you cannot do it through this infrastructure. I recommend making sure you know how to run VASP manually on your supercomputer before embarking on this installation.</li>
+</ol>
+</div>
+<div class="section" id="set-some-environment-variables">
+<h3>Set some environment variables<a class="headerlink" href="#set-some-environment-variables" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic simple">
+<li>Make sure your <code class="docutils literal"><span class="pre">VASP_PSP_DIR</span></code> environment variable is set to point to your VASP pseudopotential directories (this is a pymatgen thing). Probably you want to put this in your <code class="docutils literal"><span class="pre">.bash_profile</span></code> (or equivalent, e.g., <code class="docutils literal"><span class="pre">.bashrc.ext</span></code> at NERSC) and never have to worry about this again. Otherwise, you will need to do this each and every time.</li>
+</ol>
+</div>
+<div class="section" id="install-some-codes">
+<h3>Install some codes<a class="headerlink" href="#install-some-codes" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic simple">
+<li>Load any modules that are needed to do a Python installation.</li>
+<li>Create a directory in a spot on disk that has relatively fast access from compute nodes. Your Python codes and config files will go here. We will call this place <code class="docutils literal"><span class="pre">&lt;&lt;INSTALL_DIR&gt;&gt;</span></code>.</li>
+<li>It&#8217;s probably best to make this directory a virtual environment, in case you want to have multiple environments later (for different projects, perhaps for different machines, etc). This will also help in avoiding permissions problems with installing Python codes. So create a virtualenv in the <code class="docutils literal"><span class="pre">&lt;&lt;INSTALL_DIR&gt;&gt;</span></code> using the <code class="docutils literal"><span class="pre">virtualenv</span></code> command. If you know what you are doing, you can probably make things work without virtualenv.</li>
+<li>Activate your virtualenv, e.g. <code class="docutils literal"><span class="pre">source</span> <span class="pre">&lt;&lt;INSTALL_DIR&gt;&gt;/bin/activate</span></code>. Now you are ready to install codes.</li>
+<li>I would suggest making a subdirectory for codes, e.g. <code class="docutils literal"><span class="pre">&lt;&lt;INSTALL_DIR&gt;&gt;/codes</span></code> and then moving to that directory for the remainder.</li>
+<li>Technically, you just need the atomate code which will contain all the dependencies, and you might be able to get by using the <code class="docutils literal"><span class="pre">pip</span></code> install. What I do is actually install the full source of the atomate code and all of its important dependencies inside <code class="docutils literal"><span class="pre">&lt;&lt;INSTALL_DIR&gt;&gt;/codes</span></code>. This includes a <code class="docutils literal"><span class="pre">git</span> <span class="pre">clone</span></code> followed by a <code class="docutils literal"><span class="pre">python</span> <span class="pre">setup.py</span> <span class="pre">develop</span></code> for the following codes:<ul>
+<li>fireworks - <code class="docutils literal"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">https://www.github.com/materialsproject/fireworks.git</span></code></li>
+<li>pymatgen - <code class="docutils literal"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">https://www.github.com/materialsproject/pymatgen.git</span></code></li>
+<li>pymatgen-db - <code class="docutils literal"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">https://www.github.com/materialsproject/pymatgen-db.git</span></code></li>
+<li>custodian - <code class="docutils literal"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">https://www.github.com/materialsproject/custodian.git</span></code></li>
+<li>atomate (from hackingmaterials org) - <code class="docutils literal"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">https://www.github.com/hackingmaterials/atomate.git</span></code></li>
+</ul>
+</li>
+<li>If all the installation seemed to go smoothly, you are all set! You can try running some unit tests in the code to help confirm things. Note that some of the unit tests in some of the codes will require a MongoDB server.</li>
+</ol>
+</div>
+<div class="section" id="configure-a-bunch-of-things">
+<h3>Configure a bunch of things<a class="headerlink" href="#configure-a-bunch-of-things" title="Permalink to this headline">¶</a></h3>
+<p>In addition to having the code installed, you will need to configure a bunch of settings for running at your computing cluster. This includes setting up your queue adapter and submission script template, providing credentials to your databases, and setting locations of loggers and miscellaneous items.</p>
+<ol class="arabic simple">
+<li>Copy the contents of <code class="docutils literal"><span class="pre">/atomate/vasp/config_example/standard_config</span></code> to <code class="docutils literal"><span class="pre">&lt;&lt;INSTALL_DIR&gt;&gt;/config</span></code>. We can work off these files to begin with rather than creating the files from scratch.</li>
+</ol>
+<p>There is a lot to configure, so let&#8217;s tackle the files one by one. We will start simple and get more complex.</p>
+<p>Note that all variables enclosed in <code class="docutils literal"><span class="pre">&lt;&lt;&gt;&gt;</span></code>, e.g. <code class="docutils literal"><span class="pre">&lt;&lt;HOSTNAME&gt;&gt;</span></code>, must be modified by the user.</p>
+<p><strong>my_launchpad.yaml</strong></p>
+<p>As you should know, this file contains the configuration for the FireWorks database (LaunchPad). Make sure to set:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">&lt;&lt;HOSTNAME&gt;&gt;</span></code> - the host of your FWS db server</li>
+<li><code class="docutils literal"><span class="pre">&lt;&lt;PORT_NUM&gt;&gt;</span></code> - the port of your FWS db server</li>
+<li><code class="docutils literal"><span class="pre">&lt;&lt;DB_NAME&gt;&gt;</span></code> - whatever you want to call your database. If you are not feeling creative, call it <code class="docutils literal"><span class="pre">vasp_calcs</span></code>.</li>
+<li><code class="docutils literal"><span class="pre">&lt;&lt;ADMIN_USERNAME&gt;&gt;</span></code> and <code class="docutils literal"><span class="pre">&lt;&lt;ADMIN_PASSWORD&gt;&gt;</span></code> - the (write) credentials to access your DB. Delete these lines if you do not have password protection in your DB.</li>
+<li><code class="docutils literal"><span class="pre">&lt;&lt;LOG_DIR&gt;&gt;</span></code> - you can leave this to <code class="docutils literal"><span class="pre">null</span></code>. If you want logging, put a directory name str here.</li>
+<li>The other settings, I&#8217;ve left to defaults. Feel free to modify them if you know what you are doing.</li>
+</ul>
+<p>You can test whether your connection is running by running <code class="docutils literal"><span class="pre">lpad</span> <span class="pre">-l</span> <span class="pre">my_launchpad.yaml</span> <span class="pre">reset</span></code>. This will reset and initialize your FireWorks database. Note that you might see some strange message about <code class="docutils literal"><span class="pre">&lt;&lt;ECHO_STR&gt;&gt;</span></code>. We will fix that configuration later - feel free to ignore it for now.</p>
+<p><strong>db.json</strong></p>
+<p>This file contains credentials needed by the pymatgen-db code to insert the results of your VASP calculations. The easiest solution is to use the same database as your FireWorks database, but just use a different collection name. Or, you could use separate databases for FireWorks and VASP results. It is up to you.</p>
+<p>For all settings, set to the same as the FireWorks database (<code class="docutils literal"><span class="pre">my_launchpad.yaml</span></code>) if you&#8217;re keeping things simple. Or, use the settings for your dedicated database for VASP outputs. Note that since this is a JSON file, you need to use valid JSON conventions. e.g., wrap String values in quotes.</p>
+<p>Once you&#8217;ve set up the credentials this file should be good to go.</p>
+<p><strong>FW_config.yaml</strong></p>
+<p>This file contains your global FireWorks settings. Later on (not now), you will set an environment variable called <code class="docutils literal"><span class="pre">FW_CONFIG_FILE</span></code> that points to this file. This file subsequently gives the directory name of where to find the other FWS-related files (my_launchpad.yaml, my_fworker.yaml, and my_qadapter.yaml). Anyway, in terms of setting up this file, set:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">&lt;&lt;PATH_TO_CONFIG_DIR&gt;&gt;</span></code> - this is the <strong>full</strong> name of the directory containing the files <code class="docutils literal"><span class="pre">my_launchpad.yaml</span></code>, <code class="docutils literal"><span class="pre">my_fworker.yaml</span></code>, and <code class="docutils literal"><span class="pre">my_qadapter.yaml</span></code>. The easiest way to set this variable is to navigate to <code class="docutils literal"><span class="pre">&lt;&lt;INSTALL_DIR/config&gt;&gt;</span></code>, type <code class="docutils literal"><span class="pre">pwd</span></code>, and paste the result into this variable.</li>
+<li><code class="docutils literal"><span class="pre">&lt;&lt;ECHO_TEST&gt;&gt;</span></code> - the simplest thing is to delete this line. If you want, put an identifying string here. Whatever you put will be echoed back whenever you issue a FireWorks command. It is sometimes helpful if you are working with multiple databases and prefer a reminder of which database you are working with.</li>
+</ul>
+<p><strong>my_fworker.yaml</strong></p>
+<p>This file is both simple and complicated. The basic setup is simple. But, setting the <code class="docutils literal"><span class="pre">env</span></code> variable properly requires knowing about the details of the workflows you are going to run. Make sure you understand the <code class="docutils literal"><span class="pre">env_chk</span></code> framework (described elsewhere in the docs) to really know what is going on here.</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">&lt;&lt;name&gt;&gt;</span></code> - set to any name that describes this Worker. e.g. <code class="docutils literal"><span class="pre">Generic</span> <span class="pre">NERSC</span></code>.</li>
+<li><code class="docutils literal"><span class="pre">&lt;&lt;env.db_file&gt;&gt;</span></code> - many of the workflows implemented in atomate use the <code class="docutils literal"><span class="pre">env_chk</span></code> framework to get the path to the tasks database file from here. This allows setting different database files on different systems. Anyway, you want to put the <strong>full</strong> path of <code class="docutils literal"><span class="pre">&lt;&lt;INSTALL_DIR&gt;&gt;/config/db.json</span></code>.</li>
+<li><code class="docutils literal"><span class="pre">&lt;&lt;env.vasp_cmd&gt;&gt;</span></code> - many of the workflows implemented in atomate use the <code class="docutils literal"><span class="pre">env_chk</span></code> framework to get the actual command needed to run VASP because this command differs on different systems and cannot be hard-coded in the workflow itself. So put your full VASP command, e.g. <code class="docutils literal"><span class="pre">mpirun</span> <span class="pre">-n</span> <span class="pre">16</span> <span class="pre">vasp</span></code> here.</li>
+<li><code class="docutils literal"><span class="pre">&lt;&lt;env.scratch_dir&gt;&gt;</span></code> - temporary place where to run VASP calculations using custodian framework. If set to the <code class="docutils literal"><span class="pre">null</span></code> it will simply use the current working directory without using a scratch_dir.</li>
+</ul>
+<p>Note that all of these values might depend on the specific system you are running on. The point of the <code class="docutils literal"><span class="pre">my_fworker.yaml</span></code> is precisely to allow for different settings on different
+systems. By having a different <code class="docutils literal"><span class="pre">my_fworker.yaml</span></code> file for each intended systems, you can tailor the execution of workflows across systems. This procedure is straightforward but is not covered here. You can set up a second config file, and point your <code class="docutils literal"><span class="pre">FW_CONFIG_FILE</span></code> environment variable to that second config file in order to use different settings (e.g., different <code class="docutils literal"><span class="pre">my_fworker.yaml</span></code>).</p>
+<p><strong>my_qadapter.yaml</strong></p>
+<p>This file controls the format of your queue submission script and the commands to submit jobs to the queue (e.g., <code class="docutils literal"><span class="pre">qsub</span></code> versus <code class="docutils literal"><span class="pre">sbatch</span></code>). I will not go over how to set this file here. Please refer to the FWS tutorials for that. Note that <code class="docutils literal"><span class="pre">&lt;&lt;CONFIG_DIR&gt;&gt;</span></code> should point to the <strong>full</strong> path of <code class="docutils literal"><span class="pre">&lt;&lt;INSTALL_DIR&gt;&gt;/config</span></code>. One further note on this file is that the default uses <code class="docutils literal"><span class="pre">singleshot</span></code> in &#8220;reservation&#8221; (<code class="docutils literal"><span class="pre">-r</span></code>) mode. If you want to pack multiple Fireworks into a queue submission you might try turning off reservation mode, and using <code class="docutils literal"><span class="pre">rapidfire</span></code> mode with the appropriate options.</p>
+<p>That&#8217;s it! You&#8217;ve finished basic configuration!</p>
+</div>
+</div>
+<div class="section" id="b-things-you-need-to-do-each-time-you-log-in-or-just-once-if-you-put-it-in-your-bash-profile">
+<h2>B. Things you need to do each time you log in (or just once if you put it in your .bash_profile)<a class="headerlink" href="#b-things-you-need-to-do-each-time-you-log-in-or-just-once-if-you-put-it-in-your-bash-profile" title="Permalink to this headline">¶</a></h2>
+<p>In order to run jobs, you must:</p>
+<ol class="arabic simple">
+<li>Load modules for any important libraries (e.g., Python / VASP)</li>
+<li>Activate your virtualenv (<code class="docutils literal"><span class="pre">source</span> <span class="pre">&lt;&lt;INSTALL_DIR&gt;&gt;/bin/activate</span></code>).</li>
+<li>set your <code class="docutils literal"><span class="pre">FW_CONFIG_FILE</span></code> env variable to point to <code class="docutils literal"><span class="pre">FW_config.yaml</span></code> (<code class="docutils literal"><span class="pre">export</span> <span class="pre">FW_CONFIG_FILE=&lt;&lt;INSTALL_DIR&gt;&gt;/config/FW_config.yaml</span></code>).</li>
+</ol>
+<p>You can put all of these things inside your <code class="docutils literal"><span class="pre">.bash_profile</span></code> or equivalent in order to make them automatic when you log into the cluster. It is up to you.</p>
+</div>
+<div class="section" id="c-running-some-jobs">
+<h2>C. Running some jobs<a class="headerlink" href="#c-running-some-jobs" title="Permalink to this headline">¶</a></h2>
+<p>Ok, you are now ready to test running some jobs! Note that the testing procedure was recently changed and is under development. For now, try getting a workflow from the the <code class="docutils literal"><span class="pre">vasp/workflows/preset</span></code> package in which you can just give a Structure and get back a workflow. Then add that workflow to your LaunchPad and then use FireWorks to launch it in the manner of your desire.</p>
+</div>
+<div class="section" id="d-tuning-performance-on-different-machines">
+<h2>D. Tuning performance on different machines<a class="headerlink" href="#d-tuning-performance-on-different-machines" title="Permalink to this headline">¶</a></h2>
+<p>VASP has certain INCAR parameters like NCORE, NPAR, KPAR, etc. that can be tuned
+based on your machine. Since the <code class="docutils literal"><span class="pre">ModifyIncar</span></code> firetask supports
+<code class="docutils literal"><span class="pre">env_chk</span></code>, these values can also be set in the fireworker config file
+(my_fworker.yaml). E.g.,</p>
+<div class="highlight-yaml"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">env</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">incar_update</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">NCORE</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">24</span>
+</pre></div>
+</div>
+<p>Note that NCORE sets the number of cores that work on a single orbital.
+Typically, you want to set this between 1 (higher memory requirements) and
+the number of cores per node (lower memory requirements while still
+maintaining fast communication times between workers on an a single orbital).
+A good starting point might be setting NCORE equal to the square root of
+number of cores per node as per the VASP manual. The following information
+might come in handy when setting the NCORE parameter on NERSC machines:</p>
+<ul class="simple">
+<li>Edison - 24 tasks per node</li>
+<li>Cori - 32 tasks per node</li>
+<li>Matgen - 16 tasks per node</li>
+</ul>
+<p>Thus, a good starting point is to set NCORE=4 for Matgen/Edison and NCORE=8 for
+Cori. Reduce NCORE if you want to try to increase speed at the risk of having
+lower memory available per orbital.</p>
+</div>
+</div>
+<div class="section" id="faqs">
+<h1>FAQS<a class="headerlink" href="#faqs" title="Permalink to this headline">¶</a></h1>
+<ol class="arabic simple">
+<li><strong>What do I actually need to do to get a job running?</strong></li>
+</ol>
+<p>First, you need to install and configure atomate (see the installation notes above) for your computing center of interest. Next you need to get some workflows. The easiest way is to throw a pymatgen Structure object into one of the prebuilt workflow functions in <code class="docutils literal"><span class="pre">atomate/vasp/workflows/presets</span></code>. Et voilá! You have a workflow object. Next you need to put the workflow into your LaunchPad using the add_wf method in FireWorks. Finally, you need to run the workflow using FireWorks, e.g. using rlaunch, qlaunch or any of the other FireWorks tools.
+Basically, the goal of atomate is to help you get some workflows. e.g., you have a structure and you know you want the dielectric constant - atomate will help you get a workflow to accomplish that. All the details of running workflows, managing them, etc. is handled by FireWorks. Note that there is also an <code class="docutils literal"><span class="pre">mmwf</span></code> script that is intended to help you in putting a Workflow in the LaunchPad, but if you don&#8217;t really understand what it&#8217;s doing, it&#8217;s probably best to ignore this for now.</p>
+<ol class="arabic simple" start="2">
+<li><strong>How do I know what workflows are available?</strong></li>
+</ol>
+<p>Browse the library folder in <code class="docutils literal"><span class="pre">atomate/vasp/workflows/base</span></code> for the raw workflows. Browse <code class="docutils literal"><span class="pre">atomate/vasp/workflows/presets</span></code> for preset workflows (just give a Structure, get back a workflow)</p>
+<ol class="arabic simple" start="3">
+<li><strong>I have a workflow that is almost what I want, but I want to tune some settings. How?</strong></li>
+</ol>
+<p>Workflows are composed of Fireworks which are in turn composed of FireTasks. First look at code of the actual Fireworks that your workflow is referring to. Does the Firework contain a parameter for the setting that you want? If so, you can modify the workflow YAML file to set that parameter. If you are sure your Firework does not have the parameter you want, look at the FireTasks inside the Firework. Do those have a parameter for the setting that you want? If yes, the best option is to probably compose the Workflow in Python rather than YAML. It is generally <em>very</em> easy to do this. If you don&#8217;t see the option anywhere, you will need to code it inside the FireTask/Firework.</p>
+<ol class="arabic simple" start="4">
+<li><strong>How do I create a brand new workflow?</strong></li>
+</ol>
+<p>If you just want to rearrange, add, or delete Fireworks in one of the existing workflows, simply create a new YAML file that contains the sequence of steps you want.</p>
+<p>If the Fireworks that are currently implemented in atomate do not contain the function you want, you will need to write a new Firework (and maybe new FireTasks) and connect them into a workflow. Maybe try referring to how some of the existing workflows are constructed to learn how to do this.</p>
+<ol class="arabic simple" start="4">
+<li><strong>Are there any unit tests to make sure atomate is giving me sensible answers?</strong></li>
+</ol>
+<p>We are working on it...</p>
+<ol class="arabic simple" start="5">
+<li><strong>Is there a command line tool?</strong></li>
+</ol>
+<p>The <code class="docutils literal"><span class="pre">mmwf</span></code> tool is there but somewhat under development. If you know what you are doing it is probably helpful, if you don&#8217;t know what you are doing then using this tool probably will not lead to your success in running a workflow.</p>
+</div>
+<div class="section" id="citing-atomate">
+<h1>Citing atomate<a class="headerlink" href="#citing-atomate" title="Permalink to this headline">¶</a></h1>
+<p>We will write and publish a paper on atomate at a later point. For now, you can cite the following two works:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>(1) Jain, A.; Ong, S. P.; Chen, W.; Medasani, B.; Qu, X.; Kocher, M.;
+Brafman, M.; Petretto, G.; Rignanese, G.-M.; Hautier, G.; Gunter, D.;
+Persson, K. A. FireWorks: a dynamic workflow system designed for
+high-throughput applications, Concurr. Comput. Pract. Exp., 2015, 22,
+doi:10.1002/cpe.3505.
+
+(2) Ong, S. P.; Richards, W. D.; Jain, A.; Hautier, G.; Kocher, M.; Cholia,
+S.; Gunter, D.; Chevrier, V. L.; Persson, K. a.; Ceder, G. Python Materials
+Genomics (pymatgen): A robust, open-source python library for materials
+analysis, Comput. Mater. Sci., 2013, 68, 314–319,
+doi:10.1016/j.commatsci.2012.10.028.
+</pre></div>
+</div>
+</div>
+<div class="section" id="contributing-contact-bug-reports">
+<span id="contributing-label"></span><h1>Contributing / Contact / Bug Reports<a class="headerlink" href="#contributing-contact-bug-reports" title="Permalink to this headline">¶</a></h1>
+<p>Want to see something added or changed? There are many ways to make that a reality! Some ways to get involved are:</p>
+<ul class="simple">
+<li>Help us improve the documentation - tell us where you got &#8216;stuck&#8217; and improve the install process for everyone.</li>
+<li>Let us know if you need support for a queueing system or certain features.</li>
+<li>Point us to areas of the code that are difficult to understand or use.</li>
+<li>Contribute code!</li>
+</ul>
+<p>The list of contributors to atomate can be found <a class="reference internal" href="contributors.html"><span class="doc">here</span></a>.</p>
+<p>atomate is currently in an alpha release. Although atomate is open source, currently no support is provided for atomate other than for those who are contributing to its development.</p>
+</div>
+<div class="section" id="changelog">
+<h1>Changelog<a class="headerlink" href="#changelog" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">atomate Changelog</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="license">
+<h1>License<a class="headerlink" href="#license" title="Permalink to this headline">¶</a></h1>
+<p>atomate is released under a modified BSD license; the full text can be found <a class="reference internal" href="license.html"><span class="doc">here</span></a>.</p>
+</div>
+<div class="section" id="comprehensive-documentation">
+<h1>Comprehensive Documentation<a class="headerlink" href="#comprehensive-documentation" title="Permalink to this headline">¶</a></h1>
+<p>Some comprehensive documentation is listed below (only for the brave!)</p>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></li>
+<li><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></li>
+<li><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></li>
+</ul>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Installation</a></li>
+<li><a class="reference internal" href="#testing-the-vasp-functionality">Testing the VASP functionality</a></li>
+<li><a class="reference internal" href="#learning-to-use-atomate">Learning to use atomate</a><ul>
+<li><a class="reference internal" href="#the-env-chk-e-g-db-file-syntax">The &#8220;env_chk&#8221;, e.g. &gt;&gt;db_file&lt;&lt; syntax</a></li>
+<li><a class="reference internal" href="#calclocs">CalcLocs</a></li>
+<li><a class="reference internal" href="#workflow-powerups">Workflow &#8220;Powerups&#8221;</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#detailed-installation-notes">Detailed Installation Notes</a><ul>
+<li><a class="reference internal" href="#a-things-you-need-to-do-once">A. Things you need to do once</a><ul>
+<li><a class="reference internal" href="#preliminaries">Preliminaries</a></li>
+<li><a class="reference internal" href="#set-some-environment-variables">Set some environment variables</a></li>
+<li><a class="reference internal" href="#install-some-codes">Install some codes</a></li>
+<li><a class="reference internal" href="#configure-a-bunch-of-things">Configure a bunch of things</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#b-things-you-need-to-do-each-time-you-log-in-or-just-once-if-you-put-it-in-your-bash-profile">B. Things you need to do each time you log in (or just once if you put it in your .bash_profile)</a></li>
+<li><a class="reference internal" href="#c-running-some-jobs">C. Running some jobs</a></li>
+<li><a class="reference internal" href="#d-tuning-performance-on-different-machines">D. Tuning performance on different machines</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#faqs">FAQS</a></li>
+<li><a class="reference internal" href="#citing-atomate">Citing atomate</a></li>
+<li><a class="reference internal" href="#contributing-contact-bug-reports">Contributing / Contact / Bug Reports</a></li>
+<li><a class="reference internal" href="#changelog">Changelog</a></li>
+<li><a class="reference internal" href="#license">License</a></li>
+<li><a class="reference internal" href="#comprehensive-documentation">Comprehensive Documentation</a></li>
+</ul>
+
+  <h4>Next topic</h4>
+  <p class="topless"><a href="changelog.html"
+                        title="next chapter">atomate Changelog</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="changelog.html" title="atomate Changelog"
+             >next</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">atomate 0.3 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Anubhav Jain.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,114 @@
+======
+hupper
+======
+
+.. image:: https://img.shields.io/pypi/v/hupper.svg
+    :target: https://pypi.python.org/pypi/hupper
+
+.. image:: https://img.shields.io/travis/Pylons/hupper.svg
+    :target: https://travis-ci.org/Pylons/hupper
+
+.. image:: https://readthedocs.org/projects/hupper/badge/?version=latest
+    :target: https://readthedocs.org/projects/hupper/?badge=latest
+    :alt: Documentation Status
+
+``hupper`` is an integrated process monitor that will track changes to
+any imported Python files in ``sys.modules`` as well as custom paths. When
+files are changed the process is restarted.
+
+Usage
+=====
+
+Start by defining an entry point for your process. This must be an importable
+path in string format. For example, ``myapp.scripts.serve.main``.
+
+.. code-block:: python
+
+    # myapp/scripts/serve.py
+
+    import os
+    import sys
+    import hupper
+    import waitress
+
+    def wsgi_app(environ, start_response):
+        start_response('200 OK', [('Content-Type', 'text/plain'])
+        yield [b'hello']
+
+    def main(args=sys.argv[1:]):
+        if '--reload' in args:
+            # start_reloader will only return in a monitored subprocess
+            reloader = hupper.start_reloader('myapp.scripts.serve.main')
+
+            # monitor an extra file
+            reloader.watch_files(['foo.ini'])
+
+        waitress.serve(wsgi_app)
+
+Acknowledgments
+===============
+
+``hupper`` is inspired by initial work done by Carl J Meyer and David Glick
+during a Pycon sprint and is built to be a more robust and generic version of
+Ian Bicking's excellent PasteScript ``paste serve --reload`` and Pyramid's
+``pserve --reload``.
+
+
+0.3.3 (2016-11-19)
+==================
+
+- Fixed a runtime failure on Windows 32-bit systems.
+
+0.3.2 (2016-11-15)
+==================
+
+- Support triggering reloads via SIGHUP when hupper detected a crash and is
+  waiting for a file to change.
+
+- Setup the reloader proxy prior to importing the worker's module. This
+  should allow some work to be done at module-scope instead of in the
+  callable.
+
+0.3.1 (2016-11-06)
+==================
+
+- Fix package long description on PyPI.
+
+- Ensure that the stdin file handle is inheritable incase the "spawn" variant
+  of multiprocessing is enabled.
+
+0.3 (2016-11-06)
+================
+
+- Disable bytecode compiling of files imported by the worker process. This
+  should not be necessary when developing and it was causing the process to
+  restart twice on Windows due to how it handles pyc timestamps.
+
+- Fix hupper's support for forwarding stdin to the worker processes on
+  Python < 3.5 on Windows.
+
+- Fix some possible file descriptor leakage.
+
+- Simplify the ``hupper.interfaces.IFileMonitor`` interface by internalizing
+  some of the hupper-specific integrations. They can now focus on just
+  looking for changes.
+
+- Add the ``hupper.interfaces.IFileMonitorFactory`` interface to improve
+  the documentation for the ``callback`` argument required by
+  ``hupper.interfaces.IFileMonitor``.
+
+0.2 (2016-10-26)
+================
+
+- Windows support!
+
+- Added support for `watchdog <https://pypi.org/project/watchdog/>`_ if it's
+  installed to do inotify-style file monitoring. This is an optional dependency
+  and ``hupper`` will fallback to using polling if it's not available.
+
+0.1 (2016-10-21)
+================
+
+- Initial release.
+
+

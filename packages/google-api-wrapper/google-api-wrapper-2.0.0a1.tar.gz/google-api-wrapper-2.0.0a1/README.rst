@@ -1,0 +1,175 @@
+Google APIs Wrapper
+===================
+
+Overview
+--------
+
+This package provides a simple wrapper around Google APIs such as Cloud Compute, IAM, Deployment Manager, and other
+cloud-related APIs.
+
+It is used internally by Infolinks for provisioning and deployments, and has proven useful, so we've decided to
+share it! Note that this is still work in progress - our internal version is currently more comprehensive in its
+coverage of Google's APIs than this version; we will slowly transition more & more APIs from our internal version to
+this open version, so stay tuned!
+
+NOTE: Google APIs wrapper requires Python 3.5 and above.
+
+
+Installation
+------------
+
+Installing this package from PyPy is simple, using ``pip``::
+
+    pip install google-api-wrapper
+
+You can add the ``--upgrade`` or ``-U`` flag to upgrade it if you already have it installed.
+
+
+APIs
+----
+
+The package's entry point to the APIs is the ``Cloud`` module. This module contains a single class - the ``Cloud``
+class, which you create an instance of using a Google Cloud JSON credentials file (usually generated from a service
+account) and one or more scopes (scopes are essentially the list of permissions you are requesting to use). By default,
+if you do not provide any scopes, the framework will ask for the ``https://www.googleapis.com/auth/cloud-platform``
+scope which means full permissions. Narrow it down to request more specific permissions instead.
+
+Once you have an instance of the ``Cloud`` class, it can provide you with more specific Google Cloud API wrappers:
+
+* Compute: this API contains Google Compute APIs such as creating disks & instances, modifying instance group members,
+  etc.
+
+* IAM: this API is used for managing user and service accounts. Not implemented yet.
+
+* Deployment Manager: this API is used for managing deployments using the Google Deployment manager service. Not
+  implemented yet.
+
+* More to come (Network, Pub/Sub, etc)
+
+
+Building
+--------
+
+Google APIs wrapper requires Python 3.5 and above. This is a hard requirement unfortunately. That aside, however,
+building it is fairly simple - you just use ``pyvenv`` and ``pip install -e``.
+
+We recommend reading `Packaging Guide <https://packaging.python.org/distributing/>`_ and the
+`Virtual Environments Guide <https://docs.python.org/3/library/venv.html>`_, but we've compiled a simple & quick how-to
+for your convenience:
+
+1. Clone the repository::
+
+    git clone git@bitbucket.org:infolinks/google-api-wrapper.git
+
+2. Set up a virtual environment::
+
+    pyvenv <virtual-env-directory>
+
+3. Activate the virtual environment (once for every shell/terminal you will be
+   using to build or develop in it)::
+
+    source <virtual-env-directory>/bin/activate
+
+4. Install required libraries::
+
+    pip install wheel google-api-python-client twine
+
+5. Install the cloned copy of the source code using::
+
+    pip install -e <git-checkout-of-google-api-wrapper>
+
+6. You can now modify the source code freely.
+
+7. When you want to test it, simple run your Python program which will import
+   the ``googleapiwrapper`` package inside it.
+
+
+Releasing
+---------
+
+To release a new version, first please ensure you are able to successfully build using the above section's instructions
+(including registration to PyPi and PyPi testing.)
+
+There are two methods to releasing:
+
+1. The ``deploy.sh`` script (recommended)
+2. Manual release
+
+Both methods achieve the same thing, but the 1st one is by far the easiest.
+
+
+Automated releasing
+~~~~~~~~~~~~~~~~~~~
+
+The project comes with a built-in bash script (sorry Windows users!) which performs everything the manual method does.
+To use, simply invoke the script, like this::
+
+   ./deploy.sh <version>
+
+The version should be a valid Python version - usually something like ``1.0.0b3``.
+
+
+Manual release
+~~~~~~~~~~~~~~
+
+To perform a manual release, or if the ``deploy.sh`` script failed and left you in an inconsistent state, do the
+following:
+
+1. Update the version in ``setup.py``
+
+2. Commit & push the changes to Git::
+
+    git add setup.py
+    git commit -m "preparing version X.Y.Z"
+    git push
+    git tag -a "X.Y.Z" -m "Version X.Y.Z"
+    git push origin "X.Y.Z"
+
+3. Build the package::
+
+    rm -rf build dist
+    python setup.py sdist bdist_wheel
+
+4. Now that we've created the distributions, we need to ensure we are able to upload our package to PyPi. To do this,
+   ensure you have an account over at `PyPi <https://pypi.python.org>`_ as well as at
+   `PyPi Testing <https://testpypi.python.org>`_. We will be using `Twine <https://pypi.python.org/pypi/twine>`_ to
+   perform the upload.
+
+5. Ensure you've created the ``~/.pypirc`` file, which should look like this (don't forget to fill-in your credentials
+   inside it!)::
+
+    [distutils]
+    index-servers=
+        pypi
+        pypitest
+
+    [pypitest]
+    repository = https://testpypi.python.org/pypi
+    username = <username>
+    password = <password>
+
+    [pypi]
+    repository = https://pypi.python.org/pypi
+    username = <username>
+    password = <password>
+
+   Note that your own file might contain additional repositories - that's ok. You will only be using ``pypitest`` and
+   ``pypi`` when working with this project though.
+
+6. The project needs to be registered with PyPi (to reserve the package name).
+   **Note that this only needs to be done once in the project's lifetime, and has already been done for you!**
+   You DO NOT need to run this. But for documentational purposes, here is the command to do it::
+
+    twine register --repository pypitest dist/google_api_wrapper-<version>-py3-none-any.whl
+    twine register --repository pypi dist/google_api_wrapper-<version>-py3-none-any.whl
+
+7. Now we can upload the package. We recommend first uploading it to the `PyPi Testing <https://testpypi.python.org>`_
+   package index in order to verify it's working properly. Here's how::
+
+    twine upload --repository pypitest dist/*
+
+   Once you're satisified with the results, you can upload it to the public repository, like this::
+
+    twine upload --repository pypi dist/*
+
+8. Restore the version in ``setup.py`` to a ``dev`` version (eg. ``1.1.0dev``)

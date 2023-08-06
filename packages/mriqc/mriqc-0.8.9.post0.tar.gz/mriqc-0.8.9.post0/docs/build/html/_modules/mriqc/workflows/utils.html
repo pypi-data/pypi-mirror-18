@@ -1,0 +1,295 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>mriqc.workflows.utils &mdash; mriqc 0.8 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="mriqc 0.8 documentation" href="../../../index.html"/>
+        <link rel="up" title="Module code" href="../../index.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> mriqc
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.8
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../userguide.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../userguide.html#contents">Contents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../measures.html">MRIQC measures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../docker.html">Run mriqc with docker</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">mriqc</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+    <li>mriqc.workflows.utils</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for mriqc.workflows.utils</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-</span>
+<span class="c1"># vi: set ft=python sts=4 ts=4 sw=4 et:</span>
+<span class="c1">#</span>
+<span class="c1"># @Author: oesteban</span>
+<span class="c1"># @Date:   2016-01-05 17:15:12</span>
+<span class="c1"># @Email:  code@oscaresteban.es</span>
+<span class="c1"># @Last modified by:   oesteban</span>
+<span class="c1"># @Last Modified time: 2016-05-04 15:15:14</span>
+<span class="sd">&quot;&quot;&quot;Helper functions for the workflows&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="fmri_getidx"><a class="viewcode-back" href="../../../mriqc.workflows.html#mriqc.workflows.utils.fmri_getidx">[docs]</a><span class="k">def</span> <span class="nf">fmri_getidx</span><span class="p">(</span><span class="n">in_file</span><span class="p">,</span> <span class="n">start_idx</span><span class="p">,</span> <span class="n">stop_idx</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Heuristics to set the start and stop indices of fMRI series&quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">nibabel</span> <span class="kn">import</span> <span class="n">load</span>
+    <span class="kn">from</span> <span class="nn">nipype.interfaces.base</span> <span class="kn">import</span> <span class="n">isdefined</span>
+    <span class="n">nvols</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">in_file</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+    <span class="n">max_idx</span> <span class="o">=</span> <span class="n">nvols</span> <span class="o">-</span> <span class="mi">1</span>
+
+    <span class="k">if</span> <span class="n">start_idx</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">isdefined</span><span class="p">(</span><span class="n">start_idx</span><span class="p">)</span> <span class="ow">or</span> <span class="n">start_idx</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">start_idx</span> <span class="o">&gt;</span> <span class="n">max_idx</span><span class="p">:</span>
+        <span class="n">start_idx</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">stop_idx</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">isdefined</span><span class="p">(</span><span class="n">stop_idx</span><span class="p">)</span> <span class="ow">or</span> <span class="n">stop_idx</span> <span class="o">&lt;</span> <span class="n">start_idx</span> <span class="ow">or</span>
+            <span class="n">stop_idx</span> <span class="o">&gt;</span> <span class="n">max_idx</span><span class="p">):</span>
+        <span class="n">stop_idx</span> <span class="o">=</span> <span class="n">max_idx</span>
+    <span class="k">return</span> <span class="n">start_idx</span><span class="p">,</span> <span class="n">stop_idx</span></div>
+
+<div class="viewcode-block" id="fwhm_dict"><a class="viewcode-back" href="../../../mriqc.workflows.html#mriqc.workflows.utils.fwhm_dict">[docs]</a><span class="k">def</span> <span class="nf">fwhm_dict</span><span class="p">(</span><span class="n">fwhm</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Convert a list of FWHM into a dictionary&quot;&quot;&quot;</span>
+    <span class="n">fwhm</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fwhm</span><span class="p">]</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="n">fwhm</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;y&#39;</span><span class="p">:</span> <span class="n">fwhm</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+            <span class="s1">&#39;z&#39;</span><span class="p">:</span> <span class="n">fwhm</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="s1">&#39;avg&#39;</span><span class="p">:</span> <span class="n">fwhm</span><span class="p">[</span><span class="mi">3</span><span class="p">]}</span></div>
+
+<div class="viewcode-block" id="fd_jenkinson"><a class="viewcode-back" href="../../../mriqc.workflows.html#mriqc.workflows.utils.fd_jenkinson">[docs]</a><span class="k">def</span> <span class="nf">fd_jenkinson</span><span class="p">(</span><span class="n">in_file</span><span class="p">,</span> <span class="n">rmax</span><span class="o">=</span><span class="mf">80.</span><span class="p">,</span> <span class="n">out_file</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the :abbr:`FD (framewise displacement)` [Jenkinson2002]_</span>
+<span class="sd">    on a 4D dataset, after AFNI-``3dvolreg`` has been executed</span>
+<span class="sd">    (generally a file named ``*.affmat12.1D``).</span>
+
+<span class="sd">    :param str in_file: path to epi file</span>
+<span class="sd">    :param float rmax: the default radius (as in FSL) of a sphere represents</span>
+<span class="sd">      the brain in which the angular displacements are projected.</span>
+<span class="sd">    :param str out_file: a path for the output file with the FD</span>
+
+<span class="sd">    :return: the output file with the FD, and the average FD along</span>
+<span class="sd">      the time series</span>
+<span class="sd">    :rtype: tuple(str, float)</span>
+
+
+<span class="sd">    .. note ::</span>
+
+<span class="sd">      :code:`infile` should have one 3dvolreg affine matrix in one row -</span>
+<span class="sd">      NOT the motion parameters</span>
+
+
+<span class="sd">    .. note :: Acknowledgments</span>
+
+<span class="sd">      We thank Steve Giavasis (@sgiavasis) and Krishna Somandepali for their</span>
+<span class="sd">      original implementation of this code in the [QAP]_.</span>
+
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="kn">import</span> <span class="nn">sys</span>
+    <span class="kn">import</span> <span class="nn">math</span>
+    <span class="kn">import</span> <span class="nn">os.path</span> <span class="kn">as</span> <span class="nn">op</span>
+    <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+    <span class="k">if</span> <span class="n">out_file</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">fname</span><span class="p">,</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">op</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">in_file</span><span class="p">))</span>
+        <span class="n">out_file</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_fdfile</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">ext</span><span class="p">))</span>
+
+    <span class="n">pm_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">in_file</span><span class="p">)</span>
+    <span class="n">original_shape</span> <span class="o">=</span> <span class="n">pm_</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">pm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">pm_</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">pm_</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">4</span><span class="p">))</span>
+    <span class="n">pm</span><span class="p">[:,</span> <span class="p">:</span><span class="n">original_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">pm_</span>
+    <span class="n">pm</span><span class="p">[:,</span> <span class="n">original_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]:]</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]</span>
+
+    <span class="c1"># rigid body transformation matrix</span>
+    <span class="n">T_rb_prev</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">matrix</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
+
+    <span class="n">flag</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># First timepoint</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">pm</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="c1"># making use of the fact that the order of aff12 matrix is &quot;row-by-row&quot;</span>
+        <span class="n">T_rb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">matrix</span><span class="p">(</span><span class="n">pm</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">flag</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">flag</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">M</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">T_rb</span><span class="p">,</span> <span class="n">T_rb_prev</span><span class="o">.</span><span class="n">I</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+            <span class="n">A</span> <span class="o">=</span> <span class="n">M</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span>
+            <span class="n">b</span> <span class="o">=</span> <span class="n">M</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+
+            <span class="n">FD_J</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">rmax</span> <span class="o">*</span> <span class="n">rmax</span> <span class="o">/</span> <span class="mi">5</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">A</span><span class="p">))</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">b</span><span class="p">))</span>
+            <span class="n">X</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">FD_J</span><span class="p">)</span>
+
+        <span class="n">T_rb_prev</span> <span class="o">=</span> <span class="n">T_rb</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">out_file</span><span class="p">,</span> <span class="n">X</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out_file</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, Oscar Esteban.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.8',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

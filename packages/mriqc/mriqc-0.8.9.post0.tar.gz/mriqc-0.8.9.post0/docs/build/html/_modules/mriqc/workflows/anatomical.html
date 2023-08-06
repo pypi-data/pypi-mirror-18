@@ -1,0 +1,660 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>mriqc.workflows.anatomical &mdash; mriqc 0.8 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="mriqc 0.8 documentation" href="../../../index.html"/>
+        <link rel="up" title="Module code" href="../../index.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> mriqc
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.8
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../userguide.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../userguide.html#contents">Contents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../measures.html">MRIQC measures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../docker.html">Run mriqc with docker</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">mriqc</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+    <li>mriqc.workflows.anatomical</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for mriqc.workflows.anatomical</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-</span>
+<span class="c1"># vi: set ft=python sts=4 ts=4 sw=4 et:</span>
+<span class="c1">#</span>
+<span class="c1"># @Author: oesteban</span>
+<span class="c1"># @Date:   2016-01-05 11:24:05</span>
+<span class="c1"># @Email:  code@oscaresteban.es</span>
+<span class="c1"># @Last modified by:   oesteban</span>
+<span class="c1"># @Last Modified time: 2016-08-26 13:31:10</span>
+<span class="sd">&quot;&quot;&quot; A QC workflow for anatomical MRI &quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">os.path</span> <span class="kn">as</span> <span class="nn">op</span>
+<span class="kn">from</span> <span class="nn">nipype.pipeline</span> <span class="kn">import</span> <span class="n">engine</span> <span class="k">as</span> <span class="n">pe</span>
+<span class="kn">from</span> <span class="nn">nipype.interfaces</span> <span class="kn">import</span> <span class="n">io</span> <span class="k">as</span> <span class="n">nio</span>
+<span class="kn">from</span> <span class="nn">nipype.interfaces</span> <span class="kn">import</span> <span class="n">utility</span> <span class="k">as</span> <span class="n">niu</span>
+<span class="kn">from</span> <span class="nn">nipype.interfaces</span> <span class="kn">import</span> <span class="n">fsl</span>
+<span class="kn">from</span> <span class="nn">nipype.interfaces</span> <span class="kn">import</span> <span class="n">ants</span>
+<span class="kn">from</span> <span class="nn">nipype.interfaces.afni</span> <span class="kn">import</span> <span class="n">preprocess</span> <span class="k">as</span> <span class="n">afp</span>
+
+<span class="kn">from</span> <span class="nn">niworkflows.anat.skullstrip</span> <span class="kn">import</span> <span class="n">afni_wf</span> <span class="k">as</span> <span class="n">skullstrip_wf</span>
+<span class="kn">from</span> <span class="nn">niworkflows.common</span> <span class="kn">import</span> <span class="n">reorient</span> <span class="k">as</span> <span class="n">mri_reorient_wf</span>
+
+<span class="kn">from</span> <span class="nn">mriqc.workflows.utils</span> <span class="kn">import</span> <span class="n">fwhm_dict</span>
+<span class="kn">from</span> <span class="nn">mriqc.interfaces.qc</span> <span class="kn">import</span> <span class="n">StructuralQC</span>
+<span class="kn">from</span> <span class="nn">mriqc.interfaces.anatomical</span> <span class="kn">import</span> <span class="n">ArtifactMask</span>
+<span class="kn">from</span> <span class="nn">mriqc.interfaces.viz</span> <span class="kn">import</span> <span class="n">PlotMosaic</span>
+<span class="kn">from</span> <span class="nn">mriqc.utils.misc</span> <span class="kn">import</span> <span class="n">bids_getfile</span><span class="p">,</span> <span class="n">bids_path</span>
+<span class="kn">from</span> <span class="nn">mriqc.data.getters</span> <span class="kn">import</span> <span class="n">get_mni_template</span>
+
+<div class="viewcode-block" id="anat_qc_workflow"><a class="viewcode-back" href="../../../mriqc.workflows.html#mriqc.workflows.anatomical.anat_qc_workflow">[docs]</a><span class="k">def</span> <span class="nf">anat_qc_workflow</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;MRIQC_Anat&#39;</span><span class="p">,</span> <span class="n">settings</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    One-subject-one-session-one-run pipeline to extract the NR-IQMs from</span>
+<span class="sd">    anatomical images</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">settings</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">settings</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">workflow</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+    <span class="n">deriv_dir</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">op</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;output_dir&#39;</span><span class="p">],</span> <span class="s1">&#39;derivatives&#39;</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">op</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">deriv_dir</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">deriv_dir</span><span class="p">)</span>
+    <span class="c1"># Define workflow, inputs and outputs</span>
+    <span class="n">inputnode</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">niu</span><span class="o">.</span><span class="n">IdentityInterface</span><span class="p">(</span>
+        <span class="n">fields</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;bids_dir&#39;</span><span class="p">,</span> <span class="s1">&#39;subject_id&#39;</span><span class="p">,</span> <span class="s1">&#39;session_id&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;run_id&#39;</span><span class="p">]),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;inputnode&#39;</span><span class="p">)</span>
+    <span class="n">outputnode</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">niu</span><span class="o">.</span><span class="n">IdentityInterface</span><span class="p">(</span><span class="n">fields</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;out_json&#39;</span><span class="p">]),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;outputnode&#39;</span><span class="p">)</span>
+
+
+    <span class="c1"># 0. Get data</span>
+    <span class="n">datasource</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">niu</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span>
+        <span class="n">input_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;bids_dir&#39;</span><span class="p">,</span> <span class="s1">&#39;data_type&#39;</span><span class="p">,</span> <span class="s1">&#39;subject_id&#39;</span><span class="p">,</span> <span class="s1">&#39;session_id&#39;</span><span class="p">,</span> <span class="s1">&#39;run_id&#39;</span><span class="p">],</span>
+        <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;anatomical_scan&#39;</span><span class="p">],</span> <span class="n">function</span><span class="o">=</span><span class="n">bids_getfile</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;datasource&#39;</span><span class="p">)</span>
+    <span class="n">datasource</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">data_type</span> <span class="o">=</span> <span class="s1">&#39;anat&#39;</span>
+
+
+    <span class="c1"># 1a. Reorient anatomical image</span>
+    <span class="n">arw</span> <span class="o">=</span> <span class="n">mri_reorient_wf</span><span class="p">()</span>
+    <span class="c1"># 1b. Estimate bias</span>
+    <span class="n">n4itk</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">ants</span><span class="o">.</span><span class="n">N4BiasFieldCorrection</span><span class="p">(</span><span class="n">dimension</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">save_bias</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Bias&#39;</span><span class="p">)</span>
+    <span class="c1"># 2. Skull-stripping (afni)</span>
+    <span class="n">asw</span> <span class="o">=</span> <span class="n">skullstrip_wf</span><span class="p">()</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">fsl</span><span class="o">.</span><span class="n">ApplyMask</span><span class="p">(),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;MaskAnatomical&#39;</span><span class="p">)</span>
+    <span class="c1"># 3. Head mask (including nasial-cerebelum mask)</span>
+    <span class="n">hmsk</span> <span class="o">=</span> <span class="n">headmsk_wf</span><span class="p">()</span>
+    <span class="c1"># 4. Air mask (with and without artifacts)</span>
+    <span class="n">amw</span> <span class="o">=</span> <span class="n">airmsk_wf</span><span class="p">(</span><span class="n">testing</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;testing&#39;</span><span class="p">,</span> <span class="bp">False</span><span class="p">),</span>
+                    <span class="n">ants_settings</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ants_settings&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+
+    <span class="c1"># Brain tissue segmentation</span>
+    <span class="n">segment</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">fsl</span><span class="o">.</span><span class="n">FAST</span><span class="p">(</span>
+        <span class="n">img_type</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">segments</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">out_basename</span><span class="o">=</span><span class="s1">&#39;segment&#39;</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;segmentation&#39;</span><span class="p">)</span>
+
+    <span class="c1"># AFNI check smoothing</span>
+    <span class="n">fwhm</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">afp</span><span class="o">.</span><span class="n">FWHMx</span><span class="p">(</span><span class="n">combine</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">detrend</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;smoothness&#39;</span><span class="p">)</span>
+    <span class="c1"># fwhm.inputs.acf = True  # add when AFNI &gt;= 16</span>
+
+    <span class="c1"># Compute python-coded measures</span>
+    <span class="n">measures</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">StructuralQC</span><span class="p">(</span><span class="n">testing</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;testing&#39;</span><span class="p">,</span> <span class="bp">False</span><span class="p">)),</span>
+                       <span class="s1">&#39;measures&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Plot mosaic</span>
+    <span class="n">plot</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">PlotMosaic</span><span class="p">(),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;plot_mosaic&#39;</span><span class="p">)</span>
+    <span class="n">merg</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">niu</span><span class="o">.</span><span class="n">Merge</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;plot_metadata&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Connect all nodes</span>
+    <span class="n">workflow</span><span class="o">.</span><span class="n">connect</span><span class="p">([</span>
+        <span class="p">(</span><span class="n">inputnode</span><span class="p">,</span> <span class="n">datasource</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;bids_dir&#39;</span><span class="p">,</span> <span class="s1">&#39;bids_dir&#39;</span><span class="p">),</span>
+                                 <span class="p">(</span><span class="s1">&#39;subject_id&#39;</span><span class="p">,</span> <span class="s1">&#39;subject_id&#39;</span><span class="p">),</span>
+                                 <span class="p">(</span><span class="s1">&#39;session_id&#39;</span><span class="p">,</span> <span class="s1">&#39;session_id&#39;</span><span class="p">),</span>
+                                 <span class="p">(</span><span class="s1">&#39;run_id&#39;</span><span class="p">,</span> <span class="s1">&#39;run_id&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">datasource</span><span class="p">,</span> <span class="n">arw</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;anatomical_scan&#39;</span><span class="p">,</span> <span class="s1">&#39;inputnode.in_file&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">arw</span><span class="p">,</span> <span class="n">asw</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;outputnode.out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;inputnode.in_file&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">arw</span><span class="p">,</span> <span class="n">n4itk</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;outputnode.out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;input_image&#39;</span><span class="p">)]),</span>
+        <span class="c1"># (asw, n4itk, [(&#39;outputnode.out_mask&#39;, &#39;mask_image&#39;)]),</span>
+        <span class="p">(</span><span class="n">n4itk</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;output_image&#39;</span><span class="p">,</span> <span class="s1">&#39;in_file&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">asw</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;outputnode.out_mask&#39;</span><span class="p">,</span> <span class="s1">&#39;mask_file&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">segment</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;in_files&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">n4itk</span><span class="p">,</span> <span class="n">hmsk</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;output_image&#39;</span><span class="p">,</span> <span class="s1">&#39;inputnode.in_file&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">segment</span><span class="p">,</span> <span class="n">hmsk</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;tissue_class_map&#39;</span><span class="p">,</span> <span class="s1">&#39;inputnode.in_segm&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">n4itk</span><span class="p">,</span> <span class="n">measures</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;output_image&#39;</span><span class="p">,</span> <span class="s1">&#39;in_noinu&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">arw</span><span class="p">,</span> <span class="n">measures</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;outputnode.out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;in_file&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">arw</span><span class="p">,</span> <span class="n">fwhm</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;outputnode.out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;in_file&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">asw</span><span class="p">,</span> <span class="n">fwhm</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;outputnode.out_mask&#39;</span><span class="p">,</span> <span class="s1">&#39;mask&#39;</span><span class="p">)]),</span>
+
+        <span class="p">(</span><span class="n">arw</span><span class="p">,</span> <span class="n">amw</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;outputnode.out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;inputnode.in_file&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">n4itk</span><span class="p">,</span> <span class="n">amw</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;output_image&#39;</span><span class="p">,</span> <span class="s1">&#39;inputnode.in_noinu&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">asw</span><span class="p">,</span> <span class="n">amw</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;outputnode.out_mask&#39;</span><span class="p">,</span> <span class="s1">&#39;inputnode.in_mask&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">hmsk</span><span class="p">,</span> <span class="n">amw</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;outputnode.out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;inputnode.head_mask&#39;</span><span class="p">)]),</span>
+
+        <span class="p">(</span><span class="n">amw</span><span class="p">,</span> <span class="n">measures</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;outputnode.out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;air_msk&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">amw</span><span class="p">,</span> <span class="n">measures</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;outputnode.artifact_msk&#39;</span><span class="p">,</span> <span class="s1">&#39;artifact_msk&#39;</span><span class="p">)]),</span>
+
+        <span class="p">(</span><span class="n">segment</span><span class="p">,</span> <span class="n">measures</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;tissue_class_map&#39;</span><span class="p">,</span> <span class="s1">&#39;in_segm&#39;</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s1">&#39;partial_volume_files&#39;</span><span class="p">,</span> <span class="s1">&#39;in_pvms&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">n4itk</span><span class="p">,</span> <span class="n">measures</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;bias_image&#39;</span><span class="p">,</span> <span class="s1">&#39;in_bias&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">arw</span><span class="p">,</span> <span class="n">plot</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;outputnode.out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;in_file&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">inputnode</span><span class="p">,</span> <span class="n">plot</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;subject_id&#39;</span><span class="p">,</span> <span class="s1">&#39;subject&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">inputnode</span><span class="p">,</span> <span class="n">merg</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;session_id&#39;</span><span class="p">,</span> <span class="s1">&#39;in1&#39;</span><span class="p">),</span>
+                           <span class="p">(</span><span class="s1">&#39;run_id&#39;</span><span class="p">,</span> <span class="s1">&#39;in2&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">merg</span><span class="p">,</span> <span class="n">plot</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;out&#39;</span><span class="p">,</span> <span class="s1">&#39;metadata&#39;</span><span class="p">)])</span>
+    <span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mask_mosaic&#39;</span><span class="p">,</span> <span class="bp">False</span><span class="p">):</span>
+        <span class="n">workflow</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">asw</span><span class="p">,</span> <span class="s1">&#39;outputnode.out_file&#39;</span><span class="p">,</span> <span class="n">plot</span><span class="p">,</span> <span class="s1">&#39;in_mask&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Save mosaic to well-formed path</span>
+    <span class="n">mvplot</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">niu</span><span class="o">.</span><span class="n">Rename</span><span class="p">(</span>
+        <span class="n">format_string</span><span class="o">=</span><span class="s1">&#39;anatomical_</span><span class="si">%(subject_id)s</span><span class="s1">_</span><span class="si">%(session_id)s</span><span class="s1">_</span><span class="si">%(run_id)s</span><span class="s1">&#39;</span><span class="p">,</span>
+        <span class="n">keep_ext</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;rename_plot&#39;</span><span class="p">)</span>
+    <span class="n">dsplot</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">nio</span><span class="o">.</span><span class="n">DataSink</span><span class="p">(</span>
+        <span class="n">base_directory</span><span class="o">=</span><span class="n">settings</span><span class="p">[</span><span class="s1">&#39;work_dir&#39;</span><span class="p">],</span> <span class="n">parameterization</span><span class="o">=</span><span class="bp">False</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;ds_plot&#39;</span><span class="p">)</span>
+    <span class="n">workflow</span><span class="o">.</span><span class="n">connect</span><span class="p">([</span>
+        <span class="p">(</span><span class="n">inputnode</span><span class="p">,</span> <span class="n">mvplot</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;subject_id&#39;</span><span class="p">,</span> <span class="s1">&#39;subject_id&#39;</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s1">&#39;session_id&#39;</span><span class="p">,</span> <span class="s1">&#39;session_id&#39;</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s1">&#39;run_id&#39;</span><span class="p">,</span> <span class="s1">&#39;run_id&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">plot</span><span class="p">,</span> <span class="n">mvplot</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;in_file&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">mvplot</span><span class="p">,</span> <span class="n">dsplot</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;@mosaic&#39;</span><span class="p">)])</span>
+    <span class="p">])</span>
+
+    <span class="c1"># Save background-noise fitting plot</span>
+    <span class="n">mvbgplot</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">niu</span><span class="o">.</span><span class="n">Rename</span><span class="p">(</span>
+        <span class="n">format_string</span><span class="o">=</span><span class="s1">&#39;anatomical_bgplot_</span><span class="si">%(subject_id)s</span><span class="s1">_</span><span class="si">%(session_id)s</span><span class="s1">_</span><span class="si">%(run_id)s</span><span class="s1">&#39;</span><span class="p">,</span>
+        <span class="n">keep_ext</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;rename_bgplot&#39;</span><span class="p">)</span>
+    <span class="n">dsbgplot</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">niu</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span><span class="n">input_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;in_file&#39;</span><span class="p">,</span> <span class="s1">&#39;base_directory&#39;</span><span class="p">],</span>
+        <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;out_file&#39;</span><span class="p">],</span> <span class="n">function</span><span class="o">=</span><span class="n">_bgplot</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;ds_bgplot&#39;</span><span class="p">)</span>
+    <span class="n">dsbgplot</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">base_directory</span> <span class="o">=</span> <span class="n">settings</span><span class="p">[</span><span class="s1">&#39;work_dir&#39;</span><span class="p">]</span>
+
+    <span class="n">workflow</span><span class="o">.</span><span class="n">connect</span><span class="p">([</span>
+        <span class="p">(</span><span class="n">inputnode</span><span class="p">,</span> <span class="n">mvbgplot</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;subject_id&#39;</span><span class="p">,</span> <span class="s1">&#39;subject_id&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;session_id&#39;</span><span class="p">,</span> <span class="s1">&#39;session_id&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;run_id&#39;</span><span class="p">,</span> <span class="s1">&#39;run_id&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">measures</span><span class="p">,</span> <span class="n">mvbgplot</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;out_noisefit&#39;</span><span class="p">,</span> <span class="s1">&#39;in_file&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">mvbgplot</span><span class="p">,</span> <span class="n">dsbgplot</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;in_file&#39;</span><span class="p">)])</span>
+    <span class="p">])</span>
+
+    <span class="c1"># Format name</span>
+    <span class="n">out_name</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">niu</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span>
+        <span class="n">input_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;subid&#39;</span><span class="p">,</span> <span class="s1">&#39;sesid&#39;</span><span class="p">,</span> <span class="s1">&#39;runid&#39;</span><span class="p">,</span> <span class="s1">&#39;prefix&#39;</span><span class="p">,</span> <span class="s1">&#39;out_path&#39;</span><span class="p">],</span> <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;out_file&#39;</span><span class="p">],</span>
+        <span class="n">function</span><span class="o">=</span><span class="n">bids_path</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;FormatName&#39;</span><span class="p">)</span>
+    <span class="n">out_name</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">out_path</span> <span class="o">=</span> <span class="n">deriv_dir</span>
+    <span class="n">out_name</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="s1">&#39;anat&#39;</span>
+
+    <span class="c1"># Save to JSON file</span>
+    <span class="n">jfs_if</span> <span class="o">=</span> <span class="n">nio</span><span class="o">.</span><span class="n">JSONFileSink</span><span class="p">()</span>
+    <span class="nb">setattr</span><span class="p">(</span><span class="n">jfs_if</span><span class="p">,</span> <span class="s1">&#39;_always_run&#39;</span><span class="p">,</span> <span class="n">settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;force_run&#39;</span><span class="p">,</span> <span class="bp">False</span><span class="p">))</span>
+    <span class="n">datasink</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">jfs_if</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;datasink&#39;</span><span class="p">)</span>
+    <span class="n">datasink</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">qc_type</span> <span class="o">=</span> <span class="s1">&#39;anat&#39;</span>
+
+    <span class="n">workflow</span><span class="o">.</span><span class="n">connect</span><span class="p">([</span>
+        <span class="p">(</span><span class="n">inputnode</span><span class="p">,</span> <span class="n">out_name</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;subject_id&#39;</span><span class="p">,</span> <span class="s1">&#39;subid&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;session_id&#39;</span><span class="p">,</span> <span class="s1">&#39;sesid&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;run_id&#39;</span><span class="p">,</span> <span class="s1">&#39;runid&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">inputnode</span><span class="p">,</span> <span class="n">datasink</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;subject_id&#39;</span><span class="p">,</span> <span class="s1">&#39;subject_id&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;session_id&#39;</span><span class="p">,</span> <span class="s1">&#39;session_id&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;run_id&#39;</span><span class="p">,</span> <span class="s1">&#39;run_id&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">plot</span><span class="p">,</span> <span class="n">datasink</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;mosaic_file&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">fwhm</span><span class="p">,</span> <span class="n">datasink</span><span class="p">,</span> <span class="p">[((</span><span class="s1">&#39;fwhm&#39;</span><span class="p">,</span> <span class="n">fwhm_dict</span><span class="p">),</span> <span class="s1">&#39;fwhm&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">measures</span><span class="p">,</span> <span class="n">datasink</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;summary&#39;</span><span class="p">,</span> <span class="s1">&#39;summary&#39;</span><span class="p">),</span>
+                              <span class="p">(</span><span class="s1">&#39;spacing&#39;</span><span class="p">,</span> <span class="s1">&#39;spacing&#39;</span><span class="p">),</span>
+                              <span class="p">(</span><span class="s1">&#39;size&#39;</span><span class="p">,</span> <span class="s1">&#39;size&#39;</span><span class="p">),</span>
+                              <span class="p">(</span><span class="s1">&#39;icvs&#39;</span><span class="p">,</span> <span class="s1">&#39;icvs&#39;</span><span class="p">),</span>
+                              <span class="p">(</span><span class="s1">&#39;rpve&#39;</span><span class="p">,</span> <span class="s1">&#39;rpve&#39;</span><span class="p">),</span>
+                              <span class="p">(</span><span class="s1">&#39;inu&#39;</span><span class="p">,</span> <span class="s1">&#39;inu&#39;</span><span class="p">),</span>
+                              <span class="p">(</span><span class="s1">&#39;snr&#39;</span><span class="p">,</span> <span class="s1">&#39;snr&#39;</span><span class="p">),</span>
+                              <span class="p">(</span><span class="s1">&#39;cnr&#39;</span><span class="p">,</span> <span class="s1">&#39;cnr&#39;</span><span class="p">),</span>
+                              <span class="p">(</span><span class="s1">&#39;fber&#39;</span><span class="p">,</span> <span class="s1">&#39;fber&#39;</span><span class="p">),</span>
+                              <span class="p">(</span><span class="s1">&#39;efc&#39;</span><span class="p">,</span> <span class="s1">&#39;efc&#39;</span><span class="p">),</span>
+                              <span class="p">(</span><span class="s1">&#39;qi1&#39;</span><span class="p">,</span> <span class="s1">&#39;qi1&#39;</span><span class="p">),</span>
+                              <span class="p">(</span><span class="s1">&#39;qi2&#39;</span><span class="p">,</span> <span class="s1">&#39;qi2&#39;</span><span class="p">),</span>
+                              <span class="p">(</span><span class="s1">&#39;cjv&#39;</span><span class="p">,</span> <span class="s1">&#39;cjv&#39;</span><span class="p">),</span>
+                              <span class="p">(</span><span class="s1">&#39;wm2max&#39;</span><span class="p">,</span> <span class="s1">&#39;wm2max&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">out_name</span><span class="p">,</span> <span class="n">datasink</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;out_file&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">datasink</span><span class="p">,</span> <span class="n">outputnode</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;out_file&#39;</span><span class="p">)])</span>
+    <span class="p">])</span>
+    <span class="k">return</span> <span class="n">workflow</span></div>
+
+
+<div class="viewcode-block" id="headmsk_wf"><a class="viewcode-back" href="../../../mriqc.workflows.html#mriqc.workflows.anatomical.headmsk_wf">[docs]</a><span class="k">def</span> <span class="nf">headmsk_wf</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;HeadMaskWorkflow&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Computes a head mask as in [Mortamet2009]_.&quot;&quot;&quot;</span>
+
+    <span class="n">has_dipy</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">dipy.denoise</span> <span class="kn">import</span> <span class="n">nlmeans</span>
+        <span class="kn">from</span> <span class="nn">nipype.interfaces.dipy</span> <span class="kn">import</span> <span class="n">Denoise</span>
+        <span class="n">has_dipy</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="n">workflow</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+    <span class="n">inputnode</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">niu</span><span class="o">.</span><span class="n">IdentityInterface</span><span class="p">(</span><span class="n">fields</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;in_file&#39;</span><span class="p">,</span> <span class="s1">&#39;in_segm&#39;</span><span class="p">]),</span>
+                        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;inputnode&#39;</span><span class="p">)</span>
+    <span class="n">outputnode</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">niu</span><span class="o">.</span><span class="n">IdentityInterface</span><span class="p">(</span><span class="n">fields</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;out_file&#39;</span><span class="p">]),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;outputnode&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">has_dipy</span><span class="p">:</span>
+        <span class="c1"># Alternative for when dipy is not installed</span>
+        <span class="n">bet</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">fsl</span><span class="o">.</span><span class="n">BET</span><span class="p">(</span><span class="n">surfaces</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;fsl_bet&#39;</span><span class="p">)</span>
+        <span class="n">workflow</span><span class="o">.</span><span class="n">connect</span><span class="p">([</span>
+            <span class="p">(</span><span class="n">inputnode</span><span class="p">,</span> <span class="n">bet</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;in_file&#39;</span><span class="p">,</span> <span class="s1">&#39;in_file&#39;</span><span class="p">)]),</span>
+            <span class="p">(</span><span class="n">bet</span><span class="p">,</span> <span class="n">outputnode</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;outskin_mask_file&#39;</span><span class="p">,</span> <span class="s1">&#39;out_file&#39;</span><span class="p">)])</span>
+        <span class="p">])</span>
+        <span class="k">return</span> <span class="n">workflow</span>
+
+    <span class="n">getwm</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">niu</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span>
+        <span class="n">input_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;in_file&#39;</span><span class="p">],</span> <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;out_file&#39;</span><span class="p">],</span> <span class="n">function</span><span class="o">=</span><span class="n">_get_wm</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;GetWM&#39;</span><span class="p">)</span>
+    <span class="n">denoise</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">Denoise</span><span class="p">(),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Denoise&#39;</span><span class="p">)</span>
+    <span class="n">gradient</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">niu</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span>
+        <span class="n">input_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;in_file&#39;</span><span class="p">],</span> <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;out_file&#39;</span><span class="p">],</span> <span class="n">function</span><span class="o">=</span><span class="n">image_gradient</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Grad&#39;</span><span class="p">)</span>
+    <span class="n">thresh</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">niu</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span>
+        <span class="n">input_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;in_file&#39;</span><span class="p">],</span> <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;out_file&#39;</span><span class="p">],</span> <span class="n">function</span><span class="o">=</span><span class="n">gradient_threshold</span><span class="p">),</span>
+                     <span class="n">name</span><span class="o">=</span><span class="s1">&#39;GradientThreshold&#39;</span><span class="p">)</span>
+
+    <span class="n">workflow</span><span class="o">.</span><span class="n">connect</span><span class="p">([</span>
+        <span class="p">(</span><span class="n">inputnode</span><span class="p">,</span> <span class="n">getwm</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;in_segm&#39;</span><span class="p">,</span> <span class="s1">&#39;in_file&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">inputnode</span><span class="p">,</span> <span class="n">denoise</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;in_file&#39;</span><span class="p">,</span> <span class="s1">&#39;in_file&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">getwm</span><span class="p">,</span> <span class="n">denoise</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;noise_mask&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">denoise</span><span class="p">,</span> <span class="n">gradient</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;in_file&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">gradient</span><span class="p">,</span> <span class="n">thresh</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;in_file&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">thresh</span><span class="p">,</span> <span class="n">outputnode</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;out_file&#39;</span><span class="p">)])</span>
+    <span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">workflow</span></div>
+
+
+<div class="viewcode-block" id="airmsk_wf"><a class="viewcode-back" href="../../../mriqc.workflows.html#mriqc.workflows.anatomical.airmsk_wf">[docs]</a><span class="k">def</span> <span class="nf">airmsk_wf</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;AirMaskWorkflow&#39;</span><span class="p">,</span> <span class="n">testing</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">ants_settings</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Implements the Step 1 of [Mortamet2009]_.&quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">pkg_resources</span> <span class="kn">as</span> <span class="nn">pkgr</span>
+    <span class="n">workflow</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="n">inputnode</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">niu</span><span class="o">.</span><span class="n">IdentityInterface</span><span class="p">(</span>
+        <span class="n">fields</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;in_file&#39;</span><span class="p">,</span> <span class="s1">&#39;in_noinu&#39;</span><span class="p">,</span> <span class="s1">&#39;in_mask&#39;</span><span class="p">,</span> <span class="s1">&#39;head_mask&#39;</span><span class="p">]),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;inputnode&#39;</span><span class="p">)</span>
+    <span class="n">outputnode</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">niu</span><span class="o">.</span><span class="n">IdentityInterface</span><span class="p">(</span><span class="n">fields</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;artifact_msk&#39;</span><span class="p">]),</span>
+                         <span class="n">name</span><span class="o">=</span><span class="s1">&#39;outputnode&#39;</span><span class="p">)</span>
+
+    <span class="n">antsparms</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">nio</span><span class="o">.</span><span class="n">JSONFileGrabber</span><span class="p">(),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;ants_settings&#39;</span><span class="p">)</span>
+
+    <span class="n">defset</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;data/t1-mni_registration.json&#39;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">testing</span> <span class="k">else</span>
+              <span class="s1">&#39;data/t1-mni_registration_testing.json&#39;</span><span class="p">)</span>
+    <span class="n">antsparms</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">in_file</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">ants_settings</span> <span class="k">if</span> <span class="n">ants_settings</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">pkgr</span><span class="o">.</span><span class="n">resource_filename</span><span class="p">(</span>
+            <span class="s1">&#39;mriqc&#39;</span><span class="p">,</span> <span class="n">defset</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_invt_flags</span><span class="p">(</span><span class="n">transforms</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">True</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">transforms</span><span class="p">)</span>
+
+    <span class="c1"># Spatial normalization, using ANTs</span>
+    <span class="n">norm</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">ants</span><span class="o">.</span><span class="n">Registration</span><span class="p">(),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;normalize&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">testing</span><span class="p">:</span>
+        <span class="n">norm</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">fixed_image</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">get_mni_template</span><span class="p">(),</span> <span class="s1">&#39;MNI152_T1_2mm.nii.gz&#39;</span><span class="p">)</span>
+        <span class="n">norm</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">fixed_image_mask</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">get_mni_template</span><span class="p">(),</span>
+                                               <span class="s1">&#39;MNI152_T1_2mm_brain_mask.nii.gz&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">norm</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">fixed_image</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">get_mni_template</span><span class="p">(),</span> <span class="s1">&#39;MNI152_T1_1mm.nii.gz&#39;</span><span class="p">)</span>
+        <span class="n">norm</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">fixed_image_mask</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">get_mni_template</span><span class="p">(),</span>
+                                               <span class="s1">&#39;MNI152_T1_1mm_brain_mask.nii.gz&#39;</span><span class="p">)</span>
+
+    <span class="n">invt</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">ants</span><span class="o">.</span><span class="n">ApplyTransforms</span><span class="p">(</span>
+        <span class="n">dimension</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">default_value</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="s1">&#39;NearestNeighbor&#39;</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;invert_xfm&#39;</span><span class="p">)</span>
+    <span class="n">invt</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">input_image</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">get_mni_template</span><span class="p">(),</span> <span class="s1">&#39;MNI152_T1_1mm_brain_bottom.nii.gz&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Combine and invert mask</span>
+    <span class="n">combine</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">niu</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span>
+        <span class="n">input_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;head_mask&#39;</span><span class="p">,</span> <span class="s1">&#39;artifact_msk&#39;</span><span class="p">],</span> <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;out_file&#39;</span><span class="p">],</span>
+        <span class="n">function</span><span class="o">=</span><span class="n">combine_masks</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;combine_masks&#39;</span><span class="p">)</span>
+
+    <span class="n">qi1</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">ArtifactMask</span><span class="p">(),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;ArtifactMask&#39;</span><span class="p">)</span>
+
+    <span class="n">workflow</span><span class="o">.</span><span class="n">connect</span><span class="p">([</span>
+        <span class="p">(</span><span class="n">inputnode</span><span class="p">,</span> <span class="n">qi1</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;in_file&#39;</span><span class="p">,</span> <span class="s1">&#39;in_file&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">inputnode</span><span class="p">,</span> <span class="n">norm</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;in_noinu&#39;</span><span class="p">,</span> <span class="s1">&#39;moving_image&#39;</span><span class="p">),</span>
+                           <span class="p">(</span><span class="s1">&#39;in_mask&#39;</span><span class="p">,</span> <span class="s1">&#39;moving_image_mask&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">norm</span><span class="p">,</span> <span class="n">invt</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;reverse_transforms&#39;</span><span class="p">,</span> <span class="s1">&#39;transforms&#39;</span><span class="p">),</span>
+                      <span class="p">(</span><span class="s1">&#39;reverse_invert_flags&#39;</span><span class="p">,</span> <span class="s1">&#39;invert_transform_flags&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">inputnode</span><span class="p">,</span> <span class="n">invt</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;in_mask&#39;</span><span class="p">,</span> <span class="s1">&#39;reference_image&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">inputnode</span><span class="p">,</span> <span class="n">combine</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;head_mask&#39;</span><span class="p">,</span> <span class="s1">&#39;head_mask&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">invt</span><span class="p">,</span> <span class="n">combine</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;output_image&#39;</span><span class="p">,</span> <span class="s1">&#39;artifact_msk&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">combine</span><span class="p">,</span> <span class="n">qi1</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;air_msk&#39;</span><span class="p">)]),</span>
+        <span class="p">(</span><span class="n">qi1</span><span class="p">,</span> <span class="n">outputnode</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;out_air_msk&#39;</span><span class="p">,</span> <span class="s1">&#39;out_file&#39;</span><span class="p">),</span>
+                           <span class="p">(</span><span class="s1">&#39;out_art_msk&#39;</span><span class="p">,</span> <span class="s1">&#39;artifact_msk&#39;</span><span class="p">)])</span>
+    <span class="p">])</span>
+
+    <span class="c1"># ANTs inputs connected here for clarity</span>
+    <span class="n">workflow</span><span class="o">.</span><span class="n">connect</span><span class="p">([</span>
+        <span class="p">(</span><span class="n">antsparms</span><span class="p">,</span> <span class="n">norm</span><span class="p">,</span> <span class="p">[</span>
+            <span class="p">(</span><span class="s1">&#39;metric&#39;</span><span class="p">,</span> <span class="s1">&#39;metric&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;metric_weight&#39;</span><span class="p">,</span> <span class="s1">&#39;metric_weight&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;dimension&#39;</span><span class="p">,</span> <span class="s1">&#39;dimension&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;write_composite_transform&#39;</span><span class="p">,</span> <span class="s1">&#39;write_composite_transform&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;radius_or_number_of_bins&#39;</span><span class="p">,</span> <span class="s1">&#39;radius_or_number_of_bins&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;shrink_factors&#39;</span><span class="p">,</span> <span class="s1">&#39;shrink_factors&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;smoothing_sigmas&#39;</span><span class="p">,</span> <span class="s1">&#39;smoothing_sigmas&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;sigma_units&#39;</span><span class="p">,</span> <span class="s1">&#39;sigma_units&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;output_transform_prefix&#39;</span><span class="p">,</span> <span class="s1">&#39;output_transform_prefix&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;transforms&#39;</span><span class="p">,</span> <span class="s1">&#39;transforms&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;transform_parameters&#39;</span><span class="p">,</span> <span class="s1">&#39;transform_parameters&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;initial_moving_transform_com&#39;</span><span class="p">,</span> <span class="s1">&#39;initial_moving_transform_com&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;number_of_iterations&#39;</span><span class="p">,</span> <span class="s1">&#39;number_of_iterations&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;convergence_threshold&#39;</span><span class="p">,</span> <span class="s1">&#39;convergence_threshold&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;convergence_window_size&#39;</span><span class="p">,</span> <span class="s1">&#39;convergence_window_size&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;sampling_strategy&#39;</span><span class="p">,</span> <span class="s1">&#39;sampling_strategy&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;sampling_percentage&#39;</span><span class="p">,</span> <span class="s1">&#39;sampling_percentage&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;output_warped_image&#39;</span><span class="p">,</span> <span class="s1">&#39;output_warped_image&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;use_histogram_matching&#39;</span><span class="p">,</span> <span class="s1">&#39;use_histogram_matching&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;use_estimate_learning_rate_once&#39;</span><span class="p">,</span>
+             <span class="s1">&#39;use_estimate_learning_rate_once&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;collapse_output_transforms&#39;</span><span class="p">,</span> <span class="s1">&#39;collapse_output_transforms&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;winsorize_lower_quantile&#39;</span><span class="p">,</span> <span class="s1">&#39;winsorize_lower_quantile&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;winsorize_upper_quantile&#39;</span><span class="p">,</span> <span class="s1">&#39;winsorize_upper_quantile&#39;</span><span class="p">),</span>
+        <span class="p">])</span>
+    <span class="p">])</span>
+    <span class="k">return</span> <span class="n">workflow</span></div>
+
+<span class="k">def</span> <span class="nf">_get_wm</span><span class="p">(</span><span class="n">in_file</span><span class="p">,</span> <span class="n">wm_val</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">out_file</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="kn">import</span> <span class="nn">os.path</span> <span class="kn">as</span> <span class="nn">op</span>
+    <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+    <span class="kn">import</span> <span class="nn">nibabel</span> <span class="kn">as</span> <span class="nn">nb</span>
+    <span class="kn">from</span> <span class="nn">scipy.ndimage</span> <span class="kn">import</span> <span class="n">gaussian_gradient_magnitude</span> <span class="k">as</span> <span class="n">gradient</span>
+
+    <span class="k">if</span> <span class="n">out_file</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">fname</span><span class="p">,</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">op</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">in_file</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">ext</span> <span class="o">==</span> <span class="s1">&#39;.gz&#39;</span><span class="p">:</span>
+            <span class="n">fname</span><span class="p">,</span> <span class="n">ext2</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+            <span class="n">ext</span> <span class="o">=</span> <span class="n">ext2</span> <span class="o">+</span> <span class="n">ext</span>
+        <span class="n">out_file</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_wm</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">ext</span><span class="p">))</span>
+
+    <span class="n">imnii</span> <span class="o">=</span> <span class="n">nb</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">in_file</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">imnii</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+    <span class="n">msk</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="n">msk</span><span class="p">[</span><span class="n">data</span> <span class="o">==</span> <span class="n">wm_val</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">nb</span><span class="o">.</span><span class="n">Nifti1Image</span><span class="p">(</span><span class="n">msk</span><span class="p">,</span> <span class="n">imnii</span><span class="o">.</span><span class="n">get_affine</span><span class="p">(),</span> <span class="n">imnii</span><span class="o">.</span><span class="n">get_header</span><span class="p">())</span><span class="o">.</span><span class="n">to_filename</span><span class="p">(</span><span class="n">out_file</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out_file</span>
+
+<div class="viewcode-block" id="combine_masks"><a class="viewcode-back" href="../../../mriqc.workflows.html#mriqc.workflows.anatomical.combine_masks">[docs]</a><span class="k">def</span> <span class="nf">combine_masks</span><span class="p">(</span><span class="n">head_mask</span><span class="p">,</span> <span class="n">artifact_msk</span><span class="p">,</span> <span class="n">out_file</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Computes an air mask from the head and artifact masks&quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">os.path</span> <span class="kn">as</span> <span class="nn">op</span>
+    <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+    <span class="kn">import</span> <span class="nn">nibabel</span> <span class="kn">as</span> <span class="nn">nb</span>
+    <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">ndimage</span> <span class="k">as</span> <span class="n">sim</span>
+
+    <span class="k">if</span> <span class="n">out_file</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">fname</span><span class="p">,</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">op</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">head_mask</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">ext</span> <span class="o">==</span> <span class="s1">&#39;.gz&#39;</span><span class="p">:</span>
+            <span class="n">fname</span><span class="p">,</span> <span class="n">ext2</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+            <span class="n">ext</span> <span class="o">=</span> <span class="n">ext2</span> <span class="o">+</span> <span class="n">ext</span>
+        <span class="n">out_file</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_combined</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">ext</span><span class="p">))</span>
+
+    <span class="n">imnii</span> <span class="o">=</span> <span class="n">nb</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">head_mask</span><span class="p">)</span>
+    <span class="n">hmdata</span> <span class="o">=</span> <span class="n">imnii</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
+
+    <span class="n">msk</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">hmdata</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+    <span class="n">msk</span><span class="p">[</span><span class="n">hmdata</span> <span class="o">==</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="n">adata</span> <span class="o">=</span> <span class="n">nb</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">artifact_msk</span><span class="p">)</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
+    <span class="n">msk</span><span class="p">[</span><span class="n">adata</span> <span class="o">==</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">nb</span><span class="o">.</span><span class="n">Nifti1Image</span><span class="p">(</span><span class="n">msk</span><span class="p">,</span> <span class="n">imnii</span><span class="o">.</span><span class="n">get_affine</span><span class="p">(),</span> <span class="n">imnii</span><span class="o">.</span><span class="n">get_header</span><span class="p">())</span><span class="o">.</span><span class="n">to_filename</span><span class="p">(</span><span class="n">out_file</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out_file</span></div>
+
+<div class="viewcode-block" id="image_gradient"><a class="viewcode-back" href="../../../mriqc.workflows.html#mriqc.workflows.anatomical.image_gradient">[docs]</a><span class="k">def</span> <span class="nf">image_gradient</span><span class="p">(</span><span class="n">in_file</span><span class="p">,</span> <span class="n">compute_abs</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">out_file</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Computes the magnitude gradient of an image using numpy&quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">os.path</span> <span class="kn">as</span> <span class="nn">op</span>
+    <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+    <span class="kn">import</span> <span class="nn">nibabel</span> <span class="kn">as</span> <span class="nn">nb</span>
+    <span class="kn">from</span> <span class="nn">scipy.ndimage</span> <span class="kn">import</span> <span class="n">gaussian_gradient_magnitude</span> <span class="k">as</span> <span class="n">gradient</span>
+
+    <span class="k">if</span> <span class="n">out_file</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">fname</span><span class="p">,</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">op</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">in_file</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">ext</span> <span class="o">==</span> <span class="s1">&#39;.gz&#39;</span><span class="p">:</span>
+            <span class="n">fname</span><span class="p">,</span> <span class="n">ext2</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+            <span class="n">ext</span> <span class="o">=</span> <span class="n">ext2</span> <span class="o">+</span> <span class="n">ext</span>
+        <span class="n">out_file</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_grad</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">ext</span><span class="p">))</span>
+
+    <span class="n">imnii</span> <span class="o">=</span> <span class="n">nb</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">in_file</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">imnii</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>  <span class="c1"># pylint: disable=no-member</span>
+    <span class="n">range_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="mf">90.</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">*=</span> <span class="p">(</span><span class="mi">100</span><span class="o">/</span><span class="n">range_max</span><span class="p">)</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="mf">1e-4</span> <span class="o">*</span> <span class="n">data</span><span class="p">[</span><span class="n">data</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># pylint: disable=no-member</span>
+    <span class="n">grad</span> <span class="o">=</span> <span class="n">gradient</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">sigma</span><span class="p">)</span>
+
+    <span class="k">while</span> <span class="n">grad</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mf">1.e4</span><span class="p">:</span>
+        <span class="n">sigma</span> <span class="o">*=</span> <span class="mf">1.5</span>
+        <span class="n">grad</span> <span class="o">=</span> <span class="n">gradient</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">sigma</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">compute_abs</span><span class="p">:</span>
+        <span class="n">grad</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">grad</span><span class="p">)</span>
+
+    <span class="n">nb</span><span class="o">.</span><span class="n">Nifti1Image</span><span class="p">(</span><span class="n">grad</span><span class="p">,</span> <span class="n">imnii</span><span class="o">.</span><span class="n">get_affine</span><span class="p">(),</span> <span class="n">imnii</span><span class="o">.</span><span class="n">get_header</span><span class="p">())</span><span class="o">.</span><span class="n">to_filename</span><span class="p">(</span><span class="n">out_file</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out_file</span></div>
+
+<div class="viewcode-block" id="gradient_threshold"><a class="viewcode-back" href="../../../mriqc.workflows.html#mriqc.workflows.anatomical.gradient_threshold">[docs]</a><span class="k">def</span> <span class="nf">gradient_threshold</span><span class="p">(</span><span class="n">in_file</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">out_file</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Compute a threshold from the histogram of the magnitude gradient image &quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">os.path</span> <span class="kn">as</span> <span class="nn">op</span>
+    <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+    <span class="kn">import</span> <span class="nn">nibabel</span> <span class="kn">as</span> <span class="nn">nb</span>
+    <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">ndimage</span> <span class="k">as</span> <span class="n">sim</span>
+
+    <span class="n">thresh</span> <span class="o">*=</span> <span class="mf">1e-2</span>
+    <span class="k">if</span> <span class="n">out_file</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">fname</span><span class="p">,</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">op</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">in_file</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">ext</span> <span class="o">==</span> <span class="s1">&#39;.gz&#39;</span><span class="p">:</span>
+            <span class="n">fname</span><span class="p">,</span> <span class="n">ext2</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+            <span class="n">ext</span> <span class="o">=</span> <span class="n">ext2</span> <span class="o">+</span> <span class="n">ext</span>
+        <span class="n">out_file</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_gradmask</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">ext</span><span class="p">))</span>
+
+
+    <span class="n">imnii</span> <span class="o">=</span> <span class="n">nb</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">in_file</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">imnii</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
+    <span class="n">hist</span><span class="p">,</span> <span class="n">bin_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">data</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">],</span> <span class="n">bins</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">density</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>  <span class="c1"># pylint: disable=no-member</span>
+
+    <span class="c1"># Find threshold at 1% frequency</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">freq</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">enumerate</span><span class="p">(</span><span class="n">hist</span><span class="p">))):</span>
+        <span class="n">binw</span> <span class="o">=</span> <span class="n">bin_edges</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">bin_edges</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">freq</span> <span class="o">*</span> <span class="n">binw</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">thresh</span><span class="p">:</span>
+            <span class="n">out_thresh</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">binw</span>
+            <span class="k">break</span>
+
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>  <span class="c1"># pylint: disable=no-member</span>
+    <span class="n">mask</span><span class="p">[</span><span class="n">data</span> <span class="o">&gt;</span> <span class="n">out_thresh</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">struc</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">iterate_structure</span><span class="p">(</span><span class="n">sim</span><span class="o">.</span><span class="n">generate_binary_structure</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">binary_opening</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">struc</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>  <span class="c1"># pylint: disable=no-member</span>
+
+    <span class="c1"># Remove small objects</span>
+    <span class="n">label_im</span><span class="p">,</span> <span class="n">nb_labels</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">nb_labels</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">sizes</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">label_im</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_labels</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">ordered</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">sizes</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_labels</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)))))</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">ordered</span><span class="p">[</span><span class="mi">2</span><span class="p">:]:</span>
+            <span class="n">mask</span><span class="p">[</span><span class="n">label_im</span> <span class="o">==</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">binary_closing</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">struc</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>  <span class="c1"># pylint: disable=no-member</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">binary_fill_holes</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">struc</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>  <span class="c1"># pylint: disable=no-member</span>
+
+    <span class="n">hdr</span> <span class="o">=</span> <span class="n">imnii</span><span class="o">.</span><span class="n">get_header</span><span class="p">()</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">hdr</span><span class="o">.</span><span class="n">set_data_dtype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>  <span class="c1"># pylint: disable=no-member</span>
+    <span class="n">nb</span><span class="o">.</span><span class="n">Nifti1Image</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">imnii</span><span class="o">.</span><span class="n">get_affine</span><span class="p">(),</span> <span class="n">hdr</span><span class="p">)</span><span class="o">.</span><span class="n">to_filename</span><span class="p">(</span><span class="n">out_file</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out_file</span></div>
+
+<span class="k">def</span> <span class="nf">_bgplot</span><span class="p">(</span><span class="n">in_file</span><span class="p">,</span> <span class="n">base_directory</span><span class="p">):</span>
+    <span class="kn">from</span> <span class="nn">nipype.interfaces.io</span> <span class="kn">import</span> <span class="n">DataSink</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">in_file</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;&#39;</span>
+
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">DataSink</span><span class="p">(</span><span class="n">base_directory</span><span class="o">=</span><span class="n">base_directory</span><span class="p">,</span> <span class="n">parameterization</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="nb">setattr</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">inputs</span><span class="p">,</span> <span class="s1">&#39;@bg_fitting&#39;</span><span class="p">,</span> <span class="n">in_file</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ds</span><span class="o">.</span><span class="n">run</span><span class="p">()</span><span class="o">.</span><span class="n">outputs</span><span class="o">.</span><span class="n">out_file</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016, Oscar Esteban.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.8',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

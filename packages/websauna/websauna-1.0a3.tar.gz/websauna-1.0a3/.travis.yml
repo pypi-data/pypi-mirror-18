@@ -1,0 +1,64 @@
+language: python
+
+addons:
+  postgresql: "9.4"
+  firefox: "45.0"
+
+services:
+  - postgresql
+  - redis-server
+
+matrix:
+    include:
+        - python: 3.4
+          env:
+          - PYTHON_VERSION=python3.4
+          - TOXENV=py34
+        - python: 3.5
+          env:
+          - PYTHON_VERSION=python3.5
+          - TOXENV=py35
+        - python: 3.5
+          env:
+          - PYTHON_VERSION=python3.5
+          - TOXENV=py35-sqlite
+
+
+# http://stackoverflow.com/a/19460794/315168
+cache:
+  directories:
+    # /home/travis/.cache/pip/wheels is the normal pip cache folder
+    - $HOME/.cache/pip
+    - .tox
+
+install:
+  - travis_retry pip install tox
+
+# http://stackoverflow.com/questions/39279651/connection-refused-when-running-selenium-tests-in-marionette
+#  - npm install -g geckodriver
+
+# https://docs.travis-ci.com/user/gui-and-headless-browsers/
+before_script:
+  - "export DISPLAY=:99.0"
+  - "sh -e /etc/init.d/xvfb start"
+  - sleep 3 # give xvfb some time to start
+  - tar -xjf /tmp/firefox-45.0.tar.bz2 --directory /tmp
+  - export PATH="/tmp/firefox:$PATH"
+  - echo "Using firefox version `firefox --version`"
+  - psql -c 'create database websauna_test;' -U postgres
+  - pip install -U pip
+
+script:
+  # https://pypi.python.org/pypi/coverage_enable_subprocess
+  - pip install coverage-enable-subprocess
+  - export COVERAGE_PROCESS_START=$PWD/.coveragerc
+  - tox -- --ini=websauna/conf/travis.ini
+
+after_success:
+  # Update coverage information in codecov.io.
+  # This will simply fail under py34.
+  - .tox/py35/bin/codecov
+  # Dump package list so we have a log of last known good version set
+  # This will simply fail under py34.
+  - .tox/py35/bin/pip freeze
+

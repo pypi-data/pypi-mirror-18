@@ -1,0 +1,133 @@
+<!doctype html>
+<title>Discontinuous parsing</title>
+<script src="static/main.js"></script>
+<link type="text/css" rel="stylesheet" href="static/style.css">
+
+<body onLoad="placeFocus();" >
+<h1>Data-Oriented Parsing demo</h1>
+
+<blockquote class=intro><p>
+Enter a sentence in Dutch, English, German, or French (auto-detected).
+The sentence will be parsed and the most probable parse tree will be shown
+(<a href="javascript: togglelink('tech'); " id=linktech>show technical details</a>).</p>
+
+<div id=tech style="display: none; "><p>
+	The Data-Oriented Parsing (DOP) framework entails constructing analyses
+	from fragments of past experience. Double-DOP operationalizes this with a
+	subset of fragments that occur at least twice in the training data.
+	This demo incorporates discontinuous constituents as part of the model.
+	Linear Context-Free Rewriting Systems (LCFRS) allow for parsing with
+	discontinuous constituents.
+	For efficiency, sentences are parsed with the following coarse-to-fine
+	pipeline: </p>
+	<ol>
+	<li> Split-PCFG (prune items with posterior probability &lt; 1e-5)
+	<li> PLCFRS (prune items not in 50-best derivations)
+	<li> Discontinuous Double-DOP (use 1000-best derivations to approximate most probable parse)
+	</ol>
+
+	Training data:
+	<ul>
+	<li>English: WSJ section of Penn treebank
+	<li>German: Tiger treebank
+	<li>Dutch: Lassy treebank
+	<li>French: French treebank
+	</ul>
+
+	Objective functions:
+	<ul>
+	<li>MPP: most probable parse
+	<li>MPD: most probable derivation
+	<li>MPSD: most probable shortest derivation
+	<li>SL-DOP: shortest derivation among n most probable parse trees (n=7)
+	<li>SL-DOP-simple: shortest derivation among derivations of n most probable parse trees (n=7; approximation)
+	</ul>
+
+	Estimators:
+	<ul>
+	<li>RFE: Relative Frequency Estimate
+	<li>EWE: Equal Weights Estimate
+	</ul>
+
+	Marginalization:
+	<ul>
+	<li>n-best: find the n most probable derivations.
+	<li>sample: sample derivations according to their probability distribution
+	</ul>
+
+	Coarse stage parser:
+	<ul>
+	<li>CKY: Standard CKY parser
+	<li>posterior: Prune with posterior probabilities
+	<li>bitpar: Use the bitpar parser (max 1000 derivations)
+	</ul>
+
+	<p>
+	The source code is available at <a href="https://github.com/andreasvc/disco-dop/#readme">http://github.com/andreasvc/disco-dop/</a>
+	and documented at <a href="http://andreasvc.github.io/discodop/">http://andreasvc.github.io/discodop/</a>
+	</p>
+
+	<p style="text-align: left; ">
+	References, English, German, and Dutch parser:
+	Andreas van Cranenburgh, Rens Bod (2013). Discontinuous Parsing with an
+		Efficient and Accurate DOP Model. Proc. of IWPT.
+		<a href="http://acl.cs.qc.edu/iwpt2013/proceedings/Splits/9_pdfsam_IWPTproceedings.pdf">http://acl.cs.qc.edu/iwpt2013/proceedings/Splits/9_pdfsam_IWPTproceedings.pdf</a><br>
+	
+	French parser:
+	Federico Sangati, Andreas van Cranenburgh (2015).
+	Multiword Expression Identification with Recurring Tree Fragments
+	and Association Measures.
+	Proceedings of the 11th Workshop on Multiword Expressions, pp. 10-18.
+	<a href="http://aclweb.org/anthology/W15-0902">http://aclweb.org/anthology/W15-0902</a>
+	</p>
+</div>
+</blockquote>
+
+<div id=result>
+{{ result }}
+</div>
+
+<form name=queryform onSubmit="event.preventDefault(); ajaxFunction(); return false; ">
+	<table>
+		<tr>
+			<td>Sentence:</td>
+			<td><input type=text size=80 name=sent autofocus /></td>
+		</tr>
+		<tr>
+			<td>&nbsp;</td>
+			<td>
+				<select name=lang>
+					<option value=detect>detect language</option>
+				{%- for lang in langs %}
+					<option value={{ lang }}>{{ lang }}</option>
+				{%- endfor -%}
+				</select>
+				<select name=objfun>
+					<option value=mpp>MPP</option>
+					<option value=mpd>MPD</option>
+					<option value=shortest>MPSD</option>
+					<option value=sl-dop>SL-DOP</option>
+					<option value=sl-dop-simple>SL-DOP-simple</option>
+				</select>
+				<select name=est>
+					<option value=rfe>RFE</option>
+					<option value=ewe>EWE</option>
+				</select>
+				<select name=marg>
+					<option value=nbest>n-best</option>
+					<option value=sample>sample</option>
+					<option value=both>both</option>
+				</select>
+				<select name=coarse>
+					<option value=pcfg>CKY</option>
+					<option value=pcfg-posterior>posterior</option>
+					<option value=pcfg-bitpar-nbest>bitpar</option>
+				</select>
+				<input type=hidden name=html value=1 />
+				<input type=submit value=Parse />
+			</td>
+		</tr>
+	</table>
+</form>
+
+</body>

@@ -1,0 +1,76 @@
+Maildir Deduplicate
+===================
+
+Command-line tool to deduplicate mails from a set of maildir folders.
+
+Stable release: |release| |versions| |license| |dependencies|
+
+Development: |build| |docs| |coverage| |quality|
+
+.. |release| image:: https://img.shields.io/pypi/v/maildir-deduplicate.svg
+    :target: https://pypi.python.org/pypi/maildir-deduplicate
+    :alt: Last release
+.. |versions| image:: https://img.shields.io/pypi/pyversions/maildir-deduplicate.svg
+    :target: https://pypi.python.org/pypi/maildir-deduplicate
+    :alt: Python versions
+.. |license| image:: https://img.shields.io/pypi/l/maildir-deduplicate.svg
+    :target: https://www.gnu.org/licenses/gpl-2.0.html
+    :alt: Software license
+.. |dependencies| image:: https://requires.io/github/kdeldycke/maildir-deduplicate/requirements.svg?branch=master
+    :target: https://requires.io/github/kdeldycke/maildir-deduplicate/requirements/?branch=master
+    :alt: Requirements freshness
+.. |build| image:: https://travis-ci.org/kdeldycke/maildir-deduplicate.svg?branch=develop
+    :target: https://travis-ci.org/kdeldycke/maildir-deduplicate
+    :alt: Unit-tests status
+.. |docs| image:: https://readthedocs.org/projects/maildir-deduplicate/badge/?version=develop
+    :target: http://maildir-deduplicate.readthedocs.io/en/develop/
+    :alt: Documentation Status
+.. |coverage| image:: https://codecov.io/gh/kdeldycke/maildir-deduplicate/branch/develop/graph/badge.svg
+    :target: https://codecov.io/github/kdeldycke/maildir-deduplicate?branch=develop
+    :alt: Coverage Status
+.. |quality| image:: https://scrutinizer-ci.com/g/kdeldycke/maildir-deduplicate/badges/quality-score.png?b=develop
+    :target: https://scrutinizer-ci.com/g/kdeldycke/maildir-deduplicate/?branch=develop
+    :alt: Code Quality
+
+
+Features
+--------
+
+* Duplicate detection based on cherry-picked mail headers.
+* Source mails from multiple maildirs.
+* Multiple removal strategies based on size, timestamp or file path.
+* Dry-run mode.
+* Protection against false-positives by checking for size and content
+  differences.
+
+
+Changes for v`2.0.0 (2016-11-13) <https://github.com/kdeldycke/maildir-deduplicate/compare/v1.3.0...v2.0.0>`_
+------------------------------------------------------------------------------------------------
+
+* Refactor and redefine all removal strategies. Closes #40.
+* Add a new ``-t``/``--time-source`` CLI parameter to point to the canonical
+  source of a mail's timestamp.
+* Rename ``-s``/``--show-diffs`` parameter to ``-d``/``--show-diff``.
+* Rename ``-D``/``--diff-threshold`` parameter to
+  ``-C``/``--content-threshold``.
+* Add new ``-s`` shorthand to ``--strategy`` parameter.
+* Re-implement diff threshold options. Closes #43.
+* Re-implement statistics. Closes #42.
+* Normalize and canonicalize all paths to deduplicate on the fly mails pointing
+  to the same file.
+* Build documentation via Sphinx.
+* Add ``test`` and ``develop`` dependencies.
+* Move coverage config to ``setup.cfg``.
+* Replace ``pep8`` package by ``pycodestyle``.
+* Enforce ``pycodestyle`` checks in Travis CI jobs.
+* Remove popularity badge: PyPI download counters are broken and no longer
+  displayed.
+* Test production of packages in Travis CI jobs.
+* Move development and packaging documentation to Sphinx. Closes #22.
+* Make wheels generated under Python 2 environnment available for Python 3 too.
+* Let unittests generates their own fake and temporary maildirs.
+* Print CLI output in unittests.
+* Use generic factory to produce mail fixtures in unittests.
+* Only show latest changes in the long description of the package instead of
+  the full changelog.
+

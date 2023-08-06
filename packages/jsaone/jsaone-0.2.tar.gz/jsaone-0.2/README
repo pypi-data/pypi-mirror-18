@@ -1,0 +1,74 @@
+====== What is jsaone? ======
+
+This is a tiny wrapper around the json module in the Python standard library, allowing to read a json file incrementally.
+
+This can be useful for
+  * parsing json streams without waiting for the end of the transmission,
+  * parsing very big json objects without wasting RAM for the json representation itself.
+
+It is an alternative to [[https://pypi.python.org/pypi/ijson/|ijson]] (written when I did not know ijson existed, but in the end more efficient).
+
+=== Efficiency ===
+
+No extensive tests were made (if you make them, let me know), but here are the
+results (in seconds) obtained in opening a local file with 384650 objects,
+totalling 174 MB:
+
+^ Parser                          ^  Iteration 1 ^ Iteration 2 ^
+| standard (non-incremental) json |    9.511     |    9.273    |
+| cythonized jsaone               |   19.055     |   18.956    |
+| ijson (with yajl2 backend)      |   62.250     |   64.538    |
+| pure python jsaone              |  421.641     |  421.821    |
+
+
+Those results were obtained with the script "**tests/json_load_test.py**".
+
+Clearly those numbers are affected by the speed of the CPU and of the medium/stream.
+In particular, since the test was made on a file from a local hard disk, the
+bottleneck was clearly the CPU, and hence it is disadvantageous for incremental
+parsers (including jsaone). If the bottleneck is given by the medium/stream,
+jsaone should even outperform the standard json, which will start processing
+only after the entire stream is received. 
+
+=== Why "jsaone" ===
+
+Because it sounds similar to "json"... but the Saône is a (large) stream.
+
+=== Dependencies ===
+
+
+  * [[http://pypi.python.org/pypi/simplejson/|simplejson]] (Python 2.5 only)
+  * for speedup: [[http://cython.org|cython]] (at build time)
+
+=== Installing ===
+
+  - If you use Debian or a derivative (such as Ubuntu or Mint), you can simply use the packages provided above.
+  - **jsaone** is on pypi, so you can install it with //pip install jsaone//
+  - you can extract/clone the git repo, then move in the "jsaone" folder and give the command
+
+  python3 setup.py build_ext --inplace
+
+(replace "**python3**" with "**python**" if you are using Python 2).
+
+
+=== Usage ===
+
+
+  import jsaone
+  with open('/path/to/my/file.json') as f:
+      gen = jsaone.load(f)
+      for key, val in gen:
+          ...
+
+=== Development ===
+
+You can browse the git repo [[http://www.pietrobattiston.it/gitweb?p=jsaone.git|here]] or clone with
+  git clone git://pietrobattiston.it/jsaone
+
+For bugs and enhancements, just write me - <me@pietrobattiston.it> - ideally pointing to a git branch solving the issue/providing an enhancement.
+
+Jsaone should be able to parse any compliant json string... so if you find one on which it fails, please let me know!
+
+=== License ===
+
+Released under the GPL 3. Feel free to contact me if this is a problem for you (and GPL 2 is not).

@@ -1,0 +1,33 @@
+{# Cisco IOS prefix-list template #}
+!
+{# loop through address families #}
+{% for afi, entries in result.iteritems() %}
+{# change 'ipv4' to 'ip' #}
+{% if afi == "ipv4" %}
+{% set afi = "ip" %}
+{% endif %}
+{# reset sequence number #}
+{% set i = 0 %}
+{# check that we have entries for this afi #}
+{% if entries|count > 0 %}
+{# remove existing prefix-list #}
+no {{ afi }} prefix-list {{ name }}
+{# loop through entries #}
+{% for entry in entries %}
+{% set i = i + 10 %}
+{% if entry['greater-equal'] is defined %}
+{% set ge %} ge {{ entry['greater-equal'] }}{% endset %}
+{% else %}
+{% set ge = "" %}
+{% endif %}
+{% if entry['less-equal'] is defined %}
+{% set le %} le {{ entry['less-equal'] }}{% endset %}
+{% else %}
+{% set le = "" %}
+{% endif %}
+{{ afi }} prefix-list {{ name }} seq {{ i }} permit {{ entry.prefix }}{{ ge }}{{ le }}
+{% endfor %}
+{% endif %}
+!
+{% endfor %}
+!

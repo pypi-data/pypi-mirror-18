@@ -1,0 +1,84 @@
+suricata:
+    image: stamus/suricata
+    volumes:
+        - $basepath/config/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
+        - $basepath/suricata:/var/log/suricata:rw
+        - $basepath/suricata/run/:/var/run/suricata:rw
+        - $basepath/config/suricata/ethtool.conf:/etc/supervisor/conf.d/ethtool.conf:ro
+        - $basepath/scirius/:/etc/suricata/rules:rw
+    cap_add:
+        - NET_ADMIN
+        - NET_RAW
+    net: host
+    # TODO set your suricata iface here
+    environment:
+        - SURICATA_ARGS="$capture_option"
+
+elasticsearch:
+    build: $basepath/docker/elasticsearch
+    command: -Des.network.bind_host=0.0.0.0 -Des.index.number_of_replicas=0
+    volumes:
+        - $basepath/elasticsearch:/usr/share/elasticsearch/data:rw
+
+logstash:
+    image: logstash:2
+    links:
+        - elasticsearch
+    command: /opt/logstash/bin/logstash -f /etc/logstash/conf.d/ 
+    volumes:
+        - $basepath/config/logstash:/etc/logstash:ro
+        - $basepath/suricata:/var/log/suricata:ro
+    hostname: suricata
+
+kibana:
+    build: $basepath/docker/kibana
+    links:
+        - elasticsearch
+
+scirius:
+    image: stamus/scirius
+    volumes:
+        - $basepath/config/scirius:/etc/scirius:ro
+        - $basepath/config/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
+        - $basepath/scirius:/etc/suricata/rules:rw
+        - $basepath/suricata/run:/var/run/suricata:ro
+        - $basepath/backups:/var/backups:rw
+        # TODO uncomment correctly set path to scirius git tree on host below
+        # to run a specific scirius version
+        #- /path/to/git/stamus/scirius/:/opt/selks/scirius/:ro
+    links:
+        - elasticsearch
+        - kibana
+        - evebox
+    volumes_from:
+        - sciriusdata
+        - sciriusstatic
+
+sciriusdata:
+    image: busybox
+    command: /bin/true
+    volumes:
+        - /sciriusdata
+
+sciriusstatic:
+    image: busybox
+    command: /bin/true
+    volumes:
+        - /sciriusstatic
+
+evebox:
+    image: jasonish/evebox:latest
+    links:
+        - elasticsearch
+
+nginx:
+    image: nginx
+    ports:
+        - 443:443
+    volumes: 
+        - $basepath/config/nginx/amsterdam.conf:/etc/nginx/conf.d/default.conf:ro
+        - $basepath/config/nginx/ssl/:/etc/nginx/ssl/:ro
+    links:
+        - scirius
+    volumes_from:
+        - sciriusstatic

@@ -1,0 +1,229 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>clusteror.utils &#8212; clusteror 0.0.post0.dev68+n166d2bb.dirty documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.0.post0.dev68+n166d2bb.dirty',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="clusteror 0.0.post0.dev68+n166d2bb.dirty documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for clusteror.utils</h1><div class="highlight"><pre>
+<span></span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">This module works as a transient store of useful functions. New standalone</span>
+<span class="sd">functions will be first placed here. As they grow in number and can be</span>
+<span class="sd">consolidated into an independent class, module, or even a new package.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+
+<div class="viewcode-block" id="find_local_extremes"><a class="viewcode-back" href="../../api/clusteror.utils.html#clusteror.utils.find_local_extremes">[docs]</a><span class="k">def</span> <span class="nf">find_local_extremes</span><span class="p">(</span><span class="n">series</span><span class="p">,</span> <span class="n">contrast</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Finds local minima and maxima according to ``contrast``. In theory,</span>
+<span class="sd">    they can be determined by first derivative and second derivative. The</span>
+<span class="sd">    result derived this way is of no value in dealing with a very noisy,</span>
+<span class="sd">    zig-zag data as too many local extremes would be found for any turn-around.</span>
+<span class="sd">    The method presented here compares the point currently looked at and the</span>
+<span class="sd">    opposite potential extreme that is updated as scanning through the</span>
+<span class="sd">    data sequence. For instance, a potential maximum is 10, then a data point</span>
+<span class="sd">    of value smaller than 10 / (1 + contrast) is written down as a local</span>
+<span class="sd">    minimum.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    series: Pandas Series</span>
+<span class="sd">        One dimenional data to find local extremes in.</span>
+<span class="sd">    contrast: float</span>
+<span class="sd">        A value between 0 and 1 as a threshold between minimum and maximum.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    local_min_inds: list</span>
+<span class="sd">        List of indices for local minima.</span>
+<span class="sd">    local_mins: list</span>
+<span class="sd">        List of minimum values.</span>
+<span class="sd">    local_max_inds: list</span>
+<span class="sd">        List of indices for local maxima.</span>
+<span class="sd">    local_maxs: list</span>
+<span class="sd">        List of maximum values.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;pmin&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s1">&#39;pmin_ind&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s1">&#39;pmax&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s1">&#39;pmax_ind&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s1">&#39;lmin&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s1">&#39;lmax&#39;</span><span class="p">:</span> <span class="kc">None</span>
+    <span class="p">}</span>
+    <span class="c1"># initialise, all starting points are potential local min and local max</span>
+    <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin_ind&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">series</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">tolist</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">series</span><span class="o">.</span><span class="n">iat</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax_ind&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">series</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">tolist</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">series</span><span class="o">.</span><span class="n">iat</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># store true local mins and maxes</span>
+    <span class="n">local_min_inds</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">local_mins</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">local_max_inds</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">local_maxs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># walk through all rows</span>
+    <span class="k">for</span> <span class="n">ind</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">series</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># when just starts out or find a potential extreme after</span>
+            <span class="c1"># confirming a local extreme</span>
+            <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin&#39;</span><span class="p">]:</span>
+                <span class="c1"># value is smaller then update potential min</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin_ind&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ind</span>
+                <span class="k">if</span> <span class="n">value</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">contrast</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax&#39;</span><span class="p">]:</span>
+                    <span class="c1"># if the gap between current point and potential max is</span>
+                    <span class="c1"># larger than contrast</span>
+                    <span class="c1"># then confirm the last potential max is a true local max</span>
+                    <span class="n">state</span><span class="p">[</span><span class="s1">&#39;lmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax&#39;</span><span class="p">]</span>
+                    <span class="n">local_max_inds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax_ind&#39;</span><span class="p">])</span>
+                    <span class="n">local_maxs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax&#39;</span><span class="p">])</span>
+                    <span class="c1"># so for a moment no potential max</span>
+                    <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax_ind&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">elif</span> <span class="n">value</span> <span class="o">&gt;=</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax&#39;</span><span class="p">]:</span>
+                <span class="c1"># value is larger then update potential max</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax_ind&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ind</span>
+                <span class="k">if</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">contrast</span><span class="p">):</span>
+                    <span class="c1"># if the gap between current point and potential min is</span>
+                    <span class="c1"># larger than contrast</span>
+                    <span class="c1"># then confirm the last potential min is a true local min</span>
+                    <span class="n">state</span><span class="p">[</span><span class="s1">&#39;lmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin&#39;</span><span class="p">]</span>
+                    <span class="n">local_min_inds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin_ind&#39;</span><span class="p">])</span>
+                    <span class="n">local_mins</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin&#39;</span><span class="p">])</span>
+                    <span class="c1"># so for a moment no potential min</span>
+                    <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin_ind&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># point is between potenital min and potential max</span>
+                <span class="c1"># just pass without updating</span>
+                <span class="k">pass</span>
+        <span class="k">elif</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;lmin&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># when just found a local min, trying to find next local max</span>
+            <span class="k">if</span> <span class="n">value</span> <span class="o">&gt;=</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax&#39;</span><span class="p">]:</span>
+                <span class="c1"># update if value is larger</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax_ind&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ind</span>
+            <span class="k">elif</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;lmin&#39;</span><span class="p">]:</span>
+                <span class="c1"># this is where it just after a sharp blip</span>
+                <span class="c1"># confirm the last point is a local max</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;lmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax&#39;</span><span class="p">]</span>
+                <span class="n">local_max_inds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax_ind&#39;</span><span class="p">])</span>
+                <span class="n">local_maxs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax&#39;</span><span class="p">])</span>
+                <span class="c1"># so for a moment no potential max</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax_ind&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="c1"># the current point becomes a potential min</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin_ind&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ind</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># smaller than the last point, so this is a potential min</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;lmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin_ind&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ind</span>
+        <span class="k">elif</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;lmax&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># when just found a local max, trying to find the next local min</span>
+            <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin&#39;</span><span class="p">]:</span>
+                <span class="c1"># update if value is smaller</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin_ind&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ind</span>
+            <span class="k">elif</span> <span class="n">value</span> <span class="o">&gt;=</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;lmax&#39;</span><span class="p">]:</span>
+                <span class="c1"># this is where just after a deep dip</span>
+                <span class="c1"># confirm the last point is a local min</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;lmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin&#39;</span><span class="p">]</span>
+                <span class="n">local_min_inds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin_ind&#39;</span><span class="p">])</span>
+                <span class="n">local_mins</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin&#39;</span><span class="p">])</span>
+                <span class="c1"># so for a moment no potential min</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmin_ind&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="c1"># the current point becomes a potential max</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax_ind&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ind</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># larger than the last point, so this is a potential max</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;lmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="n">state</span><span class="p">[</span><span class="s1">&#39;pmax_ind&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ind</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;strange&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">local_min_inds</span><span class="p">,</span> <span class="n">local_mins</span><span class="p">,</span> <span class="n">local_max_inds</span><span class="p">,</span> <span class="n">local_maxs</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Fei Zhan.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.9</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

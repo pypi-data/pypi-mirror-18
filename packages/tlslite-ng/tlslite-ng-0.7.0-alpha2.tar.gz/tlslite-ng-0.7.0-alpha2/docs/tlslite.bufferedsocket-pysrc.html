@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="ascii"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+          "DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>tlslite.bufferedsocket</title>
+  <link rel="stylesheet" href="epydoc.css" type="text/css" />
+  <script type="text/javascript" src="epydoc.js"></script>
+</head>
+
+<body bgcolor="white" text="black" link="blue" vlink="#204080"
+      alink="#204080">
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="tlslite-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+      <th class="navbar" width="100%"></th>
+  </tr>
+</table>
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr valign="top">
+    <td width="100%">
+      <span class="breadcrumbs">
+        <a href="tlslite-module.html">Package&nbsp;tlslite</a> ::
+        Module&nbsp;bufferedsocket
+      </span>
+    </td>
+    <td>
+      <table cellpadding="0" cellspacing="0">
+        <!-- hide/show private -->
+        <tr><td align="right"><span class="options">[<a href="javascript:void(0);" class="privatelink"
+    onclick="toggle_private();">hide&nbsp;private</a>]</span></td></tr>
+        <tr><td align="right"><span class="options"
+            >[<a href="frames.html" target="_top">frames</a
+            >]&nbsp;|&nbsp;<a href="tlslite.bufferedsocket-pysrc.html"
+            target="_top">no&nbsp;frames</a>]</span></td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<h1 class="epydoc">Source Code for <a href="tlslite.bufferedsocket-module.html">Module tlslite.bufferedsocket</a></h1>
+<pre class="py-src">
+<a name="L1"></a><tt class="py-lineno"> 1</tt>  <tt class="py-line"><tt class="py-comment"># Copyright (c) 2016, Hubert Kario</tt> </tt>
+<a name="L2"></a><tt class="py-lineno"> 2</tt>  <tt class="py-line"><tt class="py-comment">#</tt> </tt>
+<a name="L3"></a><tt class="py-lineno"> 3</tt>  <tt class="py-line"><tt class="py-comment"># See the LICENSE file for legal information regarding use of this file.</tt> </tt>
+<a name="L4"></a><tt class="py-lineno"> 4</tt>  <tt class="py-line"> </tt>
+<a name="L5"></a><tt class="py-lineno"> 5</tt>  <tt class="py-line"><tt class="py-docstring">"""Wrapper around the socket.socket interface that provides buffering"""</tt> </tt>
+<a name="L6"></a><tt class="py-lineno"> 6</tt>  <tt class="py-line"> </tt>
+<a name="L7"></a><tt class="py-lineno"> 7</tt>  <tt class="py-line"><tt class="py-keyword">from</tt> <tt class="py-name">collections</tt> <tt class="py-keyword">import</tt> <tt class="py-name">deque</tt> </tt>
+<a name="L8"></a><tt class="py-lineno"> 8</tt>  <tt class="py-line"> </tt>
+<a name="L9"></a><tt class="py-lineno"> 9</tt>  <tt class="py-line"> </tt>
+<a name="BufferedSocket"></a><div id="BufferedSocket-def"><a name="L10"></a><tt class="py-lineno">10</tt> <a class="py-toggle" href="#" id="BufferedSocket-toggle" onclick="return toggle('BufferedSocket');">-</a><tt class="py-line"><tt class="py-keyword">class</tt> <a class="py-def-name" href="tlslite.bufferedsocket.BufferedSocket-class.html">BufferedSocket</a><tt class="py-op">(</tt><tt class="py-base-class">object</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="BufferedSocket-collapsed" style="display:none;" pad="++" indent="++++"></div><div id="BufferedSocket-expanded"><a name="L11"></a><tt class="py-lineno">11</tt>  <tt class="py-line">    <tt class="py-docstring">"""</tt> </tt>
+<a name="L12"></a><tt class="py-lineno">12</tt>  <tt class="py-line"><tt class="py-docstring">    Socket that will buffer reads and writes to a real socket object</tt> </tt>
+<a name="L13"></a><tt class="py-lineno">13</tt>  <tt class="py-line"><tt class="py-docstring"></tt> </tt>
+<a name="L14"></a><tt class="py-lineno">14</tt>  <tt class="py-line"><tt class="py-docstring">    When buffer_writes is enabled, writes won't be passed to the real socket</tt> </tt>
+<a name="L15"></a><tt class="py-lineno">15</tt>  <tt class="py-line"><tt class="py-docstring">    until flush() is called.</tt> </tt>
+<a name="L16"></a><tt class="py-lineno">16</tt>  <tt class="py-line"><tt class="py-docstring"></tt> </tt>
+<a name="L17"></a><tt class="py-lineno">17</tt>  <tt class="py-line"><tt class="py-docstring">    Not multithread safe.</tt> </tt>
+<a name="L18"></a><tt class="py-lineno">18</tt>  <tt class="py-line"><tt class="py-docstring"></tt> </tt>
+<a name="L19"></a><tt class="py-lineno">19</tt>  <tt class="py-line"><tt class="py-docstring">    @type buffer_writes: boolean</tt> </tt>
+<a name="L20"></a><tt class="py-lineno">20</tt>  <tt class="py-line"><tt class="py-docstring">    @ivar buffer_writes: whether to buffer data writes, False by default</tt> </tt>
+<a name="L21"></a><tt class="py-lineno">21</tt>  <tt class="py-line"><tt class="py-docstring">    """</tt> </tt>
+<a name="L22"></a><tt class="py-lineno">22</tt>  <tt class="py-line"> </tt>
+<a name="BufferedSocket.__init__"></a><div id="BufferedSocket.__init__-def"><a name="L23"></a><tt class="py-lineno">23</tt> <a class="py-toggle" href="#" id="BufferedSocket.__init__-toggle" onclick="return toggle('BufferedSocket.__init__');">-</a><tt class="py-line">    <tt class="py-keyword">def</tt> <a class="py-def-name" href="tlslite.bufferedsocket.BufferedSocket-class.html#__init__">__init__</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">,</tt> <tt class="py-param">socket</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="BufferedSocket.__init__-collapsed" style="display:none;" pad="++" indent="++++++++"></div><div id="BufferedSocket.__init__-expanded"><a name="L24"></a><tt class="py-lineno">24</tt>  <tt class="py-line">        <tt class="py-docstring">"""Associate socket with the object"""</tt> </tt>
+<a name="L25"></a><tt class="py-lineno">25</tt>  <tt class="py-line">        <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">socket</tt> <tt class="py-op">=</tt> <tt class="py-name">socket</tt> </tt>
+<a name="L26"></a><tt class="py-lineno">26</tt>  <tt class="py-line">        <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">_write_queue</tt> <tt class="py-op">=</tt> <tt class="py-name">deque</tt><tt class="py-op">(</tt><tt class="py-op">)</tt> </tt>
+<a name="L27"></a><tt class="py-lineno">27</tt>  <tt class="py-line">        <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">buffer_writes</tt> <tt class="py-op">=</tt> <tt class="py-name">False</tt> </tt>
+</div><a name="L28"></a><tt class="py-lineno">28</tt>  <tt class="py-line"> </tt>
+<a name="BufferedSocket.send"></a><div id="BufferedSocket.send-def"><a name="L29"></a><tt class="py-lineno">29</tt> <a class="py-toggle" href="#" id="BufferedSocket.send-toggle" onclick="return toggle('BufferedSocket.send');">-</a><tt class="py-line">    <tt class="py-keyword">def</tt> <a class="py-def-name" href="tlslite.bufferedsocket.BufferedSocket-class.html#send">send</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">,</tt> <tt class="py-param">data</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="BufferedSocket.send-collapsed" style="display:none;" pad="++" indent="++++++++"></div><div id="BufferedSocket.send-expanded"><a name="L30"></a><tt class="py-lineno">30</tt>  <tt class="py-line">        <tt class="py-docstring">"""Send data to the socket"""</tt> </tt>
+<a name="L31"></a><tt class="py-lineno">31</tt>  <tt class="py-line">        <tt class="py-keyword">if</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">buffer_writes</tt><tt class="py-op">:</tt> </tt>
+<a name="L32"></a><tt class="py-lineno">32</tt>  <tt class="py-line">            <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">_write_queue</tt><tt class="py-op">.</tt><tt class="py-name">append</tt><tt class="py-op">(</tt><tt class="py-name">data</tt><tt class="py-op">)</tt> </tt>
+<a name="L33"></a><tt class="py-lineno">33</tt>  <tt class="py-line">            <tt class="py-keyword">return</tt> <tt class="py-name">len</tt><tt class="py-op">(</tt><tt class="py-name">data</tt><tt class="py-op">)</tt> </tt>
+<a name="L34"></a><tt class="py-lineno">34</tt>  <tt class="py-line">        <tt class="py-keyword">return</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">socket</tt><tt class="py-op">.</tt><tt id="link-0" class="py-name" targets="Method tlslite.bufferedsocket.BufferedSocket.send()=tlslite.bufferedsocket.BufferedSocket-class.html#send,Method tlslite.integration.tlsasyncdispatchermixin.TLSAsyncDispatcherMixIn.send()=tlslite.integration.tlsasyncdispatchermixin.TLSAsyncDispatcherMixIn-class.html#send,Method tlslite.recordlayer.RecordSocket.send()=tlslite.recordlayer.RecordSocket-class.html#send,Method tlslite.tlsrecordlayer.TLSRecordLayer.send()=tlslite.tlsrecordlayer.TLSRecordLayer-class.html#send"><a title="tlslite.bufferedsocket.BufferedSocket.send
+tlslite.integration.tlsasyncdispatchermixin.TLSAsyncDispatcherMixIn.send
+tlslite.recordlayer.RecordSocket.send
+tlslite.tlsrecordlayer.TLSRecordLayer.send" class="py-name" href="#" onclick="return doclink('link-0', 'send', 'link-0');">send</a></tt><tt class="py-op">(</tt><tt class="py-name">data</tt><tt class="py-op">)</tt> </tt>
+</div><a name="L35"></a><tt class="py-lineno">35</tt>  <tt class="py-line"> </tt>
+<a name="BufferedSocket.sendall"></a><div id="BufferedSocket.sendall-def"><a name="L36"></a><tt class="py-lineno">36</tt> <a class="py-toggle" href="#" id="BufferedSocket.sendall-toggle" onclick="return toggle('BufferedSocket.sendall');">-</a><tt class="py-line">    <tt class="py-keyword">def</tt> <a class="py-def-name" href="tlslite.bufferedsocket.BufferedSocket-class.html#sendall">sendall</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">,</tt> <tt class="py-param">data</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="BufferedSocket.sendall-collapsed" style="display:none;" pad="++" indent="++++++++"></div><div id="BufferedSocket.sendall-expanded"><a name="L37"></a><tt class="py-lineno">37</tt>  <tt class="py-line">        <tt class="py-docstring">"""Send data to the socket"""</tt> </tt>
+<a name="L38"></a><tt class="py-lineno">38</tt>  <tt class="py-line">        <tt class="py-keyword">if</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">buffer_writes</tt><tt class="py-op">:</tt> </tt>
+<a name="L39"></a><tt class="py-lineno">39</tt>  <tt class="py-line">            <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">_write_queue</tt><tt class="py-op">.</tt><tt class="py-name">append</tt><tt class="py-op">(</tt><tt class="py-name">data</tt><tt class="py-op">)</tt> </tt>
+<a name="L40"></a><tt class="py-lineno">40</tt>  <tt class="py-line">            <tt class="py-keyword">return</tt> <tt class="py-name">None</tt> </tt>
+<a name="L41"></a><tt class="py-lineno">41</tt>  <tt class="py-line">        <tt class="py-keyword">return</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">socket</tt><tt class="py-op">.</tt><tt id="link-1" class="py-name" targets="Method tlslite.bufferedsocket.BufferedSocket.sendall()=tlslite.bufferedsocket.BufferedSocket-class.html#sendall,Method tlslite.tlsrecordlayer.TLSRecordLayer.sendall()=tlslite.tlsrecordlayer.TLSRecordLayer-class.html#sendall"><a title="tlslite.bufferedsocket.BufferedSocket.sendall
+tlslite.tlsrecordlayer.TLSRecordLayer.sendall" class="py-name" href="#" onclick="return doclink('link-1', 'sendall', 'link-1');">sendall</a></tt><tt class="py-op">(</tt><tt class="py-name">data</tt><tt class="py-op">)</tt> </tt>
+</div><a name="L42"></a><tt class="py-lineno">42</tt>  <tt class="py-line"> </tt>
+<a name="BufferedSocket.flush"></a><div id="BufferedSocket.flush-def"><a name="L43"></a><tt class="py-lineno">43</tt> <a class="py-toggle" href="#" id="BufferedSocket.flush-toggle" onclick="return toggle('BufferedSocket.flush');">-</a><tt class="py-line">    <tt class="py-keyword">def</tt> <a class="py-def-name" href="tlslite.bufferedsocket.BufferedSocket-class.html#flush">flush</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="BufferedSocket.flush-collapsed" style="display:none;" pad="++" indent="++++++++"></div><div id="BufferedSocket.flush-expanded"><a name="L44"></a><tt class="py-lineno">44</tt>  <tt class="py-line">        <tt class="py-docstring">"""Send all buffered data"""</tt> </tt>
+<a name="L45"></a><tt class="py-lineno">45</tt>  <tt class="py-line">        <tt class="py-name">buf</tt> <tt class="py-op">=</tt> <tt class="py-name">bytearray</tt><tt class="py-op">(</tt><tt class="py-op">)</tt> </tt>
+<a name="L46"></a><tt class="py-lineno">46</tt>  <tt class="py-line">        <tt class="py-keyword">for</tt> <tt class="py-name">i</tt> <tt class="py-keyword">in</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">_write_queue</tt><tt class="py-op">:</tt> </tt>
+<a name="L47"></a><tt class="py-lineno">47</tt>  <tt class="py-line">            <tt class="py-name">buf</tt> <tt class="py-op">+=</tt> <tt class="py-name">i</tt> </tt>
+<a name="L48"></a><tt class="py-lineno">48</tt>  <tt class="py-line">        <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">_write_queue</tt><tt class="py-op">.</tt><tt class="py-name">clear</tt><tt class="py-op">(</tt><tt class="py-op">)</tt> </tt>
+<a name="L49"></a><tt class="py-lineno">49</tt>  <tt class="py-line">        <tt class="py-keyword">if</tt> <tt class="py-name">buf</tt><tt class="py-op">:</tt> </tt>
+<a name="L50"></a><tt class="py-lineno">50</tt>  <tt class="py-line">            <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">socket</tt><tt class="py-op">.</tt><tt id="link-2" class="py-name"><a title="tlslite.bufferedsocket.BufferedSocket.sendall
+tlslite.tlsrecordlayer.TLSRecordLayer.sendall" class="py-name" href="#" onclick="return doclink('link-2', 'sendall', 'link-1');">sendall</a></tt><tt class="py-op">(</tt><tt class="py-name">buf</tt><tt class="py-op">)</tt> </tt>
+</div><a name="L51"></a><tt class="py-lineno">51</tt>  <tt class="py-line"> </tt>
+<a name="BufferedSocket.recv"></a><div id="BufferedSocket.recv-def"><a name="L52"></a><tt class="py-lineno">52</tt> <a class="py-toggle" href="#" id="BufferedSocket.recv-toggle" onclick="return toggle('BufferedSocket.recv');">-</a><tt class="py-line">    <tt class="py-keyword">def</tt> <a class="py-def-name" href="tlslite.bufferedsocket.BufferedSocket-class.html#recv">recv</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">,</tt> <tt class="py-param">bufsize</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="BufferedSocket.recv-collapsed" style="display:none;" pad="++" indent="++++++++"></div><div id="BufferedSocket.recv-expanded"><a name="L53"></a><tt class="py-lineno">53</tt>  <tt class="py-line">        <tt class="py-docstring">"""Receive data from socket (socket emulation)"""</tt> </tt>
+<a name="L54"></a><tt class="py-lineno">54</tt>  <tt class="py-line">        <tt class="py-keyword">return</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">socket</tt><tt class="py-op">.</tt><tt id="link-3" class="py-name" targets="Method tlslite.bufferedsocket.BufferedSocket.recv()=tlslite.bufferedsocket.BufferedSocket-class.html#recv,Method tlslite.integration.tlsasyncdispatchermixin.TLSAsyncDispatcherMixIn.recv()=tlslite.integration.tlsasyncdispatchermixin.TLSAsyncDispatcherMixIn-class.html#recv,Method tlslite.recordlayer.RecordSocket.recv()=tlslite.recordlayer.RecordSocket-class.html#recv,Method tlslite.tlsrecordlayer.TLSRecordLayer.recv()=tlslite.tlsrecordlayer.TLSRecordLayer-class.html#recv"><a title="tlslite.bufferedsocket.BufferedSocket.recv
+tlslite.integration.tlsasyncdispatchermixin.TLSAsyncDispatcherMixIn.recv
+tlslite.recordlayer.RecordSocket.recv
+tlslite.tlsrecordlayer.TLSRecordLayer.recv" class="py-name" href="#" onclick="return doclink('link-3', 'recv', 'link-3');">recv</a></tt><tt class="py-op">(</tt><tt class="py-name">bufsize</tt><tt class="py-op">)</tt> </tt>
+</div><a name="L55"></a><tt class="py-lineno">55</tt>  <tt class="py-line"> </tt>
+<a name="BufferedSocket.getsockname"></a><div id="BufferedSocket.getsockname-def"><a name="L56"></a><tt class="py-lineno">56</tt> <a class="py-toggle" href="#" id="BufferedSocket.getsockname-toggle" onclick="return toggle('BufferedSocket.getsockname');">-</a><tt class="py-line">    <tt class="py-keyword">def</tt> <a class="py-def-name" href="tlslite.bufferedsocket.BufferedSocket-class.html#getsockname">getsockname</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="BufferedSocket.getsockname-collapsed" style="display:none;" pad="++" indent="++++++++"></div><div id="BufferedSocket.getsockname-expanded"><a name="L57"></a><tt class="py-lineno">57</tt>  <tt class="py-line">        <tt class="py-docstring">"""Return the socket's own address (socket emulation)."""</tt> </tt>
+<a name="L58"></a><tt class="py-lineno">58</tt>  <tt class="py-line">        <tt class="py-keyword">return</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">socket</tt><tt class="py-op">.</tt><tt id="link-4" class="py-name" targets="Method tlslite.bufferedsocket.BufferedSocket.getsockname()=tlslite.bufferedsocket.BufferedSocket-class.html#getsockname,Method tlslite.tlsrecordlayer.TLSRecordLayer.getsockname()=tlslite.tlsrecordlayer.TLSRecordLayer-class.html#getsockname"><a title="tlslite.bufferedsocket.BufferedSocket.getsockname
+tlslite.tlsrecordlayer.TLSRecordLayer.getsockname" class="py-name" href="#" onclick="return doclink('link-4', 'getsockname', 'link-4');">getsockname</a></tt><tt class="py-op">(</tt><tt class="py-op">)</tt> </tt>
+</div><a name="L59"></a><tt class="py-lineno">59</tt>  <tt class="py-line"> </tt>
+<a name="BufferedSocket.getpeername"></a><div id="BufferedSocket.getpeername-def"><a name="L60"></a><tt class="py-lineno">60</tt> <a class="py-toggle" href="#" id="BufferedSocket.getpeername-toggle" onclick="return toggle('BufferedSocket.getpeername');">-</a><tt class="py-line">    <tt class="py-keyword">def</tt> <a class="py-def-name" href="tlslite.bufferedsocket.BufferedSocket-class.html#getpeername">getpeername</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="BufferedSocket.getpeername-collapsed" style="display:none;" pad="++" indent="++++++++"></div><div id="BufferedSocket.getpeername-expanded"><a name="L61"></a><tt class="py-lineno">61</tt>  <tt class="py-line">        <tt class="py-docstring">"""</tt> </tt>
+<a name="L62"></a><tt class="py-lineno">62</tt>  <tt class="py-line"><tt class="py-docstring">        Return the remote address to which the socket is connected</tt> </tt>
+<a name="L63"></a><tt class="py-lineno">63</tt>  <tt class="py-line"><tt class="py-docstring"></tt> </tt>
+<a name="L64"></a><tt class="py-lineno">64</tt>  <tt class="py-line"><tt class="py-docstring">        (socket emulation)</tt> </tt>
+<a name="L65"></a><tt class="py-lineno">65</tt>  <tt class="py-line"><tt class="py-docstring">        """</tt> </tt>
+<a name="L66"></a><tt class="py-lineno">66</tt>  <tt class="py-line">        <tt class="py-keyword">return</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">socket</tt><tt class="py-op">.</tt><tt id="link-5" class="py-name" targets="Method tlslite.bufferedsocket.BufferedSocket.getpeername()=tlslite.bufferedsocket.BufferedSocket-class.html#getpeername,Method tlslite.tlsrecordlayer.TLSRecordLayer.getpeername()=tlslite.tlsrecordlayer.TLSRecordLayer-class.html#getpeername"><a title="tlslite.bufferedsocket.BufferedSocket.getpeername
+tlslite.tlsrecordlayer.TLSRecordLayer.getpeername" class="py-name" href="#" onclick="return doclink('link-5', 'getpeername', 'link-5');">getpeername</a></tt><tt class="py-op">(</tt><tt class="py-op">)</tt> </tt>
+</div><a name="L67"></a><tt class="py-lineno">67</tt>  <tt class="py-line"> </tt>
+<a name="BufferedSocket.settimeout"></a><div id="BufferedSocket.settimeout-def"><a name="L68"></a><tt class="py-lineno">68</tt> <a class="py-toggle" href="#" id="BufferedSocket.settimeout-toggle" onclick="return toggle('BufferedSocket.settimeout');">-</a><tt class="py-line">    <tt class="py-keyword">def</tt> <a class="py-def-name" href="tlslite.bufferedsocket.BufferedSocket-class.html#settimeout">settimeout</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">,</tt> <tt class="py-param">value</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="BufferedSocket.settimeout-collapsed" style="display:none;" pad="++" indent="++++++++"></div><div id="BufferedSocket.settimeout-expanded"><a name="L69"></a><tt class="py-lineno">69</tt>  <tt class="py-line">        <tt class="py-docstring">"""Set a timeout on blocking socket operations (socket emulation)."""</tt> </tt>
+<a name="L70"></a><tt class="py-lineno">70</tt>  <tt class="py-line">        <tt class="py-keyword">return</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">socket</tt><tt class="py-op">.</tt><tt id="link-6" class="py-name" targets="Method tlslite.bufferedsocket.BufferedSocket.settimeout()=tlslite.bufferedsocket.BufferedSocket-class.html#settimeout,Method tlslite.tlsrecordlayer.TLSRecordLayer.settimeout()=tlslite.tlsrecordlayer.TLSRecordLayer-class.html#settimeout"><a title="tlslite.bufferedsocket.BufferedSocket.settimeout
+tlslite.tlsrecordlayer.TLSRecordLayer.settimeout" class="py-name" href="#" onclick="return doclink('link-6', 'settimeout', 'link-6');">settimeout</a></tt><tt class="py-op">(</tt><tt class="py-name">value</tt><tt class="py-op">)</tt> </tt>
+</div><a name="L71"></a><tt class="py-lineno">71</tt>  <tt class="py-line"> </tt>
+<a name="BufferedSocket.gettimeout"></a><div id="BufferedSocket.gettimeout-def"><a name="L72"></a><tt class="py-lineno">72</tt> <a class="py-toggle" href="#" id="BufferedSocket.gettimeout-toggle" onclick="return toggle('BufferedSocket.gettimeout');">-</a><tt class="py-line">    <tt class="py-keyword">def</tt> <a class="py-def-name" href="tlslite.bufferedsocket.BufferedSocket-class.html#gettimeout">gettimeout</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="BufferedSocket.gettimeout-collapsed" style="display:none;" pad="++" indent="++++++++"></div><div id="BufferedSocket.gettimeout-expanded"><a name="L73"></a><tt class="py-lineno">73</tt>  <tt class="py-line">        <tt class="py-docstring">"""</tt> </tt>
+<a name="L74"></a><tt class="py-lineno">74</tt>  <tt class="py-line"><tt class="py-docstring">        Return the timeout associated with socket operations</tt> </tt>
+<a name="L75"></a><tt class="py-lineno">75</tt>  <tt class="py-line"><tt class="py-docstring"></tt> </tt>
+<a name="L76"></a><tt class="py-lineno">76</tt>  <tt class="py-line"><tt class="py-docstring">        (socket emulation)</tt> </tt>
+<a name="L77"></a><tt class="py-lineno">77</tt>  <tt class="py-line"><tt class="py-docstring">        """</tt> </tt>
+<a name="L78"></a><tt class="py-lineno">78</tt>  <tt class="py-line">        <tt class="py-keyword">return</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">socket</tt><tt class="py-op">.</tt><tt id="link-7" class="py-name" targets="Method tlslite.bufferedsocket.BufferedSocket.gettimeout()=tlslite.bufferedsocket.BufferedSocket-class.html#gettimeout,Method tlslite.tlsrecordlayer.TLSRecordLayer.gettimeout()=tlslite.tlsrecordlayer.TLSRecordLayer-class.html#gettimeout"><a title="tlslite.bufferedsocket.BufferedSocket.gettimeout
+tlslite.tlsrecordlayer.TLSRecordLayer.gettimeout" class="py-name" href="#" onclick="return doclink('link-7', 'gettimeout', 'link-7');">gettimeout</a></tt><tt class="py-op">(</tt><tt class="py-op">)</tt> </tt>
+</div><a name="L79"></a><tt class="py-lineno">79</tt>  <tt class="py-line"> </tt>
+<a name="BufferedSocket.setsockopt"></a><div id="BufferedSocket.setsockopt-def"><a name="L80"></a><tt class="py-lineno">80</tt> <a class="py-toggle" href="#" id="BufferedSocket.setsockopt-toggle" onclick="return toggle('BufferedSocket.setsockopt');">-</a><tt class="py-line">    <tt class="py-keyword">def</tt> <a class="py-def-name" href="tlslite.bufferedsocket.BufferedSocket-class.html#setsockopt">setsockopt</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">,</tt> <tt class="py-param">level</tt><tt class="py-op">,</tt> <tt class="py-param">optname</tt><tt class="py-op">,</tt> <tt class="py-param">value</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="BufferedSocket.setsockopt-collapsed" style="display:none;" pad="++" indent="++++++++"></div><div id="BufferedSocket.setsockopt-expanded"><a name="L81"></a><tt class="py-lineno">81</tt>  <tt class="py-line">        <tt class="py-docstring">"""Set the value of the given socket option (socket emulation)."""</tt> </tt>
+<a name="L82"></a><tt class="py-lineno">82</tt>  <tt class="py-line">        <tt class="py-keyword">return</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">socket</tt><tt class="py-op">.</tt><tt id="link-8" class="py-name" targets="Method tlslite.bufferedsocket.BufferedSocket.setsockopt()=tlslite.bufferedsocket.BufferedSocket-class.html#setsockopt,Method tlslite.tlsrecordlayer.TLSRecordLayer.setsockopt()=tlslite.tlsrecordlayer.TLSRecordLayer-class.html#setsockopt"><a title="tlslite.bufferedsocket.BufferedSocket.setsockopt
+tlslite.tlsrecordlayer.TLSRecordLayer.setsockopt" class="py-name" href="#" onclick="return doclink('link-8', 'setsockopt', 'link-8');">setsockopt</a></tt><tt class="py-op">(</tt><tt class="py-name">level</tt><tt class="py-op">,</tt> <tt class="py-name">optname</tt><tt class="py-op">,</tt> <tt class="py-name">value</tt><tt class="py-op">)</tt> </tt>
+</div><a name="L83"></a><tt class="py-lineno">83</tt>  <tt class="py-line"> </tt>
+<a name="BufferedSocket.shutdown"></a><div id="BufferedSocket.shutdown-def"><a name="L84"></a><tt class="py-lineno">84</tt> <a class="py-toggle" href="#" id="BufferedSocket.shutdown-toggle" onclick="return toggle('BufferedSocket.shutdown');">-</a><tt class="py-line">    <tt class="py-keyword">def</tt> <a class="py-def-name" href="tlslite.bufferedsocket.BufferedSocket-class.html#shutdown">shutdown</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">,</tt> <tt class="py-param">how</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="BufferedSocket.shutdown-collapsed" style="display:none;" pad="++" indent="++++++++"></div><div id="BufferedSocket.shutdown-expanded"><a name="L85"></a><tt class="py-lineno">85</tt>  <tt class="py-line">        <tt class="py-docstring">"""Shutdown the underlying socket."""</tt> </tt>
+<a name="L86"></a><tt class="py-lineno">86</tt>  <tt class="py-line">        <tt class="py-name">self</tt><tt class="py-op">.</tt><tt id="link-9" class="py-name" targets="Method tlslite.bufferedsocket.BufferedSocket.flush()=tlslite.bufferedsocket.BufferedSocket-class.html#flush,Method tlslite.messagesocket.MessageSocket.flush()=tlslite.messagesocket.MessageSocket-class.html#flush"><a title="tlslite.bufferedsocket.BufferedSocket.flush
+tlslite.messagesocket.MessageSocket.flush" class="py-name" href="#" onclick="return doclink('link-9', 'flush', 'link-9');">flush</a></tt><tt class="py-op">(</tt><tt class="py-op">)</tt> </tt>
+<a name="L87"></a><tt class="py-lineno">87</tt>  <tt class="py-line">        <tt class="py-keyword">return</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">socket</tt><tt class="py-op">.</tt><tt id="link-10" class="py-name" targets="Method tlslite.bufferedsocket.BufferedSocket.shutdown()=tlslite.bufferedsocket.BufferedSocket-class.html#shutdown,Method tlslite.recordlayer.RecordLayer.shutdown()=tlslite.recordlayer.RecordLayer-class.html#shutdown,Method tlslite.tlsrecordlayer.TLSRecordLayer.shutdown()=tlslite.tlsrecordlayer.TLSRecordLayer-class.html#shutdown"><a title="tlslite.bufferedsocket.BufferedSocket.shutdown
+tlslite.recordlayer.RecordLayer.shutdown
+tlslite.tlsrecordlayer.TLSRecordLayer.shutdown" class="py-name" href="#" onclick="return doclink('link-10', 'shutdown', 'link-10');">shutdown</a></tt><tt class="py-op">(</tt><tt class="py-name">how</tt><tt class="py-op">)</tt> </tt>
+</div><a name="L88"></a><tt class="py-lineno">88</tt>  <tt class="py-line"> </tt>
+<a name="BufferedSocket.close"></a><div id="BufferedSocket.close-def"><a name="L89"></a><tt class="py-lineno">89</tt> <a class="py-toggle" href="#" id="BufferedSocket.close-toggle" onclick="return toggle('BufferedSocket.close');">-</a><tt class="py-line">    <tt class="py-keyword">def</tt> <a class="py-def-name" href="tlslite.bufferedsocket.BufferedSocket-class.html#close">close</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="BufferedSocket.close-collapsed" style="display:none;" pad="++" indent="++++++++"></div><div id="BufferedSocket.close-expanded"><a name="L90"></a><tt class="py-lineno">90</tt>  <tt class="py-line">        <tt class="py-docstring">"""Close the underlying socket."""</tt> </tt>
+<a name="L91"></a><tt class="py-lineno">91</tt>  <tt class="py-line">        <tt class="py-name">self</tt><tt class="py-op">.</tt><tt id="link-11" class="py-name"><a title="tlslite.bufferedsocket.BufferedSocket.flush
+tlslite.messagesocket.MessageSocket.flush" class="py-name" href="#" onclick="return doclink('link-11', 'flush', 'link-9');">flush</a></tt><tt class="py-op">(</tt><tt class="py-op">)</tt> </tt>
+<a name="L92"></a><tt class="py-lineno">92</tt>  <tt class="py-line">        <tt class="py-keyword">return</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">socket</tt><tt class="py-op">.</tt><tt id="link-12" class="py-name" targets="Method tlslite.bufferedsocket.BufferedSocket.close()=tlslite.bufferedsocket.BufferedSocket-class.html#close,Method tlslite.integration.tlsasyncdispatchermixin.TLSAsyncDispatcherMixIn.close()=tlslite.integration.tlsasyncdispatchermixin.TLSAsyncDispatcherMixIn-class.html#close,Method tlslite.tlsrecordlayer.TLSRecordLayer.close()=tlslite.tlsrecordlayer.TLSRecordLayer-class.html#close"><a title="tlslite.bufferedsocket.BufferedSocket.close
+tlslite.integration.tlsasyncdispatchermixin.TLSAsyncDispatcherMixIn.close
+tlslite.tlsrecordlayer.TLSRecordLayer.close" class="py-name" href="#" onclick="return doclink('link-12', 'close', 'link-12');">close</a></tt><tt class="py-op">(</tt><tt class="py-op">)</tt> </tt>
+</div></div><a name="L93"></a><tt class="py-lineno">93</tt>  <tt class="py-line"> </tt><script type="text/javascript">
+<!--
+expandto(location.href);
+// -->
+</script>
+</pre>
+<br />
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="tlslite-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+      <th class="navbar" width="100%"></th>
+  </tr>
+</table>
+<table border="0" cellpadding="0" cellspacing="0" width="100%%">
+  <tr>
+    <td align="left" class="footer">
+    Generated by Epydoc 3.0.1
+    </td>
+    <td align="right" class="footer">
+      <a target="mainFrame" href="http://epydoc.sourceforge.net"
+        >http://epydoc.sourceforge.net</a>
+    </td>
+  </tr>
+</table>
+
+<script type="text/javascript">
+  <!--
+  // Private objects are initially displayed (because if
+  // javascript is turned off then we want them to be
+  // visible); but by default, we want to hide them.  So hide
+  // them unless we have a cookie that says to show them.
+  checkCookie();
+  // -->
+</script>
+</body>
+</html>

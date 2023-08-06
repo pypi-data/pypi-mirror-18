@@ -1,0 +1,34 @@
+km3modules.Delete
+=================
+
+.. currentmodule:: km3modules
+
+.. autoclass:: Delete
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Delete.__init__
+      ~Delete.add
+      ~Delete.configure
+      ~Delete.finish
+      ~Delete.get
+      ~Delete.pre_finish
+      ~Delete.process
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Delete.name
+   
+   

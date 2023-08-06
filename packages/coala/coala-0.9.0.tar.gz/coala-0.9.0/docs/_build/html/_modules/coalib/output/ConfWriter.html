@@ -1,0 +1,194 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>coalib.output.ConfWriter &#8212; coala 0.9.0.dev99999999999999 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.9.0.dev99999999999999',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="top" title="coala 0.9.0.dev99999999999999 documentation" href="../../../index.html" />
+    <link rel="up" title="coalib" href="../../coalib.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for coalib.output.ConfWriter</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">itertools</span> <span class="k">import</span> <span class="n">chain</span>
+<span class="kn">from</span> <span class="nn">types</span> <span class="k">import</span> <span class="n">MappingProxyType</span>
+
+<span class="kn">from</span> <span class="nn">pyprint.ClosableObject</span> <span class="k">import</span> <span class="n">ClosableObject</span>
+
+<span class="kn">from</span> <span class="nn">coala_utils.string_processing</span> <span class="k">import</span> <span class="n">escape</span>
+<span class="kn">from</span> <span class="nn">coalib.settings.Section</span> <span class="k">import</span> <span class="n">Section</span>
+
+
+<div class="viewcode-block" id="ConfWriter"><a class="viewcode-back" href="../../../coalib.output.html#coalib.output.ConfWriter.ConfWriter">[docs]</a><span class="k">class</span> <span class="nc">ConfWriter</span><span class="p">(</span><span class="n">ClosableObject</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">file_name</span><span class="p">,</span>
+                 <span class="n">key_value_delimiters</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;=&#39;</span><span class="p">,),</span>
+                 <span class="n">comment_separators</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;#&#39;</span><span class="p">,),</span>
+                 <span class="n">key_delimiters</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">,</span> <span class="s1">&#39; &#39;</span><span class="p">),</span>
+                 <span class="n">section_name_surroundings</span><span class="o">=</span><span class="n">MappingProxyType</span><span class="p">({</span><span class="s1">&#39;[&#39;</span><span class="p">:</span> <span class="s1">&#39;]&#39;</span><span class="p">}),</span>
+                 <span class="n">section_override_delimiters</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,),</span>
+                 <span class="n">unsavable_keys</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;save&#39;</span><span class="p">,)):</span>
+        <span class="n">ClosableObject</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__file_name</span> <span class="o">=</span> <span class="n">file_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__file_name</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__key_value_delimiters</span> <span class="o">=</span> <span class="n">key_value_delimiters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__comment_separators</span> <span class="o">=</span> <span class="n">comment_separators</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__key_delimiters</span> <span class="o">=</span> <span class="n">key_delimiters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__section_name_surroundings</span> <span class="o">=</span> <span class="n">section_name_surroundings</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__section_override_delimiters</span> <span class="o">=</span> <span class="n">section_override_delimiters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__unsavable_keys</span> <span class="o">=</span> <span class="n">unsavable_keys</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__closed</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__key_delimiter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__key_delimiters</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__key_value_delimiter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__key_value_delimiters</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__section_name_surrounding_beg</span><span class="p">,</span>
+         <span class="bp">self</span><span class="o">.</span><span class="n">__section_name_surrounding_end</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__section_name_surroundings</span><span class="o">.</span><span class="n">items</span><span class="p">())[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">_close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<div class="viewcode-block" id="ConfWriter.write_sections"><a class="viewcode-back" href="../../../coalib.output.html#coalib.output.ConfWriter.ConfWriter.write_sections">[docs]</a>    <span class="k">def</span> <span class="nf">write_sections</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sections</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__closed</span>
+
+        <span class="k">for</span> <span class="n">section</span> <span class="ow">in</span> <span class="n">sections</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write_section</span><span class="p">(</span><span class="n">sections</span><span class="p">[</span><span class="n">section</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="ConfWriter.write_section"><a class="viewcode-back" href="../../../coalib.output.html#coalib.output.ConfWriter.ConfWriter.write_section">[docs]</a>    <span class="k">def</span> <span class="nf">write_section</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">section</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__closed</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">section</span><span class="p">,</span> <span class="n">Section</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__write_section_name</span><span class="p">(</span><span class="n">section</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="n">keys</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">section_iter</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">__iter__</span><span class="p">(</span><span class="n">ignore_defaults</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="n">setting</span> <span class="o">=</span> <span class="n">section</span><span class="p">[</span><span class="nb">next</span><span class="p">(</span><span class="n">section_iter</span><span class="p">)]</span>
+                <span class="k">if</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">setting</span><span class="p">)</span> <span class="o">==</span> <span class="n">val</span> <span class="ow">and</span>
+                    <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_comment</span><span class="p">(</span><span class="n">setting</span><span class="o">.</span><span class="n">key</span><span class="p">)</span> <span class="ow">and</span>
+                    <span class="p">(</span>
+                        <span class="p">(</span><span class="n">setting</span><span class="o">.</span><span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__unsavable_keys</span><span class="p">)</span> <span class="ow">or</span>
+                        <span class="p">(</span><span class="ow">not</span> <span class="n">setting</span><span class="o">.</span><span class="n">from_cli</span><span class="p">))):</span>
+                    <span class="n">keys</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">setting</span><span class="o">.</span><span class="n">key</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="p">((</span><span class="n">setting</span><span class="o">.</span><span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__unsavable_keys</span><span class="p">)</span> <span class="ow">or</span>
+                      <span class="p">(</span><span class="ow">not</span> <span class="n">setting</span><span class="o">.</span><span class="n">from_cli</span><span class="p">)):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">__write_key_val</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+                    <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">setting</span><span class="o">.</span><span class="n">key</span><span class="p">]</span>
+                    <span class="n">val</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">setting</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__write_key_val</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">__write_section_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__closed</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__section_name_surrounding_beg</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span>
+                          <span class="bp">self</span><span class="o">.</span><span class="n">__section_name_surrounding_end</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__write_key_val</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">keys</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__closed</span>
+
+        <span class="k">if</span> <span class="n">keys</span> <span class="o">==</span> <span class="p">[]:</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_comment</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">val</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Add escape characters as appropriate</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">escape</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">chain</span><span class="p">([</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">],</span>
+                                  <span class="bp">self</span><span class="o">.</span><span class="n">__key_value_delimiters</span><span class="p">,</span>
+                                  <span class="bp">self</span><span class="o">.</span><span class="n">__comment_separators</span><span class="p">,</span>
+                                  <span class="bp">self</span><span class="o">.</span><span class="n">__key_delimiters</span><span class="p">,</span>
+                                  <span class="bp">self</span><span class="o">.</span><span class="n">__section_override_delimiters</span><span class="p">))</span>
+                <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">]</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="n">escape</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">chain</span><span class="p">([</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">__comment_separators</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__file</span><span class="o">.</span><span class="n">write</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">__key_delimiter</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span><span class="p">)</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span>
+                          <span class="bp">self</span><span class="o">.</span><span class="n">__key_value_delimiter</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">val</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="ConfWriter.is_comment"><a class="viewcode-back" href="../../../coalib.output.html#coalib.output.ConfWriter.ConfWriter.is_comment">[docs]</a>    <span class="k">def</span> <span class="nf">is_comment</span><span class="p">(</span><span class="n">key</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">key</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;comment&#39;</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  <li><a href="../../coalib.html">coalib</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, The coala Developers.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.8</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

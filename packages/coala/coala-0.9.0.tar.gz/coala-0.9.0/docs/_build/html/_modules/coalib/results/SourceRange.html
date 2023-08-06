@@ -1,0 +1,221 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>coalib.results.SourceRange &#8212; coala 0.9.0.dev99999999999999 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.9.0.dev99999999999999',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="top" title="coala 0.9.0.dev99999999999999 documentation" href="../../../index.html" />
+    <link rel="up" title="coalib" href="../../coalib.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for coalib.results.SourceRange</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">os.path</span> <span class="k">import</span> <span class="n">relpath</span>
+
+<span class="kn">from</span> <span class="nn">coala_utils.decorators</span> <span class="k">import</span> <span class="n">enforce_signature</span><span class="p">,</span> <span class="n">get_public_members</span>
+<span class="kn">from</span> <span class="nn">coalib.results.SourcePosition</span> <span class="k">import</span> <span class="n">SourcePosition</span>
+<span class="kn">from</span> <span class="nn">coalib.results.TextRange</span> <span class="k">import</span> <span class="n">TextRange</span>
+<span class="kn">from</span> <span class="nn">coalib.results.AbsolutePosition</span> <span class="k">import</span> <span class="n">AbsolutePosition</span>
+
+
+<div class="viewcode-block" id="SourceRange"><a class="viewcode-back" href="../../../coalib.results.html#coalib.results.SourceRange.SourceRange">[docs]</a><span class="k">class</span> <span class="nc">SourceRange</span><span class="p">(</span><span class="n">TextRange</span><span class="p">):</span>
+
+    <span class="nd">@enforce_signature</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">start</span><span class="p">:</span> <span class="n">SourcePosition</span><span class="p">,</span>
+                 <span class="n">end</span><span class="p">:</span> <span class="p">(</span><span class="n">SourcePosition</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates a new SourceRange.</span>
+
+<span class="sd">        :param start:       A SourcePosition indicating the start of the range.</span>
+<span class="sd">        :param end:         A SourcePosition indicating the end of the range.</span>
+<span class="sd">                            If ``None`` is given, the start object will be used</span>
+<span class="sd">                            here. end must be in the same file and be greater</span>
+<span class="sd">                            than start as negative ranges are not allowed.</span>
+<span class="sd">        :raises TypeError:  Raised when</span>
+<span class="sd">                            - start is not of type SourcePosition.</span>
+<span class="sd">                            - end is neither of type SourcePosition, nor is it</span>
+<span class="sd">                              None.</span>
+<span class="sd">        :raises ValueError: Raised when file of start and end mismatch.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">TextRange</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">file</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">end</span><span class="o">.</span><span class="n">file</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;File of start and end position do not match.&#39;</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="SourceRange.from_values"><a class="viewcode-back" href="../../../coalib.results.html#coalib.results.SourceRange.SourceRange.from_values">[docs]</a>    <span class="k">def</span> <span class="nf">from_values</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span>
+                    <span class="n">file</span><span class="p">,</span>
+                    <span class="n">start_line</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">start_column</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">end_line</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">end_column</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">SourcePosition</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">start_line</span><span class="p">,</span> <span class="n">start_column</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">end_line</span> <span class="ow">or</span> <span class="p">(</span><span class="n">end_column</span> <span class="ow">and</span> <span class="n">end_column</span> <span class="o">&gt;</span> <span class="n">start_column</span><span class="p">):</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="n">SourcePosition</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">end_line</span> <span class="k">if</span> <span class="n">end_line</span> <span class="k">else</span> <span class="n">start_line</span><span class="p">,</span>
+                                 <span class="n">end_column</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="n">cls</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="SourceRange.from_clang_range"><a class="viewcode-back" href="../../../coalib.results.html#coalib.results.SourceRange.SourceRange.from_clang_range">[docs]</a>    <span class="k">def</span> <span class="nf">from_clang_range</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="nb">range</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates a SourceRange from a clang SourceRange object.</span>
+
+<span class="sd">        :param range: A cindex.SourceRange object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">from_values</span><span class="p">(</span><span class="nb">range</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                               <span class="nb">range</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">line</span><span class="p">,</span>
+                               <span class="nb">range</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">column</span><span class="p">,</span>
+                               <span class="nb">range</span><span class="o">.</span><span class="n">end</span><span class="o">.</span><span class="n">line</span><span class="p">,</span>
+                               <span class="nb">range</span><span class="o">.</span><span class="n">end</span><span class="o">.</span><span class="n">column</span><span class="p">)</span></div>
+
+    <span class="nd">@classmethod</span>
+    <span class="nd">@enforce_signature</span>
+<div class="viewcode-block" id="SourceRange.from_absolute_position"><a class="viewcode-back" href="../../../coalib.results.html#coalib.results.SourceRange.SourceRange.from_absolute_position">[docs]</a>    <span class="k">def</span> <span class="nf">from_absolute_position</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span>
+                               <span class="n">file</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                               <span class="n">position_start</span><span class="p">:</span> <span class="n">AbsolutePosition</span><span class="p">,</span>
+                               <span class="n">position_end</span><span class="p">:</span> <span class="p">(</span><span class="n">AbsolutePosition</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates a SourceRange from a start and end positions.</span>
+
+<span class="sd">        :param file:           Name of the file.</span>
+<span class="sd">        :param position_start: Start of range given by AbsolutePosition.</span>
+<span class="sd">        :param position_end:   End of range given by AbsolutePosition or None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">SourcePosition</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">position_start</span><span class="o">.</span><span class="n">line</span><span class="p">,</span> <span class="n">position_start</span><span class="o">.</span><span class="n">column</span><span class="p">)</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">position_end</span><span class="p">:</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="n">SourcePosition</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">position_end</span><span class="o">.</span><span class="n">line</span><span class="p">,</span> <span class="n">position_end</span><span class="o">.</span><span class="n">column</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cls</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">file</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">file</span>
+
+    <span class="nd">@enforce_signature</span>
+<div class="viewcode-block" id="SourceRange.renamed_file"><a class="viewcode-back" href="../../../coalib.results.html#coalib.results.SourceRange.SourceRange.renamed_file">[docs]</a>    <span class="k">def</span> <span class="nf">renamed_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_diff_dict</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves the filename this source range refers to while taking the</span>
+<span class="sd">        possible file renamings in the given file_diff_dict into account:</span>
+
+<span class="sd">        :param file_diff_dict: A dictionary with filenames as key and their</span>
+<span class="sd">                               associated Diff objects as values.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">diff</span> <span class="o">=</span> <span class="n">file_diff_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">diff</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span>
+
+        <span class="k">return</span> <span class="n">diff</span><span class="o">.</span><span class="n">rename</span> <span class="k">if</span> <span class="n">diff</span><span class="o">.</span><span class="n">rename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">False</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span></div>
+
+<div class="viewcode-block" id="SourceRange.expand"><a class="viewcode-back" href="../../../coalib.results.html#coalib.results.SourceRange.SourceRange.expand">[docs]</a>    <span class="k">def</span> <span class="nf">expand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_contents</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Passes a new SourceRange that covers the same area of a file as this</span>
+<span class="sd">        one would. All values of None get replaced with absolute values.</span>
+
+<span class="sd">        values of None will be interpreted as follows:</span>
+<span class="sd">        self.start.line is None:   -&gt; 1</span>
+<span class="sd">        self.start.column is None: -&gt; 1</span>
+<span class="sd">        self.end.line is None:     -&gt; last line of file</span>
+<span class="sd">        self.end.column is None:   -&gt; last column of self.end.line</span>
+
+<span class="sd">        :param file_contents: File contents of the applicable file</span>
+<span class="sd">        :return:              TextRange with absolute values</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tr</span> <span class="o">=</span> <span class="n">TextRange</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_contents</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">SourceRange</span><span class="o">.</span><span class="n">from_values</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">,</span>
+                                       <span class="n">tr</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">line</span><span class="p">,</span>
+                                       <span class="n">tr</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">column</span><span class="p">,</span>
+                                       <span class="n">tr</span><span class="o">.</span><span class="n">end</span><span class="o">.</span><span class="n">line</span><span class="p">,</span>
+                                       <span class="n">tr</span><span class="o">.</span><span class="n">end</span><span class="o">.</span><span class="n">column</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">__json__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">use_relpath</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">_dict</span> <span class="o">=</span> <span class="n">get_public_members</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">use_relpath</span><span class="p">:</span>
+            <span class="n">_dict</span><span class="p">[</span><span class="s1">&#39;file&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">relpath</span><span class="p">(</span><span class="n">_dict</span><span class="p">[</span><span class="s1">&#39;file&#39;</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">_dict</span>
+
+    <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__contains__</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="ow">and</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">file</span> <span class="o">==</span> <span class="n">item</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">file</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  <li><a href="../../coalib.html">coalib</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, The coala Developers.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.8</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

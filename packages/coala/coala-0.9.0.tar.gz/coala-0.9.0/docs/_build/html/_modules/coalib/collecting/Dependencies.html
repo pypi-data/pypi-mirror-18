@@ -1,0 +1,135 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>coalib.collecting.Dependencies &#8212; coala 0.9.0.dev99999999999999 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.9.0.dev99999999999999',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="top" title="coala 0.9.0.dev99999999999999 documentation" href="../../../index.html" />
+    <link rel="up" title="coalib" href="../../coalib.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for coalib.collecting.Dependencies</h1><div class="highlight"><pre>
+<div class="viewcode-block" id="CircularDependencyError"><a class="viewcode-back" href="../../../coalib.collecting.html#coalib.collecting.Dependencies.CircularDependencyError">[docs]</a><span></span><span class="k">class</span> <span class="nc">CircularDependencyError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="CircularDependencyError.for_bears"><a class="viewcode-back" href="../../../coalib.collecting.html#coalib.collecting.Dependencies.CircularDependencyError.for_bears">[docs]</a>    <span class="k">def</span> <span class="nf">for_bears</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">bears</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates the CircularDependencyError with a helpful message about the</span>
+<span class="sd">        dependency.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">bear_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">bear</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">bear</span> <span class="ow">in</span> <span class="n">bears</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">cls</span><span class="p">(</span><span class="s1">&#39;Circular dependency detected: &#39;</span> <span class="o">+</span> <span class="s1">&#39; -&gt; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">bear_names</span><span class="p">))</span></div></div>
+
+
+<span class="k">def</span> <span class="nf">_resolve</span><span class="p">(</span><span class="n">bears</span><span class="p">,</span> <span class="n">resolved_bears</span><span class="p">,</span> <span class="n">seen</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">bear</span> <span class="ow">in</span> <span class="n">bears</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">bear</span> <span class="ow">in</span> <span class="n">resolved_bears</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="n">missing</span> <span class="o">=</span> <span class="n">bear</span><span class="o">.</span><span class="n">missing_dependencies</span><span class="p">(</span><span class="n">resolved_bears</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">missing</span><span class="p">:</span>
+            <span class="n">resolved_bears</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bear</span><span class="p">)</span>
+            <span class="k">continue</span>
+
+        <span class="k">if</span> <span class="n">bear</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">:</span>
+            <span class="n">seen</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bear</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">CircularDependencyError</span><span class="o">.</span><span class="n">for_bears</span><span class="p">(</span><span class="n">seen</span><span class="p">)</span>
+
+        <span class="n">seen</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bear</span><span class="p">)</span>
+        <span class="n">resolved_bears</span> <span class="o">=</span> <span class="n">_resolve</span><span class="p">(</span><span class="n">missing</span><span class="p">,</span> <span class="n">resolved_bears</span><span class="p">,</span> <span class="n">seen</span><span class="p">)</span>
+        <span class="n">resolved_bears</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bear</span><span class="p">)</span>
+        <span class="n">seen</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">bear</span><span class="p">)</span>  <span class="c1"># Already resolved, no candidate for circular dep</span>
+
+    <span class="k">return</span> <span class="n">resolved_bears</span>
+
+
+<div class="viewcode-block" id="resolve"><a class="viewcode-back" href="../../../coalib.collecting.html#coalib.collecting.Dependencies.resolve">[docs]</a><span class="k">def</span> <span class="nf">resolve</span><span class="p">(</span><span class="n">bears</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Collects all dependencies of the given bears. This will also remove</span>
+<span class="sd">    duplicates.</span>
+
+<span class="sd">    :param bears: The given bears. Will not be modified.</span>
+<span class="sd">    :return:      The new list of bears, sorted so that it can be executed</span>
+<span class="sd">                  sequentially without dependency issues.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_resolve</span><span class="p">(</span><span class="n">bears</span><span class="p">,</span> <span class="p">[],</span> <span class="p">[])</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  <li><a href="../../coalib.html">coalib</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, The coala Developers.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.8</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

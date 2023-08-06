@@ -1,0 +1,185 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>coalib.bearlib.aspects.taste &#8212; coala 0.9.0.dev99999999999999 documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '0.9.0.dev99999999999999',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="top" title="coala 0.9.0.dev99999999999999 documentation" href="../../../../index.html" />
+    <link rel="up" title="coalib.bearlib.aspects" href="../aspects.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for coalib.bearlib.aspects.taste</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">coala_utils.decorators</span> <span class="k">import</span> <span class="n">enforce_signature</span>
+
+<span class="kn">from</span> <span class="nn">coalib.bearlib.languages</span> <span class="k">import</span> <span class="n">Languages</span>
+
+
+<div class="viewcode-block" id="TasteError"><a class="viewcode-back" href="../../../../coalib.bearlib.aspects.html#coalib.bearlib.aspects.taste.TasteError">[docs]</a><span class="k">class</span> <span class="nc">TasteError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A taste is not allowed to be accessed.</span>
+<span class="sd">    &quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="TasteMeta"><a class="viewcode-back" href="../../../../coalib.bearlib.aspects.html#coalib.bearlib.aspects.taste.TasteMeta">[docs]</a><span class="k">class</span> <span class="nc">TasteMeta</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Metaclass for :class:`coalib.bearlib.aspectclasses.Taste`</span>
+
+<span class="sd">    Allows defining taste cast type via :meth:`.__getitem__`, like:</span>
+
+<span class="sd">    &gt;&gt;&gt; Taste[int]().cast_type</span>
+<span class="sd">    &lt;class &#39;int&#39;&gt;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">_cast_type</span><span class="p">):</span>
+        <span class="k">class</span> <span class="nc">Taste</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+            <span class="n">cast_type</span> <span class="o">=</span> <span class="n">_cast_type</span>
+
+        <span class="n">Taste</span><span class="o">.</span><span class="n">__name__</span> <span class="o">=</span> <span class="n">Taste</span><span class="o">.</span><span class="n">__qualname__</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">[</span><span class="si">%s</span><span class="s1">]&#39;</span> <span class="o">%</span> <span class="p">(</span>
+            <span class="n">cls</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="n">_cast_type</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Taste</span></div>
+
+
+<div class="viewcode-block" id="Taste"><a class="viewcode-back" href="../../../../coalib.bearlib.aspects.html#coalib.bearlib.aspects.taste.Taste">[docs]</a><span class="k">class</span> <span class="nc">Taste</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">TasteMeta</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Defines tastes in aspectclass definitions.</span>
+
+<span class="sd">    Tastes can be made only available for certain languages by</span>
+<span class="sd">    providing a ``tuple`` of language identifiers on instantiation:</span>
+
+<span class="sd">    &gt;&gt;&gt; Taste[bool](</span>
+<span class="sd">    ...     &#39;Ignore ``using`` directives in C#.&#39;,</span>
+<span class="sd">    ...     (True, False), default=False,</span>
+<span class="sd">    ...     languages=(&#39;CSharp&#39;, )</span>
+<span class="sd">    ... ).languages</span>
+<span class="sd">    (C#,)</span>
+
+<span class="sd">    If no `languages` are given, they will be available for any language.</span>
+<span class="sd">    See :class:`coalib.bearlib.aspectclasses.Root` for further usage.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cast_type</span> <span class="o">=</span> <span class="nb">str</span>
+
+    <span class="nd">@enforce_signature</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">description</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">suggested_values</span><span class="p">:</span> <span class="nb">tuple</span><span class="o">=</span><span class="p">(),</span>
+                 <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">languages</span><span class="p">:</span> <span class="nb">tuple</span><span class="o">=</span><span class="p">()):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates a new taste that can be optionally only available for the</span>
+<span class="sd">        given `languages`, which must be language identifiers supported by</span>
+<span class="sd">        :class:`coalib.bearlib.languages.Language`.</span>
+
+<span class="sd">        No need to specify name an cast type:</span>
+
+<span class="sd">        The taste name is defined by the taste&#39;s attribute name in an</span>
+<span class="sd">        aspectclass definition.</span>
+
+<span class="sd">        The value cast type is defined via indexing on class level.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="n">description</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">suggested_values</span> <span class="o">=</span> <span class="n">suggested_values</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">default</span> <span class="o">=</span> <span class="n">default</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">languages</span> <span class="o">=</span> <span class="n">Languages</span><span class="p">(</span><span class="n">languages</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">owner</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Checks availability of taste for aspectclass instance `obj`&#39;s</span>
+<span class="sd">        ``.language`` before returning the specific taste value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># ==&gt; access from aspectclass instance</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">languages</span> <span class="ow">and</span> <span class="n">obj</span><span class="o">.</span><span class="n">language</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">languages</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">TasteError</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.</span><span class="si">%s</span><span class="s1"> is not available for </span><span class="si">%s</span><span class="s1">.&#39;</span> <span class="o">%</span> <span class="p">(</span>
+                    <span class="nb">type</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">__qualname__</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">obj</span><span class="o">.</span><span class="n">language</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">__dict__</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+        <span class="c1"># ==&gt; access from aspectclass</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Ensures that `value` is only set once in `obj`&#39;s ``.__dict__``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">__dict__</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
+                <span class="s2">&quot;can&#39;t set taste values of aspectclass instances&quot;</span><span class="p">)</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">__dict__</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cast_type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  <li><a href="../../../coalib.html">coalib</a><ul>
+  <li><a href="../../bearlib.html">coalib.bearlib</a><ul>
+  <li><a href="../aspects.html">coalib.bearlib.aspects</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, The coala Developers.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.8</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

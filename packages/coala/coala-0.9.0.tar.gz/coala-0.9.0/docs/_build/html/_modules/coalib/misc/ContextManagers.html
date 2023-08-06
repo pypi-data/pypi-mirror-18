@@ -1,0 +1,337 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>coalib.misc.ContextManagers &#8212; coala 0.9.0.dev99999999999999 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.9.0.dev99999999999999',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="top" title="coala 0.9.0.dev99999999999999 documentation" href="../../../index.html" />
+    <link rel="up" title="coalib" href="../../coalib.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for coalib.misc.ContextManagers</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">builtins</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">platform</span>
+<span class="kn">import</span> <span class="nn">signal</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">from</span> <span class="nn">contextlib</span> <span class="k">import</span> <span class="n">closing</span><span class="p">,</span> <span class="n">contextmanager</span>
+<span class="kn">from</span> <span class="nn">io</span> <span class="k">import</span> <span class="n">StringIO</span>
+
+<span class="kn">from</span> <span class="nn">coalib.misc.MutableValue</span> <span class="k">import</span> <span class="n">MutableValue</span>
+
+
+<span class="nd">@contextmanager</span>
+<div class="viewcode-block" id="subprocess_timeout"><a class="viewcode-back" href="../../../coalib.misc.html#coalib.misc.ContextManagers.subprocess_timeout">[docs]</a><span class="k">def</span> <span class="nf">subprocess_timeout</span><span class="p">(</span><span class="n">sub_process</span><span class="p">,</span> <span class="n">seconds</span><span class="p">,</span> <span class="n">kill_pg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Kill subprocess if the sub process takes more the than the timeout.</span>
+
+<span class="sd">    :param sub_process: The sub process to run.</span>
+<span class="sd">    :param seconds:     The number of seconds to allow the test to run for. If</span>
+<span class="sd">                        set to 0 or a negative value, it waits indefinitely.</span>
+<span class="sd">                        Floats can be used to specify units smaller than</span>
+<span class="sd">                        seconds.</span>
+<span class="sd">    :param kill_pg:     Boolean whether to kill the process group or only this</span>
+<span class="sd">                        process. (not applicable for windows)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">timedout</span> <span class="o">=</span> <span class="n">MutableValue</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">seconds</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">timedout</span>
+        <span class="k">return</span>
+
+    <span class="n">finished</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;Windows&#39;</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
+        <span class="n">kill_pg</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">kill_it</span><span class="p">():</span>
+        <span class="n">finished</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">seconds</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">finished</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+            <span class="n">timedout</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="n">kill_pg</span><span class="p">:</span>
+                <span class="n">pgid</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getpgid</span><span class="p">(</span><span class="n">sub_process</span><span class="o">.</span><span class="n">pid</span><span class="p">)</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">kill</span><span class="p">(</span><span class="n">sub_process</span><span class="o">.</span><span class="n">pid</span><span class="p">,</span> <span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">kill_pg</span><span class="p">:</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">killpg</span><span class="p">(</span><span class="n">pgid</span><span class="p">,</span> <span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">)</span>
+
+    <span class="n">thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;timeout-killer&#39;</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">kill_it</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="k">yield</span> <span class="n">timedout</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">finished</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+        <span class="n">thread</span><span class="o">.</span><span class="n">join</span><span class="p">()</span></div>
+
+
+<span class="nd">@contextmanager</span>
+<div class="viewcode-block" id="replace_stdout"><a class="viewcode-back" href="../../../coalib.misc.html#coalib.misc.ContextManagers.replace_stdout">[docs]</a><span class="k">def</span> <span class="nf">replace_stdout</span><span class="p">(</span><span class="n">replacement</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Replaces stdout with the replacement, yields back to the caller and then</span>
+<span class="sd">    reverts everything back.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_stdout</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span> <span class="o">=</span> <span class="n">replacement</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span> <span class="o">=</span> <span class="n">_stdout</span></div>
+
+
+<span class="nd">@contextmanager</span>
+<div class="viewcode-block" id="replace_stderr"><a class="viewcode-back" href="../../../coalib.misc.html#coalib.misc.ContextManagers.replace_stderr">[docs]</a><span class="k">def</span> <span class="nf">replace_stderr</span><span class="p">(</span><span class="n">replacement</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Replaces stderr with the replacement, yields back to the caller and then</span>
+<span class="sd">    reverts everything back.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_stderr</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span> <span class="o">=</span> <span class="n">replacement</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span> <span class="o">=</span> <span class="n">_stderr</span></div>
+
+
+<span class="nd">@contextmanager</span>
+<div class="viewcode-block" id="suppress_stdout"><a class="viewcode-back" href="../../../coalib.misc.html#coalib.misc.ContextManagers.suppress_stdout">[docs]</a><span class="k">def</span> <span class="nf">suppress_stdout</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Suppresses everything going to stdout.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">devnull</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">devnull</span><span class="p">,</span> <span class="n">replace_stdout</span><span class="p">(</span><span class="n">devnull</span><span class="p">):</span>
+        <span class="k">yield</span></div>
+
+
+<span class="nd">@contextmanager</span>
+<div class="viewcode-block" id="retrieve_stdout"><a class="viewcode-back" href="../../../coalib.misc.html#coalib.misc.ContextManagers.retrieve_stdout">[docs]</a><span class="k">def</span> <span class="nf">retrieve_stdout</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Yields a StringIO object from which one can read everything that was</span>
+<span class="sd">    printed to stdout. (It won&#39;t be printed to the real stdout!)</span>
+
+<span class="sd">    Example usage:</span>
+
+<span class="sd">    with retrieve_stdout() as stdout:</span>
+<span class="sd">        print(&quot;something&quot;)  # Won&#39;t print to the console</span>
+<span class="sd">        what_was_printed = stdout.getvalue()  # Save the value</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">closing</span><span class="p">(</span><span class="n">StringIO</span><span class="p">())</span> <span class="k">as</span> <span class="n">sio</span><span class="p">,</span> <span class="n">replace_stdout</span><span class="p">(</span><span class="n">sio</span><span class="p">):</span>
+        <span class="n">oldprint</span> <span class="o">=</span> <span class="n">builtins</span><span class="o">.</span><span class="n">print</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Overriding stdout doesn&#39;t work with libraries, this ensures even</span>
+            <span class="c1"># cached variables take this up. Well... it works.</span>
+            <span class="k">def</span> <span class="nf">newprint</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;file&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sio</span>
+                <span class="n">oldprint</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+            <span class="n">builtins</span><span class="o">.</span><span class="n">print</span> <span class="o">=</span> <span class="n">newprint</span>
+            <span class="k">yield</span> <span class="n">sio</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">builtins</span><span class="o">.</span><span class="n">print</span> <span class="o">=</span> <span class="n">oldprint</span></div>
+
+
+<span class="nd">@contextmanager</span>
+<div class="viewcode-block" id="retrieve_stderr"><a class="viewcode-back" href="../../../coalib.misc.html#coalib.misc.ContextManagers.retrieve_stderr">[docs]</a><span class="k">def</span> <span class="nf">retrieve_stderr</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Yields a StringIO object from which one can read everything that was</span>
+<span class="sd">    printed to stderr. (It won&#39;t be printed to the real stderr!)</span>
+
+<span class="sd">    Example usage:</span>
+
+<span class="sd">    with retrieve_stderr() as stderr:</span>
+<span class="sd">        print(&quot;something&quot;)  # Won&#39;t print to the console</span>
+<span class="sd">        what_was_printed = stderr.getvalue()  # Save the value</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">closing</span><span class="p">(</span><span class="n">StringIO</span><span class="p">())</span> <span class="k">as</span> <span class="n">sio</span><span class="p">,</span> <span class="n">replace_stderr</span><span class="p">(</span><span class="n">sio</span><span class="p">):</span>
+        <span class="n">oldprint</span> <span class="o">=</span> <span class="n">builtins</span><span class="o">.</span><span class="n">print</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Overriding stderr doesn&#39;t work with libraries, this ensures even</span>
+            <span class="c1"># cached variables take this up. Well... it works.</span>
+            <span class="k">def</span> <span class="nf">newprint</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;file&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sio</span>
+                <span class="n">oldprint</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+            <span class="n">builtins</span><span class="o">.</span><span class="n">print</span> <span class="o">=</span> <span class="n">newprint</span>
+            <span class="k">yield</span> <span class="n">sio</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">builtins</span><span class="o">.</span><span class="n">print</span> <span class="o">=</span> <span class="n">oldprint</span></div>
+
+
+<span class="nd">@contextmanager</span>
+<div class="viewcode-block" id="simulate_console_inputs"><a class="viewcode-back" href="../../../coalib.misc.html#coalib.misc.ContextManagers.simulate_console_inputs">[docs]</a><span class="k">def</span> <span class="nf">simulate_console_inputs</span><span class="p">(</span><span class="o">*</span><span class="n">inputs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Does some magic to simulate the given inputs to any calls to the ``input``</span>
+<span class="sd">    builtin. This yields back an InputGenerator object so you can check</span>
+<span class="sd">    which input was already used and append any additional inputs you want.</span>
+<span class="sd">    Example:</span>
+
+<span class="sd">        with simulate_console_inputs(0, 1, 2) as generator:</span>
+<span class="sd">            assert(input() == 0)</span>
+<span class="sd">            assert(generator.last_input == 0)</span>
+<span class="sd">            generator.inputs.append(3)</span>
+<span class="sd">            assert(input() == 1)</span>
+<span class="sd">            assert(input() == 2)</span>
+<span class="sd">            assert(input() == 3)</span>
+<span class="sd">            assert(generator.last_input == 3)</span>
+
+<span class="sd">    :param inputs:      Any inputs to simulate.</span>
+<span class="sd">    :raises ValueError: Raised when was asked for more input but there&#39;s no</span>
+<span class="sd">                        more provided.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">class</span> <span class="nc">InputGenerator</span><span class="p">:</span>
+
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_input</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span>
+
+        <span class="k">def</span> <span class="nf">generate_input</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prompt</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">prompt</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_input</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">last_input</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Asked for more input, but no more was &#39;</span>
+                                 <span class="s1">&#39;provided from `simulate_console_inputs`.&#39;</span><span class="p">)</span>
+
+    <span class="n">input_generator</span> <span class="o">=</span> <span class="n">InputGenerator</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">inputs</span><span class="p">))</span>
+    <span class="n">_input</span> <span class="o">=</span> <span class="n">builtins</span><span class="o">.</span><span class="n">input</span>
+    <span class="n">builtins</span><span class="o">.</span><span class="n">input</span> <span class="o">=</span> <span class="n">input_generator</span><span class="o">.</span><span class="n">generate_input</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">input_generator</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">builtins</span><span class="o">.</span><span class="n">input</span> <span class="o">=</span> <span class="n">_input</span></div>
+
+
+<span class="nd">@contextmanager</span>
+<div class="viewcode-block" id="make_temp"><a class="viewcode-back" href="../../../coalib.misc.html#coalib.misc.ContextManagers.make_temp">[docs]</a><span class="k">def</span> <span class="nf">make_temp</span><span class="p">(</span><span class="n">suffix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;tmp&#39;</span><span class="p">,</span> <span class="nb">dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates a temporary file with a closed stream and deletes it when done.</span>
+
+<span class="sd">    :return: A contextmanager retrieving the file path.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">temporary</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkstemp</span><span class="p">(</span><span class="n">suffix</span><span class="o">=</span><span class="n">suffix</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="n">prefix</span><span class="p">,</span> <span class="nb">dir</span><span class="o">=</span><span class="nb">dir</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">temporary</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">temporary</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">temporary</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span></div>
+
+
+<span class="nd">@contextmanager</span>
+<div class="viewcode-block" id="prepare_file"><a class="viewcode-back" href="../../../coalib.misc.html#coalib.misc.ContextManagers.prepare_file">[docs]</a><span class="k">def</span> <span class="nf">prepare_file</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span>
+                 <span class="n">filename</span><span class="p">,</span>
+                 <span class="n">force_linebreaks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="n">create_tempfile</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="n">tempfile_kwargs</span><span class="o">=</span><span class="p">{}):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Can create a temporary file (if filename is None) with the lines.</span>
+<span class="sd">    Can also add a trailing newline to each line specified if needed.</span>
+
+<span class="sd">    :param lines:            The lines from the file. (list or tuple of strings)</span>
+<span class="sd">    :param filename:         The filename to be prepared.</span>
+<span class="sd">    :param force_linebreaks: Whether to append newlines at each line if needed.</span>
+<span class="sd">    :param create_tempfile:  Whether to save lines in tempfile if needed.</span>
+<span class="sd">    :param tempfile_kwargs:  Kwargs passed to tempfile.mkstemp().</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">force_linebreaks</span><span class="p">:</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">lines</span><span class="p">)(</span><span class="n">line</span> <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="n">line</span><span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span>
+                            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">create_tempfile</span> <span class="ow">and</span> <span class="n">filename</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="s1">&#39;dummy_file_name&#39;</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">create_tempfile</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">make_temp</span><span class="p">(</span><span class="o">**</span><span class="n">tempfile_kwargs</span><span class="p">)</span> <span class="k">as</span> <span class="n">filename</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+                <span class="n">file</span><span class="o">.</span><span class="n">writelines</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+            <span class="k">yield</span> <span class="n">lines</span><span class="p">,</span> <span class="n">filename</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">lines</span><span class="p">,</span> <span class="n">filename</span></div>
+
+
+<span class="nd">@contextmanager</span>
+<div class="viewcode-block" id="change_directory"><a class="viewcode-back" href="../../../coalib.misc.html#coalib.misc.ContextManagers.change_directory">[docs]</a><span class="k">def</span> <span class="nf">change_directory</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+    <span class="n">old_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">old_dir</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  <li><a href="../../coalib.html">coalib</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, The coala Developers.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.8</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

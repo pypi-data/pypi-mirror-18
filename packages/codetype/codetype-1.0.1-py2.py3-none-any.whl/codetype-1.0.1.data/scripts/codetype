@@ -1,0 +1,47 @@
+#!python
+import argparse
+from codetype import identify, __version__
+
+parser = argparse.ArgumentParser(
+    prog="codetype",
+    description="A source code identification tool."
+)
+parser.add_argument(
+    "--version",
+    action="version",
+    version="codetype version {0}".format(__version__)
+)
+parser.add_argument(
+    "file",
+    nargs=1,
+    help="path to unknown source code"
+)
+parser.add_argument(
+    "-v",
+    "--verbose",
+    action="store_true",
+    help="use verbose output"
+)
+parser.add_argument(
+    "-m",
+    "--max",
+    type=int,
+    help="max number of languages to return"
+)
+parser.add_argument(
+    "-o",
+    "--only",
+    nargs="+",
+    help="test only the specified formats"
+)
+
+args = vars(parser.parse_args())
+result = identify(args["file"][0], verbose=args["verbose"], only=args["only"])
+if result == -1:
+    print("Language not recognized.")
+else:
+    if args["verbose"]:
+        result = sorted(result, key=result.get, reverse=True)
+        if args["max"]:
+            result = result[:args["max"]]
+    print(", ".join(result) if args["verbose"] else result)

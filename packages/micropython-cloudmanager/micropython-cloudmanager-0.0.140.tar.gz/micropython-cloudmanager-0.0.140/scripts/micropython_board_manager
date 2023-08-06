@@ -1,0 +1,155 @@
+#!/usr/bin/env python
+from __future__ import print_function
+import argparse
+import json
+import logging
+import os
+import sys
+from sys import platform
+import hostlists
+# from cloudmanager.board import copy_file_to_boards, execute_command_on_board, registered_boards, \
+#     list_registered_boards, print_on_board, rename_board
+from cloudmanager.board import MicropythonBoards, MicropythonBoard, MACROS
+from cloudmanager.configure_device import active_connection_nmcli, active_connection_password_nmcli, \
+    active_connection_field_nmcli, action_configure_device, scan_for_micropython_boards
+from cloudmanager.server import RDB_FILE, run_server, quit, status
+from cloudmanager.utility import header
+
+
+logger_name = __name__
+if logger_name == '__main__':
+    logger_name = os.path.basename(sys.argv[0])
+logger = logging.getLogger(logger_name)
+
+
+class ConnectionError(Exception):
+    pass
+
+
+def read_rc_config():
+    rc_config = {}
+    rc_config_file = os.path.expanduser('~/.micropython_bootconfig.json')
+    if os.path.exists(rc_config_file):
+        with open(rc_config_file) as read_fh:
+            rc_config = json.load(read_fh)
+    return rc_config
+
+
+if __name__ == "__main__":
+    # logging.basicConfig(level=logging.DEBUG)
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    subparsers = parser.add_subparsers(
+        dest='operation', help='Operations',
+    )
+    board_macro_parser = subparsers.add_parser('board', help='Execute a macro on the board')
+    board_scan_parser = subparsers.add_parser('board-scan', help='Board scan')
+    board_scan_parser = subparsers.add_parser('board-list', help='Board list')
+    board_execute_parser = subparsers.add_parser('board-execute', help='Board execute')
+    board_rename_parser = subparsers.add_parser('board-rename', help='Board rename')
+    board_upload_parser = subparsers.add_parser('board-upload', help='Board upload')
+    board_install_parser = subparsers.add_parser('board-install', help='Install a package on a board')
+
+    if platform == 'linux':
+        board_configuration_parser = subparsers.add_parser('board-config', help='Board configuration')
+        board_configuration_parser.add_argument('board', default=None, help='Micropython boards to configure')
+        board_configuration_parser.add_argument('--name', default=None, help="Name of the board (default to the board name)")
+        board_configuration_parser.add_argument(
+            '--keyval', action='append', default=[], help='Add arbitrary key/values to the configuration'
+        )
+
+        board_configuration_parser.add_argument('--ssid', default=None, help="The wifi network to connect to")
+        board_configuration_parser.add_argument('--wifi_passphrase', default=None, help='The passphrase/password for the wifi network')
+
+        board_configuration_parser.add_argument('--redis_server', default=None, help='Redis server address')
+        board_configuration_parser.add_argument('--redis_port', default='18266', help='Redis server port')
+
+    board_macro_parser.add_argument('board', default=None, help='Board(s) to execute the code on')
+    board_macro_parser.add_argument('macro', default='ls', help="Macro command to execute on the board")
+    board_macro_parser.add_argument('arguments', nargs='?', help='Macro arguments')
+
+    board_execute_parser.add_argument('board', default=None, help='Board(s) to execute the code on')
+    board_execute_parser.add_argument('--debug', default=False, action='store_true', help='Enable debug logging')
+
+    board_rename_parser.add_argument('board', default=None, help='Board to rename')
+    board_rename_parser.add_argument('name', help='New board name')
+
+    board_upload_parser.add_argument('board', default=None, help='Message to print on the console')
+    board_upload_parser.add_argument('filename', help='File to upload')
+    board_upload_parser.add_argument('dest', default=None, help='Destination directory')
+
+    board_install_parser.add_argument('board', default=None, help='Board(s) to install on')
+    board_install_parser.add_argument('package', default=None, help="Package to install")
+
+    server_start_parser = subparsers.add_parser('server-start', help='Server start')
+    server_start_parser.add_argument('--port', default='18266', type=int, help='Redis server port')
+    server_start_parser.add_argument('--rdbfile', default=RDB_FILE, help='Redis server rdb backing file')
+
+    server_stop_parser = subparsers.add_parser('server-stop', help='Stop server')
+    server_stop_parser.add_argument('--rdbfile', default=RDB_FILE, help='Redis server rdb backing file')
+
+    server_status_parser = subparsers.add_parser('server-status', help='Server status')
+    server_status_parser.add_argument('--rdbfile', default=RDB_FILE, help='Redis server rdb backing file')
+
+    args = parser.parse_args()
+    if args.operation == 'board-configure':
+        if not args.ssid:
+            ssid=active_connection_nmcli()
+            if ssid:
+                wifi_passphrase = active_connection_password_nmcli(ssid)
+        if not args.redis_server:
+            args.redis_server = active_connection_field_nmcli(ssid, 'IP4.ADDRESS[1]').split('/')[0]
+        action_configure_device(args)
+    elif args.operation == 'board-scan':
+        print('\n'.join(scan_for_micropython_boards()))
+    elif args.operation == 'board-execute':
+        command = sys.stdin.read()
+        for result in MicropythonBoards().execute(command, range=args.board):
+            header('Executing on %r' % (result.board.name))
+            print(result.read().decode())
+    elif args.operation == 'board-rename':
+        MicropythonBoard(args.board).rename(args.name)
+    elif args.operation == 'board-list':
+        format = "%-10.10s %-50.50s %-10.10s"
+        print(format % ('Name', 'Platform', 'State'))
+        all_boards = {}
+        for board in MicropythonBoards().all():
+            all_boards[board.name] = board
+
+        name_list = list(all_boards.keys())
+        name_list.sort()
+        for name in name_list:
+            board = all_boards[name]
+            if board.state in ['idle']:
+                print(format % (board.name, board.platform, board.state))
+    elif args.operation == 'board-upload':
+        MicropythonBoards().upload(filename=args.filename, dest=args.dest, range=args.board)
+    elif args.operation == 'board-install':
+        MicropythonBoards().install(package_name=args.package, range=args.board)
+    elif args.operation == 'board':
+        if args.macro in MACROS.keys():
+            for result in MicropythonBoards().macro(macro=args.macro, args=args.arguments, range=args.board):
+                header('%r on %r' % (args.macro, result.board.name))
+                print(result.read().decode().strip())
+        else:
+            print('No macro named %r' % args.macro)
+    elif args.operation in ['server-shutdown', 'server-stop']:
+        try:
+            quit(args.rdbfile)
+            print('Service is shutdown')
+        except ValueError:
+            print('Server shutdown failed')
+            sys.exit(1)
+        sys.exit(0)
+    elif args.operation == 'server-status':
+        current_status = status(args.rdbfile)
+        if current_status:
+            print(current_status)
+        else:
+            print('Server is not running')
+        sys.exit(0)
+    elif args.operation in ['server-start']:
+        run_server(args.port, args.rdbfile)
+    else:
+        parser.print_usage()

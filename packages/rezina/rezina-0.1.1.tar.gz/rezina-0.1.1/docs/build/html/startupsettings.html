@@ -1,0 +1,180 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Startup setttings &mdash; regina 1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="regina 1 documentation" href="index.html" />
+    <link rel="next" title="run python code with rezina" href="typology.html" />
+    <link rel="prev" title="periodically schedule" href="periodicallyschedule.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="typology.html" title="run python code with rezina"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="periodicallyschedule.html" title="periodically schedule"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">regina 1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="startup-setttings">
+<h1>Startup setttings<a class="headerlink" href="#startup-setttings" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="master">
+<h2>Master<a class="headerlink" href="#master" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal"><span class="pre">rezina-cli</span> <span class="pre">runmaster</span></code></p>
+<p>options:</p>
+<p><code class="docutils literal"><span class="pre">-H</span> <span class="pre">or</span> <span class="pre">--host</span></code>, the ip of machine running rezina master, the default value is IPv4 address of
+fully qualified domain name, If name is omitted or empty, it is <code class="docutils literal"><span class="pre">127.0.0.1</span></code>.</p>
+<p><code class="docutils literal"><span class="pre">-P</span> <span class="pre">or</span> <span class="pre">--port</span></code>, master_port, <strong>12345</strong> by default.</p>
+<p><code class="docutils literal"><span class="pre">-D</span></code>, run master as a daemon process, example: <code class="docutils literal"><span class="pre">rezina-cli</span> <span class="pre">runmaster</span> <span class="pre">-D</span></code></p>
+<p><code class="docutils literal"><span class="pre">-L</span> <span class="pre">or</span> <span class="pre">--log_dir</span></code>, rezina log directory, you should use <strong>absolutely path</strong> for this option.
+every typology has its own log file which name is the same with typology name, you could find the error
+which tells why typology does not run correctly. it is <code class="docutils literal"><span class="pre">~/rezina/log</span></code> by default.</p>
+<p><code class="docutils literal"><span class="pre">-W</span> <span class="pre">or</span> <span class="pre">--worksapce</span></code>, workerspace directory.  you should use <strong>absulotely path</strong> for this option. <code class="docutils literal"><span class="pre">~/rezina/workerspace</span></code> by default.
+when we run a python function in a module with rezina, it is actually running on
+rezina workers, therefore workers must have the module and then import the function and run it.</p>
+<p>To do this, rezina will send all files under workspace directory to workers, so you should put python files into workspace directory.
+but this does not mean we need put all depandencies into workspace, if you imported some third-part python libs in your module,
+there is no need to put them into workspace too, just make sure all workers also installed these libs
+and can be imported by python. when typology run, workers will import those libs as python dose and run your function.</p>
+<p><code class="docutils literal"><span class="pre">-HP</span> <span class="pre">or</span> <span class="pre">--http_port</span></code>, the port for access web console, <strong>31218</strong> by default,
+after master started, you could open broswer and go to master_ip:31218 to see the web console.</p>
+<p><code class="docutils literal"><span class="pre">-R</span></code> refresh (or recreate) DB file, it is <code class="docutils literal"><span class="pre">False</span></code> by defaut, this is a <strong>error prone</strong> option,
+rezina master is a sevice set, and every service need a tcp address for communcating with workers, after the first time rezina master started,
+actually all tcp_address of services include master_ip and master_port are stored in db,
+if rezina master stoped (killed by accident or poweroff), when we re-run master without -R option, it will use those saved tcp_addresses
+and then master can still talk to workers.</p>
+<p><strong>If your really want change master_ip and master_port</strong>, <strong>stop all workers first and restart master with -R option</strong>.</p>
+<p>this option is only effect tcp_address of service, the other options(except master_ip and master_port) take effective every time re-run master</p>
+</div>
+<div class="section" id="worker">
+<h2>Worker<a class="headerlink" href="#worker" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal"><span class="pre">rezina-cli</span> <span class="pre">runworker</span></code></p>
+<p>options:</p>
+<p><code class="docutils literal"><span class="pre">-H</span> <span class="pre">or</span> <span class="pre">--host</span></code>, master_ip</p>
+<p><code class="docutils literal"><span class="pre">-P</span> <span class="pre">or</span> <span class="pre">--port</span></code>, master_port.  (default 12345)</p>
+<p><code class="docutils literal"><span class="pre">-WIP</span> <span class="pre">or</span> <span class="pre">--worker_ip</span></code>, worker_ip, this is the ip of machine used to connect master.</p>
+<p><code class="docutils literal"><span class="pre">-D</span></code> run worker as a daemon process, it is False by default</p>
+</div>
+<div class="section" id="console">
+<h2>Console<a class="headerlink" href="#console" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal"><span class="pre">rezina-cli</span> <span class="pre">runconsole</span></code></p>
+<p>options:</p>
+<p><code class="docutils literal"><span class="pre">-H</span> <span class="pre">or</span> <span class="pre">--host</span></code>, master_ip</p>
+<p><code class="docutils literal"><span class="pre">-P</span> <span class="pre">or</span> <span class="pre">--port</span></code>, master_port  (default 12345)</p>
+<p>you could use console to see settings</p>
+<p>start console with <code class="docutils literal"><span class="pre">rezina</span> <span class="pre">runconsole</span></code></p>
+<p>run <code class="docutils literal"><span class="pre">list</span> <span class="pre">settings</span></code> in console</p>
+</div>
+<div class="section" id="examples">
+<h2>examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h2>
+<p><strong>single machine</strong></p>
+<p><code class="docutils literal"><span class="pre">rezina-cli</span> <span class="pre">runmaster</span> <span class="pre">-D</span></code></p>
+<p><code class="docutils literal"><span class="pre">rezian-cli</span> <span class="pre">runworker</span> <span class="pre">-D</span></code></p>
+<p><code class="docutils literal"><span class="pre">rezina-cli</span> <span class="pre">runconsole</span></code></p>
+<p><strong>multi-workers</strong></p>
+<p><code class="docutils literal"><span class="pre">rezina-cli</span> <span class="pre">runmaster</span> <span class="pre">-H</span> <span class="pre">192.168.1.100</span> <span class="pre">-P</span> <span class="pre">11111</span> <span class="pre">-D</span> <span class="pre">-L</span> <span class="pre">/path/to/log</span> <span class="pre">-W</span> <span class="pre">/my/exist/dir/contain/python</span></code></p>
+<p><code class="docutils literal"><span class="pre">rezina-cli</span> <span class="pre">runworker</span> <span class="pre">-H</span> <span class="pre">192.168.1.100</span> <span class="pre">-P</span> <span class="pre">11111</span> <span class="pre">-D</span> <span class="pre">-WIP</span> <span class="pre">192.168.1.101</span></code></p>
+<p><code class="docutils literal"><span class="pre">rezina-cli</span> <span class="pre">runworker</span> <span class="pre">-H</span> <span class="pre">192.168.1.100</span> <span class="pre">-P</span> <span class="pre">11111</span> <span class="pre">-D</span> <span class="pre">-WIP</span> <span class="pre">192.168.1.102</span></code></p>
+<p><code class="docutils literal"><span class="pre">rezina-cli</span> <span class="pre">runworker</span> <span class="pre">-H</span> <span class="pre">192.168.1.100</span> <span class="pre">-P</span> <span class="pre">11111</span> <span class="pre">-D</span> <span class="pre">-WIP</span> <span class="pre">192.168.1.103</span></code></p>
+<p><code class="docutils literal"><span class="pre">rezina-cli</span> <span class="pre">runconsole</span> <span class="pre">-H</span> <span class="pre">192.168.1.100</span> <span class="pre">-P</span> <span class="pre">11111</span></code></p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Startup setttings</a><ul>
+<li><a class="reference internal" href="#master">Master</a></li>
+<li><a class="reference internal" href="#worker">Worker</a></li>
+<li><a class="reference internal" href="#console">Console</a></li>
+<li><a class="reference internal" href="#examples">examples</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="periodicallyschedule.html"
+                        title="previous chapter">periodically schedule</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="typology.html"
+                        title="next chapter">run python code  with rezina</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/startupsettings.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="typology.html" title="run python code with rezina"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="periodicallyschedule.html" title="periodically schedule"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">regina 1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2015, Fujiao Liu.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.5.
+    </div>
+  </body>
+</html>

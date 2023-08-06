@@ -1,0 +1,250 @@
+Ì{% extends "base.html" %}
+{% load static i18n %}
+
+{% comment %}
+As the developer of this package, don't place anything here if you can help it
+since this allows developers to have interoperability between your template
+structure and their own.
+
+Example: Developer melding the 2SoD pattern to fit inside with another pattern::
+
+    {% extends "base.html" %}
+    {% load static %}
+
+    <!-- Their site uses old school block layout -->
+    {% block extra_js %}
+
+        <!-- Your package using 2SoD block layout -->
+        {% block javascript %}
+            <script src="{% static 'js/ninja.js' %}" type="text/javascript"></script>
+        {% endblock javascript %}
+
+    {% endblock extra_js %}
+{% endcomment %}
+
+{% block extrastyle %} {# maybe you need also this: {{ block.super }} #}
+    {# Include gridstack css #}
+    <link rel="stylesheet" href="{% static "dj_dashboard/css/gridstack.min.css" %}" />
+    {# Include semantic css #}
+    <link rel="stylesheet" href="{% static "dj_dashboard/semantic/localfont.css" %}" />
+    <link rel="stylesheet" href="{% static "dj_dashboard/semantic/semantic.min.localfont.css" %}" />
+    {# Include lodash used by gridstack #}
+    <script type="text/javascript" src="{% static "dj_dashboard/js/lodash.min.js" %}"></script>
+    {# Include jquery if you have not already a jquery in base #}
+    <script type="text/javascript" src="{% static "dj_dashboard/js/jquery.min.js" %}"></script>
+    <script type="text/javascript" src="{% static "dj_dashboard/js/jquery-ui.min.js" %}"></script>
+    {# include jquery ui touch pounch for mobile devices #}
+    <script type="text/javascript" src="{% static "dj_dashboard/js/jquery.ui.touch-punch.min.js" %}"></script>
+    {# Include gridstack; used to create/move/arrange the widgets #}
+    <script type="text/javascript" src="{% static "dj_dashboard/js/gridstack.min.js" %}"></script>
+    {# Include semantic #}
+    <script type="text/javascript" src="{% static "dj_dashboard/semantic/semantic.min.js" %}"></script>
+    {# Include dj_dashboard js #}
+    <script type="text/javascript" src="{% static "dj_dashboard/js/dj_dashboard.js" %}"></script>
+    {# Include dj_dashboard css #}
+    <link rel="stylesheet" href="{% static "dj_dashboard/css/dj_dashboard.css" %}" />
+     <link rel="stylesheet" href="{% static "css/dj_dashboard_content.css" %}" />
+{% endblock %}
+
+{% block content %}
+
+<script type="text/javascript">
+{% if config_mode %}
+    var editMode = true;
+    {% if django_debug %}
+        console.log('config mode activated');
+    {% endif %}
+{% else %}
+    var editMode = false;
+    {% if django_debug %}
+        console.log('not in config mode');
+    {% endif %}
+{% endif %}
+
+{% if using_defaults %}
+    var allowMove = false;
+{% else %}
+    var allowMove = true;
+    {% if django_debug %}
+        console.log('allowMove True!');
+    {% endif %}
+{% endif %}
+
+// default options configuration for the dashboard grid
+$(function () {
+    var options = {
+        width: 12,
+        cellHeight: 40,
+        verticalMargin: 20,
+    };
+    // always show resize handler
+    {% if config_mode %}
+        options['always_show_resize_handle'] = true;
+    {% endif %}
+    $('.grid-stack').gridstack(options);
+});
+
+$( document ).ready(function() {
+    $(function(){
+        {% if django_debug %}
+            console.log("start charts")
+        {% endif %}
+
+        // disable ajax cache
+        $.ajaxSetup({ cache: false });
+
+        // create loading icon in every configured widgetplace
+        {% for widget in widgets %}
+            loading_template = '<div content_can_grow="0" class="ui load_center" id="load_{{widget.id}}"><div class="ui active centered inline text loader">Loading</div></div>'
+            loading_{{widget.id}} =  '<div data-gs-x="{{widget.x}}" data-gs-y="{{widget.y}}" data-gs-width="{{widget.w}}" data-gs-height="{{widget.h}}"'+
+                        'class="grid-stack-item {{widget.class}} ui-draggable ui-resizable ui-resizable-autohide ui-draggable-disabled ui-state-disabled ui-resizable-disabled sortable" id="{{widget.id}}" autoPosition="true">'+
+                        '<div class="grid-stack-item-content" id="content-{{widget.id}}">'+
+                        loading_template+'</div></div>';
+            {% if django_debug %}
+                console.log("add loading widget");
+            {% endif %}
+            $('.grid-stack').data('gridstack').addWidget(loading_{{widget.id}});
+        {% endfor %}
+        // Now make all ajax requests for every configured widget
+        {% for widget in widgets %}
+            {% if django_debug %}
+                console.log("{{widget.url}} -- {{widget.id}} position {{widget.x}}/{{widget.y}}");
+                console.log("{{widget.edit_url}}");
+            {% endif %}
+            var aj_{{widget.id}} = $.ajax("{{widget.url}}{{widget.args}}");
+            // When the ajax call finishes create the html with the content from the ajax call
+            $.when(aj_{{widget.id}}).done(function(content_{{widget.id}}) {
+                html_{{widget.id}} = '<span class="widget_title">{{widget.title}}</span>'+
+                            {% if widget.edit_url > '' %}
+                                {# need autoescape for the slash in the url  #}
+                                {% autoescape off %}
+                                '<i onclick="editClick(\'{{widget.edit_url}}\');" id="edit_{{widget.id}}" class="large filter link icon" title="{% trans "Change" %}"></i>'+
+                                {% endautoescape %}
+                            {% endif %}
+                            '<i onclick="removeClick(this);" id="remove_{{widget.id}}" class="large trash outline link icon editControlTrash" title="{% trans "Remove" %}"  style="display: none;"></i>'+
+                            content_{{widget.id}};
+
+                $('#load_{{widget.id}}').remove();
+                $('#content-{{widget.id}}').append(html_{{widget.id}});
+                // check if this can grow
+                if (content_{{widget.id}}.indexOf("CGROW|") >= 0) {
+                    // set attr "content_can_grow" because on save we overwrite height it can grow
+                    // <!--CGROW|{{ number_lines }}|CGROW-->
+                    $('#{{widget.id}}').attr("content_can_grow","1");
+                    table_lines = content_{{widget.id}}.slice(content_{{widget.id}}.indexOf("CGROW|")+6,content_{{widget.id}}.indexOf("|CGROW"));
+                    new_table_lines = 2;
+                    if (table_lines < 3) {
+                        new_table_lines = parseInt(table_lines) + 2;
+                    } else if (table_lines < 6) {
+                        new_table_lines = parseInt(table_lines) + 1;
+                    } else if (table_lines < 9) {
+                        new_table_lines = parseInt(table_lines);
+                    } else if (table_lines > 11) {
+                        lines_remove = Math.floor(table_lines / 3) - 2;
+                        new_table_lines = parseInt(table_lines) - lines_remove;
+                    }
+                    {% if django_debug %}
+                        console.log("lines = " + table_lines);
+                        console.log("new lines = " + new_table_lines);
+                    {% endif %}
+                    // there are 0 lines/height and we are NOT in config mode so we can remove it
+                    if (table_lines == 0 && editMode === false) {
+                        {% if django_debug %}
+                            console.log({{widget.id}} + " -- remove");
+                        {% endif %}
+                        $('.grid-stack').data('gridstack').removeWidget($('#{{widget.id}}'));
+                    } else {
+                        // all other update height
+                        $('#{{widget.id}}').attr("data-gs-height",new_table_lines);
+                        $('.grid-stack').data('gridstack').update($('#{{widget.id}}'), null, null, null, new_table_lines);
+                    }
+                } else {
+                    // set attr "content_can_grow" because on save we overwrite height it can grow
+                    $('#{{widget.id}}').attr("content_can_grow","0");
+                }
+                switchEditMode();
+            });
+            // When the ajax call fails create the html with the error message
+            $.when(aj_{{widget.id}}).fail(function(content_{{widget.id}}) {
+                html_{{widget.id}} = '<span class="widget_title">{{ widget.title }}</span><div><ul style="margin: 25px 25px 0px 25px;"><li class="alert alert-error"><b>{% trans "An error occured loading the widget" %}</li></ul></div>'
+                $('#load_{{widget.id}}').remove();
+                $('#content-{{widget.id}}').append(html_{{widget.id}});
+                switchEditMode();
+            });
+        {% endfor %}
+        switchEditMode();
+        // Drag
+        $('.ui-draggable').draggable();
+        $('li.ui-draggable').draggable({
+            helper: "clone",
+        });
+        // Drop
+        $( "#dropzone" ).droppable({
+            drop: function( event, ui ) {
+              drop(event, ui);
+            }
+        });
+
+    });
+});
+
+</script>
+
+<div style="clear:both"></div>
+
+<div id="dj_dashboard">
+    <div class="container-fluid">
+        <div id="dropzone" class="ui-widget-header ui-droppable" style="display: none;">
+            {% trans "Drop new elements here" %}
+        </div>
+        <div class="grid-stack" ></div>
+        &nbsp;
+    </div>
+</div>
+<div id="dx" class="editControl" style="height:90vh;">
+    <i onclick="resetToDefault();" class="big blue undo outline link icon" title="{% trans "Reset default" %}"></i>
+    <i onclick="saveWidgets();" class="big green check outline link icon" title="{% trans "Save" %}"></i>
+    <br>&nbsp;
+    <form action="" id="form_dashboard" method="post">{% csrf_token %}
+        <input type="hidden" id="widgets" name="widgets" value="{{widgets}}" />
+        {% if not using_defaults %}
+            <ul class="seitenlist">
+            <ul class="seitenlist">
+                {% for item in widgetlist %}
+                    {% ifchanged item.group %}
+                        </ul>
+                        </ul>
+                        <div class="color{{ item.group_class }}" style="text-decoration:underline;padding-left:10px;" onclick="$('#ul_{{ item.group_class }}').toggle();">
+                            {{ item.group }}
+                            <div style="float:right;padding-right:10px;">
+                                <img src="{% static "dj_dashboard/img/arrow-inactive-down.png" %}">
+                            </div>
+                        </div>
+                        <div style="clear:both;"></div>
+                        <ul class="draggable seitenlist" id="ul_{{ item.group_class }}" style="margin: 0 0 10px 8px; display: none;">
+                        <ul class="seitenlist">
+                    {% endifchanged %}
+                    {% ifchanged item.widget_class %}
+                        </ul>
+                        <div class="color{{ item.widget_class }}" style="text-decoration:underline;padding-left:10px;" onclick="$('#ul_{{ item.group_class }}{{ item.widget_class }}').toggle();">
+                            {{ item.widget_class_name }}
+                            <div style="float:right;padding-right:10px;">
+                                <img src="{% static "dj_dashboard/img/arrow-inactive-down.png" %}">
+                            </div>
+                        </div>
+                        <div style="clear:both;"></div>
+                        <ul class="draggable seitenlist" id="ul_{{ item.group_class }}{{ item.widget_class }}" style="margin: 0 0 10px 8px; display: none;">
+                    {% endifchanged %}
+
+                    <li id="{{ item.reverse_name }}" data-addurl="{{ item.reverse_name }}" title="{{ item.name }}" data-addelemet="1" class="bgcolor{{ item.widget_class }} ui-draggable ui-draggable-handle roundedborder {% if item.help_text %} has-popover" data-content="<pre>{{ item.help_text }}</pre>{% endif %}" >
+                        <div>{{ item.name }}</div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+        <input type="hidden" id="add-widget-select" name="add-widget-select" value="" />
+        <input type="hidden" id="add-widget-y" name="add-widget-y" value="0" />
+        <input type="hidden" id="add-widget-title" name="add-widget-title" value="" />
+    </form>
+</div>
+{% endblock content %}

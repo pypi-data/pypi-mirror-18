@@ -1,0 +1,67 @@
+{% extends 'mtp_common/user_admin/base.html' %}
+{% load i18n %}
+{% load mtp_common %}
+
+{% block admin_header %}
+  <header>
+    {% language_switch %}
+    <h1 class="heading-xlarge">{% trans 'Manage user accounts' %}</h1>
+  </header>
+{% endblock %}
+
+{% block admin_content %}
+  {% if messages %}
+    <ul class="messages" role="alert" tabindex="-1">
+      {% for message in messages %}
+        <li{% if message.tags %} class="message--{{ message.tags }}"{% endif %}>{{ message }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <p>{% trans 'Add, view, edit or delete user accounts.' %}</p>
+
+  <p class="print-hidden">
+    <a class="button button-secondary" href="{% url "new-user" %}">{% trans 'Add a new user' %}</a>
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>{% trans 'Username' %}</th>
+        <th>{% trans 'Name' %}</th>
+        <th>{% trans 'Email' %}</th>
+        <th>{% trans 'Can manage accounts' %}</th>
+        <th class="mtp-account-management__actions print-hidden">{% trans 'Actions' %}</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for user in users %}
+        <tr {% if forloop.last %}class="no-border"{% endif %}>
+          <td>{{ user.username }}</td>
+          <td>{{ user.first_name }} {{ user.last_name }}</td>
+          <td>{{ user.email }}</td>
+          <td class="mtp-account-management__can_manage">
+            {% if user.user_admin %}
+              ✔ <span class="screenreader-only">{% trans 'User can manage other accounts' %}</span>
+            {% endif %}
+          </td>
+          <td class="mtp-account-management__actions print-hidden">
+            <div class="mtp-account-management__edit-action">
+              <a href="{% url "edit-user" username=user.username %}">{% trans 'Edit' %}</a>
+            </div>
+            {% if request.user.username != user.username %}
+              <div>
+                <a href="{% url "delete-user" username=user.username %}">
+                  <div class="delete-icon"></div>{% trans 'Delete' %}
+                </a>
+              </div>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% page_list page=page page_count=page_count %}
+{% endblock %}

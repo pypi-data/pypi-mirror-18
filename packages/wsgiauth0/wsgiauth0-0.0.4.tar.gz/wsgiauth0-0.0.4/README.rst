@@ -1,0 +1,59 @@
+wsgiauth0
+=========
+
+.. image:: https://gitlab.com/dialogue/wsgiauth0/badges/master/build.svg
+.. image:: https://gitlab.com/dialogue/wsgiauth0/badges/master/coverage.svg?job=Run%20py.test
+
+This is an Auth0 middleware for multiple client configurations.
+
+Usage
+-----
+
+Configure your wsgi pipeline in paste deploy ini file::
+
+    [filter:wsgiauth0]
+    use = egg:wsgiauth0#middleware
+    clients_config_file = %(here)s/auth0_clients_config.yml
+
+    [pipeline:main]
+    pipeline =
+        wsgiauth0
+        myapp
+
+    [app:myapp]
+    use = egg:wsgiapp#main
+
+    [server:main]
+    use = egg:waitress#main
+    host = 0.0.0.0
+    port = 6543
+
+
+It expects a `clients_config_file` key pointing to auth0 client configuration
+yaml file.
+
+Here is an example of a yaml configuration file.
+
+.. code:: yaml
+
+    Client 1:
+        algorithm: HS256
+        id: oZ0ahm4Thoh1Oghiqu4oe9qu
+        audience: oZ0ahm4Thoh1Oghiqu4oe9qu
+        secret: noh4feibaighikeeD0inah9Rei3nei6yeenoa7uar2Dah2yaeKioph8Jux8ahte
+
+    Client 2:
+        algorithm: RS256
+        id: Aen1XobahDoh7queing3eaS0@clients
+        audience: https://example.com/
+        secret: |
+            -----BEGIN CERTIFICATE REQUEST-----
+            MIIBZjCB0AIBADANMQswCQYDVQQGEwJDQTCBnzANBgkqhkiG9w0BAQEFAAOBjQAw
+            gYkCgYEAx2LwsUexPKQ/0GIHqugXZtIGZxSOovO754KWn3ZWBbDvm/wuh+QfmMj8
+            ZTxnxRymHjSNJ04nCMcqtzl3VDwapMkM433CnyZjoJjA/fRwLRjUepLAMbmoqkOG
+            k1BKNAyidyko7DBnkMayzJRfmnCwFy1hsuikh6oFSinU7MP3LBsCAwEAAaAaMBgG
+            CSqGSIb3DQEJBzELEwljaGFsbGVuZ2UwDQYJKoZIhvcNAQELBQADgYEAP819zy3q
+            1gh5z5FLeFanc3TpdlcGHCQxcTMC/x9iyMpbSd2XkKLrZ02Is1Y8Ox/XeT8zNjOg
+            /nulPg6YrIsywpKFR4orMvuUUMZ8uT8UVNj1pnatmXy9ikjdGtBXeU+EKkMZ4q6a
+            OrG8qyB4o/WETphyxfneazWt3jrLHkKBvXA=
+            -----END CERTIFICATE REQUEST-----

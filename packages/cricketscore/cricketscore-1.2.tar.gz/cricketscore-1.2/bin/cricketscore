@@ -1,0 +1,34 @@
+#!/usr/bin/python
+from bs4 import BeautifulSoup
+import requests
+import subprocess
+import sys
+
+url = "http://www.espncricinfo.com/ci/engine/match/1034809.html"
+filename = "cricket_summary.txt"
+info_dict = {'old_info': ""}
+
+while True:
+    r = requests.get(url)
+    data = r.text
+    soup = BeautifulSoup(data, "html.parser")
+
+    try:
+        def send_notification():
+            with open(filename,'r') as f:
+                cric_sum = f.readline()
+            subprocess.Popen(["notify-send", cric_sum], stdout=subprocess.PIPE)
+
+        for i in soup.find_all('title'):
+            info = i.get_text()
+            new_info = str(info)
+            info_dict['new_info'] = new_info
+            if info_dict['new_info'] != info_dict['old_info']:
+                with open(filename, 'wb') as f:
+                    f.write(new_info.strip())
+                info_dict['old_info'] = info_dict['new_info']
+                send_notification()
+
+    except:
+        subprocess.Popen(["notify-send", "Some error occurred, python application stopped!"], stdout=subprocess.PIPE)
+        sys.exit(0)

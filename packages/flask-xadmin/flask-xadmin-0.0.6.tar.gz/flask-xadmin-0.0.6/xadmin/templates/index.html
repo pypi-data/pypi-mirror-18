@@ -1,0 +1,88 @@
+{% extends 'admin/base.html' %}
+
+{% block tail_js %}
+    {{ super() }}
+    {% if session.get('xadm_edit_mode', False) %}
+        <script>
+
+            $(".navbar").css("border", "2px solid red");
+            $(".navbar-brand")
+        </script>
+
+    {% endif %}
+{% endblock %}
+
+
+
+{% block access_control %}
+    {{ super() }}
+    {% if current_user.is_authenticated() %}
+        <div class="btn-group pull-right">
+            <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
+                <i class="icon-user"></i> {{ current_user.login }} <span class="caret"></span>
+            </a>
+            <ul class="dropdown-menu">
+                {% if not(session.get("xadm_edit_mode", False)) %}
+                    <li><a href="{{ url_for('xeditmodeview.change_mode') }}">Enter edit mode</a></li>
+                {% else %}
+                    <li><a href="{{ url_for('xeditmodeview.leave_edit') }}">Leave edit mode</a></li>
+                {% endif %}
+                <li><a href="{{ url_for('admin.logout_view') }}">Log out</a></li>
+            </ul>
+        </div>
+    {% else %}
+
+        <div class="login">
+            <a class="pull-right btn btn-success" href="{{ url_for_security('login') }}">Log in &nbsp</a>
+        </div>
+
+    {% endif %}
+{% endblock %}
+
+{% block page_body %}
+    {{ super() }}
+    {% if request.endpoint == 'admin.index' %}
+     <div class="container">
+
+    <div class="row-fluid">
+
+        <div>
+            {% if current_user.is_authenticated() %}
+                {% if current_user.has_role("xadmin_superadmin")%}
+                    <h3>Dear "{{ current_user.name }}" welcome to xAdmin</h3>
+                    {% for cat in admin_view.admin._menu %}
+                        <h4>
+                            {% if cat._cached_url %}
+                                <a href="{{ cat._cached_url }}">{{ cat.name }}</a>
+                            {% else %}
+                                {% if cat._children.__len__() > 0 %}
+                                    {{ cat.name }}
+                                {% endif %}
+                            {% endif %}
+                        </h4>
+                        <ul>
+                            {% for child in cat._children %}
+                                <li><a href="{{ child._cached_url }}">
+                                    {% if child._view.doc is defined %}
+                                        {{ child._view.doc() }}
+                                    {% endif %}
+                                    ({{ child.name }})</a></li>
+                            {% endfor %}
+                        </ul>
+                    {% endfor %}
+
+                {% else %}
+
+                    <div class="login">
+                        <p class="lead">You are not authorized superuser! </p>
+                    </div>
+                {% endif %}
+                {% else %}
+                    <div class="login">
+                        <p class="lead">Welcome to xAdmin. <br><br>  <strong>Warning:</strong> Only authorized people are allowed to be here. </p>
+                    </div>
+            {% endif %}
+    </div>
+     </div>
+    {% endif %}
+{% endblock page_body %}

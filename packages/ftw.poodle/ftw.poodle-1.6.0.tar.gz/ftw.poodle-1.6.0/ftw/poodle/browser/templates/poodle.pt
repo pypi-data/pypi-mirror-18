@@ -1,0 +1,75 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en"
+      xmlns:tal="http://xml.zope.org/namespaces/tal"
+      xmlns:metal="http://xml.zope.org/namespaces/metal"
+      xmlns:i18n="http://xml.zope.org/namespaces/i18n"
+      lang="en"
+      metal:use-macro="here/main_template/macros/master"
+      i18n:domain="ftw.poodle">
+
+<body>
+
+<head>
+
+
+    <metal:block fill-slot="javascript_head_slot">
+        <script type="text/javascript">
+            function sendPoodleForm(){
+                $('#poodleForm [name="form.button.Save"]').live("click", function(e){
+                        e.stopPropagation();
+                        e.preventDefault();
+                        var infos = $("#"+this.id).closest('form#poodleForm').serializeArray();
+                        var base_href = $('base')[0].href;
+                        $.post(base_href+'/jq_submit_data', infos, function(callback){
+                            $.post(base_href+'/ftw_poodle_table', infos, function(data){
+                                $('#poodltablewrapper_'+infos[infos.length -1].value).html(data);
+                            });
+                        });
+                    });
+            }
+            $(sendPoodleForm);
+        </script>
+    </metal:block>
+
+</head>
+
+
+<div metal:fill-slot="main" class="poodle_view">
+    <metal:main-macro define-macro="main">
+
+      <div tal:replace="structure provider:plone.abovecontenttitle" />
+      <metal:title define-slot="content-title">
+          <h1 metal:use-macro="context/kss_generic_macros/macros/generic_title_view">
+              Generic KSS Title. Is rendered with class="documentFirstHeading".
+          </h1>
+      </metal:title>
+
+      <div tal:replace="structure provider:plone.belowcontenttitle" />
+
+      <p class="documentDescription" tal:condition="exists:here/widget">
+          <metal:field use-macro="python:here.widget('description', mode='view')">
+              Description
+          </metal:field>
+      </p>
+
+      <tal:block condition="not:exists:here/widget">
+          <p class="documentDescription"
+                     tal:content="context/Description"
+                     tal:condition="context/Description">
+              Description
+          </p>
+      </tal:block>
+
+
+      <div tal:replace="structure provider:plone.abovecontentbody" />
+
+            <div tal:condition="context/getDates | nothing"
+                 tal:replace="structure python:view.renderTable(context)">renders poodle table</div>
+            <div tal:condition="not:context/getDates" i18n:translate="no_dates_defined_text">no dates</div>
+    <!--    <div tal:replace="structure provider:plone.belowcontentbody" />-->
+
+
+  </metal:main-macro>
+</div>
+
+</body>
+</html>

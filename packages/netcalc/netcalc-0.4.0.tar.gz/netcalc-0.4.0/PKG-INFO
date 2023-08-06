@@ -1,0 +1,305 @@
+Metadata-Version: 1.1
+Name: netcalc
+Version: 0.4.0
+Summary: Advanced network calculator and address planning helper
+Home-page: https://github.com/israel-lugo/netcalc
+Author: Israel G. Lugo
+Author-email: israel.lugo@lugosys.com
+License: GPLv3+
+Description: NetCalc
+        =======
+        
+        |license| |PyPi version| |PyPi pyversion| |Codacy Badge|
+        
+        Advanced network calculator and address planning helper.
+        
+        NetCalc is a tool made by network admins, for network admins. It supports
+        adding (aggregating) networks, subtracting a network from a larger network,
+        doing addition and subtraction of multiple networks at once, and more
+        functionality is to come in future releases.
+        
+        NetCalc supports both IPv4 and IPv6, and works very efficiently even with very
+        large networks. It uses the excellent netaddr_ library for the core address
+        manipulation.
+        
+        This program requires either Python 3 (recommended) or Python 2.
+        
+        .. contents::
+           :backlinks: none
+        
+        
+        Usage
+        -----
+        
+        Using NetCalc is quite simple. All functionality is split into commands, each
+        of which receive their own set of specific arguments.
+        
+        add command
+        ...........
+        
+        Add networks, aggregating as much as possible. ::
+        
+          $ netcalc add 198.18.0.0/24 198.18.1.0/24 10.1/16 10/16
+          10.0.0.0/15
+          198.18.0.0/23
+        
+        This command can be very useful e.g. for calculating a minimal set of prefixes
+        to announce with BGP.
+        
+        Another real-life example would be comparing the routing tables from two
+        separate routers (each with prefixes broken up in different ways), to see if
+        they are equivalent (both cover the same networks). If the aggregate from one
+        router matches the aggregate from the other, then they are indeed equivalent.
+        
+        add-file command
+        ................
+        
+        Add networks from a file, aggregating as much as possible.
+        
+        This is a variant of the ``add`` command above, which reads the networks from a
+        file (one per line). For example, given the following file:
+        
+        networks.txt
+          ::
+        
+            198.18.0.0/24
+            198.18.1.0/24
+            10.1/16
+            10/16
+        
+        These networks could be added like so::
+        
+          $ netcalc add-file networks.txt
+          10.0.0.0/15
+          198.18.0.0/23
+        
+        sub command
+        ...........
+        
+        Subtract a network from another, splitting as necessary. ::
+        
+          $ netcalc sub 192.0.2.0/24 192.0.2.0/28
+          192.0.2.16/28
+          192.0.2.32/27
+          192.0.2.64/26
+          192.0.2.128/25
+        
+        split command
+        .............
+        
+        Split a network into subnets of a certain length. ::
+        
+          $ netcalc split 198.18.64.0/18 20
+          198.18.64.0/20
+          198.18.80.0/20
+          198.18.96.0/20
+          198.18.112.0/20
+        
+        expr command
+        ............
+        
+        Add and subtract networks using an arbitrarily long mathematical expression. ::
+        
+          $ netcalc expr 2001:db8::/34 - 2001:db8::/38 + 2001:db8:100::/41
+          2001:db8:100::/41
+          2001:db8:400::/38
+          2001:db8:800::/37
+          2001:db8:1000::/36
+          2001:db8:2000::/35
+        
+        
+        Expanding arguments from a text file
+        ....................................
+        
+        It is possible to expand command-line arguments from a text file, for any
+        command, by referencing the filename with a ``@`` placeholder. The file's
+        contents will be read and inserted as though they had been typed at the
+        command-line. Each line of text will turn into a separate command line
+        argument.
+        
+        Argument expansion is useful for commands which don't already support receiving
+        a filename from which to read their arguments. Using this, it is possible for
+        example to calculate an arbitrarily long expression with the ``expr`` command.
+        
+        For example, given the following file:
+        
+        /tmp/math-arguments.txt
+          ::
+        
+            2001:db8::/34
+            -
+            2001:db8::/38
+            +
+            2001:db8:100::/41
+        
+        This expression could be calculated like so::
+        
+            $ netcalc expr @/tmp/math-arguments.txt
+            2001:db8:100::/41
+            2001:db8:400::/38
+            2001:db8:800::/37
+            2001:db8:1000::/36
+            2001:db8:2000::/35
+        
+        It is even possible (albeit perhaps farfetched) to specify the actual command
+        within the argument file:
+        
+        /tmp/arguments.txt
+          ::
+        
+            sub
+            10.0.0.0/24
+            10.0.0.64/27
+        
+        Which would yield::
+        
+          $ netcalc @arguments.txt
+          10.0.0.0/26
+          10.0.0.96/27
+          10.0.0.128/25
+        
+        Of course, it would also be possible to use argument expansion to read networks
+        from a file as arguments into the ``add`` command. However, this would be rather
+        redundant, as it is equivalent to just using the ``add-file`` command,
+        exemplified above.
+        
+        Given the file:
+        
+        networks.txt
+          ::
+        
+            198.18.0.0/24
+            198.18.1.0/24
+            10.1/16
+            10/16
+        
+        These networks could be added like so::
+        
+            $ netcalc add @networks.txt
+            10.0.0.0/15
+            198.18.0.0/23
+        
+        
+        Installing
+        ----------
+        
+        Using pip
+        .........
+        
+        The easiest way to install NetCalc is through the official
+        `Python Package Index`_, using a package manager such as pip_::
+        
+            $ sudo pip install netcalc
+        
+        This will install NetCalc globally, and take care of installing all necessary
+        dependencies first.
+        
+        It is also possible to install only to the local user's environment, without
+        changing the global system::
+        
+            $ pip install --user netcalc
+        
+        This will install NetCalc in the user's environment, which can be e.g. in
+        ``~/.local`` in GNU/Linux, UNIX and Mac OSX, or ``%APPDATA%\Python`` in
+        Windows. You will need to run ``netcalc`` from within the user environment: on
+        GNU/Linux for example, this will be ``~/.local/bin/netcalc``.
+        
+        From source
+        ...........
+        
+        NetCalc can also be run directly from the source directory, as long as the
+        requirements are already installed.
+        
+        The only requirement is netaddr_. On a Debian or Ubuntu system, install the
+        ``python3-netaddr`` package (for Python 3), or ``python-netaddr`` (for Python
+        2). On a Gentoo system, install ``dev-python/netaddr``.
+        
+        To run from source, just execute ``./netcalc.py`` from within the root of the
+        source directory::
+        
+            $ cd netcalc
+            $ ./netcalc.py add 10.0.0.24/29 10.0.0.16/29
+            10.0.0.16/28
+        
+        
+        Future plans
+        ------------
+        
+        Future plans for NetCalc include, in no particular order:
+        
+        - new command for static information (netmask/bitmask, IP range)
+        - new command for WHOIS queries
+        - make expr command more generic, allow e.g. splitting subnets
+        - ability to read networks from file in different formats (CSV, etc.)
+        - create packages for common GNU/Linux distributions, and installer for Windows
+        - ???
+        
+        Suggestions are quite welcome :)
+        
+        
+        Contact
+        -------
+        
+        NetCalc is developed by Israel G. Lugo <israel.lugo@lugosys.com>. Main
+        repository for cloning, submitting issues and/or forking is at
+        https://github.com/israel-lugo/netcalc
+        
+        
+        License
+        -------
+        
+        Copyright (C) 2016 Israel G. Lugo <israel.lugo@lugosys.com>
+        
+        NetCalc is free software: you can redistribute it and/or modify
+        it under the terms of the GNU General Public License as published by
+        the Free Software Foundation, either version 3 of the License, or
+        (at your option) any later version.
+        
+        NetCalc is distributed in the hope that it will be useful,
+        but WITHOUT ANY WARRANTY; without even the implied warranty of
+        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+        GNU General Public License for more details.
+        
+        You should have received a copy of the GNU General Public License
+        along with NetCalc.  If not, see <http://www.gnu.org/licenses/>.
+        
+        
+        .. |license| image:: https://img.shields.io/badge/license-GPLv3+-blue.svg?maxAge=2592000
+           :target: LICENSE
+        .. |PyPi version| image:: https://img.shields.io/pypi/v/netcalc.svg
+           :target: https://pypi.python.org/pypi/netcalc
+        .. |PyPi pyversion| image:: https://img.shields.io/pypi/pyversions/netcalc.svg?maxAge=86400
+        .. |Codacy Badge| image:: https://api.codacy.com/project/badge/Grade/4479f8bd8ddd4ba58c09867bf97133cd
+           :target: https://www.codacy.com/app/israel-lugo/netcalc
+        .. _netaddr: https://github.com/drkjam/netaddr
+        .. _Python Package Index: https://pypi.python.org/pypi/netcalc/
+        .. _pip: https://pip.pypa.io/en/stable/
+        
+        
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Education
+Classifier: Intended Audience :: Information Technology
+Classifier: Intended Audience :: Science/Research
+Classifier: Intended Audience :: System Administrators
+Classifier: Intended Audience :: Telecommunications Industry
+Classifier: License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Operating System :: OS Independent
+Classifier: Operating System :: POSIX
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.2
+Classifier: Programming Language :: Python :: 3.3
+Classifier: Programming Language :: Python :: 3.4
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Topic :: Communications
+Classifier: Topic :: Documentation
+Classifier: Topic :: Education 
+Classifier: Topic :: Internet
+Classifier: Topic :: System :: Networking
+Classifier: Topic :: System :: Networking :: Firewalls 
+Classifier: Topic :: System :: Systems Administration
+Classifier: Topic :: Utilities
